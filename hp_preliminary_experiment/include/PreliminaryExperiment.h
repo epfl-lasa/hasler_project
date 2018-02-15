@@ -40,9 +40,10 @@ class PreliminaryExperiment
     ros::Subscriber _subRealTwist;          // Subscribe to robot current twist
     ros::Subscriber _subForceTorqueSensor;  // Subscribe to robot current pose
     ros::Subscriber _subOptitrackHip;
-    ros::Subscriber _subOptitrackMiddleThigh;
+    ros::Subscriber _subOptitrackThigh;
     ros::Subscriber _subOptitrackKnee;
-    ros::Subscriber _subOptitrackMiddleLeg;
+    ros::Subscriber _subOptitrackTibia;
+    ros::Subscriber _subOptitrackHeel;
     ros::Subscriber _subOptitrackAnkle;
     ros::Subscriber _subOptitrackToe;
     ros::Publisher _pubDesiredTwist;        // Publish desired twist
@@ -79,7 +80,9 @@ class PreliminaryExperiment
 
     Eigen::Matrix<float,3,NB_MARKERS> _markersPosition;
     Eigen::Matrix<float,3,NB_MARKERS> _markersPosition0;
-    enum MarkersID {HIP = 5, THIGH = 4, KNEE = 3, TIBIA = 2, ANKLE = 1, TOE = 0};
+    Eigen::Matrix<uint32_t,NB_MARKERS,1> _markersSequenceID;
+    Eigen::Matrix<uint16_t,NB_MARKERS,1> _markersTracked;
+    enum MarkersID {HIP = 6, THIGH = 5, KNEE = 4, TIBIA = 3, ANKLE = 2, HEEL = 1, TOE = 0};
 
     // Boolean variables
     bool _firstRobotPoseReceived;  // Monitor the first robot pose update
@@ -88,7 +91,7 @@ class PreliminaryExperiment
     bool _calibrationOK;
     bool _doCalibration;
 
-    uint8_t _markersCount;
+    uint16_t _markersCount;
     uint16_t _calibrationCount;
 
     // Other variables
@@ -129,6 +132,8 @@ class PreliminaryExperiment
 
     void updateToePose(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
+    void updateHeelPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
     void updateAnklePose(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
     void updateTibiaPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
@@ -138,6 +143,8 @@ class PreliminaryExperiment
     void updateThighPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
     void updateHipPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
+    uint16_t checkTrackedMarker(float a, float b);
 
     Eigen::Matrix3f quaternionToRotationMatrix(Eigen::Vector4f q);
 

@@ -21,6 +21,8 @@ _dt(1.0f/frequency)
 
   _markersPosition.setConstant(0.0f);
   _markersPosition0.setConstant(0.0f);
+  _markersSequenceID.setConstant(0);
+  _markersTracked.setConstant(0);
 
   _firstRobotPoseReceived = false;
   _allMarkersPositionReceived = false;
@@ -31,7 +33,7 @@ _dt(1.0f/frequency)
   _markersCount = 0;
   _calibrationCount = 0;
 
-  _outputFile.open("src/hasler_project/preliminary_experiment/data.txt");
+  _outputFile.open("src/hasler_project/hp_preliminary_experiment/data.txt");
 }
 
 
@@ -40,11 +42,12 @@ bool PreliminaryExperiment::init()
   // Subscriber definitions
   _subRealPose = _n.subscribe("/lwr/ee_pose", 1, &PreliminaryExperiment::updateRobotPose, this, ros::TransportHints().reliable().tcpNoDelay());
   _subRealTwist = _n.subscribe("/lwr/joint_controllers/twist", 1, &PreliminaryExperiment::updateRobotTwist, this, ros::TransportHints().reliable().tcpNoDelay());
-  _subOptitrackHip = _n.subscribe("/optitrack/hip/pose", 1, &PreliminaryExperiment::updateHipPose,this,ros::TransportHints().reliable().tcpNoDelay());
-  _subOptitrackMiddleThigh = _n.subscribe("/optitrack/thigh/pose", 1, &PreliminaryExperiment::updateThighPose,this,ros::TransportHints().reliable().tcpNoDelay());
+  // _subOptitrackHip = _n.subscribe("/optitrack/hip/pose", 1, &PreliminaryExperiment::updateHipPose,this,ros::TransportHints().reliable().tcpNoDelay());
+  _subOptitrackThigh = _n.subscribe("/optitrack/thigh/pose", 1, &PreliminaryExperiment::updateThighPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackKnee = _n.subscribe("/optitrack/knee/pose", 1, &PreliminaryExperiment::updateKneePose,this,ros::TransportHints().reliable().tcpNoDelay());
-  _subOptitrackMiddleLeg = _n.subscribe("/optitrack/tibia/pose", 1, &PreliminaryExperiment::updateTibiaPose,this,ros::TransportHints().reliable().tcpNoDelay());
+  _subOptitrackTibia = _n.subscribe("/optitrack/tibia/pose", 1, &PreliminaryExperiment::updateTibiaPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackAnkle = _n.subscribe("/optitrack/ankle/pose", 1, &PreliminaryExperiment::updateAnklePose,this,ros::TransportHints().reliable().tcpNoDelay());
+  _subOptitrackHeel = _n.subscribe("/optitrack/heel/pose", 1, &PreliminaryExperiment::updateHeelPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackToe = _n.subscribe("/optitrack/toe/pose", 1, &PreliminaryExperiment::updateToePose,this,ros::TransportHints().reliable().tcpNoDelay());
 
   // Publisher definitions
@@ -79,7 +82,7 @@ void PreliminaryExperiment::run()
 {
   while (!_stop) 
   {
-    if(_firstRobotPoseReceived && _allMarkersPositionReceived)
+    if(_allMarkersPositionReceived)
     {
 
       _mutex.lock();
@@ -165,7 +168,7 @@ void PreliminaryExperiment::computeAngles()
 
   float angle = std::acos(BA.dot(BC)/(BA.norm()*BC.norm()));
 
-  std::cerr << angle << std::endl;
+  // std::cerr << angle*180.0f/M_PI << std::endl;
   
 }
 
@@ -245,11 +248,12 @@ void PreliminaryExperiment::publishData()
 
 void PreliminaryExperiment::logData()
 {
-  // _outputFile << ros::Time::now() << " " << (int) _usedForTraining 
-  //             << " " << _x(0) << " " << _x(1) << " " << _x(2) 
-  //             << " " << _wRb(0,2) << " " << _wRb(1,2) << " " << _wRb(2,2) 
-  //             << " " << _filteredWrench(0) << " " << _filteredWrench(1) << " " << _filteredWrench(2)
-  //             << " " << std::endl;
+  _outputFile << ros::Time::now() << " "
+              << _markersPosition.col(TOE).transpose() << " "
+              << _markersPosition.col(ANKLE).transpose() << " "
+              << _markersPosition.col(TIBIA).transpose() << " "
+              << _markersTracked.transpose() << " "
+              << _markersSequenceID(TOE) << std::endl;
 }
 
 void PreliminaryExperiment::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg)
@@ -287,13 +291,37 @@ void PreliminaryExperiment::updateToePose(const geometry_msgs::PoseStamped::Cons
 {
   static bool firstToe = false;
 
-  _markersPosition.col(TOE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
   if(!firstToe)
   {
+    std::cerr << "Get first toe" << std::endl;
     _markersCount++;
     firstToe = true;
   }
+
+  _markersSequenceID(TOE) = msg->header.seq;
+  _markersTracked(TOE) = checkTrackedMarker(_markersPosition.col(TOE)(0),msg->pose.position.x);
+  _markersPosition.col(TOE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+
+  // std::cerr <<  msg->header.seq << std::endl;
+
+}
+
+
+void PreliminaryExperiment::updateHeelPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+  static bool firstHeel = false;
+
+
+  if(!firstHeel)
+  {
+    std::cerr << "Get first heel" << std::endl;
+    _markersCount++;
+    firstHeel = true;
+  }
+
+  _markersSequenceID(HEEL) = msg->header.seq;
+  _markersTracked(HEEL) = checkTrackedMarker(_markersPosition.col(HEEL)(0),msg->pose.position.x);
+  _markersPosition.col(HEEL) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
 
 }
 
@@ -303,11 +331,16 @@ void PreliminaryExperiment::updateAnklePose(const geometry_msgs::PoseStamped::Co
   static bool firstAnkle = false;
   if(!firstAnkle)
   {
+
+    std::cerr << "Get first ankle" << std::endl;
     _markersCount++;
     firstAnkle = true;
   }
 
+  _markersSequenceID(ANKLE) = msg->header.seq;
+  _markersTracked(ANKLE) = checkTrackedMarker(_markersPosition.col(ANKLE)(0),msg->pose.position.x);
   _markersPosition.col(ANKLE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+
 }
 
 
@@ -316,11 +349,15 @@ void PreliminaryExperiment::updateTibiaPose(const geometry_msgs::PoseStamped::Co
   static bool firstTibia = false;
   if(!firstTibia)
   {
+    std::cerr << "Get first tibia" << std::endl;
     _markersCount++;
     firstTibia = true;
   }
 
+  _markersSequenceID(TIBIA) = msg->header.seq;
+  _markersTracked(TIBIA) = checkTrackedMarker(_markersPosition.col(TIBIA)(0),msg->pose.position.x);
   _markersPosition.col(TIBIA) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+
 }
 
 
@@ -329,11 +366,15 @@ void PreliminaryExperiment::updateKneePose(const geometry_msgs::PoseStamped::Con
   static bool firstKnee = false;
   if(!firstKnee)
   {
+    std::cerr << "Get first knee" << std::endl;
     _markersCount++;
     firstKnee = true;
   }
 
+  _markersSequenceID(KNEE) = msg->header.seq;
+  _markersTracked(KNEE) = checkTrackedMarker(_markersPosition.col(KNEE)(0),msg->pose.position.x);
   _markersPosition.col(KNEE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+
 }
 
 
@@ -342,24 +383,42 @@ void PreliminaryExperiment::updateThighPose(const geometry_msgs::PoseStamped::Co
   static bool firstThigh = false;
   if(!firstThigh)
   {
+    std::cerr << "Get first thigh" << std::endl;
     _markersCount++;
     firstThigh = true;
   }
 
+  _markersSequenceID(THIGH) = msg->header.seq;
+  _markersTracked(THIGH) = checkTrackedMarker(_markersPosition.col(THIGH)(0),msg->pose.position.x);
   _markersPosition.col(THIGH) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+
 }
 
+uint16_t PreliminaryExperiment::checkTrackedMarker(float a, float b)
+{
+  if(fabs(a-b)< FLT_EPSILON)
+  {
+    return 0;
+  }
+  else
+  {
+    return 1;
+
+  }
+}
 
 void PreliminaryExperiment::updateHipPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   static bool firstHip = false;
   if(!firstHip)
   {
+    std::cerr << "Get first hip" << std::endl;
     _markersCount++;
     firstHip = true;
   }
 
   _markersPosition.col(HIP) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+  _markersSequenceID(HIP) = msg->header.seq;
 }
 
 
