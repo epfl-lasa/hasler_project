@@ -38,5 +38,5 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 # Generate executable
 add_executable(preliminaryExperiment src/preliminary_experiment_node.cpp src/PreliminaryExperiment.cpp)
-#target_link_libraries(preliminaryExperiment ${catkin_LIBRARIES} passive_ds_force_controller)
+target_link_libraries(preliminaryExperiment ${catkin_LIBRARIES})
 add_dependencies(preliminaryExperiment ${PROJECT_NAME}_gencpp)
