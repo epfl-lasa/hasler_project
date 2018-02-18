@@ -32,6 +32,9 @@ _dt(1.0f/frequency)
 
   _markersCount = 0;
   _calibrationCount = 0;
+  _currentSequenceID = 0;
+  _planeData.resize(0);
+
 
   _outputFile.open("src/hasler_project/hp_preliminary_experiment/data.txt");
 }
@@ -99,6 +102,9 @@ void PreliminaryExperiment::run()
 
       // Publish data to topics
       publishData();
+
+      // Add plane fitting data
+      addPlaneFittingData();
 
       // Log data
       logData();
@@ -255,6 +261,87 @@ void PreliminaryExperiment::logData()
               << _markersTracked.transpose() << " "
               << _markersSequenceID(TOE) << std::endl;
 }
+
+void PreliminaryExperiment::addPlaneFittingData()
+{
+  if(_markersTracked(TOE))
+  {
+    if(_planeData.size()==0)
+    {
+      _planeData.push_back(_markersPosition.col(TOE));  
+    }
+    else
+    {
+      if(_markersSequenceID(TOE)!= _currentSequenceID)
+      {
+        _planeData.push_back(_markersPosition.col(TOE));
+        _currentSequenceID = _markersSequenceID(TOE);
+      }
+    }
+  }
+}
+
+void PreliminaryExperiment::computePlane()
+{
+  // Plane equation: ax+by+c=z
+  // A = [x1 y1 1
+  //      x2 y2 1
+  //      |  |  |
+  //      xn yn 1]
+
+  // x = [a b c]'
+  // B = [z1 z2 - zn]'
+  // x = inv(A'A)*A'B
+
+  std::cerr << "Start plane fitting ..." << std::endl;
+  std::cerr << "Number of points: " << _planeData.size() <<std::endl;
+
+  Eigen::Matrix<float,Eigen::Dynamic,3> A;
+  A.resize(_planeData.size(),3);
+  Eigen::Vector3f x;
+  Eigen::VectorXf B;
+  B.resize(_planeData.size());
+  for(uint32_t k = 0; k < _planeData.size(); k++)
+  {
+    A.row(k) << _planeData[k](0),_planeData[k](1), 1.0f;
+    B(k) = _planeData[k](2);
+  }
+
+  x = ((A.transpose()*A).inverse())*A.transpose()*B;
+  float a = x(0);
+  float b = x(1);
+  float c = x(2);
+
+
+  std::cerr << "Coefficients: a = " << a << " b = " << b << " c = " << c << std::endl;
+  Eigen::Vector3f n;
+  n << a, b, -1.0f;
+  std::cerr << "Normal vector: " << n.normalized().transpose() << std::endl;
+
+  float xmin = A.col(0).minCoeff();
+  float xmax = A.col(0).maxCoeff();
+  float ymin = A.col(1).minCoeff();
+  float ymax = A.col(2).maxCoeff();
+
+  Eigen::Vector3f P1,P2,P3,P4;
+  P1 << xmin, ymin, a*xmin+b*ymin+c;
+  P2 << xmin, ymax, a*xmin+b*ymax+c;
+  P3 << xmax, ymax, a*xmax+b*ymax+c;
+  P4 << xmax, ymin, a*xmax+b*ymin+c;
+
+  std::cerr << "Plane corners:" << std::endl;
+  std::cerr << "P1: " << P1.transpose() << std::endl;
+  std::cerr << "P2: " << P2.transpose() << std::endl;
+  std::cerr << "P3: " << P3.transpose() << std::endl;
+  std::cerr << "P4: " << P4.transpose() << std::endl;
+
+  Eigen::Vector3f xmean, xmeanProj;
+  xmean << A.col(0).mean(),A.col(1).mean(),A.col(2).mean();
+  xmeanProj = xmean-(xmean.dot(n)+c)*n;
+  std::cerr << "Plane center: " << xmeanProj.transpose() << std::endl;
+
+}
+
 
 void PreliminaryExperiment::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg)
 {

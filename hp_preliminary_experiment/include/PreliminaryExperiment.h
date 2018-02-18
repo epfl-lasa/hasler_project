@@ -94,6 +94,10 @@ class PreliminaryExperiment
     uint16_t _markersCount;
     uint16_t _calibrationCount;
 
+    uint32_t _currentSequenceID;
+
+    std::vector<Eigen::Vector3f> _planeData;
+
     // Other variables
     static PreliminaryExperiment* me;
 
@@ -112,19 +116,24 @@ class PreliminaryExperiment
 
     bool init();
 
-		void run();
+	void run();
 
-	private:
-		
+    void computePlane();
+    
+    private:
+        
     static void stopNode(int sig);
 
     void calibration();
-		
+        
     void computeAngles();
 
     void publishData();
 
     void logData();
+
+    void addPlaneFittingData();
+
 
     void updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg);
 
