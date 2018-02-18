@@ -1,0 +1,19 @@
+<launch>
+	<group ns="chaser">
+		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
+		<param name="use_gui" value="1"/>
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="h_lower_limb_pub"/>
+		<node pkg="joint_state_publisher" type="joint_state_publisher" name="h_lower_limb_joint_state_pub"/>
+		<node name="rviz" pkg="rviz" type="rviz" args="-d $(find foot_control_xy)/config/urdf.rviz" required="true"/>
+	</group>
+	<group ns="target">
+	    <arg name="model" default="$(find foot_control_xy)/models/number1/urdf/number1.urdf.xacro"/> 
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
+		<param name="use_gui" value="1"/>
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="target_pub"/>
+		<node pkg="joint_state_publisher" type="joint_state_publisher" name="target_joint_state_pub"/>
+		<node name="rviz" pkg="rviz" type="rviz" args="-d $(find foot_control_xy)/rviz/urdf.rviz" required="true"/>
+	</group>
+	
+</launch>
