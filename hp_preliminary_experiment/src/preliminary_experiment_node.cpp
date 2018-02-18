@@ -15,6 +15,9 @@ int main(int argc, char **argv)
   else
   {
     experiment.run();
+    experiment.computePlane();
   }
+
+
   return 0;
 }
