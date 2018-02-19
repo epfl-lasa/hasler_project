@@ -97,17 +97,20 @@ void PreliminaryExperiment::run()
       }
       else
       {
+        // Compute angles
         computeAngles();
+
+        // Add plane fitting data
+        addPlaneFittingData();
+
+        // Log data
+        logData();
       }
 
       // Publish data to topics
       publishData();
 
-      // Add plane fitting data
-      addPlaneFittingData();
 
-      // Log data
-      logData();
 
       _mutex.unlock();
     }
@@ -264,11 +267,12 @@ void PreliminaryExperiment::logData()
 
 void PreliminaryExperiment::addPlaneFittingData()
 {
-  if(_markersTracked(TOE))
+  if(_markersTracked.sum()==NB_MARKERS)
   {
     if(_planeData.size()==0)
     {
       _planeData.push_back(_markersPosition.col(TOE));  
+      _currentSequenceID = _markersSequenceID(TOE);
     }
     else
     {
@@ -307,6 +311,10 @@ void PreliminaryExperiment::computePlane()
     B(k) = _planeData[k](2);
   }
 
+  A.col(0).array() -= A.col(0).mean();
+  A.col(1).array() -= A.col(1).mean();
+  B.array() -= B.mean();
+
   x = ((A.transpose()*A).inverse())*A.transpose()*B;
   float a = x(0);
   float b = x(1);
@@ -321,7 +329,7 @@ void PreliminaryExperiment::computePlane()
   float xmin = A.col(0).minCoeff();
   float xmax = A.col(0).maxCoeff();
   float ymin = A.col(1).minCoeff();
-  float ymax = A.col(2).maxCoeff();
+  float ymax = A.col(1).maxCoeff();
 
   Eigen::Vector3f P1,P2,P3,P4;
   P1 << xmin, ymin, a*xmin+b*ymin+c;
@@ -335,10 +343,12 @@ void PreliminaryExperiment::computePlane()
   std::cerr << "P3: " << P3.transpose() << std::endl;
   std::cerr << "P4: " << P4.transpose() << std::endl;
 
-  Eigen::Vector3f xmean, xmeanProj;
-  xmean << A.col(0).mean(),A.col(1).mean(),A.col(2).mean();
+  Eigen::Vector3f xmean, xmeanProj, Pcenter;
+  xmean << A.col(0).mean(),A.col(1).mean(),B.mean();
   xmeanProj = xmean-(xmean.dot(n)+c)*n;
-  std::cerr << "Plane center: " << xmeanProj.transpose() << std::endl;
+  
+  Pcenter = (P1+P2+P3+P4)/4.0f;
+  std::cerr << "Plane center: " << Pcenter.transpose() << std::endl;
 
 }
 
