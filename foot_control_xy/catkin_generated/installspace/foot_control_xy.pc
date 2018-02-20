@@ -1,0 +1,8 @@
+prefix=/home/jacob/catkin_ws/install
+
+Name: foot_control_xy
+Description: Description of foot_control_xy
+Version: 1.0.0
+Cflags: -I/home/jacob/catkin_ws/install/include
+Libs: -L/home/jacob/catkin_ws/install/lib -lworldActorTransform
+Requires: roscpp rospy std_msgs message_generation tf

@@ -42,7 +42,7 @@ generate_messages(DEPENDENCIES std_msgs)
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES worldChaserTransform
+  LIBRARIES worldActorTransform
   CATKIN_DEPENDS roscpp rospy std_msgs message_generation tf 
  )
 
@@ -55,9 +55,9 @@ include_directories(			${Boost_INCLUDE_DIR}
 link_directories(${GAZEBO_LIBRARY_DIRS})
 # Generate executable
 
-add_executable(worldChaserTransform src/world_chaser_tf_pub_node.cpp src/world_chaser_tf_pub.cpp)
-target_link_libraries(worldChaserTransform ${catkin_LIBRARIES})
-add_dependencies(worldChaserTransform ${PROJECT_NAME}_gencpp)
+add_executable(worldActorTransform src/world_actor_tf_pub_node.cpp src/world_actor_tf_pub.cpp)
+target_link_libraries(worldActorTransform ${catkin_LIBRARIES})
+add_dependencies(worldActorTransform ${PROJECT_NAME}_gencpp)
 
 # Mark launch files for installation
 

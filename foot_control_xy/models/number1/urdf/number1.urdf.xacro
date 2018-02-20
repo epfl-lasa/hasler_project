@@ -2,8 +2,8 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="number1">  
 <link
 	name="world"/>
-  <link
-	name="target/base_footprint"/>		
+  <!--link
+	name="target/base_footprint"/-->		
   <link
     name="target/base_link">
     <inertial>
@@ -38,15 +38,15 @@
         </geometry>
       </visual>
   </link>
-  <joint name="base_joint" type="fixed">
+  <joint name="base_joint" type="floating">
 		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<parent link="target/base_footprint"/>
+		<parent link="world"/>
 		<child link="target/base_link"/>
   </joint>
-  <joint name="base_footprint_joint" type="floating">
+  <!--joint name="base_footprint_joint" type="floating">
 		<origin xyz="0 0 0" rpy="0 0 0"/>
 		<parent link="world"/>
 		<child link="target/base_footprint"/>
-  </joint>
+  </joint-->
 </robot>
 

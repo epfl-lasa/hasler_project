@@ -3,9 +3,7 @@
   <xacro:property name="scale" value="${0.05}"/>
 
   <link
-	name="world"/>
-  <link
-	name="chaser/base_footprint"/>		
+	name="world"/>		
   <link
     name="chaser/base_link">
     <inertial>
@@ -40,14 +38,9 @@
       </geometry>
     </visual>
   </link> 
-   <joint name="base_joint" type="fixed">
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<parent link="chaser/base_footprint"/>
-		<child link="chaser/base_link"/>
-  </joint>
-  <joint name="base_footprint_joint" type="floating">
+   <joint name="base_joint" type="floating">
 		<origin xyz="0 0 0" rpy="0 0 0"/>
 		<parent link="world"/>
-		<child link="chaser/base_footprint"/>
+		<child link="chaser/base_link"/>
   </joint>
 </robot>
