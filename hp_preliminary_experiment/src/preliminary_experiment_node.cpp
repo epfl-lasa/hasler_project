@@ -33,6 +33,5 @@ int main(int argc, char **argv)
     // experiment.computePlane();
   }
 
-
   return 0;
 }

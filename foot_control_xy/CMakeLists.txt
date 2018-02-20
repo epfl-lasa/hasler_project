@@ -14,14 +14,12 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs	
   message_generation
   #dynamic_reconfigure
-  tf2_ros
+  tf
 )
 
 find_package(gazebo REQUIRED)
 
-include_directories(			${Boost_INCLUDE_DIR}
-					${catkin_INCLUDE_DIRS}
-					${GAZEBO_INCLUDE_DIRS})
+
 link_directories(${GAZEBO_LIBRARY_DIRS})
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
@@ -37,22 +35,29 @@ add_service_files(
 #find_package(Eigen3 REQUIRED)
 
 ## Generate added messages and services
-#generate_messages(DEPENDENCIES std_msgs)
+generate_messages(DEPENDENCIES std_msgs)
 
 # Generate dynamic reconfigure parameters
 #generate_dynamic_reconfigure_options(cfg/preliminaryExperiment_params.cfg)
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure
-  # DEPENDS Eigen
+  LIBRARIES worldChaserTransform
+  CATKIN_DEPENDS roscpp rospy std_msgs message_generation tf 
  )
 
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
+include_directories(			${Boost_INCLUDE_DIR}
+					${catkin_INCLUDE_DIRS}
+					${GAZEBO_INCLUDE_DIRS})
+link_directories(${GAZEBO_LIBRARY_DIRS})
 # Generate executable
+
+add_executable(worldChaserTransform src/world_chaser_tf_pub_node.cpp src/world_chaser_tf_pub.cpp)
+target_link_libraries(worldChaserTransform ${catkin_LIBRARIES})
+add_dependencies(worldChaserTransform ${PROJECT_NAME}_gencpp)
 
 # Mark launch files for installation
 
