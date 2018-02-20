@@ -1,0 +1,30 @@
+<launch>
+
+	<group ns="chaser">
+		<node pkg="tf2_ros" type="static_transform_publisher" name="world2base_footprint_tf"
+		args="0.0 0.0 0.0 0.0 0.0 0.0 world chaser/base_footprint"/>
+		<node pkg="tf2_ros" type="static_transform_publisher" name="base_footprint2base_link_tf"
+		args="0.0 0.0 0.0 0.0 0.0 0.0 chaser/base_footprint chaser/base_link"/>
+		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="chaser_pub"/>
+		<node pkg="joint_state_publisher" type="joint_state_publisher" name="chaser_joint_state_pub"/>
+	</group>
+	
+	<group ns="target">
+		<node pkg="tf2_ros" type="static_transform_publisher" name="world2base_footprint_tf"
+		args="1.0 1.0 0.0 0.0 0.0 0.0 world target/base_footprint"/>
+		<node pkg="tf2_ros" type="static_transform_publisher" name="base_footprint2base_link_tf"
+		args="0.0 0.0 0.0 0.0 0.0 0.0 target/base_footprint target/base_link"/>
+		<arg name="model" default="$(find foot_control_xy)/models/number1/urdf/number1.urdf.xacro"/> 
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="target_pub"/>
+		<node pkg="joint_state_publisher" type="joint_state_publisher" name="target_joint_state_pub"/>
+	</group>
+		
+	<param name="use_gui" value="1"/>
+	<param name="use_sim_time" value="true"/>
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find foot_control_xy)/rviz/urdf.rviz" required="true"/>
+	<include file="$(find foot_control_xy)/launch/gazebo.launch"/>
+</launch>
+

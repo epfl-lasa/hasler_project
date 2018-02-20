@@ -1,7 +1,11 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="number1">  
+<link
+	name="world"/>
   <link
-    name="base_link">
+	name="target/base_footprint"/>		
+  <link
+    name="target/base_link">
     <inertial>
       <origin
         xyz="0 0 0"
@@ -21,19 +25,28 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <box size="0.25"/>
+        <sphere radius="0.25"/>
       </geometry>
     </collision>
       <visual name="visual">
+		<origin
+		xyz="0 0 0"
+        rpy="0 0 -1.5707963267" />
         <geometry>
           <mesh
             filename="package://foot_control_xy/models/number1/meshes/number.dae"/>
         </geometry>
-        <!--material>
-          <script
-            filename="package://foot_control_xy/models/number1/materials/scripts"/>
-        </material-->
       </visual>
   </link>
+  <joint name="base_joint" type="fixed">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="target/base_footprint"/>
+		<child link="target/base_link"/>
+  </joint>
+  <joint name="base_footprint_joint" type="floating">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="world"/>
+		<child link="target/base_footprint"/>
+  </joint>
 </robot>
 
