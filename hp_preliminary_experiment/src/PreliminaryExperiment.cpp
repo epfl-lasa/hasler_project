@@ -73,6 +73,12 @@ bool PreliminaryExperiment::init()
                     _cr.u(0) >> _cr.u(1) >> _cr.u(2) >>
                     _cr.v(0) >> _cr.v(1) >> _cr.v(2) >>
                     _cr.Pcenter(0) >> _cr.Pcenter(1) >> _cr.Pcenter(2);
+
+      std::cerr << _cr.c << std::endl;
+      std::cerr << _cr.n.transpose() << std::endl;
+      std::cerr << _cr.u.transpose() << std::endl;
+      std::cerr << _cr.v.transpose() << std::endl;
+      std::cerr << _cr.Pcenter.transpose() << std::endl;
     }
   }
 
@@ -208,20 +214,25 @@ void PreliminaryExperiment::computeChaserPose()
   Eigen::Matrix3f wRp;
 
   float scaleX, scaleY; 
-  wRp.col(0) = _cr.u.normalized();
-  wRp.col(1) = _cr.v.normalized();
-  wRp.col(2) = _cr.n.normalized();
+  Eigen::Vector3f u,v;
+  u = _cr.u.normalized();
+  v = _cr.v.normalized();
   scaleX = 10.0f/_cr.u.norm();
   scaleY = 10.0f/_cr.v.norm();
 
   Eigen::Vector3f temp, tempProj;
-  temp = _markersPosition.col(TOE)-_cr.Pcenter;
-  tempProj = temp-(temp.dot(_cr.n)+_cr.c)*_cr.n;
+  temp = _markersPosition.col(TOE);
+  tempProj = temp-(temp.dot(_cr.n)+_cr.c)*_cr.n/_cr.n.squaredNorm();
+  // std::cerr << (tempProj-_cr.Pcenter).dot(_cr.n) << std::endl;
+  // std::cerr << _cr.u.norm() << std::endl;
+  // std::cerr << _cr.v.norm() << std::endl;
 
+  _chaserPosition.setConstant(0.0f);
+  _chaserPosition(0) = scaleX*(tempProj-_cr.Pcenter).dot(u);
+  _chaserPosition(1) = scaleY*(tempProj-_cr.Pcenter).dot(v);
 
-  _chaserPosition = wRp.transpose()*tempProj;
-  _chaserPosition(0) *= scaleX;
-  _chaserPosition(1) *= scaleY;
+  std::cerr << _chaserPosition.transpose() << std::endl;
+
 }
 
 
@@ -313,9 +324,9 @@ void PreliminaryExperiment::computePlane()
     B(k) = _planeData[k](2);
   }
 
-  A.col(0).array() -= A.col(0).mean();
-  A.col(1).array() -= A.col(1).mean();
-  B.array() -= B.mean();
+  // A.col(0).array() -= A.col(0).mean();
+  // A.col(1).array() -= A.col(1).mean();
+  // B.array() -= B.mean();
 
   x = ((A.transpose()*A).inverse())*A.transpose()*B;
   float a = x(0);
@@ -347,7 +358,7 @@ void PreliminaryExperiment::computePlane()
 
   Eigen::Vector3f xmean, xmeanProj, Pcenter;
   xmean << A.col(0).mean(),A.col(1).mean(),B.mean();
-  xmeanProj = xmean-(xmean.dot(n)+c)*n;
+  xmeanProj = xmean-(xmean.dot(n)+c)*n/n.squaredNorm();
   
   Pcenter = (P1+P2+P3+P4)/4.0f;
   std::cerr << "Plane center: " << Pcenter.transpose() << std::endl;
