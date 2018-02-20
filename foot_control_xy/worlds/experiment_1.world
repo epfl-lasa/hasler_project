@@ -3,16 +3,9 @@
   <world name="default"> 		
     <gui fullscreen=false>
 		<camera name="user_default">
-			<pose frame=''>0.907477 -15.4165 -0.171552 0 -0.028 1.578</pose>
+			<pose frame=''> 0.0 0.0 13 0.0 1.5707963267 1.5707963267</pose>
 			<projection_type>orthographic</projection_type>
 			<view_controller>ortho</view_controller>
-			<!--track_visual>
-				<name>h_lower_limb</name>
-				<min_dist>20</min_dist>
-				<max_dist>100</max_dist>
-				<static>true</static>
-				<inherit_yaw>true</inherit_yaw>
-			</track_visual-->
 		</camera>
     </gui>
     <scene>
@@ -20,33 +13,33 @@
       <!--background>0.0 0.0 0.0 1</background-->
       <grid>false</grid>
       <origin_visual>false</origin_visual>
-      
       <shadows>0</shadows> <!--  0 : improves performance -->
     </scene> 
     <light name='sun' type="directional" >
       <cast_shadows>1</cast_shadows>
-      <pose>1 0 10 0 0 0</pose>
+      <pose>0 0 7 0 0 0</pose>
       <diffuse>0.9 0.9 0.9 1</diffuse>
       <specular>0.0 0.0 0.0 1</specular>
       <attenuation>
-        <range>100</range>
+        <range>10</range>
         <constant>1</constant>
       </attenuation>
+      <cast_shadows>0</cast_shadows>
       <direction>-1.0 1.0 -1.0</direction>
     </light>
     
-    <light name='user_point_light_0' type='point'>
-      <pose frame=''>3.1e-05 -7.4458 1 0 -0 0</pose>
+    <light name='light_1' type='point'>
+      <pose frame=''>0 0 10 0 0 0</pose>
       <diffuse>0.5 0.5 0.5 1</diffuse>
       <specular>0.1 0.1 0.1 1</specular>
-      <attenuation>
+      <attenuation>c
         <range>20</range>
-        <constant>0.5</constant>
+        <constant>0.3</constant>
         <linear>0.01</linear>
         <quadratic>0.001</quadratic>
       </attenuation>
       <cast_shadows>0</cast_shadows>
-      <direction>0 0 -1</direction>
+      <direction>-1.0 1.0 -1.0</direction>
     </light>
     
     <!--Physics-->
@@ -81,14 +74,13 @@
     <include>
       <uri>model://plane</uri>
       <name>plane</name>
-      <pose>0 0 0 0 1.5715 0</pose>
+      <pose>0 0 0 0 0 0</pose>
     </include> 
     <!--include>
       <uri>model://number1</uri>
       <name>number1</name>
       <pose>1.6 0 1.6  0 0 0</pose>
     </include-->
-     
      
   </world>
   

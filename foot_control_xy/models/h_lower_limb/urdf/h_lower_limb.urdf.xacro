@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="h_lower_limb">
-  <xacro:property name="foot_lenght" value="0.266"/><!--size 43-->
-  <xacro:property name="foot_girth" value="0.110"/> 
-  <xacro:property name="foot_l_mesh" value="0.267"/>
   <xacro:property name="scale" value="${0.05}"/>
-  
-  <!--link
-	name="base_footprint"/-->
+
   <link
-    name="base_link">
+	name="world"/>
+  <link
+	name="chaser/base_footprint"/>		
+  <link
+    name="chaser/base_link">
     <inertial>
       <origin
         xyz="0 0 0"
@@ -34,29 +33,21 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="${pi/2}  ${-pi} 0" /> <!--${pi/2}  ${-pi} 0-->
+        rpy="0 0 3.1415" /> <!--${pi/2}  ${-pi} 0-->
       <geometry>
         <mesh
           filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${scale} ${scale} ${scale}"/>
       </geometry>
     </visual>
-  </link>
-
-  
-<!-- POSE 3D GROUND TRUTH PLUGIN-->
-	<!--gazebo>
-	  <plugin name="ground_truth" filename="libgazebo_ros_p3d.so">
-		<frameName>map</frameName>
-		<bodyName>base_link</bodyName>
-		<topicName>/chaser/odom</topicName>
-		<updateRate>100</updateRate>
-	  </plugin>
-	</gazebo-->
-	
-<!--joint name="base_joint" type="fixed">	
-		<parent link="base_footprint"/>
-		<child link="base_link"/>
-</joint-->  
-  
-  
+  </link> 
+   <joint name="base_joint" type="fixed">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="chaser/base_footprint"/>
+		<child link="chaser/base_link"/>
+  </joint>
+  <joint name="base_footprint_joint" type="floating">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="world"/>
+		<child link="chaser/base_footprint"/>
+  </joint>
 </robot>

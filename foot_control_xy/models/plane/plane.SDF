@@ -3,7 +3,7 @@
 	<model name="plane">
 		<static>true</static>
 		<link name="plane_s">
-			<pose> 0.0 0.6 0 1.5707963267 0.0 0.0 </pose> <!-- 0.0 2.0 0.5 1.5 0.0 0.0 -->
+			<pose> 0.0 0.0 -0.6 0.0 0.0 0.0 </pose> <!-- 0.0 2.0 0.5 1.5707963267 0.0 0.0 -->
 			<visual name="visual">
 				<cast_shadows>false</cast_shadows>
 				<geometry>

@@ -14,6 +14,5 @@
 		<arg name="headless" value="$(arg headless)"/>			
 	</include>
 	<!--INCLUDE-AGENTS-->
-	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml">
-	</include>
+	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml"/>
 </launch>

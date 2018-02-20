@@ -13,7 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   std_msgs	
   message_generation
-  dynamic_reconfigure
+  #dynamic_reconfigure
+  tf2_ros
 )
 
 find_package(gazebo REQUIRED)
@@ -24,8 +25,16 @@ include_directories(			${Boost_INCLUDE_DIR}
 link_directories(${GAZEBO_LIBRARY_DIRS})
 list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
-#find_package(Eigen3 REQUIRED)
+#Generate services 
 
+add_service_files( 
+	FILES
+	TeleportAbsolute.srv
+	Kill.srv
+	Spawn.srv
+)	
+
+#find_package(Eigen3 REQUIRED)
 
 ## Generate added messages and services
 #generate_messages(DEPENDENCIES std_msgs)
@@ -44,6 +53,14 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 # Generate executable
+
+# Mark launch files for installation
+
+install (FILES
+	gazebo.launch
+	visualization.rviz.launch
+DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+ )
 
 #New from gazebo6 : to compile c++11 flags against gazebo (required)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
