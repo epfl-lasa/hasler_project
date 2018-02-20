@@ -1,0 +1,2 @@
+set(foot_control_xy_MESSAGE_FILES "")
+set(foot_control_xy_SERVICE_FILES "/home/jacob/catkin_ws/src/hasler_project/foot_control_xy/srv/TeleportAbsolute.srv;/home/jacob/catkin_ws/src/hasler_project/foot_control_xy/srv/Kill.srv;/home/jacob/catkin_ws/src/hasler_project/foot_control_xy/srv/Spawn.srv")

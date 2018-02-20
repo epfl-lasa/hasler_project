@@ -1,5 +1,5 @@
-#ifndef __WORLD_CHASER_TF_PUB_H__
-#define __WORLD_CHASER_TF_PUB_H__
+#ifndef __WORLD_ACTOR_TF_PUB_H__
+#define __WORLD_ACTOR_TF_PUB_H__
 
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
@@ -15,8 +15,9 @@
 #include "nav_msgs/Path.h"
 #include <signal.h>
 
+using namespace std;
 
-class Chaser
+class Actor
 {
 	private:
 	
@@ -28,14 +29,14 @@ class Chaser
 
 	//!subscribers and publishers declaration
 
-    ros::Subscriber _chaser_pose_sub;          
+    ros::Subscriber _actor_pose_sub;          
     
     //!boolean variables
     
     bool _stop;
-    static Chaser* me;
+    static Actor* me;
     
-    geometry_msgs::Pose _chaserPose;
+    geometry_msgs::Pose _actorPose;
     
     //!other variables
     
@@ -43,8 +44,8 @@ class Chaser
     //ros::WallTime _last_commanded_time;
     
 	public:
-	Chaser(ros::NodeHandle &n, double frequency);
-	//~Chaser();
+	Actor(ros::NodeHandle &n, double frequency, std::string name);
+	~Actor();
 	bool  init();
 	void run();
 	void updateTf();
@@ -54,7 +55,9 @@ class Chaser
 	tf::TransformBroadcaster _br;
 	tf::Transform _transform;
 
+	std::string _actor_name;
+
 	static void stopNode(int sig);
 	void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
 };
-#endif  // __WORLD_CHASER_TF_PUB_H__
+#endif  // __WORLD_ACTOR_TF_PUB_H__
