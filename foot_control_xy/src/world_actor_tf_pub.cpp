@@ -3,31 +3,25 @@
 
 Actor* Actor::me = NULL;
 
-Actor::Actor(ros::NodeHandle &n, double frequency,std::string name): 
+Actor::Actor(ros::NodeHandle &n, double frequency,std::string name, geometry_msgs::Pose init_pose): 
 _n(n),
 _loopRate(frequency),
 _dt(1.0f/frequency),
-_actor_name(name)
+_actorName(name),
+_actorPose(init_pose)
 {
 	me=this;
 	_stop = false;
 	
-	_actorPose.position.x = 0.0f; //+ The original pose of the actor
-	_actorPose.position.y = 0.0f;
-	_actorPose.position.z = 0.0f;
-	_actorPose.orientation.x = 0.0f;
-	_actorPose.orientation.y = 0.0f;
-	_actorPose.orientation.z = 0.0f;
-	_actorPose.orientation.w = 1.0f;
 }
 
-Actor::~Actor(){ros::shutdown();}
+Actor::~Actor(){me->_n.shutdown();}
 
 bool Actor::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
 {
 	
 	//Subscriber definitions
-	_actor_pose_sub = _n.subscribe(_actor_name + "/Pose",1,&Actor::poseCallback,this,ros::TransportHints().reliable().tcpNoDelay());
+	_actor_pose_sub = _n.subscribe(_actorName + "/pose",1,&Actor::poseCallback,this,ros::TransportHints().reliable().tcpNoDelay());
 	
 	
 	signal(SIGINT,Actor::stopNode);
@@ -74,7 +68,7 @@ void Actor::updateTf()
 	tf::Vector3 origin(_actorPose.position.x, _actorPose.position.y, _actorPose.position.z);
     _transform.setOrigin(origin);
     _transform.setRotation(tf::Quaternion(_actorPose.orientation.x, _actorPose.orientation.y, _actorPose.orientation.z, _actorPose.orientation.w));
-    _br.sendTransform(tf::StampedTransform(_transform, ros::Time::now(), "world", _actor_name + "/base_link"));
+    _br.sendTransform(tf::StampedTransform(_transform, ros::Time::now(), "world", _actorName + "/base_link"));
 
 }
 

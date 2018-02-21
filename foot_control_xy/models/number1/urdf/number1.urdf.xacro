@@ -1,9 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro" name="number1">  
-<link
-	name="world"/>
-  <!--link
-	name="target/base_footprint"/-->		
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="number1">  		
   <link
     name="target/base_link">
     <inertial>
@@ -11,7 +7,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <mass
-        value="1" /> <!-- Look for real measurement -->
+        value="1" />
       <inertia
         ixx="1"
         ixy="0"
@@ -38,15 +34,10 @@
         </geometry>
       </visual>
   </link>
-  <joint name="base_joint" type="floating">
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<parent link="world"/>
-		<child link="target/base_link"/>
-  </joint>
-  <!--joint name="base_footprint_joint" type="floating">
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<parent link="world"/>
-		<child link="target/base_footprint"/>
-  </joint-->
+   <gazebo>
+   <plugin name="gzTfUpdate" filename="libgzTfUpdate.so">
+		<actorName>target</actorName>
+   </plugin>
+  </gazebo>
 </robot>
 

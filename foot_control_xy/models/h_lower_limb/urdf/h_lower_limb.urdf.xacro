@@ -1,9 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="h_lower_limb">
   <xacro:property name="scale" value="${0.05}"/>
-
-  <link
-	name="world"/>		
   <link
     name="chaser/base_link">
     <inertial>
@@ -11,7 +8,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <mass
-        value="1" /> <!-- Look for real measurement -->
+        value="1" />
       <inertia
         ixx="1"
         ixy="0"
@@ -38,9 +35,10 @@
       </geometry>
     </visual>
   </link> 
-   <joint name="base_joint" type="floating">
-		<origin xyz="0 0 0" rpy="0 0 0"/>
-		<parent link="world"/>
-		<child link="chaser/base_link"/>
-  </joint>
+  <gazebo>
+   <plugin name="gzTfUpdate" filename="libgzTfUpdate.so">
+		<actorName>chaser</actorName>
+   </plugin>
+  </gazebo>
+  
 </robot>
