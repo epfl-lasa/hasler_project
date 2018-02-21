@@ -8,7 +8,7 @@ int main(int argc, char **argv)
    geometry_msgs::Pose init_pose;
    init_pose.position.x = atof(argv [3]);
    init_pose.position.y = atof(argv [5]);
-   init_pose.position.y = atof(argv [7]);
+   init_pose.position.z = atof(argv [7]);
    init_pose.orientation.x = atof(argv [9]);
    init_pose.orientation.y = atof(argv [11]);
    init_pose.orientation.z = atof(argv [13]);
