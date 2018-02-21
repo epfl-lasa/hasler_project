@@ -1,23 +1,28 @@
 <launch>
-
+	
+	<arg name="chaser_init_pose" default="-x 0.0 -y 0.0 -z 0.0 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+	<arg name="target_init_pose" default="-x 1.0 -y 1.0 -z 0.0 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+	
+	<node name="worldChaserTransform" pkg="foot_control_xy" type="worldActorTransform" args="chaser $(arg chaser_init_pose)"/>
+	<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
+	
 	<group ns="chaser">
 		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
 		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
-		<node pkg="robot_state_publisher" type="robot_state_publisher" name="chaser_pub"/>
-		<node pkg="joint_state_publisher" type="joint_state_publisher" name="chaser_joint_state_pub"/>
+
 	</group>
 	
 	<group ns="target">
 		<arg name="model" default="$(find foot_control_xy)/models/number1/urdf/number1.urdf.xacro"/> 
 		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
-		<node pkg="robot_state_publisher" type="robot_state_publisher" name="target_pub"/>
-		<node pkg="joint_state_publisher" type="joint_state_publisher" name="target_joint_state_pub"/>
+
 	</group>
 	<param name="use_gui" value="1"/>
-	<!--param name="use_sim_time" value="true"/-->
-	<node name="worldChaserTransform" pkg="foot_control_xy" type="worldActorTransform" args="chaser"/>
-	<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target"/>
+
+	
+	
 	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find foot_control_xy)/rviz/urdf.rviz" required="true"/>
+	
 	<include file="$(find foot_control_xy)/launch/gazebo.launch"/>
 </launch>
 

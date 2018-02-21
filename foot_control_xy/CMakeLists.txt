@@ -32,7 +32,7 @@ add_service_files(
 	Spawn.srv
 )	
 
-#find_package(Eigen3 REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs)
@@ -43,7 +43,7 @@ generate_messages(DEPENDENCIES std_msgs)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES worldActorTransform
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation tf 
+  CATKIN_DEPENDS roscpp rospy std_msgs message_generation tf gazebo_ros
  )
 
 
@@ -53,11 +53,19 @@ include_directories(			${Boost_INCLUDE_DIR}
 					${catkin_INCLUDE_DIRS}
 					${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
+
+#list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 # Generate executable
 
 add_executable(worldActorTransform src/world_actor_tf_pub_node.cpp src/world_actor_tf_pub.cpp)
 target_link_libraries(worldActorTransform ${catkin_LIBRARIES})
 add_dependencies(worldActorTransform ${PROJECT_NAME}_gencpp)
+
+add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)
+target_link_libraries(gzTfUpdate 
+					  ${catkin_LIBRARIES}
+					  ${GAZEBO_LIBRARIES}
+					  ${Boost_LIBRARIES})
 
 # Mark launch files for installation
 

@@ -36,15 +36,17 @@ class Actor
     bool _stop;
     static Actor* me;
     
-    geometry_msgs::Pose _actorPose;
+    
     
     //!other variables
-    
+    geometry_msgs::Pose _actorPose;
+    std::string _actorName;
+
     //std::mutex _mutex;
     //ros::WallTime _last_commanded_time;
     
 	public:
-	Actor(ros::NodeHandle &n, double frequency, std::string name);
+	Actor(ros::NodeHandle &n, double frequency, std::string name, geometry_msgs::Pose init_pose);
 	~Actor();
 	bool  init();
 	void run();
@@ -54,8 +56,6 @@ class Actor
 	
 	tf::TransformBroadcaster _br;
 	tf::Transform _transform;
-
-	std::string _actor_name;
 
 	static void stopNode(int sig);
 	void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
