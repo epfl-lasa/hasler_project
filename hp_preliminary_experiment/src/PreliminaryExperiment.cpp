@@ -50,7 +50,7 @@ bool PreliminaryExperiment::init()
   _subOptitrackToe = _n.subscribe("/optitrack/toe/pose", 1, &PreliminaryExperiment::updateToePose,this,ros::TransportHints().reliable().tcpNoDelay());
 
   // Publisher definitions
-  _pubChaserPose = _n.advertise<geometry_msgs::PoseStamped>("/chaserPose", 1);
+  _pubChaserPose = _n.advertise<geometry_msgs::PoseStamped>("/chaser/pose", 1);
 
   signal(SIGINT,PreliminaryExperiment::stopNode);
 
