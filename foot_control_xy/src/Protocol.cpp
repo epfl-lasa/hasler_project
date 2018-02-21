@@ -13,6 +13,7 @@ _targetPosition(initTargetPosition)
   _stop = false;
   _firstChaserPoseReceived = false;
   _chaserPosition.setConstant(0.0f);
+  _targetInfo.resize(0);
 }
 
 bool Protocol::init()
@@ -74,7 +75,19 @@ void Protocol::run()
   }
   
   ros::shutdown();
+
+  std::cerr << "Result: Target position [m] -- Elapsed Time [s]" << std::endl;
+  float totalTimeElapsed = 0.0f;
+
+  Eigen::IOFormat customFormat(3,0);
+  for(int k = 0; k < _targetInfo.size(); k++)
+  {
+    std::cerr << "Target " << k+1 << ": " << _targetInfo[k].position.transpose().format(customFormat) << " -- " << _targetInfo[k].elapsedTime << std::endl;
+    totalTimeElapsed += _targetInfo[k].elapsedTime;
+  }
+  std::cerr << "Total number of target reached: " << _targetInfo.size() << " Total elapsed time: " << totalTimeElapsed << std::endl;
 }
+
 
 void Protocol::checkIfTargetReached()
 {
@@ -96,9 +109,16 @@ void Protocol::updateTargetPose()
 {
   if(_targetReached)
   {
+    TargetInfo info;
+    info.position = _targetPosition;
+    info.elapsedTime = float(ros::Time::now().toSec()-_tInit);
+    _targetInfo.push_back(info);
+
     _targetPosition(0) = 5.0f*(-1.0f+2.0f*(float)std::rand()/RAND_MAX);
     _targetPosition(1) = 5.0f*(-1.0f+2.0f*(float)std::rand()/RAND_MAX);
     _targetPosition(2) = 0.0f;
+
+    _tInit = ros::Time::now().toSec();
   }
 }
 
@@ -125,6 +145,7 @@ void Protocol::updateChaserPose(const geometry_msgs::PoseStampedConstPtr& msg)
   if(!_firstChaserPoseReceived)
   {
     _firstChaserPoseReceived = true;
+    _tInit = ros::Time::now().toSec();
   }
 }
 
