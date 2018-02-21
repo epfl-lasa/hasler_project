@@ -16,6 +16,12 @@ class Protocol
 {
 	private:
 	
+		struct TargetInfo
+		{
+			Eigen::Vector3f position;
+			float elapsedTime;
+		};
+
 		//! Ros variables
 		ros::NodeHandle _n;
 		ros::Rate _loopRate;
@@ -31,6 +37,7 @@ class Protocol
 		//! Protocol variables
 		Eigen::Vector3f _chaserPosition;
 		Eigen::Vector3f _targetPosition;
+		std::vector<TargetInfo> _targetInfo;
 
 		//! Boolean variables
 		bool _stop;
@@ -38,11 +45,11 @@ class Protocol
     bool _targetReached;
 
 		//! Other variables
-		geometry_msgs::Pose _actorPose;
-		std::string _actorName;
-		static Protocol* me;
+    double _tInit;
+
 
     std::mutex _mutex;
+		static Protocol* me;
     
 	public:
 		Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition);
