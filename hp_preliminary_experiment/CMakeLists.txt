@@ -24,7 +24,7 @@ find_package(Eigen3 REQUIRED)
 generate_messages(DEPENDENCIES std_msgs)
 
 # Generate dynamic reconfigure parameters
-generate_dynamic_reconfigure_options(cfg/preliminaryExperiment_params.cfg)
+# generate_dynamic_reconfigure_options(cfg/preliminaryExperiment_params.cfg)
 
 catkin_package(
   INCLUDE_DIRS include

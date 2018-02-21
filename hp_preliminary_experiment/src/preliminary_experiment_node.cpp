@@ -6,7 +6,22 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   float frequency = 500.0f;
 
-  PreliminaryExperiment experiment(n,frequency);
+  bool calibration = false;
+
+  //If input argument is different > 0 do calibration else not do calibration
+  if(argc == 2)
+  {
+    if(atoi(argv[1]))
+    {
+      calibration = true;
+    }
+    else
+    {
+      calibration = false;
+    }
+  }
+
+  PreliminaryExperiment experiment(n,frequency,calibration);
 
   if (!experiment.init()) 
   {
@@ -15,7 +30,7 @@ int main(int argc, char **argv)
   else
   {
     experiment.run();
-    experiment.computePlane();
+    // experiment.computePlane();
   }
 
   return 0;

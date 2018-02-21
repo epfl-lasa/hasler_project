@@ -49,9 +49,11 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-include_directories(			${Boost_INCLUDE_DIR}
+include_directories(${Boost_INCLUDE_DIR}
 					${catkin_INCLUDE_DIRS}
-					${GAZEBO_INCLUDE_DIRS})
+					${GAZEBO_INCLUDE_DIRS}
+					${EIGEN3_INCLUDE_DIR})
+
 link_directories(${GAZEBO_LIBRARY_DIRS})
 
 #list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
@@ -60,6 +62,10 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 add_executable(worldActorTransform src/world_actor_tf_pub_node.cpp src/world_actor_tf_pub.cpp)
 target_link_libraries(worldActorTransform ${catkin_LIBRARIES})
 add_dependencies(worldActorTransform ${PROJECT_NAME}_gencpp)
+
+add_executable(protocol src/protocol_node.cpp src/Protocol.cpp)
+target_link_libraries(protocol ${catkin_LIBRARIES})
+add_dependencies(protocol ${PROJECT_NAME}_gencpp)
 
 add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)
 target_link_libraries(gzTfUpdate 

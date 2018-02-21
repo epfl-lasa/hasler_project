@@ -2,49 +2,45 @@
 
 PreliminaryExperiment* PreliminaryExperiment::me = NULL;
 
-PreliminaryExperiment::PreliminaryExperiment(ros::NodeHandle &n, double frequency):
+PreliminaryExperiment::PreliminaryExperiment(ros::NodeHandle &n, double frequency, bool calibration):
 _n(n),
 _loopRate(frequency),
-_dt(1.0f/frequency)
+_dt(1.0f/frequency),
+_calibration(calibration)
 {
   me = this;
-  _gravity << 0.0f, 0.0f, -9.80665f;
-  _loadOffset << 0.0f,0.0f,0.046f;
-
-  _x.setConstant(0.0f);
-  _q.setConstant(0.0f);
-
-  _vd.setConstant(0.0f);
-  _xd.setConstant(0.0f);
-  _omegad.setConstant(0.0f);
-  _qd.setConstant(0.0f);
 
   _markersPosition.setConstant(0.0f);
   _markersPosition0.setConstant(0.0f);
   _markersSequenceID.setConstant(0);
   _markersTracked.setConstant(0);
 
-  _firstRobotPoseReceived = false;
   _allMarkersPositionReceived = false;
   _stop = false;
-  _calibrationOK = false;
-  _doCalibration = false;
+  _initializationOK = false;
+  _facingScreen = false;
 
   _markersCount = 0;
-  _calibrationCount = 0;
+  _averageCount = 0;
   _currentSequenceID = 0;
   _planeData.resize(0);
 
+  _cr.c = 0;
+  _cr.n.setConstant(0.0f);
+  _cr.u << 1.0f,0.0f,0.0f;
+  _cr.v << 0.0f,1.0f,0.0f;
+  _cr.Pcenter.setConstant(0.0f);
 
-  _outputFile.open("src/hasler_project/hp_preliminary_experiment/data.txt");
+  _chaserPosition.setConstant(0.0f);
+
+
+
 }
 
 
 bool PreliminaryExperiment::init() 
 {
   // Subscriber definitions
-  _subRealPose = _n.subscribe("/lwr/ee_pose", 1, &PreliminaryExperiment::updateRobotPose, this, ros::TransportHints().reliable().tcpNoDelay());
-  _subRealTwist = _n.subscribe("/lwr/joint_controllers/twist", 1, &PreliminaryExperiment::updateRobotTwist, this, ros::TransportHints().reliable().tcpNoDelay());
   // _subOptitrackHip = _n.subscribe("/optitrack/hip/pose", 1, &PreliminaryExperiment::updateHipPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackThigh = _n.subscribe("/optitrack/thigh/pose", 1, &PreliminaryExperiment::updateThighPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackKnee = _n.subscribe("/optitrack/knee/pose", 1, &PreliminaryExperiment::updateKneePose,this,ros::TransportHints().reliable().tcpNoDelay());
@@ -54,17 +50,37 @@ bool PreliminaryExperiment::init()
   _subOptitrackToe = _n.subscribe("/optitrack/toe/pose", 1, &PreliminaryExperiment::updateToePose,this,ros::TransportHints().reliable().tcpNoDelay());
 
   // Publisher definitions
-  _pubDesiredTwist = _n.advertise<geometry_msgs::Twist>("/lwr/joint_controllers/passive_ds_command_vel", 1);
-  _pubDesiredOrientation = _n.advertise<geometry_msgs::Quaternion>("/lwr/joint_controllers/passive_ds_command_orient", 1);
-  _pubTaskAttractor = _n.advertise<geometry_msgs::PointStamped>("PreliminaryExperiment/taskAttractor", 1);
-  _pubMarker = _n.advertise<visualization_msgs::Marker>("PreliminaryExperiment/markers", 1);
-
-
-  _dynRecCallback = boost::bind(&PreliminaryExperiment::dynamicReconfigureCallback, this, _1, _2);
-  _dynRecServer.setCallback(_dynRecCallback);
-
+  _pubChaserPose = _n.advertise<geometry_msgs::PoseStamped>("/chaser/pose", 1);
 
   signal(SIGINT,PreliminaryExperiment::stopNode);
+
+  if(_calibration)
+  {
+    _outputFile.open("src/hasler_project/hp_preliminary_experiment/data.txt");
+  }
+  else
+  {
+    _inputFile.open("src/hasler_project/hp_preliminary_experiment/result.txt");
+    if(!_inputFile.is_open())
+    {
+      ROS_INFO("Cannot open file with calibration result");
+      return false;
+    }
+    else
+    {
+      _inputFile >> _cr.c >> 
+                    _cr.n(0) >> _cr.n(1) >> _cr.n(2) >>
+                    _cr.u(0) >> _cr.u(1) >> _cr.u(2) >>
+                    _cr.v(0) >> _cr.v(1) >> _cr.v(2) >>
+                    _cr.Pcenter(0) >> _cr.Pcenter(1) >> _cr.Pcenter(2);
+
+      std::cerr << _cr.c << std::endl;
+      std::cerr << _cr.n.transpose() << std::endl;
+      std::cerr << _cr.u.transpose() << std::endl;
+      std::cerr << _cr.v.transpose() << std::endl;
+      std::cerr << _cr.Pcenter.transpose() << std::endl;
+    }
+  }
 
   if (_n.ok()) 
   { 
@@ -90,25 +106,31 @@ void PreliminaryExperiment::run()
 
       _mutex.lock();
 
-      // Compute angles from marker positions after calibration
-      if(!_calibrationOK && _doCalibration)
+      // Compute angles from marker positions after initialization
+      if(!_initializationOK)
       {
-        calibration();
+        initializeData();
       }
-      else
+      else if(_initializationOK &&_calibration)
       {
+        // Compute angles
         computeAngles();
+
+        // Add plane fitting data
+        addPlaneFittingData();
+
+        // Log data
+        logCalibrationData();
       }
-
-      // Publish data to topics
-      publishData();
-
-      // Add plane fitting data
-      addPlaneFittingData();
-
-      // Log data
-      logData();
-
+      else if(_initializationOK && !_calibration)
+      {
+        // Compute chaser pose to be send to RVIZ
+        computeChaserPose();
+      
+        // Publish data to topics
+        publishData();
+      }
+      
       _mutex.unlock();
     }
 
@@ -122,17 +144,28 @@ void PreliminaryExperiment::run()
     _loopRate.sleep();
   }
 
-  _vd.setConstant(0.0f);
-  _omegad.setConstant(0.0f);
-  _qd = _q;
-
   publishData();
   ros::spinOnce();
   _loopRate.sleep();
 
-  _outputFile.close();
-  
   ros::shutdown();
+
+  if(_calibration)
+  {
+    // Close file of calibration data
+    if(_outputFile.is_open())
+    {
+      _outputFile.close();
+    }
+    // Compute plane from calibration data
+    computePlane();
+    // Log calibration result
+    logCalibrationResult();
+  }
+  else
+  {
+    _inputFile.close();
+  }
 }
 
 
@@ -142,25 +175,25 @@ void PreliminaryExperiment::stopNode(int sig)
 }
 
 
-void PreliminaryExperiment::calibration()
+void PreliminaryExperiment::initializeData()
 {
-  if(_calibrationCount< CALIBRATION_COUNT)
+  if(_averageCount< AVERAGE_COUNT)
   {
-    _markersPosition0 = (_calibrationCount*_markersPosition0+_markersPosition)/(_calibrationCount+1);
-    _calibrationCount++;
-    _calibrationOK = false;
-    if(_calibrationCount == 1)
+    _markersPosition0 = (_averageCount*_markersPosition0+_markersPosition)/(_averageCount+1);
+    _averageCount++;
+    _initializationOK = false;
+    if(_averageCount == 1)
     {
-      std::cerr << "init calibration" << std::endl;
+      std::cerr << "init initialization" << std::endl;
     }
-    else if(_calibrationCount == CALIBRATION_COUNT)
+    else if(_averageCount == AVERAGE_COUNT)
     {
-      std::cerr << "end calibration" << std::endl;      
+      std::cerr << "end initialization" << std::endl;      
     }
   }
   else
   {
-    _calibrationOK = true;
+    _initializationOK = true;
   }
 }
 
@@ -172,87 +205,53 @@ void PreliminaryExperiment::computeAngles()
   BA = _markersPosition.col(TOE)-_markersPosition.col(ANKLE);
   BC = _markersPosition.col(TIBIA)-_markersPosition.col(ANKLE);
 
-  float angle = std::acos(BA.dot(BC)/(BA.norm()*BC.norm()));
+  float angle = std::acos(BA.dot(BC)/(BA.norm()*BC.norm()));  
+}
 
-  // std::cerr << angle*180.0f/M_PI << std::endl;
-  
+
+void PreliminaryExperiment::computeChaserPose()
+{
+  Eigen::Matrix3f wRp;
+
+  float scaleX, scaleY; 
+  Eigen::Vector3f u,v;
+  u = _cr.u.normalized();
+  v = _cr.v.normalized();
+  scaleX = 10.0f/_cr.u.norm();
+  scaleY = 10.0f/_cr.v.norm();
+
+  Eigen::Vector3f temp, tempProj;
+  temp = _markersPosition.col(TOE);
+  tempProj = temp-(temp.dot(_cr.n)+_cr.c)*_cr.n/_cr.n.squaredNorm();
+  // std::cerr << (tempProj-_cr.Pcenter).dot(_cr.n) << std::endl;
+  // std::cerr << _cr.u.norm() << std::endl;
+  // std::cerr << _cr.v.norm() << std::endl;
+
+  _chaserPosition.setConstant(0.0f);
+  _chaserPosition(0) = scaleX*(tempProj-_cr.Pcenter).dot(u);
+  _chaserPosition(1) = scaleY*(tempProj-_cr.Pcenter).dot(v);
+
+  std::cerr << _chaserPosition.transpose() << std::endl;
+
 }
 
 
 void PreliminaryExperiment::publishData()
 {
-
-  // Publish desired twist (passive ds controller)
-  _msgDesiredTwist.linear.x  = _vd(0);
-  _msgDesiredTwist.linear.y  = _vd(1);
-  _msgDesiredTwist.linear.z  = _vd(2);
-  _msgDesiredTwist.angular.x = _omegad(0);
-  _msgDesiredTwist.angular.y = _omegad(1);
-  _msgDesiredTwist.angular.z = _omegad(2);
-  _pubDesiredTwist.publish(_msgDesiredTwist);
-
-  // // Publish desired orientation (passive ds controller)
-  _msgDesiredOrientation.w = _qd(0);
-  _msgDesiredOrientation.x = _qd(1);
-  _msgDesiredOrientation.y = _qd(2);
-  _msgDesiredOrientation.z = _qd(3);
-  _pubDesiredOrientation.publish(_msgDesiredOrientation);
-
-  // _msgTaskAttractor.header.frame_id = "world";
-  // _msgTaskAttractor.header.stamp = ros::Time::now();
-  // _msgTaskAttractor.point.x = _taskAttractor(0);
-  // _msgTaskAttractor.point.y = _taskAttractor(1);
-  // _msgTaskAttractor.point.z = _taskAttractor(2);
-  // _pubTaskAttractor.publish(_msgTaskAttractor);
-
-  // _msgSurfaceMarker.header.frame_id = "world";
-  // _msgSurfaceMarker.header.stamp = ros::Time();
-  // Eigen::Vector3f center;
-  // if(_useOptitrack)
-  // {
-  //   center = _p1+0.5f*(_p2-_p1)+0.5f*(_p3-_p1); 
-  // }
-  // else
-  // {
-  //   center << -0.4f, 0.0f, 0.186f;
-  // }
-  // _msgSurfaceMarker.pose.position.x = center(0);
-  // _msgSurfaceMarker.pose.position.y = center(1);
-  // _msgSurfaceMarker.pose.position.z = center(2);
-  // Eigen::Vector3f u,v,n;
-  // u = _p3-_p1;
-  // v = _p2-_p1;
-  // u /= u.norm();
-  // v /= v.norm();
-  // n = u.cross(v);
-  // Eigen::Matrix3f R;
-  // R.col(0) = u;
-  // R.col(1) = v;
-  // R.col(2) = n;
-  // Eigen::Vector4f q = rotationMatrixToQuaternion(R);
-
-
-  // _msgSurfaceMarker.pose.orientation.x = q(1);
-  // _msgSurfaceMarker.pose.orientation.y = q(2);
-  // _msgSurfaceMarker.pose.orientation.z = q(3);
-  // _msgSurfaceMarker.pose.orientation.w = q(0);
-
-  // _pubMarker.publish(_msgSurfaceMarker);
-
-  // _msgArrowMarker.points.clear();
-  // geometry_msgs::Point p1, p2;
-  // p1.x = _x(0);
-  // p1.y = _x(1);
-  // p1.z = _x(2);
-  // p2.x = _x(0)+0.3f*_e1(0);
-  // p2.y = _x(1)+0.3f*_e1(1);
-  // p2.z = _x(2)+0.3f*_e1(2);
-  // _msgArrowMarker.points.push_back(p1);
-  // _msgArrowMarker.points.push_back(p2);
-  // _pubMarker.publish(_msgArrowMarker);
+  _msgChaserPose.header.frame_id = "world";
+  _msgChaserPose.header.stamp = ros::Time::now();
+  _msgChaserPose.pose.position.x = _chaserPosition(0);
+  _msgChaserPose.pose.position.y = _chaserPosition(1);
+  _msgChaserPose.pose.position.z = 0.0f;
+  _msgChaserPose.pose.orientation.x = 0.0f;
+  _msgChaserPose.pose.orientation.y = 0.0f;
+  _msgChaserPose.pose.orientation.z = 0.0f;
+  _msgChaserPose.pose.orientation.w = 1.0f;
+  _pubChaserPose.publish(_msgChaserPose);
 }
 
-void PreliminaryExperiment::logData()
+
+void PreliminaryExperiment::logCalibrationData()
 {
   _outputFile << ros::Time::now() << " "
               << _markersPosition.col(TOE).transpose() << " "
@@ -262,13 +261,30 @@ void PreliminaryExperiment::logData()
               << _markersSequenceID(TOE) << std::endl;
 }
 
+
+void PreliminaryExperiment::logCalibrationResult()
+{
+
+  _outputFile.open("src/hasler_project/hp_preliminary_experiment/result.txt");
+  
+  _outputFile << _cr.c << std::endl
+              << _cr.n.transpose() << std::endl
+              << _cr.u.transpose() << std::endl
+              << _cr.v.transpose() << std::endl
+              << _cr.Pcenter.transpose() << std::endl;
+
+  _outputFile.close();
+}
+
+
 void PreliminaryExperiment::addPlaneFittingData()
 {
-  if(_markersTracked(TOE))
+  if(_markersTracked.sum()==NB_MARKERS)
   {
     if(_planeData.size()==0)
     {
       _planeData.push_back(_markersPosition.col(TOE));  
+      _currentSequenceID = _markersSequenceID(TOE);
     }
     else
     {
@@ -280,6 +296,7 @@ void PreliminaryExperiment::addPlaneFittingData()
     }
   }
 }
+
 
 void PreliminaryExperiment::computePlane()
 {
@@ -307,6 +324,10 @@ void PreliminaryExperiment::computePlane()
     B(k) = _planeData[k](2);
   }
 
+  // A.col(0).array() -= A.col(0).mean();
+  // A.col(1).array() -= A.col(1).mean();
+  // B.array() -= B.mean();
+
   x = ((A.transpose()*A).inverse())*A.transpose()*B;
   float a = x(0);
   float b = x(1);
@@ -321,7 +342,7 @@ void PreliminaryExperiment::computePlane()
   float xmin = A.col(0).minCoeff();
   float xmax = A.col(0).maxCoeff();
   float ymin = A.col(1).minCoeff();
-  float ymax = A.col(2).maxCoeff();
+  float ymax = A.col(1).maxCoeff();
 
   Eigen::Vector3f P1,P2,P3,P4;
   P1 << xmin, ymin, a*xmin+b*ymin+c;
@@ -335,42 +356,27 @@ void PreliminaryExperiment::computePlane()
   std::cerr << "P3: " << P3.transpose() << std::endl;
   std::cerr << "P4: " << P4.transpose() << std::endl;
 
-  Eigen::Vector3f xmean, xmeanProj;
-  xmean << A.col(0).mean(),A.col(1).mean(),A.col(2).mean();
-  xmeanProj = xmean-(xmean.dot(n)+c)*n;
-  std::cerr << "Plane center: " << xmeanProj.transpose() << std::endl;
+  Eigen::Vector3f xmean, xmeanProj, Pcenter;
+  xmean << A.col(0).mean(),A.col(1).mean(),B.mean();
+  xmeanProj = xmean-(xmean.dot(n)+c)*n/n.squaredNorm();
+  
+  Pcenter = (P1+P2+P3+P4)/4.0f;
+  std::cerr << "Plane center: " << Pcenter.transpose() << std::endl;
 
-}
-
-
-void PreliminaryExperiment::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg)
-{
-  _msgRealPose = *msg;
-
-  // Update end effecotr pose (position+orientation)
-  _x << _msgRealPose.position.x, _msgRealPose.position.y, _msgRealPose.position.z;
-  _q << _msgRealPose.orientation.w, _msgRealPose.orientation.x, _msgRealPose.orientation.y, _msgRealPose.orientation.z;
-  _wRb = quaternionToRotationMatrix(_q);
-  _x = _x+_toolOffset*_wRb.col(2);
-
-  if(!_firstRobotPoseReceived)
+  _cr.c = c;
+  _cr.n = n;
+  if(!_facingScreen)
   {
-    _firstRobotPoseReceived = true;
-    _xd = _x;
-    _qd = _q;
-    _vd.setConstant(0.0f);
+    _cr.u  = P1-P2;
+    _cr.v  = P3-P2;
   }
-}
+  else
+  {
+    _cr.u  = P2-P3;
+    _cr.v  = P4-P3;    
+  }
+  _cr.Pcenter = Pcenter;
 
-
-void PreliminaryExperiment::updateRobotTwist(const geometry_msgs::Twist::ConstPtr& msg)
-{
-  _twist(0) = msg->linear.x;
-  _twist(1) = msg->linear.y;
-  _twist(2) = msg->linear.z;
-  _twist(3) = msg->angular.x;
-  _twist(4) = msg->angular.y;
-  _twist(5) = msg->angular.z;
 }
 
 
@@ -388,9 +394,6 @@ void PreliminaryExperiment::updateToePose(const geometry_msgs::PoseStamped::Cons
   _markersSequenceID(TOE) = msg->header.seq;
   _markersTracked(TOE) = checkTrackedMarker(_markersPosition.col(TOE)(0),msg->pose.position.x);
   _markersPosition.col(TOE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
-  // std::cerr <<  msg->header.seq << std::endl;
-
 }
 
 
@@ -409,7 +412,6 @@ void PreliminaryExperiment::updateHeelPose(const geometry_msgs::PoseStamped::Con
   _markersSequenceID(HEEL) = msg->header.seq;
   _markersTracked(HEEL) = checkTrackedMarker(_markersPosition.col(HEEL)(0),msg->pose.position.x);
   _markersPosition.col(HEEL) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
 }
 
 
@@ -427,7 +429,6 @@ void PreliminaryExperiment::updateAnklePose(const geometry_msgs::PoseStamped::Co
   _markersSequenceID(ANKLE) = msg->header.seq;
   _markersTracked(ANKLE) = checkTrackedMarker(_markersPosition.col(ANKLE)(0),msg->pose.position.x);
   _markersPosition.col(ANKLE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
 }
 
 
@@ -444,7 +445,6 @@ void PreliminaryExperiment::updateTibiaPose(const geometry_msgs::PoseStamped::Co
   _markersSequenceID(TIBIA) = msg->header.seq;
   _markersTracked(TIBIA) = checkTrackedMarker(_markersPosition.col(TIBIA)(0),msg->pose.position.x);
   _markersPosition.col(TIBIA) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
 }
 
 
@@ -461,7 +461,6 @@ void PreliminaryExperiment::updateKneePose(const geometry_msgs::PoseStamped::Con
   _markersSequenceID(KNEE) = msg->header.seq;
   _markersTracked(KNEE) = checkTrackedMarker(_markersPosition.col(KNEE)(0),msg->pose.position.x);
   _markersPosition.col(KNEE) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
 }
 
 
@@ -478,8 +477,8 @@ void PreliminaryExperiment::updateThighPose(const geometry_msgs::PoseStamped::Co
   _markersSequenceID(THIGH) = msg->header.seq;
   _markersTracked(THIGH) = checkTrackedMarker(_markersPosition.col(THIGH)(0),msg->pose.position.x);
   _markersPosition.col(THIGH) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-
 }
+
 
 uint16_t PreliminaryExperiment::checkTrackedMarker(float a, float b)
 {
@@ -494,6 +493,7 @@ uint16_t PreliminaryExperiment::checkTrackedMarker(float a, float b)
   }
 }
 
+
 void PreliminaryExperiment::updateHipPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   static bool firstHip = false;
@@ -506,37 +506,4 @@ void PreliminaryExperiment::updateHipPose(const geometry_msgs::PoseStamped::Cons
 
   _markersPosition.col(HIP) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
   _markersSequenceID(HIP) = msg->header.seq;
-}
-
-
-void PreliminaryExperiment::dynamicReconfigureCallback(hp_preliminary_experiment::preliminaryExperiment_paramsConfig &config, uint32_t level)
-{
-  ROS_INFO("Reconfigure request. Updatig the parameters ...");
-  _doCalibration = config.doCalibration;
-}
-
-
-
-Eigen::Matrix3f PreliminaryExperiment::quaternionToRotationMatrix(Eigen::Vector4f q)
-{
-  Eigen::Matrix3f R;
-
-  float q0 = q(0);
-  float q1 = q(1);
-  float q2 = q(2);
-  float q3 = q(3);
-
-  R(0,0) = q0*q0+q1*q1-q2*q2-q3*q3;
-  R(1,0) = 2.0f*(q1*q2+q0*q3);
-  R(2,0) = 2.0f*(q1*q3-q0*q2);
-
-  R(0,1) = 2.0f*(q1*q2-q0*q3);
-  R(1,1) = q0*q0-q1*q1+q2*q2-q3*q3;
-  R(2,1) = 2.0f*(q2*q3+q0*q1);
-
-  R(0,2) = 2.0f*(q1*q3+q0*q2);
-  R(1,2) = 2.0f*(q2*q3-q0*q1);
-  R(2,2) = q0*q0-q1*q1-q2*q2+q3*q3;  
-
-  return R;
 }
