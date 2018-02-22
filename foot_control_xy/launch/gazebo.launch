@@ -3,7 +3,9 @@
 		<arg name="gui" default="true"/>
 		<arg name="headless" default="false"/>
 		<arg name="debug" default="false"/>	
-		<arg name="use_sim_time" default="false"/>	
+		<arg name="use_sim_time" default="false"/>
+		<!--arg name="enableWorldTf_" default="false"/-->
+		<arg name="scale_" default="1"/>	
 	<!--START-WORLD-->
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">
 		<arg name="world_name" value="$(find foot_control_xy)/worlds/experiment_1.world"/>
@@ -14,5 +16,8 @@
 		<arg name="headless" value="$(arg headless)"/>			
 	</include>
 	<!--INCLUDE-AGENTS-->
-	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml"/>
+	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml">
+		<arg name="scale_" value="$(arg scale_)"/>
+	</include>
+
 </launch>

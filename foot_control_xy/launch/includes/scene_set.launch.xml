@@ -1,11 +1,17 @@
 <launch>
 	<!--Foot-->
-	<group ns="chaser">
-		<arg name="POSE0c.X" default="0"/>
-		<arg name="POSE0c.Y" default="0"/>
-		<arg name="POSE0c.Z" default="0"/>
+	<arg name="enableWorldTf_" default="false"/>
+	<arg name="scale_"/>
+	<arg name="POSE0c.X" default="0"/>
+	<arg name="POSE0c.Y" default="0"/>
+	<arg name="POSE0c.Z" default="0"/>
+	<arg name="POSE0t.X" default="1.6"/>
+	<arg name="POSE0t.Y" default="1.6"/>
+	<arg name="POSE0t.Z" default="0"/>
+	
+	<group ns="chaser">	
 		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/>
-		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder" />
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) _enableWorldTf:=$(arg enableWorldTf_) _scale:=$(arg scale_) --xacro-ns --inorder" />
 		<include file="$(find foot_control_xy)/launch/includes/agent.launch.xml">
 			<arg name="init_pose" value="-x $(arg POSE0c.X) -y $(arg POSE0c.Y) -z $(arg POSE0c.Z)" />
 			<arg name="robot_name" value="chaser"/>
@@ -13,11 +19,8 @@
 	</group>
 	
 	<group ns="target">
-		<arg name="POSE0t.X" default="1.6"/>
-		<arg name="POSE0t.Y" default="1.6"/>
-		<arg name="POSE0t.Z" default="0"/>
 		<arg name="model" default="$(find foot_control_xy)/models/number1/urdf/number1.urdf.xacro"/>
-		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder" />
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) _enableWorldTf:=$(arg enableWorldTf_) _scale:=$(arg scale_) --xacro-ns --inorder" />
 		<include file="$(find foot_control_xy)/launch/includes/agent.launch.xml">
 			<arg name="init_pose" value="-x $(arg POSE0t.X) -y $(arg POSE0t.Y) -z $(arg POSE0t.Z)" />
 			<arg name="robot_name" value="target"/>
