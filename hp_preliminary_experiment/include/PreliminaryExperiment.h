@@ -21,13 +21,24 @@ class PreliminaryExperiment
 {
 	private:
 
-    struct CalibrationResult
+    struct planeCalibrationResult
     {
       float c;
       Eigen::Vector3f n;
       Eigen::Vector3f u;
       Eigen::Vector3f v;
       Eigen::Vector3f Pcenter;
+    };
+
+
+    struct sphereCalibrationResult
+    {
+      Eigen::Vector3f center;
+      float radius;
+      float phiMean;
+      float thetaMean;
+      float arcLengthX;
+      float arcLengthY;
     };
 
     // ROS variables
@@ -60,13 +71,14 @@ class PreliminaryExperiment
     bool _initializationOK;
     bool _calibration;
     bool _facingScreen;
+    bool _fitPlane;
 
     uint16_t _markersCount;
     uint16_t _averageCount;
 
     uint32_t _currentSequenceID;
 
-    std::vector<Eigen::Vector3f> _planeData;
+    std::vector<Eigen::Vector3f> _footData;
 
     Eigen::Vector3f _chaserPosition;
 
@@ -78,7 +90,8 @@ class PreliminaryExperiment
     std::ofstream _outputFile;   // File used to write calibration data and results
     std::ifstream _inputFile;    // File used to read calibration results
 
-    CalibrationResult _cr;
+    planeCalibrationResult _pcr;
+    sphereCalibrationResult _scr;
 
   public:
   
@@ -89,6 +102,8 @@ class PreliminaryExperiment
     void run();
 
     void computePlane();
+
+    void computeSphere();
     
   private:
         

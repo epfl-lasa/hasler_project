@@ -23,15 +23,17 @@ _calibration(calibration)
   _markersCount = 0;
   _averageCount = 0;
   _currentSequenceID = 0;
-  _planeData.resize(0);
+  _footData.resize(0);
 
-  _cr.c = 0;
-  _cr.n.setConstant(0.0f);
-  _cr.u << 1.0f,0.0f,0.0f;
-  _cr.v << 0.0f,1.0f,0.0f;
-  _cr.Pcenter.setConstant(0.0f);
+  _pcr.c = 0;
+  _pcr.n.setConstant(0.0f);
+  _pcr.u << 1.0f,0.0f,0.0f;
+  _pcr.v << 0.0f,1.0f,0.0f;
+  _pcr.Pcenter.setConstant(0.0f);
 
   _chaserPosition.setConstant(0.0f);
+
+  _fitPlane = true;
 
 
 
@@ -68,17 +70,37 @@ bool PreliminaryExperiment::init()
     }
     else
     {
-      _inputFile >> _cr.c >> 
-                    _cr.n(0) >> _cr.n(1) >> _cr.n(2) >>
-                    _cr.u(0) >> _cr.u(1) >> _cr.u(2) >>
-                    _cr.v(0) >> _cr.v(1) >> _cr.v(2) >>
-                    _cr.Pcenter(0) >> _cr.Pcenter(1) >> _cr.Pcenter(2);
+      if(_fitPlane)
+      {
+        _inputFile >> _pcr.c >> 
+                      _pcr.n(0) >> _pcr.n(1) >> _pcr.n(2) >>
+                      _pcr.u(0) >> _pcr.u(1) >> _pcr.u(2) >>
+                      _pcr.v(0) >> _pcr.v(1) >> _pcr.v(2) >>
+                      _pcr.Pcenter(0) >> _pcr.Pcenter(1) >> _pcr.Pcenter(2);
 
-      std::cerr << _cr.c << std::endl;
-      std::cerr << _cr.n.transpose() << std::endl;
-      std::cerr << _cr.u.transpose() << std::endl;
-      std::cerr << _cr.v.transpose() << std::endl;
-      std::cerr << _cr.Pcenter.transpose() << std::endl;
+        std::cerr << _pcr.c << std::endl;
+        std::cerr << _pcr.n.transpose() << std::endl;
+        std::cerr << _pcr.u.transpose() << std::endl;
+        std::cerr << _pcr.v.transpose() << std::endl;
+        std::cerr << _pcr.Pcenter.transpose() << std::endl;
+      }
+      else
+      {
+        _inputFile >> _scr.center(0) >> _scr.center(1) >> _scr.center(2) >>
+                      _scr.radius >>
+                      _scr.phiMean >>
+                      _scr.thetaMean >>
+                      _scr.arcLengthX >>
+                      _scr.arcLengthY;
+
+        std::cerr << _scr.center.transpose() << std::endl;
+        std::cerr << _scr.radius << std::endl;
+        std::cerr << _scr.phiMean << std::endl;
+        std::cerr << _scr.thetaMean << std::endl;
+        std::cerr << _scr.arcLengthX << std::endl;
+        std::cerr << _scr.arcLengthY << std::endl;
+      }
+
     }
   }
 
@@ -211,25 +233,38 @@ void PreliminaryExperiment::computeAngles()
 
 void PreliminaryExperiment::computeChaserPose()
 {
-  Eigen::Matrix3f wRp;
+
 
   float scaleX, scaleY; 
-  Eigen::Vector3f u,v;
-  u = _cr.u.normalized();
-  v = _cr.v.normalized();
-  scaleX = 10.0f/_cr.u.norm();
-  scaleY = 10.0f/_cr.v.norm();
-
-  Eigen::Vector3f temp, tempProj;
-  temp = _markersPosition.col(TOE);
-  tempProj = temp-(temp.dot(_cr.n)+_cr.c)*_cr.n/_cr.n.squaredNorm();
-  // std::cerr << (tempProj-_cr.Pcenter).dot(_cr.n) << std::endl;
-  // std::cerr << _cr.u.norm() << std::endl;
-  // std::cerr << _cr.v.norm() << std::endl;
-
   _chaserPosition.setConstant(0.0f);
-  _chaserPosition(0) = scaleX*(tempProj-_cr.Pcenter).dot(u);
-  _chaserPosition(1) = scaleY*(tempProj-_cr.Pcenter).dot(v);
+
+  if(_fitPlane)
+  {
+    Eigen::Vector3f u,v;
+    u = _pcr.u.normalized();
+    v = _pcr.v.normalized();
+    scaleX = 10.0f/_pcr.u.norm();
+    scaleY = 10.0f/_pcr.v.norm();
+
+    Eigen::Vector3f temp, tempProj;
+    temp = _markersPosition.col(TOE);
+    tempProj = temp-(temp.dot(_pcr.n)+_pcr.c)*_pcr.n/_pcr.n.squaredNorm();
+
+    _chaserPosition(0) = scaleX*(tempProj-_pcr.Pcenter).dot(u);
+    _chaserPosition(1) = scaleY*(tempProj-_pcr.Pcenter).dot(v);
+  }
+  else
+  {
+    scaleX = 10.0f*_scr.arcLengthX;
+    scaleY = 10.0f*_scr.arcLengthY;
+    Eigen::Vector3f proj = _scr.center+_scr.radius*(_markersPosition.col(TOE)-_scr.center).normalized();
+    Eigen::Vector3f e = proj-_scr.center;
+    float phi = std::atan2(e.segment(0,2).norm(),e(2));
+    float theta = std::atan2(e(1),e(0));
+
+    _chaserPosition(0) = scaleX*_scr.radius*std::sin(phi)*(theta-_scr.thetaMean);
+    _chaserPosition(1) = scaleY*_scr.radius*(phi-_scr.phiMean);
+  }
 
   std::cerr << _chaserPosition.transpose() << std::endl;
 
@@ -267,11 +302,23 @@ void PreliminaryExperiment::logCalibrationResult()
 
   _outputFile.open("src/hasler_project/hp_preliminary_experiment/result.txt");
   
-  _outputFile << _cr.c << std::endl
-              << _cr.n.transpose() << std::endl
-              << _cr.u.transpose() << std::endl
-              << _cr.v.transpose() << std::endl
-              << _cr.Pcenter.transpose() << std::endl;
+  if(_fitPlane)
+  {
+    _outputFile << _pcr.c << std::endl
+                << _pcr.n.transpose() << std::endl
+                << _pcr.u.transpose() << std::endl
+                << _pcr.v.transpose() << std::endl
+                << _pcr.Pcenter.transpose() << std::endl;
+  }
+  else
+  {
+    _outputFile << _scr.center.transpose() << std::endl
+                << _scr.radius << std::endl
+                << _scr.phiMean << std::endl
+                << _scr.thetaMean << std::endl
+                << _scr.arcLengthX << std::endl
+                << _scr.arcLengthY << std::endl;
+  }
 
   _outputFile.close();
 }
@@ -281,16 +328,16 @@ void PreliminaryExperiment::addPlaneFittingData()
 {
   if(_markersTracked.sum()==NB_MARKERS)
   {
-    if(_planeData.size()==0)
+    if(_footData.size()==0)
     {
-      _planeData.push_back(_markersPosition.col(TOE));  
+      _footData.push_back(_markersPosition.col(TOE));  
       _currentSequenceID = _markersSequenceID(TOE);
     }
     else
     {
       if(_markersSequenceID(TOE)!= _currentSequenceID)
       {
-        _planeData.push_back(_markersPosition.col(TOE));
+        _footData.push_back(_markersPosition.col(TOE));
         _currentSequenceID = _markersSequenceID(TOE);
       }
     }
@@ -311,17 +358,17 @@ void PreliminaryExperiment::computePlane()
   // x = inv(A'A)*A'B
 
   std::cerr << "Start plane fitting ..." << std::endl;
-  std::cerr << "Number of points: " << _planeData.size() <<std::endl;
+  std::cerr << "Number of points: " << _footData.size() <<std::endl;
 
   Eigen::Matrix<float,Eigen::Dynamic,3> A;
-  A.resize(_planeData.size(),3);
+  A.resize(_footData.size(),3);
   Eigen::Vector3f x;
   Eigen::VectorXf B;
-  B.resize(_planeData.size());
-  for(uint32_t k = 0; k < _planeData.size(); k++)
+  B.resize(_footData.size());
+  for(uint32_t k = 0; k < _footData.size(); k++)
   {
-    A.row(k) << _planeData[k](0),_planeData[k](1), 1.0f;
-    B(k) = _planeData[k](2);
+    A.row(k) << _footData[k](0),_footData[k](1), 1.0f;
+    B(k) = _footData[k](2);
   }
 
   // A.col(0).array() -= A.col(0).mean();
@@ -363,20 +410,95 @@ void PreliminaryExperiment::computePlane()
   Pcenter = (P1+P2+P3+P4)/4.0f;
   std::cerr << "Plane center: " << Pcenter.transpose() << std::endl;
 
-  _cr.c = c;
-  _cr.n = n;
+  _pcr.c = c;
+  _pcr.n = n;
   if(!_facingScreen)
   {
-    _cr.u  = P1-P2;
-    _cr.v  = P3-P2;
+    _pcr.u  = P1-P2;
+    _pcr.v  = P3-P2;
   }
   else
   {
-    _cr.u  = P2-P3;
-    _cr.v  = P4-P3;    
+    _pcr.u  = P2-P3;
+    _pcr.v  = P4-P3;    
   }
-  _cr.Pcenter = Pcenter;
+  _pcr.Pcenter = Pcenter;
 
+}
+
+
+void PreliminaryExperiment::computeSphere()
+{
+  // Sphere equation: (x-x0)^2+(y-y0)^2+(z-z0)^2 = R^2
+  // A = [2x1 2y1 2z1 1
+  //      2x2 2y2 2z2 1
+  //      |  |  |     |
+  //      2xn 2yn 2zn 1]
+
+  // x = [x0 y0 z0  R^2-x0^2-y0^2-z0^2]'
+  // B = [x1^2+y1^2+z1^2 x2^2+y2^2+z2^2 - xn^2+yn^2+zn^2]'
+  // x = inv(A'A)*A'B
+
+  std::cerr << "Start plane fitting ..." << std::endl;
+  std::cerr << "Number of points: " << _footData.size() <<std::endl;
+
+  Eigen::Matrix<float,Eigen::Dynamic,4> A;
+  A.resize(_footData.size(),4);
+  Eigen::Vector4f x;
+  Eigen::VectorXf B;
+  B.resize(_footData.size());
+  for(uint32_t k = 0; k < _footData.size(); k++)
+  {
+    A.row(k) << 2.0f*_footData[k].transpose(), 1.0f;
+    B(k) = _footData[k].squaredNorm();
+  }
+
+  // A.col(0).array() -= A.col(0).mean();
+  // A.col(1).array() -= A.col(1).mean();
+  // B.array() -= B.mean();
+
+  x = ((A.transpose()*A).inverse())*A.transpose()*B;
+  Eigen::Vector3f center;
+  float radius;
+  center = x.segment(0,3);
+  radius = std::sqrt(x(3)+center.squaredNorm());
+
+
+  // Find phi theta range in spherical coordinates
+  Eigen::VectorXf phi, theta;
+  phi.resize(_footData.size());
+  theta.resize(_footData.size());
+
+  for(int k = 0; k < _footData.size(); k++)
+  {
+    Eigen::Vector3f proj;
+    proj = center+radius*(_footData[k]-center).normalized();
+    Eigen::Vector3f e = proj-center;
+    phi(k) = std::atan2(e.segment(0,2).norm(),e(2));
+    theta(k) = std::atan2(e(1),e(0));
+  }
+
+  float phiMax = phi.maxCoeff();
+  float phiMin = phi.minCoeff();
+  float phiMean = (phiMax+phiMin)/2.0f;
+  float thetaMax = theta.maxCoeff();
+  float thetaMin = theta.minCoeff();
+  float thetaMean = (thetaMax+thetaMin)/2.0f;
+
+  float rho1 = radius*std::sin(phiMin);
+  float rho2 = radius*std::sin(phiMax);
+
+  float dtheta = thetaMax-thetaMin;
+  float dphi = phiMax-phiMin;
+  float arcLengthX = std::max(rho1*dtheta,rho2*dtheta);
+  float arcLengthY = radius*dphi;
+
+  _scr.center = center;
+  _scr.radius = radius;
+  _scr.phiMean = phiMean;
+  _scr.thetaMean = thetaMean;
+  _scr.arcLengthX = arcLengthX;
+  _scr.arcLengthY = arcLengthY;
 }
 
 
