@@ -10,16 +10,23 @@
 #include <signal.h>
 #include <Eigen/Eigen>
 
-#define TARGET_TOLERANCE 0.5
+#define TARGET_TOLERANCE_RADIUS 0.5
+#define TARGET_TOLERANCE_TIME 1
+#define SCENE_SIZE 5
 
 class Protocol
 {
 	private:
 	
+
+		enum Strategies {APPEARING_TARGETS = 0, MOVING_TARGET = 1};
+
+
 		struct TargetInfo
 		{
 			Eigen::Vector3f position;
 			float elapsedTime;
+			float accuracy;
 		};
 
 		//! Ros variables
@@ -38,14 +45,18 @@ class Protocol
 		Eigen::Vector3f _chaserPosition;
 		Eigen::Vector3f _targetPosition;
 		std::vector<TargetInfo> _targetInfo;
+		Strategies _strategy;
 
 		//! Boolean variables
 		bool _stop;
     bool _firstChaserPoseReceived;
     bool _targetReached;
+    bool _setTargetToHome;
 
 		//! Other variables
-    double _tInit;
+    double _currentTime;
+    double _initialTime;
+    double _reachedTime;
 
 
     std::mutex _mutex;
