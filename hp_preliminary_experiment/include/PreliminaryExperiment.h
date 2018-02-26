@@ -21,6 +21,8 @@ class PreliminaryExperiment
 {
 	private:
 
+    enum FittingMethod {PLANE = 0, SPHERE = 1};
+
     struct planeCalibrationResult
     {
       float c;
@@ -71,7 +73,6 @@ class PreliminaryExperiment
     bool _initializationOK;
     bool _calibration;
     bool _facingScreen;
-    bool _fitPlane;
 
     uint16_t _markersCount;
     uint16_t _averageCount;
@@ -92,6 +93,8 @@ class PreliminaryExperiment
 
     planeCalibrationResult _pcr;
     sphereCalibrationResult _scr;
+
+    FittingMethod _fittingMethod;
 
   public:
   

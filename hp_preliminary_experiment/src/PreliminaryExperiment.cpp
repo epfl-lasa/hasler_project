@@ -33,9 +33,7 @@ _calibration(calibration)
 
   _chaserPosition.setConstant(0.0f);
 
-  _fitPlane = true;
-
-
+  _fittingMethod = PLANE;
 
 }
 
@@ -43,7 +41,7 @@ _calibration(calibration)
 bool PreliminaryExperiment::init() 
 {
   // Subscriber definitions
-  // _subOptitrackHip = _n.subscribe("/optitrack/hip/pose", 1, &PreliminaryExperiment::updateHipPose,this,ros::TransportHints().reliable().tcpNoDelay());
+  _subOptitrackHip = _n.subscribe("/optitrack/hip/pose", 1, &PreliminaryExperiment::updateHipPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackThigh = _n.subscribe("/optitrack/thigh/pose", 1, &PreliminaryExperiment::updateThighPose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackKnee = _n.subscribe("/optitrack/knee/pose", 1, &PreliminaryExperiment::updateKneePose,this,ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackTibia = _n.subscribe("/optitrack/tibia/pose", 1, &PreliminaryExperiment::updateTibiaPose,this,ros::TransportHints().reliable().tcpNoDelay());
@@ -61,8 +59,16 @@ bool PreliminaryExperiment::init()
     _outputFile.open("src/hasler_project/hp_preliminary_experiment/data.txt");
   }
   else
-  {
-    _inputFile.open("src/hasler_project/hp_preliminary_experiment/result.txt");
+  { 
+    if(_fittingMethod == PLANE)
+    {
+      _inputFile.open("src/hasler_project/hp_preliminary_experiment/result_plane.txt");
+    }
+    else
+    {
+      _inputFile.open("src/hasler_project/hp_preliminary_experiment/result_sphere.txt");
+    }
+
     if(!_inputFile.is_open())
     {
       ROS_INFO("Cannot open file with calibration result");
@@ -70,7 +76,7 @@ bool PreliminaryExperiment::init()
     }
     else
     {
-      if(_fitPlane)
+      if(_fittingMethod == PLANE)
       {
         _inputFile >> _pcr.c >> 
                       _pcr.n(0) >> _pcr.n(1) >> _pcr.n(2) >>
@@ -84,7 +90,7 @@ bool PreliminaryExperiment::init()
         std::cerr << _pcr.v.transpose() << std::endl;
         std::cerr << _pcr.Pcenter.transpose() << std::endl;
       }
-      else
+      else if(_fittingMethod == SPHERE)
       {
         _inputFile >> _scr.center(0) >> _scr.center(1) >> _scr.center(2) >>
                       _scr.radius >>
@@ -136,7 +142,7 @@ void PreliminaryExperiment::run()
       else if(_initializationOK &&_calibration)
       {
         // Compute angles
-        computeAngles();
+        // computeAngles();
 
         // Add plane fitting data
         addPlaneFittingData();
@@ -179,8 +185,12 @@ void PreliminaryExperiment::run()
     {
       _outputFile.close();
     }
-    // Compute plane from calibration data
+
+    // Compute plane and sphere fitting
     computePlane();
+
+    computeSphere();
+
     // Log calibration result
     logCalibrationResult();
   }
@@ -238,7 +248,7 @@ void PreliminaryExperiment::computeChaserPose()
   float scaleX, scaleY; 
   _chaserPosition.setConstant(0.0f);
 
-  if(_fitPlane)
+  if(_fittingMethod == PLANE)
   {
     Eigen::Vector3f u,v;
     u = _pcr.u.normalized();
@@ -253,17 +263,17 @@ void PreliminaryExperiment::computeChaserPose()
     _chaserPosition(0) = scaleX*(tempProj-_pcr.Pcenter).dot(u);
     _chaserPosition(1) = scaleY*(tempProj-_pcr.Pcenter).dot(v);
   }
-  else
+  else if(_fittingMethod == SPHERE)
   {
-    scaleX = 10.0f*_scr.arcLengthX;
-    scaleY = 10.0f*_scr.arcLengthY;
+    scaleX = 10.0f/_scr.arcLengthX;
+    scaleY = 10.0f/_scr.arcLengthY;
     Eigen::Vector3f proj = _scr.center+_scr.radius*(_markersPosition.col(TOE)-_scr.center).normalized();
     Eigen::Vector3f e = proj-_scr.center;
     float phi = std::atan2(e.segment(0,2).norm(),e(2));
     float theta = std::atan2(e(1),e(0));
 
-    _chaserPosition(0) = scaleX*_scr.radius*std::sin(phi)*(theta-_scr.thetaMean);
-    _chaserPosition(1) = scaleY*_scr.radius*(phi-_scr.phiMean);
+    _chaserPosition(0) = -scaleX*_scr.radius*std::sin(phi)*(theta-_scr.thetaMean);
+    _chaserPosition(1) = -scaleY*_scr.radius*(phi-_scr.phiMean);
   }
 
   std::cerr << _chaserPosition.transpose() << std::endl;
@@ -288,10 +298,17 @@ void PreliminaryExperiment::publishData()
 
 void PreliminaryExperiment::logCalibrationData()
 {
+  // _outputFile << ros::Time::now() << " "
+  //             << _markersPosition.col(TOE).transpose() << " "
+  //             << _markersPosition.col(ANKLE).transpose() << " "
+  //             << _markersPosition.col(TIBIA).transpose() << " "
+  //             << _markersTracked.transpose() << " "
+  //             << _markersSequenceID(TOE) << std::endl;
+
   _outputFile << ros::Time::now() << " "
               << _markersPosition.col(TOE).transpose() << " "
-              << _markersPosition.col(ANKLE).transpose() << " "
-              << _markersPosition.col(TIBIA).transpose() << " "
+              // << _markersPosition.col(ANKLE).transpose() << " "
+              // << _markersPosition.col(TIBIA).transpose() << " "
               << _markersTracked.transpose() << " "
               << _markersSequenceID(TOE) << std::endl;
 }
@@ -300,25 +317,24 @@ void PreliminaryExperiment::logCalibrationData()
 void PreliminaryExperiment::logCalibrationResult()
 {
 
-  _outputFile.open("src/hasler_project/hp_preliminary_experiment/result.txt");
+  _outputFile.open("src/hasler_project/hp_preliminary_experiment/result_plane.txt");
   
-  if(_fitPlane)
-  {
-    _outputFile << _pcr.c << std::endl
-                << _pcr.n.transpose() << std::endl
-                << _pcr.u.transpose() << std::endl
-                << _pcr.v.transpose() << std::endl
-                << _pcr.Pcenter.transpose() << std::endl;
-  }
-  else
-  {
-    _outputFile << _scr.center.transpose() << std::endl
+  _outputFile << _pcr.c << std::endl
+              << _pcr.n.transpose() << std::endl
+              << _pcr.u.transpose() << std::endl
+              << _pcr.v.transpose() << std::endl
+              << _pcr.Pcenter.transpose() << std::endl;
+
+  _outputFile.close();
+
+  _outputFile.open("src/hasler_project/hp_preliminary_experiment/result_sphere.txt");
+
+  _outputFile << _scr.center.transpose() << std::endl
                 << _scr.radius << std::endl
                 << _scr.phiMean << std::endl
                 << _scr.thetaMean << std::endl
                 << _scr.arcLengthX << std::endl
                 << _scr.arcLengthY << std::endl;
-  }
 
   _outputFile.close();
 }
@@ -449,15 +465,18 @@ void PreliminaryExperiment::computeSphere()
   B.resize(_footData.size());
   for(uint32_t k = 0; k < _footData.size(); k++)
   {
-    A.row(k) << 2.0f*_footData[k].transpose(), 1.0f;
+    A.row(k) << 2.0f*_footData[k](0), 2.0f*_footData[k](1), 2.0f*_footData[k](2), 1.0f;
     B(k) = _footData[k].squaredNorm();
   }
 
+  // std::cout << A << std::endl;
+  // std::cout << B << std::endl;
   // A.col(0).array() -= A.col(0).mean();
   // A.col(1).array() -= A.col(1).mean();
   // B.array() -= B.mean();
 
-  x = ((A.transpose()*A).inverse())*A.transpose()*B;
+  x = A.colPivHouseholderQr().solve(B);
+  // x = ((A.transpose()*A).inverse())*A.transpose()*B;
   Eigen::Vector3f center;
   float radius;
   center = x.segment(0,3);
@@ -490,7 +509,7 @@ void PreliminaryExperiment::computeSphere()
 
   float dtheta = thetaMax-thetaMin;
   float dphi = phiMax-phiMin;
-  float arcLengthX = std::max(rho1*dtheta,rho2*dtheta);
+  float arcLengthX = std::min(rho1*dtheta,rho2*dtheta);
   float arcLengthY = radius*dphi;
 
   _scr.center = center;
