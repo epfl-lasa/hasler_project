@@ -4,8 +4,9 @@
 		<arg name="headless" default="false"/>
 		<arg name="debug" default="false"/>	
 		<arg name="use_sim_time" default="false"/>
-		<!--arg name="enableWorldTf_" default="false"/-->
-		<arg name="scale_" default="1"/>	
+		<arg name="scale_" default="0.5"/>
+		<arg name="standalone" default="true"/>	
+
 	<!--START-WORLD-->
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">
 		<arg name="world_name" value="$(find foot_control_xy)/worlds/experiment_1.world"/>
@@ -16,8 +17,13 @@
 		<arg name="headless" value="$(arg headless)"/>			
 	</include>
 	<!--INCLUDE-AGENTS-->
-	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml">
-		<arg name="scale_" value="$(arg scale_)"/>
-	</include>
+	<group if="$(arg standalone)">
+		<arg name="chaser_init_pose" default="-x 0.0 -y 0.0 -z 1.0 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+		<arg name="target_init_pose" default="-x 1.0 -y 2.0 -z 1.0 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+		<node name="worldChaserTransform" pkg="foot_control_xy" type="worldActorTransform" args="chaser $(arg chaser_init_pose)"/>
+		<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
+	</group>
+
+	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml"/>
 
 </launch>

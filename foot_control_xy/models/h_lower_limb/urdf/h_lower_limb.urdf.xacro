@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="h_lower_limb">
 	  <xacro:arg name="_scale" default="0.5"/>
-	  <xacro:arg name="_enableWorldTf" default="false"/>
+	  <xacro:arg name="_enableGzPlugin" default="false"/>
 	  <xacro:property name="_radius" value="${0.25* $(arg _scale)}"/>
+    <xacro:property name="_offset" value="${_radius*2.5}"/>
   <link
     name="chaser/base_link">
     <inertial>
@@ -21,15 +22,19 @@
     </inertial>
     <collision>
       <origin
-        xyz="0 0 0.25"
-        rpy="0 0 0" />
-      <geometry>
+        xyz="0 0 ${_offset}"
+        rpy="0 0 3.1415" />
+      <!-- <geometry>
         <sphere radius="${_radius}"/>
+      </geometry> -->
+      <geometry>
+        <mesh
+          filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg _scale)} ${0.05*$(arg _scale)} ${0.05*$(arg _scale)}"/>
       </geometry>
     </collision>
     <visual>
       <origin
-        xyz="0 0 ${2*_radius}"
+        xyz="0 0 ${_offset}"
         rpy="0 0 3.1415"/>
       <geometry>
         <mesh
@@ -37,7 +42,7 @@
       </geometry>
     </visual>
   </link> 
-    <xacro:if value="$(arg _enableWorldTf)">
+    <xacro:if value="$(arg _enableGzPlugin)">
 	  <gazebo>
 	   <plugin name="gzTfUpdate" filename="libgzTfUpdate.so">
 			<actorName>chaser</actorName>
