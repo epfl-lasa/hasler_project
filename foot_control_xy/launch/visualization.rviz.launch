@@ -23,7 +23,7 @@
 	
 	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find foot_control_xy)/rviz/urdf.rviz" required="true"/>
 	
-	<group if="$(enableGazebo)">
+	<group if="$(arg enableGazebo)">
 		<include file="$(find foot_control_xy)/launch/gazebo.launch">
 			<arg name="standalone" value="false"/>
 			<arg name="scale.t" value="$(arg scale.t)"/>
