@@ -38,8 +38,6 @@
 			<arg name="standalone" value="false"/>
 			<arg name="scale.t" value="$(arg scale.t)"/>
 			<arg name="scale.c" value="$(arg scale.c)"/>
-			<arg name="enableJoystick" value="$(arg enableJoystick)"/>
-			<arg name="enableProtocol" value="$(arg enableProtocol)"/>
 		</include>
 	</group>
 </launch>
