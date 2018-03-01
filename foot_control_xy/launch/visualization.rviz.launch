@@ -6,7 +6,7 @@
 	<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
 	<arg name="scale.t" default="0.3"/>
 	<arg name="scale.c" default="0.5"/>
-	<arg name="enableGazebo" value="true"/>
+	<arg name="enableGazebo" default="true"/>
 	
 	<group ns="chaser">
 		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
