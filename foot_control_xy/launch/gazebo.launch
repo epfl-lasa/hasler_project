@@ -6,6 +6,8 @@
 		<arg name="use_sim_time" default="false"/>
 		<arg name="scale_" default="0.5"/>
 		<arg name="standalone" default="true"/>	
+		<arg name="scale.t" default="0.5"/>
+		<arg name="scale.c" default="0.5"/>
 
 	<!--START-WORLD-->
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -24,6 +26,8 @@
 		<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
 	</group>
 
-	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml"/>
-
+	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml">
+		<arg name="scale.t" value="$(arg scale.t)"/>
+		<arg name="scale.c" value="$(arg scale.c)"/>
+	</include>
 </launch>
