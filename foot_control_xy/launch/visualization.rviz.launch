@@ -6,6 +6,7 @@
 	<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
 	<arg name="scale.t" default="0.3"/>
 	<arg name="scale.c" default="0.5"/>
+	<arg name="enableGazebo" value="true"/>
 	
 	<group ns="chaser">
 		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
@@ -22,9 +23,11 @@
 	
 	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find foot_control_xy)/rviz/urdf.rviz" required="true"/>
 	
-	<include file="$(find foot_control_xy)/launch/gazebo.launch">
-		<arg name="standalone" value="false"/>
-		<arg name="scale.t" value="$(arg scale.t)"/>
-		<arg name="scale.c" value="$(arg scale.c)"/>
-	</include>
+	<group if="$(enableGazebo)">
+		<include file="$(find foot_control_xy)/launch/gazebo.launch">
+			<arg name="standalone" value="false"/>
+			<arg name="scale.t" value="$(arg scale.t)"/>
+			<arg name="scale.c" value="$(arg scale.c)"/>
+		</include>
+	</group>
 </launch>
