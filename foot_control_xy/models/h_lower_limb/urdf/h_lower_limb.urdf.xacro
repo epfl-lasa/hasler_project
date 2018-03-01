@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro" name="h_lower_limb">
-  <xacro:property name="scale" value="${0.05}"/>
+	  <xacro:arg name="_scale" default="0.5"/>
+	  <xacro:arg name="_enableGzPlugin" default="false"/>
+	  <xacro:property name="_radius" value="${0.25* $(arg _scale)}"/>
+    <xacro:property name="_offset" value="${_radius*2.5}"/>
   <link
     name="chaser/base_link">
     <inertial>
@@ -19,26 +22,31 @@
     </inertial>
     <collision>
       <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
+        xyz="0 0 ${_offset}"
+        rpy="0 0 3.1415" />
+      <!-- <geometry>
+        <sphere radius="${_radius}"/>
+      </geometry> -->
       <geometry>
-        <sphere radius="0.25"/>
+        <mesh
+          filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg _scale)} ${0.05*$(arg _scale)} ${0.05*$(arg _scale)}"/>
       </geometry>
     </collision>
     <visual>
       <origin
-        xyz="0 0 0"
-        rpy="0 0 3.1415" /> <!--${pi/2}  ${-pi} 0-->
+        xyz="0 0 ${_offset}"
+        rpy="0 0 3.1415"/>
       <geometry>
         <mesh
-          filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${scale} ${scale} ${scale}"/>
+          filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg _scale)} ${0.05*$(arg _scale)} ${0.05*$(arg _scale)}"/>
       </geometry>
     </visual>
   </link> 
-  <gazebo>
-   <plugin name="gzTfUpdate" filename="libgzTfUpdate.so">
-		<actorName>chaser</actorName>
-   </plugin>
-  </gazebo>
-  
+    <xacro:if value="$(arg _enableGzPlugin)">
+	  <gazebo>
+	   <plugin name="gzTfUpdate" filename="libgzTfUpdate.so">
+			<actorName>chaser</actorName>
+	   </plugin>
+	  </gazebo>
+  </xacro:if>
 </robot>
