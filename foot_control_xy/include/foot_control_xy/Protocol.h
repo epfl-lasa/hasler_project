@@ -11,7 +11,7 @@
 #include <Eigen/Eigen>
 
 #define TARGET_TOLERANCE_RADIUS 0.5
-#define TARGET_TOLERANCE_TIME 1
+#define TARGET_TOLERANCE_TIME 3
 #define SCENE_SIZE 5
 
 class Protocol

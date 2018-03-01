@@ -6,8 +6,12 @@
 		<arg name="use_sim_time" default="false"/>
 		<arg name="scale_" default="0.5"/>
 		<arg name="standalone" default="true"/>	
+
+
 		<arg name="scale.t" default="0.5"/>
 		<arg name="scale.c" default="0.5"/>
+
+
 
 	<!--START-WORLD-->
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -20,10 +24,24 @@
 	</include>
 	<!--INCLUDE-AGENTS-->
 	<group if="$(arg standalone)">
-		<arg name="chaser_init_pose" default="-x 0.0 -y 0.0 -z 1.0 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
-		<arg name="target_init_pose" default="-x 1.0 -y 2.0 -z 1.0 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+		<arg name="chaser_init_pose" default="-x 0.0 -y 0.0 -z 0.1 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+		<arg name="target_init_pose" default="-x 1.0 -y 2.0 -z 0.1 -qx 0.0 -qy 0.0 -qy 0.0 -qz 1.0"/>
+
+		<arg name="enableJoystick" default="false"/>
+ 		<arg name="enableProtocol" default="false"/>
+
 		<node name="worldChaserTransform" pkg="foot_control_xy" type="worldActorTransform" args="chaser $(arg chaser_init_pose)"/>
 		<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
+
+		<group if="$(arg enableJoystick)">
+			<include file="$(find foot_control_xy)/launch/includes/joystick.launch.xml"/>
+		</group>
+
+		<group if="$(arg enableProtocol)">
+			<include file="$(find foot_control_xy)/launch/includes/protocol.launch.xml"/>
+		</group>
+
+
 	</group>
 
 	<include file="$(find foot_control_xy)/launch/includes/scene_set.launch.xml">
