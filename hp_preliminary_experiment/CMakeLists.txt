@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   dynamic_reconfigure
+  sg_differentiation
 )
 
 find_package(Eigen3 REQUIRED)
@@ -29,7 +30,7 @@ generate_messages(DEPENDENCIES std_msgs)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure
+  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure sg_differentiation
   # DEPENDS Eigen
  )
 
@@ -40,3 +41,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 add_executable(preliminaryExperiment src/preliminary_experiment_node.cpp src/PreliminaryExperiment.cpp)
 target_link_libraries(preliminaryExperiment ${catkin_LIBRARIES})
 add_dependencies(preliminaryExperiment ${PROJECT_NAME}_gencpp)
+
+add_executable(kinectRecording src/kinectRecording_node.cpp src/KinectRecording.cpp)
+target_link_libraries(kinectRecording ${catkin_LIBRARIES})
+add_dependencies(kinectRecording ${PROJECT_NAME}_gencpp)
