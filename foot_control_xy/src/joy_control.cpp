@@ -10,16 +10,16 @@ _dt(1.0f/frequency),
 _scale(2.0f),
 _axeX(0),
 _axeY(1),
-_axeZ(2)
+_axeZ(4)
 {
   me=this;
   _stop = false;
   _firstChaserPoseReceived = false;
   _chaserPosition.setConstant(0.0f);
-  _n.param("axis_x",_axeX);
-  _n.param("axis_y",_axeY);
-  _n.param("axis_z",_axeZ);
-  _n.param("scale_",_scale);
+  _n.param("axis_x",_axeX,_axeX);
+  _n.param("axis_y",_axeY,_axeY);
+  _n.param("axis_z",_axeZ,_axeZ);
+  _n.param("scale_",_scale,_scale);
 }
 
 bool JoyControl::init()
