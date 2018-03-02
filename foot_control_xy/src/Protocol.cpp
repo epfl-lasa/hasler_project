@@ -117,7 +117,7 @@ void Protocol::checkIfTargetReached()
 
 void Protocol::updateTargetPose()
 {
-  if(_currentTime-_initialTime > TARGET_TOLERANCE_TIME)
+  if((_currentTime-_initialTime > TARGET_ELAPSED_TIME) || (_targetReached && _currentTime-_reachedTime > TARGET_TOLERANCE_TIME))
   {
     TargetInfo info;
     info.position = _targetPosition;

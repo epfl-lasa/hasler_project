@@ -95,7 +95,7 @@ void JoyControl::publishData()
 void JoyControl::updateChaserPose(const sensor_msgs::Joy::ConstPtr& joy)
 {
   _chaserVelocity << -joy->axes[_axeX], joy->axes[_axeY], joy->axes[_axeZ];
-  _chaserVelocity*=2;
+  _chaserVelocity*=_scale;
   
 
   if(!_firstChaserPoseReceived)

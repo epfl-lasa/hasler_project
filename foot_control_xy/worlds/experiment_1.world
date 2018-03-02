@@ -3,7 +3,7 @@
   <world name="default"> 		
     <gui fullscreen=false>
 		<camera name="user_default">
-			<pose frame=''> 0.0 0.0 13 0.0 1.5707963267 1.5707963267</pose>
+			<pose frame=''> 0.0 0.0 5 0.0 1.5707963267 1.5707963267</pose>
 			<projection_type>orthographic</projection_type>
 			<view_controller>ortho</view_controller>
 		</camera>

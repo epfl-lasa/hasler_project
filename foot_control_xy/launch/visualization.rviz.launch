@@ -5,20 +5,20 @@
 	<node name="worldChaserTransform" pkg="foot_control_xy" type="worldActorTransform" args="chaser $(arg chaser_init_pose)"/>
 	<node name="worldTargetransform" pkg="foot_control_xy" type="worldActorTransform" args="target $(arg target_init_pose)"/>
 	<arg name="scale.t" default="0.3"/>
-	<arg name="scale.c" default="0.5"/>
+	<arg name="scale.c" default="0.9"/>
 	<arg name="enableGazebo" default="true"/>
 	<arg name="enableJoystick" default="false"/>
 	<arg name="enableProtocol" default="false"/>
 
 	<group ns="chaser">
 		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
-		<param name="robot_description" command="$(find xacro)/xacro $(arg model) --xacro-ns --inorder  " />
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) scale:=$(arg scale.c) --xacro-ns --inorder  " />
 
 	</group>
 	
 	<group ns="target">
 		<arg name="model" default="$(find foot_control_xy)/models/target/urdf/target.urdf.xacro "/>
-		<param name="robot_description" command="$(find xacro)/xacro $(arg model) scale:=0.5 --xacro-ns --inorder  " />
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) scale:=$(arg scale.t)  --xacro-ns --inorder  " />
 
 	</group>
 	<param name="use_gui" value="1"/>	
