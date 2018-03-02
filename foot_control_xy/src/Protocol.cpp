@@ -3,21 +3,20 @@
 
 Protocol* Protocol::me = NULL;
 
-Protocol::Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition): 
+Protocol::Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition, Strategy strategy): 
 _n(n),
 _loopRate(frequency),
 _dt(1.0f/frequency),
-_targetPosition(initTargetPosition)
+_targetPosition(initTargetPosition),
+_strategy(strategy)
 {
   me=this;
   _stop = false;
   _firstChaserPoseReceived = false;
   _chaserPosition.setConstant(0.0f);
   _targetInfo.resize(0);
-  _strategy = MOVING_TARGET;
   _setTargetToHome = false;
   _targetDirectionID = PLUS_X;
-
 }
 
 bool Protocol::init()
@@ -47,7 +46,7 @@ bool Protocol::init()
 
 void Protocol::stopNode(int sig)
 {
-    me->_stop= true;
+  me->_stop= true;
 }
 
 
@@ -61,14 +60,13 @@ void Protocol::run()
   {
     _currentTime = ros::Time::now().toSec();
 
-
     if(_firstChaserPoseReceived)
     {
       _mutex.lock();
 
       switch(_strategy)
       {
-        case APPEARING_TARGETS:
+        case DISCRETE:
         {
           checkIfTargetReached();
 
@@ -76,7 +74,7 @@ void Protocol::run()
 
           break;
         }
-        case MOVING_TARGET:
+        case CONTINUOUS:
         {
           generateMovingTarget();
           break;

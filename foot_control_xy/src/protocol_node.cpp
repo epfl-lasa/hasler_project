@@ -9,17 +9,29 @@ int main(int argc, char **argv)
 
   Eigen::Vector3f initTargetPosition;
   initTargetPosition.setConstant(0.0f);
+
+
+  Protocol::Strategy strategy = Protocol::Strategy::DISCRETE;
   if (argc < 2)
   {
-    ROS_ERROR("You are missing arguments: (Position) -x # -y # -z");
+    ROS_ERROR("You are missing arguments: 1. (Strategy) -s d(discrete) or c(continuous)  2. (Position) -x # -y # -z");
     return 0;
   }
   else 
   {
-    initTargetPosition << atof(argv[2]),atof(argv[4]),atof(argv[6]);
+    if(std::string(argv[2]) == "d")
+    {
+      strategy = Protocol::Strategy::DISCRETE;
+    }
+    else if(std::string(argv[2]) == "c")
+    {
+      strategy = Protocol::Strategy::CONTINUOUS;
+    }
+
+    initTargetPosition << atof(argv[4]),atof(argv[6]),atof(argv[8]);
   }
 
-  Protocol protocol(n,frequency,initTargetPosition);
+  Protocol protocol(n,frequency,initTargetPosition,strategy);
 
   if (!protocol.init()) 
   {

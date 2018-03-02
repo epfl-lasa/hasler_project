@@ -20,12 +20,11 @@
 
 class Protocol
 {
+	public:
+		enum Strategy {DISCRETE = 0, CONTINUOUS = 1};
+	
 	private:
 	
-
-		enum Strategies {APPEARING_TARGETS = 0, MOVING_TARGET = 1};
-
-
 		enum DirectionID {PLUS_X = 0, MINUS_X = 1, PLUS_Y = 2, MINUS_Y = 3};
 
 		struct TargetInfo
@@ -51,7 +50,7 @@ class Protocol
 		Eigen::Vector3f _chaserPosition;
 		Eigen::Vector3f _targetPosition;
 		std::vector<TargetInfo> _targetInfo;
-		Strategies _strategy;
+		Strategy _strategy;
 
 		//! Boolean variables
 		bool _stop;
@@ -70,9 +69,10 @@ class Protocol
 
     std::mutex _mutex;
 		static Protocol* me;
-    
+		
 	public:
-		Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition);
+    
+		Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition, Strategy strategy);
 		bool  init();
 		void run();
 	
