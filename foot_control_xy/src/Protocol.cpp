@@ -14,8 +14,10 @@ _targetPosition(initTargetPosition)
   _firstChaserPoseReceived = false;
   _chaserPosition.setConstant(0.0f);
   _targetInfo.resize(0);
-  _strategy = APPEARING_TARGETS;
+  _strategy = MOVING_TARGET;
   _setTargetToHome = false;
+  _targetDirectionID = PLUS_X;
+
 }
 
 bool Protocol::init()
@@ -53,10 +55,12 @@ void Protocol::run()
 {
   srand(time(NULL));
 
+  _duration = MIN_MOVING_TARGET_DURATION+(MAX_MOVING_TARGET_DURATION-MIN_MOVING_TARGET_DURATION)*((float)std::rand()/RAND_MAX);
+
   while (!_stop) 
   {
-    
     _currentTime = ros::Time::now().toSec();
+
 
     if(_firstChaserPoseReceived)
     {
@@ -74,6 +78,7 @@ void Protocol::run()
         }
         case MOVING_TARGET:
         {
+          generateMovingTarget();
           break;
         }
       }
@@ -140,6 +145,105 @@ void Protocol::updateTargetPose()
 
     _initialTime = ros::Time::now().toSec();
     _targetReached = false;
+  }
+}
+
+
+void Protocol::generateMovingTarget()
+{
+  int newTargetDirectionID = _targetDirectionID;
+
+  // Change direction if time elapsed exceeded the duration of the current target or if there is collision with boundaries
+  if(_currentTime-_initialTime>_duration || checkIfCollisionWithBoundaries(_targetPosition,newTargetDirectionID))
+  {
+    newTargetDirectionID = (int)(4.0f*(float)std::rand()/RAND_MAX);
+    while(checkIfCollisionWithBoundaries(_targetPosition,newTargetDirectionID) ||
+          checkIfOppositeDirection(_targetDirectionID,newTargetDirectionID) || 
+          checkIfSameDirection(_targetDirectionID,newTargetDirectionID))
+    {
+      newTargetDirectionID = (int)(4.0f*(float)std::rand()/RAND_MAX);
+    }
+    _duration = MIN_MOVING_TARGET_DURATION+(MAX_MOVING_TARGET_DURATION-MIN_MOVING_TARGET_DURATION)*((float)std::rand()/RAND_MAX);
+    _initialTime = ros::Time::now().toSec();
+    std::cerr << "Duration: " << _duration << " Direction: " << newTargetDirectionID << std::endl;
+  }  
+
+  // Compute target motion direction
+  _targetDirectionID = DirectionID(newTargetDirectionID); 
+  _targetPosition += _dt*MOVING_TARGET_VELOCITY*getTargetDirection(_targetDirectionID);
+}
+
+
+Eigen::Vector3f Protocol::getTargetDirection(int directionID)
+{
+  Eigen::Vector3f dir;
+  switch(directionID)
+  {
+    case PLUS_X:
+    {
+      dir << 1.0f,0.0f,0.0f;
+      break;
+    }
+    case MINUS_X:
+    {
+      dir << -1.0f,0.0f,0.0f;
+      break;
+    }
+    case PLUS_Y:
+    {
+      dir << 0.0f,1.0f,0.0f;
+      break;
+    }
+    case MINUS_Y:
+    {
+      dir << 0.0f,-1.0f,0.0f;
+      break;
+    }
+  }
+
+  return dir;
+}
+
+bool Protocol::checkIfCollisionWithBoundaries(Eigen::Vector3f position, int directionID)
+{
+  Eigen::Vector3f temp;
+  temp = position +_dt*MOVING_TARGET_VELOCITY*getTargetDirection(DirectionID(directionID));
+  if(temp.array().abs().maxCoeff()>SCENE_SIZE-1.0f)
+  {
+    std::cerr << temp.array().abs().maxCoeff() << std::endl;
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+bool Protocol::checkIfSameDirection(int currentDirectionID, int newDirectionID)
+{
+  if(currentDirectionID == newDirectionID)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+
+bool Protocol::checkIfOppositeDirection(int currentDirectionID, int newDirectionID)
+{
+  Eigen::Vector3f v1 = getTargetDirection(currentDirectionID);
+  Eigen::Vector3f v2 = getTargetDirection(newDirectionID);
+
+  if((v1.dot(v2)+1.0f) < FLT_EPSILON)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
   }
 }
 

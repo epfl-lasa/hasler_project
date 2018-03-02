@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "protocol");
   ros::NodeHandle n;
-  float frequency = 500.0f;
+  float frequency = 100.0f;
 
 
   Eigen::Vector3f initTargetPosition;

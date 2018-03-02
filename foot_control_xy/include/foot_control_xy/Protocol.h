@@ -13,6 +13,9 @@
 #define TARGET_TOLERANCE_RADIUS 0.5
 #define TARGET_TOLERANCE_TIME 1
 #define SCENE_SIZE 5
+#define MOVING_TARGET_VELOCITY 1
+#define MIN_MOVING_TARGET_DURATION 3.0
+#define MAX_MOVING_TARGET_DURATION 6.0
 
 class Protocol
 {
@@ -21,6 +24,8 @@ class Protocol
 
 		enum Strategies {APPEARING_TARGETS = 0, MOVING_TARGET = 1};
 
+
+		enum DirectionID {PLUS_X = 0, MINUS_X = 1, PLUS_Y = 2, MINUS_Y = 3};
 
 		struct TargetInfo
 		{
@@ -57,6 +62,9 @@ class Protocol
     double _currentTime;
     double _initialTime;
     double _reachedTime;
+    double _duration;
+
+    DirectionID _targetDirectionID;
 
 
     std::mutex _mutex;
@@ -74,6 +82,17 @@ class Protocol
 		void checkIfTargetReached();
 
 		void updateTargetPose();
+
+		void generateMovingTarget();
+
+		Eigen::Vector3f getTargetDirection(int directionID);
+
+		bool checkIfCollisionWithBoundaries(Eigen::Vector3f position, int directionID);
+
+		bool checkIfSameDirection(int currentDirectionID, int newDirectionID);
+
+		bool checkIfOppositeDirection(int currentDirectionID, int newDirectionID);
+
 
 		void publishData();
 
