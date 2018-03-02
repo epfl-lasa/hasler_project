@@ -67,6 +67,10 @@ add_executable(protocol src/protocol_node.cpp src/Protocol.cpp)
 target_link_libraries(protocol ${catkin_LIBRARIES})
 add_dependencies(protocol ${PROJECT_NAME}_gencpp)
 
+add_executable(joy_control src/joy_control.cpp src/joy_control_node.cpp)
+target_link_libraries(joy_control ${catkin_LIBRARIES})
+add_dependencies(joy_control ${PROJECT_NAME}_gencpp)
+
 add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)
 target_link_libraries(gzTfUpdate 
 					  ${catkin_LIBRARIES}

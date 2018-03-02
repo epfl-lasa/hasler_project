@@ -11,6 +11,7 @@
 #include <Eigen/Eigen>
 
 #define TARGET_TOLERANCE_RADIUS 0.5
+#define TARGET_ELAPSED_TIME 5
 #define TARGET_TOLERANCE_TIME 1
 #define SCENE_SIZE 5
 #define MOVING_TARGET_VELOCITY 1

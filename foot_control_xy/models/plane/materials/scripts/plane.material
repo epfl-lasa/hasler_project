@@ -9,7 +9,7 @@ material pĺane/material
 			specular 0.0 0.0 0.0 1.0 0.5
 		   	texture_unit	
 		   	{
-				texture ../textures/wood.png
+				texture ../textures/white.png
 				filtering trilinear
 		   	}
 		}

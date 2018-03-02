@@ -122,7 +122,7 @@ void Protocol::checkIfTargetReached()
 
 void Protocol::updateTargetPose()
 {
-  if(_targetReached && _currentTime-_reachedTime > TARGET_TOLERANCE_TIME)
+  if((_currentTime-_initialTime > TARGET_ELAPSED_TIME) || (_targetReached && _currentTime-_reachedTime > TARGET_TOLERANCE_TIME))
   {
     TargetInfo info;
     info.position = _targetPosition;
@@ -254,7 +254,7 @@ void Protocol::publishData()
   _msgTargetPose.header.stamp = ros::Time::now();
   _msgTargetPose.pose.position.x = _targetPosition(0);
   _msgTargetPose.pose.position.y = _targetPosition(1);
-  _msgTargetPose.pose.position.z = _targetPosition(2)+0.5f;
+  _msgTargetPose.pose.position.z = _targetPosition(2);
   _msgTargetPose.pose.orientation.x = 0.0f;
   _msgTargetPose.pose.orientation.y = 0.0f;
   _msgTargetPose.pose.orientation.z = 0.0f;
