@@ -9,14 +9,9 @@
 #include "nav_msgs/Path.h"
 #include <signal.h>
 #include <Eigen/Eigen>
-
-#define TARGET_TOLERANCE_RADIUS 0.5
-#define TARGET_ELAPSED_TIME 5
-#define TARGET_TOLERANCE_TIME 1
-#define SCENE_SIZE 5
-#define MOVING_TARGET_VELOCITY 1
-#define MIN_MOVING_TARGET_DURATION 3.0
-#define MAX_MOVING_TARGET_DURATION 6.0
+#include <fstream>
+#include <dynamic_reconfigure/server.h>
+#include "foot_control_xy/protocol_paramsConfig.h"
 
 class Protocol
 {
@@ -27,11 +22,13 @@ class Protocol
 	
 		enum DirectionID {PLUS_X = 0, MINUS_X = 1, PLUS_Y = 2, MINUS_Y = 3};
 
-		struct TargetInfo
+		struct DiscreteStrategyResult
 		{
-			Eigen::Vector3f position;
+			Eigen::Vector3f targetPosition;
+			int targetReached;
 			float elapsedTime;
 			float accuracy;
+			float normalizedTrajectoryLength;
 		};
 
 		//! Ros variables
@@ -48,37 +45,68 @@ class Protocol
 
 		//! Protocol variables
 		Eigen::Vector3f _chaserPosition;
+		Eigen::Vector3f _previousChaserPosition;
+		Eigen::Vector3f _initialChaserPosition;
 		Eigen::Vector3f _targetPosition;
-		std::vector<TargetInfo> _targetInfo;
+    double _startingTime;		
+    double _currentTime;
+    double _initialTime;
+    double _reachedTime;
+    double _keepingDirectionTime;
 		Strategy _strategy;
+    DirectionID _targetDirectionID;
+		std::vector<DiscreteStrategyResult> _dsResults;
+		std::vector<float> _trackingError;
+		float _trajectoryLength;
+		float _tempMovingTargetBoundary;
 
 		//! Boolean variables
 		bool _stop;
     bool _firstChaserPoseReceived;
+    bool _chaserReady;
     bool _targetReached;
     bool _setTargetToHome;
+    bool _firstTarget;
+    bool _timeout;
+
+    //! Dynamic reconfigure variable
+    float _discreteStrategyDuration;
+		float _targetToleranceRadius;
+		float _minTargetDistance;
+		float _maxTargetDistance;
+		float _targetElapsedTime;
+		float _targetToleranceTime;
+		float _continuousStrategyDuration;
+		float _movingTargetVelocity;
+		float _movingTargetBoundary;
+		float _minKeepingDirectionTime;
+		float _maxKeepingDirectionTime;
+
+		// Dynamic reconfigure (server+callback)
+		dynamic_reconfigure::Server<foot_control_xy::protocol_paramsConfig> _dynRecServer;
+		dynamic_reconfigure::Server<foot_control_xy::protocol_paramsConfig>::CallbackType _dynRecCallback;
+  	foot_control_xy::protocol_paramsConfig _config;
 
 		//! Other variables
-    double _currentTime;
-    double _initialTime;
-    double _reachedTime;
-    double _duration;
-
-    DirectionID _targetDirectionID;
-
-
+		std::string _subjectName;
+		uint32_t _sequenceID;
+		uint32_t _previousSequenceID;
+    std::ofstream _outputFile;   // File used to write raw experiment data and data result
     std::mutex _mutex;
+
 		static Protocol* me;
 		
 	public:
     
-		Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition, Strategy strategy);
+		Protocol(ros::NodeHandle &n, double frequency, Eigen::Vector3f initTargetPosition, Strategy strategy, std::string subjectName);
 		bool  init();
 		void run();
 	
 	private:
 	
 		static void stopNode(int sig);
+
+		bool isChaserReady();
 
 		void checkIfTargetReached();
 
@@ -94,11 +122,17 @@ class Protocol
 
 		bool checkIfOppositeDirection(int currentDirectionID, int newDirectionID);
 
+		void logData();
+
+		void checkTimeout();
+
+		void logResult();
 
 		void publishData();
 
 	  void updateChaserPose(const geometry_msgs::PoseStampedConstPtr& msg);
 
+    void dynamicReconfigureCallback(foot_control_xy::protocol_paramsConfig &config, uint32_t level);
 
 
 };

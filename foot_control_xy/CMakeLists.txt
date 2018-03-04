@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   std_msgs	
   message_generation
-  #dynamic_reconfigure
+  dynamic_reconfigure
   tf
 )
 
@@ -38,7 +38,7 @@ find_package(Eigen3 REQUIRED)
 generate_messages(DEPENDENCIES std_msgs)
 
 # Generate dynamic reconfigure parameters
-#generate_dynamic_reconfigure_options(cfg/preliminaryExperiment_params.cfg)
+generate_dynamic_reconfigure_options(cfg/protocol_params.cfg)
 
 catkin_package(
   INCLUDE_DIRS include
