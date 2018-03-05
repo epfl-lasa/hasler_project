@@ -1,13 +1,19 @@
 #include "PreliminaryExperiment.h"
+#include <ros/package.h>
+
 
 PreliminaryExperiment* PreliminaryExperiment::me = NULL;
 
-PreliminaryExperiment::PreliminaryExperiment(ros::NodeHandle &n, double frequency, bool calibration):
+PreliminaryExperiment::PreliminaryExperiment(ros::NodeHandle &n, double frequency, std::string subjectName, ExecutionMode executionMode, TrackingMode trackingMode, FittingMethod fittingMethod):
 _n(n),
 _loopRate(frequency),
 _dt(1.0f/frequency),
-_calibration(calibration)
+_subjectName(subjectName),
+_executionMode(executionMode),
+_trackingMode(trackingMode),
+_fittingMethod(fittingMethod)
 {
+
   me = this;
 
   _markersPosition.setConstant(0.0f);
@@ -23,7 +29,7 @@ _calibration(calibration)
   _markersCount = 0;
   _averageCount = 0;
   _currentSequenceID = 0;
-  _footData.resize(0);
+  _calibrationData.resize(0);
 
   _pcr.c = 0;
   _pcr.n.setConstant(0.0f);
@@ -45,9 +51,6 @@ _calibration(calibration)
   }
 
   _chaserPosition.setConstant(0.0f);
-
-  _fittingMethod = PLANE;
-
 }
 
 
@@ -67,30 +70,38 @@ bool PreliminaryExperiment::init()
 
   signal(SIGINT,PreliminaryExperiment::stopNode);
 
-  if(_calibration)
+  if(_executionMode == CALIBRATION)
   {
-    _outputFile.open("src/hasler_project/hp_preliminary_experiment/data.txt");
+    ROS_INFO("Calibration execution mode");
+    _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_data.txt");
+    if(!_outputFile.is_open())
+    {
+      ROS_ERROR("Cannot open file calibration result file");
+      return false;
+    }
   }
-  else
+  else if(_executionMode == GAME)
   { 
+    ROS_INFO("Game execution mode");
     if(_fittingMethod == PLANE)
     {
-      _inputFile.open("src/hasler_project/hp_preliminary_experiment/result_plane.txt");
+      _inputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_plane.txt");
     }
     else
     {
-      _inputFile.open("src/hasler_project/hp_preliminary_experiment/result_sphere.txt");
+      _inputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_sphere.txt");
     }
 
     if(!_inputFile.is_open())
     {
-      ROS_INFO("Cannot open file with calibration result");
+      ROS_ERROR("Cannot open calibration result file");
       return false;
     }
     else
     {
       if(_fittingMethod == PLANE)
       {
+        ROS_INFO("Use plane fitting method");
         _inputFile >> _pcr.c >> 
                       _pcr.n(0) >> _pcr.n(1) >> _pcr.n(2) >>
                       _pcr.u(0) >> _pcr.u(1) >> _pcr.u(2) >>
@@ -105,6 +116,8 @@ bool PreliminaryExperiment::init()
       }
       else if(_fittingMethod == SPHERE)
       {
+
+        ROS_INFO("Use sphere fitting method");
         _inputFile >> _scr.center(0) >> _scr.center(1) >> _scr.center(2) >>
                       _scr.radius >>
                       _scr.phiMean >>
@@ -121,6 +134,24 @@ bool PreliminaryExperiment::init()
       }
 
     }
+  }
+
+  if(_trackingMode == TOE_ONLY)
+  {
+    ROS_INFO("Tracking toe only !");
+    _nbMarkers = 1;
+  }
+  else if(_trackingMode == ALL_JOINTS)
+  {
+    ROS_INFO("Tracking all joints !");
+    _nbMarkers = TOTAL_NB_MARKERS;
+    // return false; // For now
+  }
+  else
+  {
+    ROS_ERROR("Tracking mode does not exist !");
+    return false;
+
   }
 
   if (_n.ok()) 
@@ -142,9 +173,14 @@ void PreliminaryExperiment::run()
 {
   while (!_stop) 
   {
+    if(_markersCount == _nbMarkers && _allMarkersPositionReceived == false)
+    {
+      ROS_INFO("All markers received !");
+      _allMarkersPositionReceived = true;
+    }
+
     if(_allMarkersPositionReceived)
     {
-
       _mutex.lock();
 
       // Compute angles from marker positions after initialization
@@ -152,36 +188,43 @@ void PreliminaryExperiment::run()
       {
         initializeData();
       }
-      else if(_initializationOK &&_calibration)
+      else 
       {
-        // Compute angles
-        // computeAngles();
+        switch(_executionMode)
+        {
+          case CALIBRATION:
+          {
+            // Compute angles
+            // computeAngles();
 
-        // Add plane fitting data
-        addPlaneFittingData();
+            // Add plane fitting data
+            addSurfaceFittingData();
 
-        // Log data
-        logCalibrationData();
+            // Log data
+            logCalibrationData();
+
+            break; 
+          }
+          case GAME:
+          {
+            // Compute chaser pose to be send to RVIZ
+            computeChaserPose();
+
+            // Publish data to topics
+            publishData();
+
+            break;
+          }
+          default:
+          {
+            break;
+          }
+        }
       }
-      else if(_initializationOK && !_calibration)
-      {
-        // Compute chaser pose to be send to RVIZ
-        computeChaserPose();
-      
-        // Publish data to topics
-        publishData();
-      }
-      
       _mutex.unlock();
     }
 
-    if(_markersCount == NB_MARKERS)
-    {
-      _allMarkersPositionReceived = true;
-    }
-
     ros::spinOnce();
-
     _loopRate.sleep();
   }
 
@@ -189,9 +232,8 @@ void PreliminaryExperiment::run()
   ros::spinOnce();
   _loopRate.sleep();
 
-  ros::shutdown();
 
-  if(_calibration)
+  if(_executionMode == CALIBRATION)
   {
     // Close file of calibration data
     if(_outputFile.is_open())
@@ -199,18 +241,32 @@ void PreliminaryExperiment::run()
       _outputFile.close();
     }
 
-    // Compute plane and sphere fitting
-    computePlane2();
+    if(_calibrationData.size()> 0)
+    {
+      ROS_INFO("Fit surfaces !");
 
-    computeSphere();
+      // Compute plane and sphere fitting
+      planeEigenSolverFitting();
+
+      sphereLeastSquareFitting();
+    }
+    else
+    {
+      ROS_INFO("No calibration data saved !");
+    }
 
     // Log calibration result
     logCalibrationResult();
   }
-  else
+  else if(_executionMode == GAME)
   {
-    _inputFile.close();
+    if(_inputFile.is_open())
+    {
+      _inputFile.close();
+    }
   }
+
+  ros::shutdown();
 }
 
 
@@ -229,11 +285,11 @@ void PreliminaryExperiment::initializeData()
     _initializationOK = false;
     if(_averageCount == 1)
     {
-      std::cerr << "init initialization" << std::endl;
+      ROS_INFO("Initialization starting ...");
     }
     else if(_averageCount == AVERAGE_COUNT)
     {
-      std::cerr << "end initialization" << std::endl;      
+      ROS_INFO("Initialization done !");
     }
   }
   else
@@ -280,7 +336,7 @@ void PreliminaryExperiment::computeChaserPose()
   {
     scaleX = 10.0f/_scr.arcLengthX;
     scaleY = 10.0f/_scr.arcLengthY;
-    Eigen::Vector3f proj = _scr.center+_scr.radius*(_markersPosition.col(TOE)-_scr.center).normalized();
+    Eigen::Vector3f proj = _scr.center+_scr.radius*(_R.transpose()*_markersPosition.col(TOE)-_scr.center).normalized();
     Eigen::Vector3f e = proj-_scr.center;
     float phi = std::atan2(e.segment(0,2).norm(),e(2));
     float theta = std::atan2(e(1),e(0));
@@ -288,9 +344,6 @@ void PreliminaryExperiment::computeChaserPose()
     _chaserPosition(0) = -scaleX*_scr.radius*std::sin(phi)*(theta-_scr.thetaMean);
     _chaserPosition(1) = -scaleY*_scr.radius*(phi-_scr.phiMean);
   }
-
-  std::cerr << _chaserPosition.transpose() << std::endl;
-
 }
 
 
@@ -311,26 +364,32 @@ void PreliminaryExperiment::publishData()
 
 void PreliminaryExperiment::logCalibrationData()
 {
-  // _outputFile << ros::Time::now() << " "
-  //             << _markersPosition.col(TOE).transpose() << " "
-  //             << _markersPosition.col(ANKLE).transpose() << " "
-  //             << _markersPosition.col(TIBIA).transpose() << " "
-  //             << _markersTracked.transpose() << " "
-  //             << _markersSequenceID(TOE) << std::endl;
 
-  _outputFile << ros::Time::now() << " "
+  if(_trackingMode == TOE_ONLY)
+  {
+    _outputFile << ros::Time::now() << " "
               << (_R.transpose()*_markersPosition.col(TOE)).transpose() << " "
-              // << _markersPosition.col(ANKLE).transpose() << " "
-              // << _markersPosition.col(TIBIA).transpose() << " "
               << _markersTracked.transpose() << " "
               << _markersSequenceID(TOE) << std::endl;
+    
+  }
+  else if(_trackingMode == ALL_JOINTS)
+  {
+    _outputFile << ros::Time::now() << " "
+                << _markersPosition.col(TOE).transpose() << " "
+                << _markersPosition.col(ANKLE).transpose() << " "
+                << _markersPosition.col(TIBIA).transpose() << " "
+                << _markersTracked.transpose() << " "
+                << _markersSequenceID(TOE) << std::endl; 
+  }
+
 }
 
 
 void PreliminaryExperiment::logCalibrationResult()
 {
 
-  _outputFile.open("src/hasler_project/hp_preliminary_experiment/result_plane.txt");
+  _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_plane.txt");
   
   _outputFile << _pcr.c << std::endl
               << _pcr.n.transpose() << std::endl
@@ -340,7 +399,7 @@ void PreliminaryExperiment::logCalibrationResult()
 
   _outputFile.close();
 
-  _outputFile.open("src/hasler_project/hp_preliminary_experiment/result_sphere.txt");
+  _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_sphere.txt");
 
   _outputFile << _scr.center.transpose() << std::endl
                 << _scr.radius << std::endl
@@ -353,20 +412,20 @@ void PreliminaryExperiment::logCalibrationResult()
 }
 
 
-void PreliminaryExperiment::addPlaneFittingData()
+void PreliminaryExperiment::addSurfaceFittingData()
 {
-  if(_markersTracked.sum()==NB_MARKERS)
+  if(_markersTracked.sum()==_nbMarkers)
   {
-    if(_footData.size()==0)
+    if(_calibrationData.size()==0)
     {
-      _footData.push_back(_markersPosition.col(TOE));  
+      _calibrationData.push_back(_markersPosition.col(TOE));  
       _currentSequenceID = _markersSequenceID(TOE);
     }
     else
     {
       if(_markersSequenceID(TOE)!= _currentSequenceID)
       {
-        _footData.push_back(_markersPosition.col(TOE));
+        _calibrationData.push_back(_markersPosition.col(TOE));
         _currentSequenceID = _markersSequenceID(TOE);
       }
     }
@@ -374,7 +433,7 @@ void PreliminaryExperiment::addPlaneFittingData()
 }
 
 
-void PreliminaryExperiment::computePlane()
+void PreliminaryExperiment::planeLeastSquareFitting()
 {
   // Plane equation: ax+by+c=z
   // A = [x1 y1 1
@@ -387,17 +446,17 @@ void PreliminaryExperiment::computePlane()
   // x = inv(A'A)*A'B
 
   std::cerr << "Start plane fitting ..." << std::endl;
-  std::cerr << "Number of points: " << _footData.size() <<std::endl;
+  std::cerr << "Number of points: " << _calibrationData.size() <<std::endl;
 
   Eigen::Matrix<float,Eigen::Dynamic,3> A;
-  A.resize(_footData.size(),3);
+  A.resize(_calibrationData.size(),3);
   Eigen::Vector3f x;
   Eigen::VectorXf B;
-  B.resize(_footData.size());
-  for(uint32_t k = 0; k < _footData.size(); k++)
+  B.resize(_calibrationData.size());
+  for(uint32_t k = 0; k < _calibrationData.size(); k++)
   {
-    A.row(k) << _footData[k](0),_footData[k](1), 1.0f;
-    B(k) = _footData[k](2);
+    A.row(k) << _calibrationData[k](0),_calibrationData[k](1), 1.0f;
+    B(k) = _calibrationData[k](2);
   }
 
   // A.col(0).array() -= A.col(0).mean();
@@ -414,6 +473,7 @@ void PreliminaryExperiment::computePlane()
   Eigen::Vector3f n;
   n << a, b, -1.0f;
   std::cerr << "Normal vector: " << n.normalized().transpose() << std::endl;
+
 
   float xmin = A.col(0).minCoeff();
   float xmax = A.col(0).maxCoeff();
@@ -453,10 +513,11 @@ void PreliminaryExperiment::computePlane()
   }
   _pcr.Pcenter = Pcenter;
 
+  std::cerr << "Plane fitting done !" << std::endl;
 }
 
 
-void PreliminaryExperiment::computePlane2()
+void PreliminaryExperiment::planeEigenSolverFitting()
 {
   // Plane equation: f(x,y,z) = u*x+v*y+w*z+c
   // Compute mean of data xmean
@@ -466,14 +527,14 @@ void PreliminaryExperiment::computePlane2()
   // c = -<n,xmean>
 
   std::cerr << "Start plane fitting ..." << std::endl;
-  std::cerr << "Number of points: " << _footData.size() <<std::endl;
+  std::cerr << "Number of points: " << _calibrationData.size() <<std::endl;
 
   Eigen::Matrix<float,Eigen::Dynamic,3> X;
-  X.resize(_footData.size(),3);
+  X.resize(_calibrationData.size(),3);
   
-  for(uint32_t k = 0; k < _footData.size(); k++)
+  for(uint32_t k = 0; k < _calibrationData.size(); k++)
   {
-    X.row(k) << (_R.transpose()*_footData[k]).transpose();
+    X.row(k) << (_R.transpose()*_calibrationData[k]).transpose();
   }
 
   Eigen::Vector3f Xmean;
@@ -481,12 +542,12 @@ void PreliminaryExperiment::computePlane2()
   Xmean(1) = X.col(1).array().mean();
   Xmean(2) = X.col(2).array().mean();
 
-  X.col(0) -= Xmean(0)*Eigen::VectorXf::Ones(_footData.size());
-  X.col(1) -= Xmean(1)*Eigen::VectorXf::Ones(_footData.size());
-  X.col(2) -= Xmean(2)*Eigen::VectorXf::Ones(_footData.size());
+  X.col(0) -= Xmean(0)*Eigen::VectorXf::Ones(_calibrationData.size());
+  X.col(1) -= Xmean(1)*Eigen::VectorXf::Ones(_calibrationData.size());
+  X.col(2) -= Xmean(2)*Eigen::VectorXf::Ones(_calibrationData.size());
 
   Eigen::Matrix3f C;
-  C = X.transpose()*X/_footData.size();
+  C = X.transpose()*X/_calibrationData.size();
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(C);
 
   if(solver.info() != Eigen::Success)
@@ -508,16 +569,51 @@ void PreliminaryExperiment::computePlane2()
   Eigen::Vector3f n = V.col(index); // smallest eigenvalue
   float c = -n.dot(Xmean);
 
-  float xmin = X.col(0).minCoeff()+Xmean(0);
-  float xmax = X.col(0).maxCoeff()+Xmean(0);
-  float zmin = X.col(2).minCoeff()+Xmean(2);
-  float zmax = X.col(2).maxCoeff()+Xmean(2);
-
+  // Find out if plaine is mainly vertical or horizontal
+  n.array().abs().maxCoeff(&index);
+  
   Eigen::Vector3f P1,P2,P3,P4;
-  P1 << xmax, (-n(0)*xmax-n(2)*zmin-c)/n(1), zmin;
-  P2 << xmin, (-n(0)*xmin-n(2)*zmin-c)/n(1), zmin;
-  P3 << xmin, (-n(0)*xmin-n(2)*zmax-c)/n(1), zmax;
-  P4 << xmax, (-n(0)*xmax-n(2)*zmax-c)/n(1), zmax;
+  if(index==0)
+  {
+    std::cerr << "Normal vector mainly along x axis" << std::endl;
+    float ymin = X.col(1).minCoeff()+Xmean(1);
+    float ymax = X.col(1).maxCoeff()+Xmean(1);
+    float zmin = X.col(2).minCoeff()+Xmean(2);
+    float zmax = X.col(2).maxCoeff()+Xmean(2);
+    P1 << (-n(1)*ymax-n(2)*zmin-c)/n(0), ymax, zmin;
+    P2 << (-n(1)*ymin-n(2)*zmin-c)/n(0), ymin, zmin;
+    P3 << (-n(1)*ymin-n(2)*zmax-c)/n(0), ymin, zmax;
+    P4 << (-n(1)*ymax-n(2)*zmax-c)/n(0), ymax, zmax;
+
+  }
+  else if(index==1)
+  {
+    std::cerr << "Normal vector mainly along y axis" << std::endl;
+    float xmin = X.col(0).minCoeff()+Xmean(0);
+    float xmax = X.col(0).maxCoeff()+Xmean(0);
+    float zmin = X.col(2).minCoeff()+Xmean(2);
+    float zmax = X.col(2).maxCoeff()+Xmean(2);
+    P1 << xmax, (-n(0)*xmax-n(2)*zmin-c)/n(1), zmin;
+    P2 << xmin, (-n(0)*xmin-n(2)*zmin-c)/n(1), zmin;
+    P3 << xmin, (-n(0)*xmin-n(2)*zmax-c)/n(1), zmax;
+    P4 << xmax, (-n(0)*xmax-n(2)*zmax-c)/n(1), zmax;
+  }
+  else if(index == 2)
+  {
+    std::cerr << "Normal vector mainly along z axis" << std::endl;
+    float xmin = X.col(0).minCoeff()+Xmean(0);
+    float xmax = X.col(0).maxCoeff()+Xmean(0);
+    float ymin = X.col(1).minCoeff()+Xmean(1);
+    float ymax = X.col(1).maxCoeff()+Xmean(1);
+    P1 << xmax, ymin, (-n(0)*xmax-n(1)*ymin-c)/n(2);
+    P2 << xmin, ymin, (-n(0)*xmin-n(1)*ymin-c)/n(2);
+    P3 << xmin, ymax, (-n(0)*xmin-n(1)*ymax-c)/n(2);
+    P4 << xmax, ymax, (-n(0)*xmax-n(1)*ymax-c)/n(2);
+  }
+  else
+  {
+    std::cerr << "There is a problem" << std::endl;
+  }
 
   std::cerr << "Plane corners:" << std::endl;
   std::cerr << "P1: " << P1.transpose() << std::endl;
@@ -537,11 +633,13 @@ void PreliminaryExperiment::computePlane2()
 
   _pcr.Pcenter = Pcenter;
 
+  std::cerr << "Plane fitting done !" << std::endl;
+
 }
 
 
 
-void PreliminaryExperiment::computeSphere()
+void PreliminaryExperiment::sphereLeastSquareFitting()
 {
   // Sphere equation: (x-x0)^2+(y-y0)^2+(z-z0)^2 = R^2
   // A = [2x1 2y1 2z1 1
@@ -553,18 +651,19 @@ void PreliminaryExperiment::computeSphere()
   // B = [x1^2+y1^2+z1^2 x2^2+y2^2+z2^2 - xn^2+yn^2+zn^2]'
   // x = inv(A'A)*A'B
 
-  std::cerr << "Start plane fitting ..." << std::endl;
-  std::cerr << "Number of points: " << _footData.size() <<std::endl;
+  std::cerr << "Start sphere fitting ..." << std::endl;
+  std::cerr << "Number of points: " << _calibrationData.size() <<std::endl;
 
   Eigen::Matrix<float,Eigen::Dynamic,4> A;
-  A.resize(_footData.size(),4);
+  A.resize(_calibrationData.size(),4);
   Eigen::Vector4f x;
   Eigen::VectorXf B;
-  B.resize(_footData.size());
-  for(uint32_t k = 0; k < _footData.size(); k++)
+  B.resize(_calibrationData.size());
+  for(uint32_t k = 0; k < _calibrationData.size(); k++)
   {
-    A.row(k) << 2.0f*_footData[k](0), 2.0f*_footData[k](1), 2.0f*_footData[k](2), 1.0f;
-    B(k) = _footData[k].squaredNorm();
+    _calibrationData[k] = _R.transpose()*_calibrationData[k];
+    A.row(k) << 2.0f*_calibrationData[k](0), 2.0f*_calibrationData[k](1), 2.0f*_calibrationData[k](2), 1.0f;
+    B(k) = _calibrationData[k].squaredNorm();
   }
 
   // std::cout << A << std::endl;
@@ -583,13 +682,13 @@ void PreliminaryExperiment::computeSphere()
 
   // Find phi theta range in spherical coordinates
   Eigen::VectorXf phi, theta;
-  phi.resize(_footData.size());
-  theta.resize(_footData.size());
+  phi.resize(_calibrationData.size());
+  theta.resize(_calibrationData.size());
 
-  for(int k = 0; k < _footData.size(); k++)
+  for(int k = 0; k < _calibrationData.size(); k++)
   {
     Eigen::Vector3f proj;
-    proj = center+radius*(_footData[k]-center).normalized();
+    proj = center+radius*(_calibrationData[k]-center).normalized();
     Eigen::Vector3f e = proj-center;
     phi(k) = std::atan2(e.segment(0,2).norm(),e(2));
     theta(k) = std::atan2(e(1),e(0));
@@ -607,15 +706,23 @@ void PreliminaryExperiment::computeSphere()
 
   float dtheta = thetaMax-thetaMin;
   float dphi = phiMax-phiMin;
-  float arcLengthX = std::min(rho1*dtheta,rho2*dtheta);
+  float arcLengthX = (rho1*dtheta+rho2*dtheta)/2.0f;
   float arcLengthY = radius*dphi;
 
+  std::cerr << "Center: " << std::endl;
+  std::cerr << center.transpose() << std::endl;
+  std::cerr << "Radius: " << radius << std::endl;
+  std::cerr << "Phi mean: " << phiMean << " Theta mean: " << thetaMean << std::endl;
+  std::cerr << "arcLengthX: " << arcLengthX << "arcLengthY: " << arcLengthY << std::endl;
   _scr.center = center;
   _scr.radius = radius;
   _scr.phiMean = phiMean;
   _scr.thetaMean = thetaMean;
   _scr.arcLengthX = arcLengthX;
   _scr.arcLengthY = arcLengthY;
+
+  std::cerr << "Sphere fitting done !" << std::endl;
+
 }
 
 
@@ -625,7 +732,7 @@ void PreliminaryExperiment::updateToePose(const geometry_msgs::PoseStamped::Cons
 
   if(!firstToe)
   {
-    std::cerr << "Get first toe" << std::endl;
+    ROS_INFO("Get first toe");
     _markersCount++;
     firstToe = true;
   }
@@ -643,7 +750,7 @@ void PreliminaryExperiment::updateHeelPose(const geometry_msgs::PoseStamped::Con
 
   if(!firstHeel)
   {
-    std::cerr << "Get first heel" << std::endl;
+    ROS_INFO("Get first heel");
     _markersCount++;
     firstHeel = true;
   }
@@ -660,7 +767,7 @@ void PreliminaryExperiment::updateAnklePose(const geometry_msgs::PoseStamped::Co
   if(!firstAnkle)
   {
 
-    std::cerr << "Get first ankle" << std::endl;
+    ROS_INFO("Get first ankle");
     _markersCount++;
     firstAnkle = true;
   }
@@ -676,7 +783,7 @@ void PreliminaryExperiment::updateTibiaPose(const geometry_msgs::PoseStamped::Co
   static bool firstTibia = false;
   if(!firstTibia)
   {
-    std::cerr << "Get first tibia" << std::endl;
+    ROS_INFO("Get first tibia");
     _markersCount++;
     firstTibia = true;
   }
@@ -692,7 +799,7 @@ void PreliminaryExperiment::updateKneePose(const geometry_msgs::PoseStamped::Con
   static bool firstKnee = false;
   if(!firstKnee)
   {
-    std::cerr << "Get first knee" << std::endl;
+    ROS_INFO("Get first knee");
     _markersCount++;
     firstKnee = true;
   }
@@ -708,7 +815,7 @@ void PreliminaryExperiment::updateThighPose(const geometry_msgs::PoseStamped::Co
   static bool firstThigh = false;
   if(!firstThigh)
   {
-    std::cerr << "Get first thigh" << std::endl;
+    ROS_INFO("Get first thigh");
     _markersCount++;
     firstThigh = true;
   }
@@ -716,6 +823,21 @@ void PreliminaryExperiment::updateThighPose(const geometry_msgs::PoseStamped::Co
   _markersSequenceID(THIGH) = msg->header.seq;
   _markersTracked(THIGH) = checkTrackedMarker(_markersPosition.col(THIGH)(0),msg->pose.position.x);
   _markersPosition.col(THIGH) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+}
+
+
+void PreliminaryExperiment::updateHipPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+  static bool firstHip = false;
+  if(!firstHip)
+  {
+    ROS_INFO("Get first hip");
+    _markersCount++;
+    firstHip = true;
+  }
+
+  _markersPosition.col(HIP) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+  _markersSequenceID(HIP) = msg->header.seq;
 }
 
 
@@ -730,19 +852,4 @@ uint16_t PreliminaryExperiment::checkTrackedMarker(float a, float b)
     return 1;
 
   }
-}
-
-
-void PreliminaryExperiment::updateHipPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-  static bool firstHip = false;
-  if(!firstHip)
-  {
-    std::cerr << "Get first hip" << std::endl;
-    _markersCount++;
-    firstHip = true;
-  }
-
-  _markersPosition.col(HIP) << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-  _markersSequenceID(HIP) = msg->header.seq;
 }

@@ -15,14 +15,25 @@
 #include <dynamic_reconfigure/server.h>
 // #include "hp_preliminary_experiment/preliminaryExperiment_paramsConfig.h"
 
-#define NB_MARKERS 6
+#define TOTAL_NB_MARKERS 6
 #define AVERAGE_COUNT 100
 
 class PreliminaryExperiment
 {
-	private:
+public:
 
+    enum ExecutionMode {CALIBRATION = 0, GAME = 1};
+
+    enum TrackingMode {TOE_ONLY = 0, ALL_JOINTS = 1}; 
+    
     enum FittingMethod {PLANE = 0, SPHERE = 1};
+
+
+  private:
+
+    enum MarkersID {HIP = 6, THIGH = 5, KNEE = 4, TIBIA = 3, ANKLE = 2, HEEL = 1, TOE = 0};
+
+
 
     struct planeCalibrationResult
     {
@@ -32,7 +43,6 @@ class PreliminaryExperiment
       Eigen::Vector3f v;
       Eigen::Vector3f Pcenter;
     };
-
 
     struct sphereCalibrationResult
     {
@@ -62,12 +72,12 @@ class PreliminaryExperiment
     // Subsciber and publisher messages declaration
     geometry_msgs::PoseStamped _msgChaserPose;
 
-    Eigen::Matrix<float,3,NB_MARKERS> _markersPosition;
-    Eigen::Matrix<float,3,NB_MARKERS> _markersPosition0;
-    Eigen::Matrix<uint32_t,NB_MARKERS,1> _markersSequenceID;
-    Eigen::Matrix<uint16_t,NB_MARKERS,1> _markersTracked;
+    // Optitrack tracking variables
+    Eigen::Matrix<float,3,TOTAL_NB_MARKERS> _markersPosition;
+    Eigen::Matrix<float,3,TOTAL_NB_MARKERS> _markersPosition0;
+    Eigen::Matrix<uint32_t,TOTAL_NB_MARKERS,1> _markersSequenceID;
+    Eigen::Matrix<uint16_t,TOTAL_NB_MARKERS,1> _markersTracked;
     Eigen::Matrix3f _R;
-    enum MarkersID {HIP = 6, THIGH = 5, KNEE = 4, TIBIA = 3, ANKLE = 2, HEEL = 1, TOE = 0};
 
     // Boolean variables
     bool _allMarkersPositionReceived;
@@ -76,41 +86,44 @@ class PreliminaryExperiment
     bool _calibration;
     bool _facingScreen;
 
-    uint16_t _markersCount;
-    uint16_t _averageCount;
+    // Calibration variables
+    planeCalibrationResult _pcr;
+    sphereCalibrationResult _scr;
+    FittingMethod _fittingMethod;
+    std::vector<Eigen::Vector3f> _calibrationData;
 
-    uint32_t _currentSequenceID;
-
-    std::vector<Eigen::Vector3f> _footData;
-
+    // Game variables
     Eigen::Vector3f _chaserPosition;
 
     // Other variables
-    static PreliminaryExperiment* me;
+    std::string _subjectName;
+    ExecutionMode _executionMode;
+    TrackingMode _trackingMode;
+    uint16_t _nbMarkers;
+    uint16_t _markersCount;
+    uint16_t _averageCount;
+    uint32_t _currentSequenceID;
 
+    static PreliminaryExperiment* me;
     std::mutex _mutex;
 
     std::ofstream _outputFile;   // File used to write calibration data and results
     std::ifstream _inputFile;    // File used to read calibration results
 
-    planeCalibrationResult _pcr;
-    sphereCalibrationResult _scr;
-
-    FittingMethod _fittingMethod;
 
   public:
   
-    PreliminaryExperiment(ros::NodeHandle &n, double frequency, bool calibration);
+    PreliminaryExperiment(ros::NodeHandle &n, double frequency, std::string subjectName, ExecutionMode executionMode, TrackingMode trackingMode, FittingMethod fittingMethod);
 
     bool init();
 
     void run();
 
-    void computePlane();
+    void planeLeastSquareFitting();
 
-    void computePlane2();
+    void planeEigenSolverFitting();
 
-    void computeSphere();
+    void sphereLeastSquareFitting();
     
   private:
         
@@ -128,7 +141,7 @@ class PreliminaryExperiment
 
     void logCalibrationResult();
 
-    void addPlaneFittingData();
+    void addSurfaceFittingData();
 
     void updateToePose(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
