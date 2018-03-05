@@ -12,26 +12,30 @@ int main(int argc, char **argv)
 
 
   Protocol::Strategy strategy = Protocol::Strategy::DISCRETE;
-  if (argc < 2)
+  std::string subjectName;
+
+  if (argc != 10)
   {
-    ROS_ERROR("You are missing arguments: 1. (Strategy) -s d(discrete) or c(continuous)  2. (Position) -x # -y # -z");
+    ROS_ERROR("You are missing arguments: 1. subject name 2. (Strategy) -s d(discrete) or c(continuous)  3. (Position) -x # -y # -z #");
     return 0;
   }
   else 
   {
-    if(std::string(argv[2]) == "d")
+    subjectName = std::string(argv[1]);
+
+    if(std::string(argv[3]) == "d")
     {
       strategy = Protocol::Strategy::DISCRETE;
     }
-    else if(std::string(argv[2]) == "c")
+    else if(std::string(argv[3]) == "c")
     {
       strategy = Protocol::Strategy::CONTINUOUS;
     }
 
-    initTargetPosition << atof(argv[4]),atof(argv[6]),atof(argv[8]);
+    initTargetPosition << atof(argv[5]),atof(argv[7]),atof(argv[9]);
   }
 
-  Protocol protocol(n,frequency,initTargetPosition,strategy);
+  Protocol protocol(n,frequency,initTargetPosition,strategy,subjectName);
 
   if (!protocol.init()) 
   {
