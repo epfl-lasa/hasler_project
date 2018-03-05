@@ -31,6 +31,19 @@ _calibration(calibration)
   _pcr.v << 0.0f,1.0f,0.0f;
   _pcr.Pcenter.setConstant(0.0f);
 
+  if(_facingScreen)
+  {
+    _R << -1.0f, 0.0f, 0.0f,
+          0.0f, -1.0f, 0.0f,
+          0.0f, 0.0f, 1.0f;
+  }
+  else
+  {
+    _R << 0.0f, 1.0f, 0.0f,
+          -1.0f, 0.0f, 0.0f,
+          0.0f, 0.0f, 1.0f;
+  }
+
   _chaserPosition.setConstant(0.0f);
 
   _fittingMethod = PLANE;
@@ -187,7 +200,7 @@ void PreliminaryExperiment::run()
     }
 
     // Compute plane and sphere fitting
-    computePlane();
+    computePlane2();
 
     computeSphere();
 
@@ -257,7 +270,7 @@ void PreliminaryExperiment::computeChaserPose()
     scaleY = 10.0f/_pcr.v.norm();
 
     Eigen::Vector3f temp, tempProj;
-    temp = _markersPosition.col(TOE);
+    temp = _R.transpose()*_markersPosition.col(TOE);
     tempProj = temp-(temp.dot(_pcr.n)+_pcr.c)*_pcr.n/_pcr.n.squaredNorm();
 
     _chaserPosition(0) = scaleX*(tempProj-_pcr.Pcenter).dot(u);
@@ -306,7 +319,7 @@ void PreliminaryExperiment::logCalibrationData()
   //             << _markersSequenceID(TOE) << std::endl;
 
   _outputFile << ros::Time::now() << " "
-              << _markersPosition.col(TOE).transpose() << " "
+              << (_R.transpose()*_markersPosition.col(TOE)).transpose() << " "
               // << _markersPosition.col(ANKLE).transpose() << " "
               // << _markersPosition.col(TIBIA).transpose() << " "
               << _markersTracked.transpose() << " "
@@ -441,6 +454,91 @@ void PreliminaryExperiment::computePlane()
   _pcr.Pcenter = Pcenter;
 
 }
+
+
+void PreliminaryExperiment::computePlane2()
+{
+  // Plane equation: f(x,y,z) = u*x+v*y+w*z+c
+  // Compute mean of data xmean
+  // Compute covariance matrix of X-xmean
+  // Compute eigen value decomposition
+  // The eigenvalue with the shortest value is the one corresponding to the normal vector
+  // c = -<n,xmean>
+
+  std::cerr << "Start plane fitting ..." << std::endl;
+  std::cerr << "Number of points: " << _footData.size() <<std::endl;
+
+  Eigen::Matrix<float,Eigen::Dynamic,3> X;
+  X.resize(_footData.size(),3);
+  
+  for(uint32_t k = 0; k < _footData.size(); k++)
+  {
+    X.row(k) << (_R.transpose()*_footData[k]).transpose();
+  }
+
+  Eigen::Vector3f Xmean;
+  Xmean(0) = X.col(0).array().mean();
+  Xmean(1) = X.col(1).array().mean();
+  Xmean(2) = X.col(2).array().mean();
+
+  X.col(0) -= Xmean(0)*Eigen::VectorXf::Ones(_footData.size());
+  X.col(1) -= Xmean(1)*Eigen::VectorXf::Ones(_footData.size());
+  X.col(2) -= Xmean(2)*Eigen::VectorXf::Ones(_footData.size());
+
+  Eigen::Matrix3f C;
+  C = X.transpose()*X/_footData.size();
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(C);
+
+  if(solver.info() != Eigen::Success)
+  {
+    std::cerr << "Cannot find eigen decomposition !" << std::endl;
+  }
+
+  Eigen::Vector3f lambda = solver.eigenvalues();
+  Eigen::Matrix3f V = solver.eigenvectors();
+
+  std::cerr << "Eigenvalues: " << std::endl;
+  std::cerr << lambda.transpose() << std::endl;
+  std::cerr << "Eigenvectors: " << std::endl;
+  std::cerr << V << std::endl;
+
+  Eigen::Vector3f::Index index;
+  lambda.array().abs().minCoeff(&index);
+  
+  Eigen::Vector3f n = V.col(index); // smallest eigenvalue
+  float c = -n.dot(Xmean);
+
+  float xmin = X.col(0).minCoeff()+Xmean(0);
+  float xmax = X.col(0).maxCoeff()+Xmean(0);
+  float zmin = X.col(2).minCoeff()+Xmean(2);
+  float zmax = X.col(2).maxCoeff()+Xmean(2);
+
+  Eigen::Vector3f P1,P2,P3,P4;
+  P1 << xmax, (-n(0)*xmax-n(2)*zmin-c)/n(1), zmin;
+  P2 << xmin, (-n(0)*xmin-n(2)*zmin-c)/n(1), zmin;
+  P3 << xmin, (-n(0)*xmin-n(2)*zmax-c)/n(1), zmax;
+  P4 << xmax, (-n(0)*xmax-n(2)*zmax-c)/n(1), zmax;
+
+  std::cerr << "Plane corners:" << std::endl;
+  std::cerr << "P1: " << P1.transpose() << std::endl;
+  std::cerr << "P2: " << P2.transpose() << std::endl;
+  std::cerr << "P3: " << P3.transpose() << std::endl;
+  std::cerr << "P4: " << P4.transpose() << std::endl;
+
+  Eigen::Vector3f Pcenter;
+  
+  Pcenter = (P1+P2+P3+P4)/4.0f;
+  std::cerr << "Plane center: " << Pcenter.transpose() << std::endl;
+
+  _pcr.c = c;
+  _pcr.n = n;
+  _pcr.u  = P1-P2;
+  _pcr.v  = P3-P2;
+
+  _pcr.Pcenter = Pcenter;
+
+}
+
 
 
 void PreliminaryExperiment::computeSphere()

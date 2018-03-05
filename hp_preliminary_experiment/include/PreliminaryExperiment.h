@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <vector>
 #include "Eigen/Eigen"
+#include <Eigen/Eigenvalues> 
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "std_msgs/Float32.h"
@@ -65,6 +66,7 @@ class PreliminaryExperiment
     Eigen::Matrix<float,3,NB_MARKERS> _markersPosition0;
     Eigen::Matrix<uint32_t,NB_MARKERS,1> _markersSequenceID;
     Eigen::Matrix<uint16_t,NB_MARKERS,1> _markersTracked;
+    Eigen::Matrix3f _R;
     enum MarkersID {HIP = 6, THIGH = 5, KNEE = 4, TIBIA = 3, ANKLE = 2, HEEL = 1, TOE = 0};
 
     // Boolean variables
@@ -105,6 +107,8 @@ class PreliminaryExperiment
     void run();
 
     void computePlane();
+
+    void computePlane2();
 
     void computeSphere();
     
