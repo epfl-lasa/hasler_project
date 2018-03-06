@@ -1,7 +1,8 @@
 <launch>
-	<arg name="pos_init" default="-x 1.0 -y 1.0 -z 0.5"/>
-	<arg name="strategy" default="-s d"/>
+	<arg name="subjectName" default="walid"/>
+	<arg name="strategy" default="d"/>
+	<arg name="initialPose" default="-x 2.0 -y 2.0 -z 0.0"/>
 	<node respawn="true" pkg="foot_control_xy"
-		type="protocol" name="protocol_trial" args="$(arg strategy) $(arg pos_init)">
+		type="protocol" name="protocol_trial" args="$(arg subjectName) -s $(arg strategy) $(arg initialPose)">
 	</node>
 </launch>

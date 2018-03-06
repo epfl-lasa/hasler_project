@@ -2,6 +2,7 @@
 #define __PROTOCOL_H__
 
 #include "ros/ros.h"
+#include <ros/package.h>
 #include <boost/shared_ptr.hpp>
 #include <tf/tf.h>
 #include <mutex>

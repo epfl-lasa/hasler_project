@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "protocol");
   ros::NodeHandle n;
-  float frequency = 100.0f;
+  float frequency = 200.0f;
 
 
   Eigen::Vector3f initTargetPosition;
@@ -30,6 +30,11 @@ int main(int argc, char **argv)
     else if(std::string(argv[3]) == "c")
     {
       strategy = Protocol::Strategy::CONTINUOUS;
+    }
+    else
+    {
+      ROS_ERROR("Wrong strategy arguments, the command line arguments should be: 1. subject name 2. (Strategy) -s d(discrete) or c(continuous)  3. (Position) -x # -y # -z #");
+      return 0;
     }
 
     initTargetPosition << atof(argv[5]),atof(argv[7]),atof(argv[9]);

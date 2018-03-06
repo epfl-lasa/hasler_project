@@ -9,6 +9,8 @@
 	<arg name="enableGazebo" default="true"/>
 	<arg name="enableJoystick" default="false"/>
 	<arg name="enableProtocol" default="false"/>
+	<arg name="subjectName" default="walid"/>
+	<arg name="strategy" default="d"/>
 
 	<group ns="chaser">
 		<arg name="model" default="$(find foot_control_xy)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/> 
@@ -30,7 +32,10 @@
 	</group>
 
 	<group if="$(arg enableProtocol)">
-		<include file="$(find foot_control_xy)/launch/includes/protocol.launch.xml"/>
+		<include file="$(find foot_control_xy)/launch/includes/protocol.launch.xml">
+			<arg name="subjectName" value="$(arg subjectName)"/>
+			<arg name="strategy" value="$(arg strategy)"/>
+		</include>
 	</group>
 	
 	<group if="$(arg enableGazebo)">

@@ -9,6 +9,7 @@
 #include <vector>
 #include "Eigen/Eigen"
 #include "ros/ros.h"
+#include <ros/package.h>
 #include "geometry_msgs/PoseStamped.h"
 #include "std_msgs/Float32.h"
 #include <dynamic_reconfigure/server.h>
@@ -20,9 +21,16 @@
 
 class KinectRecording
 {
+  public:
+    enum ExecutionMode {CALIBRATION = 0, GAME = 1};
+
+    enum FittingMethod {PLANE = 0, SPHERE = 1};
+
 	private:
 
-    struct CalibrationResult
+    enum MarkersID {PC = 3, PB = 2, PA = 1, TOE = 0};
+
+    struct planeCalibrationResult
     {
       float c;
       Eigen::Vector3f n;
@@ -30,6 +38,19 @@ class KinectRecording
       Eigen::Vector3f v;
       Eigen::Vector3f Pcenter;
       Eigen::Matrix3f R;
+
+    };
+
+    struct sphereCalibrationResult
+    {
+      Eigen::Vector3f center;
+      float radius;
+      float phiMean;
+      float thetaMean;
+      float arcLengthX;
+      float arcLengthY;
+      Eigen::Matrix3f R;
+
     };
 
     // ROS variables
@@ -44,53 +65,57 @@ class KinectRecording
     // Subsciber and publisher messages declaration
     geometry_msgs::PoseStamped _msgChaserPose;
 
+    
     Eigen::Matrix<float,3,NB_MARKERS> _markersPosition;
     Eigen::Matrix<float,3,NB_MARKERS> _markersPosition0;
     Eigen::Matrix<uint32_t,NB_MARKERS,1> _markersSequenceID;
     Eigen::Matrix<uint16_t,NB_MARKERS,1> _markersTracked;
-    enum MarkersID {PC = 3, PB = 2, PA = 1, TOE = 0};
 
     // Boolean variables
     bool _allMarkersReceived;
     bool _stop;
     bool _initializationOK;
-    bool _calibration;
-    bool _facingScreen;
 
-    uint16_t _markerCount;
-    uint16_t _averageCount;
-    uint32_t _nbData;
+    // Calibration variables
+    planeCalibrationResult _pcr;
+    sphereCalibrationResult _scr;
+    FittingMethod _fittingMethod;
+    std::vector<Eigen::Vector3f> _calibrationData;
 
-    uint32_t _currentSequenceID;
 
-    std::vector<Eigen::Vector3f> _surfaceData;
+    Eigen::Matrix3f _R;
 
+    // Game variables
     Eigen::Vector3f _chaserPosition;
 
     // Other variables
-    static KinectRecording* me;
+    std::string _subjectName;
+    ExecutionMode _executionMode;
+    SGF::SavitzkyGolayFilter _filter;
+    uint16_t _markerCount;
+    uint16_t _averageCount;
+    uint32_t _currentSequenceID;
 
+    static KinectRecording* me;
     std::mutex _mutex;
 
     std::ofstream _outputFile;   // File used to write calibration data and results
     std::ifstream _inputFile;    // File used to read calibration results
 
-    CalibrationResult _cr;
-
-    Eigen::Matrix3f _R;
-
-    SGF::SavitzkyGolayFilter _filter;
-
   public:
   
-    KinectRecording(ros::NodeHandle &n, double frequency, bool calibration);
+    KinectRecording(ros::NodeHandle &n, double frequency, std::string subjectName, ExecutionMode executionMode, FittingMethod fittingMethod);
 
     bool init();
 
     void run();
-
-    void computePlane();
     
+    void planeLeastSquareFitting();
+
+    void planeEigenSolverFitting();
+
+    void sphereLeastSquareFitting();
+
   private:
         
     static void stopNode(int sig);
@@ -105,7 +130,7 @@ class KinectRecording
 
     void logCalibrationResult();
 
-    void addPlaneFittingData();
+    void addSurfaceFittingData();
 
     void updateMarkersPose(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& msg);
 

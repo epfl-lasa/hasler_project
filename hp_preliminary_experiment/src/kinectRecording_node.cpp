@@ -6,22 +6,48 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   float frequency = 30.0f;
 
-  bool calibration = false;
+  std::string subjectName;
+  KinectRecording::ExecutionMode executionMode;
+  KinectRecording::FittingMethod fittingMethod;
 
-  //If input argument is different > 0 do calibration else not do calibration
-  if(argc == 2)
+  if(argc == 6)
   {
-    if(atoi(argv[1]))
+    subjectName = std::string(argv[1]);
+
+    if(std::string(argv[3]) == "c")
     {
-      calibration = true;
+      executionMode = KinectRecording::ExecutionMode::CALIBRATION;
+    }
+    else if(std::string(argv[3]) == "g")
+    {
+      executionMode = KinectRecording::ExecutionMode::GAME;
     }
     else
     {
-      calibration = false;
+      ROS_ERROR("Wrong mode arguments, the command line arguments should be: 1. Subject name 2. (Execution Mode) -e c(calibration) or g(game) 3. (Fitting method used for game) -f p(plane) or s(sphere)");
+      return 0;
+    }
+
+    if(std::string(argv[5]) == "p")
+    {
+      fittingMethod = KinectRecording::FittingMethod::PLANE;
+    }
+    else if(std::string(argv[5]) == "s")
+    {
+      fittingMethod = KinectRecording::FittingMethod::SPHERE;
+    }
+    else
+    {
+      ROS_ERROR("Wrong fitting method arguments, the command line arguments should be: 1. Subject name 2. (Execution Mode) -e c(calibration) or g(game) 3. (Fitting method used for game) -f p(plane) or s(sphere)");
     }
   }
+  else
+  {
+    ROS_ERROR("You are missing arguments: 1. Subject name 2. (Execution Mode) -e c(calibration) or g(game) 3. (Fitting method used for game) -f p(plane) or s(sphere)");
+    return 0;  
+  }
 
-  KinectRecording experiment(n,frequency,calibration);
+  KinectRecording experiment(n,frequency,subjectName,executionMode,fittingMethod);
 
   if (!experiment.init()) 
   {

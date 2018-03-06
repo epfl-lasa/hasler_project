@@ -54,11 +54,22 @@ bool Protocol::init()
 
   if(_strategy==DISCRETE)
   {
-    _outputFile.open("src/hasler_project/foot_control_xy/"+_subjectName+"_discrete_strategy_data.txt");
+    _outputFile.open(ros::package::getPath("foot_control_xy")+"/data/"+_subjectName+"_discrete_strategy_data.txt");
   }
   else if(_strategy == CONTINUOUS)
   {
-    _outputFile.open("src/hasler_project/foot_control_xy/"+_subjectName+"_continuous_strategy_data.txt");
+    _outputFile.open(ros::package::getPath("foot_control_xy")+"/data/"+_subjectName+"_continuous_strategy_data.txt");
+  }
+  else
+  {
+    ROS_ERROR("Strategy does not exist !");
+    return false;
+  }
+
+  if(!_outputFile.is_open())
+  {
+    ROS_ERROR("Cannot open file strategy data file");
+    return false;
   }
 
   if (_n.ok()) 
@@ -127,12 +138,12 @@ void Protocol::run()
         checkTimeout(); 
       }
 
-      // Publish data
-      publishData();
       
       _mutex.unlock();
     }
 
+    // Publish data
+    publishData();
 
     ros::spinOnce();
     _loopRate.sleep();
@@ -402,7 +413,7 @@ void Protocol::logResult()
 {
   if(_strategy == DISCRETE)
   {
-    _outputFile.open("src/hasler_project/foot_control_xy/"+_subjectName+"_discrete_strategy_result.txt");
+    _outputFile.open(ros::package::getPath("foot_control_xy")+"/data/"+_subjectName+"_discrete_strategy_result.txt");
     for(int k = 0; k < _dsResults.size(); k++)
     {
       _outputFile << _dsResults[k].targetPosition.transpose() << " "
@@ -415,13 +426,13 @@ void Protocol::logResult()
   }
   else if(_strategy == CONTINUOUS)
   {
-    _outputFile.open("src/hasler_project/foot_control_xy/"+_subjectName+"_continuous_strategy_result.txt");
+    _outputFile.open(ros::package::getPath("foot_control_xy")+"/data/"+_subjectName+"_continuous_strategy_result.txt");
 
     if(_trackingError.size()>0)
     {
       Eigen::VectorXf temp;
       temp.resize(_trackingError.size());
-      memcpy(temp.data(),_trackingError.data(),_trackingError.size());
+      memcpy(temp.data(),_trackingError.data(),_trackingError.size()*sizeof(float));
       _outputFile << std::sqrt(temp.cwiseAbs2().mean()) << std::endl;
     }
 

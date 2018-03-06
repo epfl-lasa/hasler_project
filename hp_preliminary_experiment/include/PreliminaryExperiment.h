@@ -10,9 +10,11 @@
 #include "Eigen/Eigen"
 #include <Eigen/Eigenvalues> 
 #include "ros/ros.h"
+#include <ros/package.h>
 #include "geometry_msgs/PoseStamped.h"
 #include "std_msgs/Float32.h"
 #include <dynamic_reconfigure/server.h>
+
 // #include "hp_preliminary_experiment/preliminaryExperiment_paramsConfig.h"
 
 #define TOTAL_NB_MARKERS 6

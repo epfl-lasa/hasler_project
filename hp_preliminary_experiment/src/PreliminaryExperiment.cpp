@@ -73,7 +73,7 @@ bool PreliminaryExperiment::init()
   if(_executionMode == CALIBRATION)
   {
     ROS_INFO("Calibration execution mode");
-    _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_data.txt");
+    _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/data/"+_subjectName+"_calibration_data.txt");
     if(!_outputFile.is_open())
     {
       ROS_ERROR("Cannot open file calibration result file");
@@ -85,11 +85,11 @@ bool PreliminaryExperiment::init()
     ROS_INFO("Game execution mode");
     if(_fittingMethod == PLANE)
     {
-      _inputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_plane.txt");
+      _inputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/data/"+_subjectName+"_result_plane.txt");
     }
     else
     {
-      _inputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_sphere.txt");
+      _inputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/data/"+_subjectName+"_result_sphere.txt");
     }
 
     if(!_inputFile.is_open())
@@ -135,6 +135,11 @@ bool PreliminaryExperiment::init()
 
     }
   }
+  else
+  {
+    ROS_ERROR("Execution mode not recognized");
+    return false;
+  }
 
   if(_trackingMode == TOE_ONLY)
   {
@@ -151,7 +156,6 @@ bool PreliminaryExperiment::init()
   {
     ROS_ERROR("Tracking mode does not exist !");
     return false;
-
   }
 
   if (_n.ok()) 
@@ -249,14 +253,15 @@ void PreliminaryExperiment::run()
       planeEigenSolverFitting();
 
       sphereLeastSquareFitting();
+
+      // Log calibration result
+      logCalibrationResult();
     }
     else
     {
       ROS_INFO("No calibration data saved !");
     }
 
-    // Log calibration result
-    logCalibrationResult();
   }
   else if(_executionMode == GAME)
   {
@@ -389,7 +394,7 @@ void PreliminaryExperiment::logCalibrationData()
 void PreliminaryExperiment::logCalibrationResult()
 {
 
-  _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_plane.txt");
+  _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/data/"+_subjectName+"_result_plane.txt");
   
   _outputFile << _pcr.c << std::endl
               << _pcr.n.transpose() << std::endl
@@ -399,7 +404,7 @@ void PreliminaryExperiment::logCalibrationResult()
 
   _outputFile.close();
 
-  _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/"+_subjectName+"_result_sphere.txt");
+  _outputFile.open(ros::package::getPath("hp_preliminary_experiment")+"/data/"+_subjectName+"_result_sphere.txt");
 
   _outputFile << _scr.center.transpose() << std::endl
                 << _scr.radius << std::endl
@@ -455,6 +460,7 @@ void PreliminaryExperiment::planeLeastSquareFitting()
   B.resize(_calibrationData.size());
   for(uint32_t k = 0; k < _calibrationData.size(); k++)
   {
+    _calibrationData[k] = _R.transpose()*_calibrationData[k];
     A.row(k) << _calibrationData[k](0),_calibrationData[k](1), 1.0f;
     B(k) = _calibrationData[k](2);
   }
