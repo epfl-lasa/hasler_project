@@ -9,7 +9,7 @@ _dt(1.0f/frequency),
 _subjectName(subjectName),
 _executionMode(executionMode),
 _fittingMethod(fittingMethod),
-_filter(3,3,9,1.0f/frequency)
+_filter(3,1,4,1.0f/frequency)
 {
   me = this;
 
@@ -21,6 +21,7 @@ _filter(3,3,9,1.0f/frequency)
   _allMarkersReceived = false;
   _stop = false;
   _initializationOK = false;
+  _useFiltering = true;
 
   _averageCount = 0;
   _currentSequenceID = 0;
@@ -291,45 +292,82 @@ void KinectRecording::initializeData()
 void KinectRecording::computeChaserPose()
 {
 
-  float scaleX, scaleY; 
-  Eigen::Vector3f u,v;
-  _chaserPosition.setConstant(0.0f);
 
-  if(_fittingMethod == PLANE)
+  if(_markersSequenceID(TOE)!= _currentSequenceID)
   {
-    u = _pcr.u.normalized();
-    v = _pcr.v.normalized();
-    scaleX = 10.0f/_pcr.u.norm();
-    scaleY = 10.0f/_pcr.v.norm();
 
-    // Try filtering  
-    SGF::Vec tempF(3);
-    tempF = _markersPosition.col(TOE);
-    _filter.AddData(_markersPosition.col(TOE));
-    Eigen::Vector3f temp, tempProj;
-    _filter.GetOutput(0,tempF);
-    temp = tempF;
-    temp = _pcr.R.transpose()*temp;
+    float scaleX, scaleY; 
+    Eigen::Vector3f u,v;
+    _chaserPosition.setConstant(0.0f);
     
-    //Override filtering
-    temp = _pcr.R.transpose()*_markersPosition.col(TOE);
-    tempProj = temp-(temp.dot(_pcr.n)+_pcr.c)*_pcr.n/_pcr.n.squaredNorm();
+    if(_fittingMethod == PLANE)
+    {
+      u = _pcr.u.normalized();
+      v = _pcr.v.normalized();
+      scaleX = 10.0f/_pcr.u.norm();
+      scaleY = 10.0f/_pcr.v.norm();
 
-    _chaserPosition(0) = scaleX*(tempProj-_pcr.Pcenter).dot(u);
-    _chaserPosition(1) = scaleY*(tempProj-_pcr.Pcenter).dot(v);
-  // if(!_first)
-  }
-  else if(_fittingMethod == SPHERE)
-  {
-    scaleX = 10.0f/_scr.arcLengthX;
-    scaleY = 10.0f/_scr.arcLengthY;
-    Eigen::Vector3f proj = _scr.center+_scr.radius*(_scr.R.transpose()*_markersPosition.col(TOE)-_scr.center).normalized();
-    Eigen::Vector3f e = proj-_scr.center;
-    float phi = std::atan2(e.segment(0,2).norm(),e(2));
-    float theta = std::atan2(e(1),e(0));
+      Eigen::Vector3f temp;
 
-    _chaserPosition(0) = -scaleX*_scr.radius*std::sin(phi)*(theta-_scr.thetaMean);
-    _chaserPosition(1) = -scaleY*_scr.radius*(phi-_scr.phiMean);
+      // Try filtering  
+      SGF::Vec tempF(3);
+      tempF = _markersPosition.col(TOE);
+      _filter.AddData(_markersPosition.col(TOE));
+      _filter.GetOutput(0,tempF);
+
+      if(_useFiltering)
+      {
+        temp = tempF;
+        temp = _pcr.R.transpose()*temp;
+      }
+      else
+      {
+        temp = _pcr.R.transpose()*_markersPosition.col(TOE);
+      }
+      
+      //Override filtering
+      // temp = _pcr.R.transpose()*_markersPosition.col(TOE);
+
+      Eigen::Vector3f proj = temp-(temp.dot(_pcr.n)+_pcr.c)*_pcr.n/_pcr.n.squaredNorm();
+
+      _chaserPosition(0) = scaleX*(proj-_pcr.Pcenter).dot(u);
+      _chaserPosition(1) = scaleY*(proj-_pcr.Pcenter).dot(v);
+    // if(!_first)
+    }
+    else if(_fittingMethod == SPHERE)
+    {
+      scaleX = 10.0f/_scr.arcLengthX;
+      scaleY = 10.0f/_scr.arcLengthY;
+
+      Eigen::Vector3f temp;
+
+      // Try filtering  
+      SGF::Vec tempF(3);
+      tempF = _markersPosition.col(TOE);
+      _filter.AddData(_markersPosition.col(TOE));
+      _filter.GetOutput(0,tempF);
+
+      if(_useFiltering)
+      {
+        temp = tempF;
+        temp = _scr.R.transpose()*temp;
+      }
+      else
+      {
+        temp = _scr.R.transpose()*_markersPosition.col(TOE);
+      }
+
+
+      Eigen::Vector3f proj = _scr.center+_scr.radius*(temp-_scr.center).normalized();
+      Eigen::Vector3f e = proj-_scr.center;
+      float phi = std::atan2(e.segment(0,2).norm(),e(2));
+      float theta = std::atan2(e(1),e(0));
+
+      _chaserPosition(0) = -scaleX*_scr.radius*std::sin(phi)*(theta-_scr.thetaMean);
+      _chaserPosition(1) = -scaleY*_scr.radius*(phi-_scr.phiMean);
+    }
+
+    _currentSequenceID = _markersSequenceID(TOE);
   }
 }
 

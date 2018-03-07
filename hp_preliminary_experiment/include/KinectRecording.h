@@ -75,6 +75,7 @@ class KinectRecording
     bool _allMarkersReceived;
     bool _stop;
     bool _initializationOK;
+    bool _useFiltering;
 
     // Calibration variables
     planeCalibrationResult _pcr;
