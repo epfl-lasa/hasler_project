@@ -33,7 +33,7 @@
 -->
     <visual>
       <origin
-        xyz="0 0 ${offset}"
+        xyz="0.13 ${-1.01*$(arg scale)} 2"
         rpy="0 0 3.1415"/>
       <geometry>
         <mesh
