@@ -1,0 +1,61 @@
+<launch>
+		<arg name="paused" default="true"/>
+		<arg name="gui" default="true"/>
+		<arg name="headless" default="false"/>
+		<arg name="debug" default="false"/>	
+		<arg name="use_sim_time" default="false"/>
+		<arg name="standalone" default="true"/>	
+
+		<arg name="scale.t" default="0.3"/>
+		<arg name="scale.c" default="0.9"/>
+		<arg name="scale.l" default="0.9"/>
+
+
+
+	<!--START-WORLD-->
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(find demo_scientastic)/worlds/experiment_1.world"/>
+		<arg name="debug" value="$(arg debug)" />
+		<arg name="gui" value="$(arg gui)" />
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="use_sim_time" value="$(arg use_sim_time)"/>
+		<arg name="headless" value="$(arg headless)"/>			
+	</include>
+	<!--INCLUDE-AGENTS-->
+	<group if="$(arg standalone)">
+		<arg name="right_foot_init_pose" default="-x 5.0 -y 0.0 -z 0 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/>
+		<arg name="left_foot_init_pose" default="-x -5.0 -y 0.0 -z 0 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/>
+		<!-- <arg name="target_init_pose" default="-x 1.0 -y 2.0 -z 0.5 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/> -->
+
+		<arg name="enableJoystick" default="true"/>
+ 		<arg name="enableProtocol" default="false"/>
+
+		<node name="worldLeftTransform" pkg="foot_control_xy" type="worldActorTransform" args="left_foot $(arg right_foot_init_pose)"/>
+
+		<node name="worldRightTransform" pkg="foot_control_xy" type="worldActorTransform" args="right_foot $(arg left_foot_init_pose)"/>
+
+<!-- 		<group if="$(arg enableJoystick)">
+			<include file="$(find demo_scientastic)/launch/includes/joystick.launch.xml"/>
+		</group>
+ -->
+<!-- 		<group if="$(arg enableProtocol)">
+			<include file="$(find foot_control_xy)/launch/includes/protocol.launch.xml"/>
+		</group> -->
+		<!-- <include file="$(find demo_scientastic)/launch/foot_platforms.launch"> -->
+		<!-- </include> -->
+		<node pkg="demo_scientastic" type="foot_control" name="foot_control" output="screen"/>
+
+	</group>
+
+	<include file="$(find demo_scientastic)/launch/includes/scene_set.launch.xml">
+		<arg name="scale.t" value="$(arg scale.t)"/>
+		<arg name="scale.c" value="$(arg scale.c)"/>
+		<arg name="scale.l" value="$(arg scale.l)"/>
+		<arg name="left_foot_pos.X" value="-5"/>
+		<arg name="left_foot_pos.Y" value="0"/>
+		<arg name="left_foot_pos.Z" value="0"/>
+		<arg name="right_foot_pos.X" value="5"/>
+		<arg name="right_foot_pos.Y" value="0"/>
+		<arg name="right_foot_pos.Z" value="0"/>
+	</include>
+</launch>

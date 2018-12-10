@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="foot_l">
+    <xacro:arg name="scale" default="0.5"/>
+    <xacro:arg name="link_name" default="foot"/>
+    <xacro:arg name="enableGzPlugin" default="false"/>
+    <xacro:property name="radius" value="${0.25*$(arg scale)}"/>
+    <xacro:property name="offset" value="${radius*2.5}"/>
+  <link name="$(arg link_name)/base_link">
+    <inertial>
+      <origin xyz="0 0 ${offset}" rpy="0 0 3.1415"/>
+      <mass value="1"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 ${offset}" rpy="0 0 3.1415"/>
+      <geometry>
+        <box size="1 1 1"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 ${offset}" rpy="0 0 3.1415"/>
+      <geometry>
+        <mesh filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg scale)} ${0.05*$(arg scale)} ${0.05*$(arg scale)}"/>
+      </geometry>
+    </visual>
+  </link> 
+  <link name="$(arg link_name)/sensor_link">
+    <inertial>
+      <origin xyz="0.05 0 0.6" rpy="0 0 0"/>
+      <mass value="0.03"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+    <collision>
+      <origin xyz="0.05 0 0.6" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.1 1 1"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.05 0 0.6" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.1 1 1"/>
+      </geometry>
+    </visual>
+  </link> 
+  <joint name="$(arg link_name)/sensor_joint" type="prismatic">
+      <origin xyz="0.5 0 0" rpy="0 0 0"/>
+      <parent link="$(arg link_name)/base_link"/>
+      <child link="$(arg link_name)/sensor_link"/>
+      <limit effort="30" velocity="1.0" lower="-0.005" upper="0" />
+  </joint>
+
+
+  <xacro:if value="$(arg enableGzPlugin)">
+    <gazebo>
+     <plugin name="footTfUpdate" filename="libfootTfUpdate.so">
+        <actorName>$(arg link_name)</actorName>
+        <jointStiffness>1000</jointStiffness>
+        <jointDamping>10</jointDamping>
+     </plugin>
+    </gazebo>
+  </xacro:if>
+
+<!--   <gazebo reference="$(arg link_name)/sensor_joint">
+  <provideFeedback>true</provideFeedback>
+</gazebo>
+
+  <gazebo>
+    <plugin name="ft_sensor" filename="libgazebo_ros_ft_sensor.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>30.0</updateRate>
+      <topicName>$(arg link_name)/ft_sensor</topicName>
+      <jointName>$(arg link_name)/sensor_joint</jointName>
+    </plugin>
+  </gazebo> -->
+
+
+</robot>

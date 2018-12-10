@@ -1,0 +1,31 @@
+<launch>
+	<!--Foot-->
+	<arg name="left_foot_pos.X" default="0"/>
+	<arg name="left_foot_pos.Y" default="0"/>
+	<arg name="left_foot_pos.Z" default="0"/>
+	<arg name="right_foot_pos.X" default="0"/>
+	<arg name="right_foot_pos.Y" default="0"/>
+	<arg name="right_foot_pos.Z" default="0"/>
+	<arg name="scale.t" default="0.5"/>
+	<arg name="scale.c" default="0.5"/>
+	<arg name="scale.l" default="0.5"/>
+
+	<group ns="left_foot">	
+		<arg name="model" default="$(find demo_scientastic)/models/h_lower_limb/urdf/foot_l.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) enableGzPlugin:=true scale:=$(arg scale.l) link_name:=left_foot --xacro-ns --inorder" />
+		<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+			<arg name="init_pose" value="-x $(arg left_foot_pos.X) -y $(arg left_foot_pos.Y) -z $(arg left_foot_pos.Z)" />
+			<arg name="robot_name" value="left_foot"/>
+		</include>
+	</group>
+	
+	<group ns="right_foot">	
+		<arg name="model" default="$(find demo_scientastic)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) enableGzPlugin:=true scale:=$(arg scale.c) link_name:=right_foot --xacro-ns --inorder" />
+		<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+			<arg name="init_pose" value="-x $(arg right_foot_pos.X) -y $(arg right_foot_pos.Y) -z $(arg right_foot_pos.Z)" />
+			<arg name="robot_name" value="right_foot"/>
+		</include>
+	</group>
+
+</launch>

@@ -1,0 +1,5 @@
+		<launch>
+
+	 		<node pkg="demo_scientastic" type="foot_control" name="foot_control" output="screen"/>
+
+ 		</launch>
