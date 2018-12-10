@@ -3,10 +3,11 @@
 
 JoyControl* JoyControl::me = NULL;
 
-JoyControl::JoyControl(ros::NodeHandle &n, double frequency): 
+JoyControl::JoyControl(ros::NodeHandle &n, double frequency, std::string topicName): 
 _n(n),
 _loopRate(frequency),
 _dt(1.0f/frequency),
+_topicName(topicName),
 _scale(2.0f),
 _axeX(0),
 _axeY(1),
@@ -26,10 +27,10 @@ bool JoyControl::init()
 {
   
   //Subscriber definitions
-  _subChaserPose = _n.subscribe("joy",10,&JoyControl::updateChaserPose,this,ros::TransportHints().reliable().tcpNoDelay());
+  _subChaserPose = _n.subscribe(_topicName+"/joy",10,&JoyControl::updateChaserPose,this,ros::TransportHints().reliable().tcpNoDelay());
   
   //Publisher definitions
-  _pubChaserPose = _n.advertise<geometry_msgs::PoseStamped>("chaser/pose", 1);
+  _pubChaserPose = _n.advertise<geometry_msgs::PoseStamped>(_topicName+"/pose", 1);
 
   signal(SIGINT,JoyControl::stopNode);
   
@@ -77,7 +78,8 @@ void JoyControl::run()
 
 void JoyControl::publishData()
 {
-  _chaserPosition+= _chaserVelocity*_dt;
+  // _chaserPosition+= _chaserVelocity*_dt;
+  _chaserPosition= 10*_chaserVelocity;
   
   _msgChaserPose.header.frame_id = "world";
   _msgChaserPose.header.stamp = ros::Time::now();
@@ -89,15 +91,16 @@ void JoyControl::publishData()
   _msgChaserPose.pose.orientation.z = 0.0f;
   _msgChaserPose.pose.orientation.w = 1.0f;
   _pubChaserPose.publish(_msgChaserPose);
+  // std::cerr << _chaserVelocity.transpose() << std::endl;
 }
 
 
 void JoyControl::updateChaserPose(const sensor_msgs::Joy::ConstPtr& joy)
 {
   _chaserVelocity << -joy->axes[_axeX], joy->axes[_axeY], joy->axes[_axeZ];
-  _chaserVelocity*=_scale;
+  // _chaserVelocity*=_scale;
+  // _chaserVelocity.setConstant(0.0f);
   
-
   if(!_firstChaserPoseReceived)
   {
     _firstChaserPoseReceived = true;

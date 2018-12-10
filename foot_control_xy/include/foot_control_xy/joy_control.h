@@ -10,6 +10,7 @@
 #include "nav_msgs/Path.h"
 #include <signal.h>
 #include <Eigen/Eigen>
+#include <string>
 
 
 
@@ -47,12 +48,15 @@ class JoyControl
         int _axeZ;
 
 
+		std::string _topicName;
+
+
 
     std::mutex _mutex;
 		static JoyControl* me;
     
 	public:
-		JoyControl(ros::NodeHandle &n, double frequency);
+		JoyControl(ros::NodeHandle &n, double frequency, std::string topicName);
 		bool  init();
 		void run();
 	

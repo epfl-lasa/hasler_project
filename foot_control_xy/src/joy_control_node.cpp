@@ -6,7 +6,16 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   float frequency = 100.0f;
 
-  JoyControl joyControl(n,frequency);
+  std::string topicName;
+  if(argc != 2)
+  {
+    return 0;
+  }
+  else
+  {
+    topicName = std::string(argv[1]);
+  }
+  JoyControl joyControl(n,frequency,topicName);
 
   if (!joyControl.init()) 
   {

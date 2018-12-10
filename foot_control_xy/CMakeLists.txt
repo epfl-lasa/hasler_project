@@ -63,6 +63,10 @@ add_executable(worldActorTransform src/world_actor_tf_pub_node.cpp src/world_act
 target_link_libraries(worldActorTransform ${catkin_LIBRARIES})
 add_dependencies(worldActorTransform ${PROJECT_NAME}_gencpp)
 
+# add_executable(foot_control src/foot_control_node.cpp src/foot_control.cpp)
+# target_link_libraries(foot_control ${catkin_LIBRARIES})
+# add_dependencies(foot_control ${PROJECT_NAME}_gencpp)
+
 add_executable(protocol src/protocol_node.cpp src/Protocol.cpp)
 target_link_libraries(protocol ${catkin_LIBRARIES})
 add_dependencies(protocol ${PROJECT_NAME}_gencpp)
