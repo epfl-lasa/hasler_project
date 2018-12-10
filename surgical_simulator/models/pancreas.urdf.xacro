@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<robot name="pancreas" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- properties /-->
+
+  <!-- URDF model with default base_link (world)-->
+  <xacro:macro name="pancreas">
+
+    <gazebo reference="world">
+      <turnGravityOff>false</turnGravityOff>
+    </gazebo>
+
+  <link name="pancreas_base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
+      <mass value="1" />
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
+      <geometry>
+        <mesh filename="package://surgical_simulator/models/pancreas.dae" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
+      <geometry>
+        <!-- <mesh filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg scale)} ${0.05*$(arg scale)} ${0.05*$(arg scale)}"/> -->
+        <!-- <mesh filename="package://surgical_simulator/models/Torso_Upper_Part.dae" scale="0.001 0.001 0.001"/> -->
+        <mesh filename="package://surgical_simulator/models/pancreas.dae" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+   </xacro:macro>
+
+</robot>
