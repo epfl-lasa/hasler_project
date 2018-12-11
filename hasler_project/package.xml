@@ -11,5 +11,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <run_depend>hp_preliminary_experiment</run_depend>
   <run_depend>foot_control_xy</run_depend>
+  <run_depend>custom_msgs</run_depend>
+  <run_depend>demo_scientastic</run_depend>
+  <run_depend>surgical_simulator</run_depend>
 </package>
 
