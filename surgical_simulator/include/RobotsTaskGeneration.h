@@ -90,7 +90,10 @@ class RobotsTaskGeneration
   	Eigen::Vector3f _xTrocar[NB_ROBOTS];
   	Eigen::Vector3f _xLeftRobotOrigin;
   	Eigen::Vector4f _qLeftRobotOrigin;
+  	Eigen::Vector4f _qLeftCameraOrigin;
   	Eigen::Matrix3f _rRl;
+  	Eigen::Matrix3f _rRc;
+  	float _selfRotationCommand;
 
     // Booleans
 		bool _firstRobotPose[NB_ROBOTS];			 // Monitor the first robot pose update
@@ -99,6 +102,7 @@ class RobotsTaskGeneration
 		bool _leftRobotOriginReceived;
 		bool _leftTrocarFrameReceived;
 		bool _rightTrocarFrameReceived;
+		bool _leftCameraFrameReceived;
 		bool _alignedWithTrocar[NB_ROBOTS];
 		bool _firstJoystick;
 

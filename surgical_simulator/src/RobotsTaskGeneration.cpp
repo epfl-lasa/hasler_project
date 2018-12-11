@@ -26,16 +26,20 @@ RobotsTaskGeneration::RobotsTaskGeneration(ros::NodeHandle &n, double frequency)
     _firstRobotPose[k] = false;
     _firstRobotTwist[k] = false;
     _alignedWithTrocar[k] = false;
+    _xdOffset[k].setConstant(0.0f);
   }
 
   _stop = false;
   _leftRobotOriginReceived = false;
   _leftTrocarFrameReceived = false;
   _rightTrocarFrameReceived = false;
+  _leftCameraFrameReceived = false;
   
   _xLeftRobotOrigin.setConstant(0.0f);
 
   _strategy = PRIMARY_TASK;
+
+  _selfRotationCommand = 0.0f;
 
 
   // for(int k = 0; k < NB_ROBOTS; k++)
@@ -160,7 +164,7 @@ bool RobotsTaskGeneration::allSubscribersOK()
 
 bool RobotsTaskGeneration::allFramesReceived()
 {
-  return _leftRobotOriginReceived && _leftTrocarFrameReceived && _rightTrocarFrameReceived; 
+  return _leftRobotOriginReceived && _leftTrocarFrameReceived && _rightTrocarFrameReceived && _leftCameraFrameReceived; 
 }
 
 void RobotsTaskGeneration::receiveFrames()
@@ -172,7 +176,7 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_base_link",ros::Time::now(), _transform);
       _xLeftRobotOrigin << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       _qLeftRobotOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRl = Utils::quaternionToRotationMatrix(_qLeftRobotOrigin).transpose(); 
+      _rRl = Utils::quaternionToRotationMatrix(_qLeftRobotOrigin); 
       _leftRobotOriginReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left robot origin received: " << _xLeftRobotOrigin.transpose() << std::endl;
     } 
@@ -208,7 +212,22 @@ void RobotsTaskGeneration::receiveFrames()
     }
   }
 
-  if(_rightTrocarFrameReceived && _leftTrocarFrameReceived)
+  if(_leftCameraFrameReceived == false)
+  {  
+    try
+    { 
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time::now(), _transform);
+      _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
+      _leftCameraFrameReceived = true;
+      std::cerr << "[RobotsTaskGeneration]: Left camera link received" << std::endl;
+    } 
+    catch (tf::TransformException ex)
+    {
+    }
+  }
+
+  if(_rightTrocarFrameReceived && _leftTrocarFrameReceived && _leftCameraFrameReceived)
   {
     try
     { 
@@ -227,7 +246,19 @@ void RobotsTaskGeneration::receiveFrames()
     catch (tf::TransformException ex)
     {
     }
+
+    try
+    { 
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time::now(), _transform);
+      _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
+    } 
+    catch (tf::TransformException ex)
+    {
+    }
   }
+
+
 }
 
 void RobotsTaskGeneration::alignWithTrocar()
@@ -384,6 +415,11 @@ void RobotsTaskGeneration::trackTarget()
       _vd[k] += _wRb[k]*twistB.segment(0,3);
       _omegad[k] += _wRb[k]*twistB.segment(3,3);
 
+      if(k==(int) LEFT)
+      {
+        _omegad[k] += _selfRotationCommand*dir; 
+      }
+
       // // // Compute nullspace basis
       // Eigen::Vector3f ex, ey;
       // ex << 1.0f, 0.0f, 0.0f;
@@ -499,6 +535,12 @@ void RobotsTaskGeneration::trackTarget()
     std::cerr << "[RobotsTaskGeneration]: " << k << " xd: " << _xd[k].transpose() << std::endl;
     std::cerr << "[RobotsTaskGeneration]: " << k << " vd: " << _vd[k].transpose() << std::endl;
     std::cerr << "[RobotsTaskGeneration]: " << k << " x: " << _x[k].transpose() << std::endl;
+    // std::cerr << _xdOffset[k].transpose() << std::endl;
+    // if(k==(int)LEFT)
+    // {
+    //   std::cerr << _xdOffset[LEFT] << std::endl;
+    //   std::cerr << _rRc << std::endl;
+    // }
   }  
 }
 
@@ -693,10 +735,17 @@ void RobotsTaskGeneration::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg)
   if(_alignedWithTrocar[LEFT] && _alignedWithTrocar[RIGHT])
   {
     Eigen::Vector3f tempOffset[NB_ROBOTS];
-    tempOffset[LEFT] << msg->axes[1],msg->axes[0],0.0f;
-    tempOffset[RIGHT] << msg->axes[4],msg->axes[3],0.0f;
+    tempOffset[LEFT] << msg->axes[1],0.0f,msg->axes[0];//,0.0f;
+    tempOffset[RIGHT] << msg->axes[4],0.0f,msg->axes[3];//,0.0f;
+
     _xdOffset[LEFT] = tempOffset[LEFT]*0.15f; 
     _xdOffset[RIGHT] = tempOffset[RIGHT]*0.15f; 
+  
+    _xdOffset[RIGHT].setConstant(0.0f);
+    _xdOffset[LEFT] = 0.15f*(_rRc.col(1)*msg->axes[0]+_rRc.col(2)*msg->axes[1]+_rRc.col(0)*msg->axes[4]);
+
+    _selfRotationCommand = msg->axes[2]-msg->axes[5];
+    // std::cerr << _xdOffset[LEFT].transpose() << std::endl;
   }
   // _v[k] << msg->linear.x, msg->linear.y, msg->linear.z;
   // _w[k] << msg->angular.x, msg->angular.y, msg->angular.z;
