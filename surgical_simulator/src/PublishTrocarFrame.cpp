@@ -8,11 +8,12 @@ _n(n),
 _loopRate(frequency),
 _dt(1.0f/frequency),
 _frameName(name),
-_trocarOffset(trocarOffset)
+_trocarOffset0(trocarOffset)
 {
 	me=this;
 	_stop = false;
 	_getTorsoFrame = false;	
+	_trocarOffset.setConstant(0.0f);
 }
 
 PublishTrocarFrame::~PublishTrocarFrame()
@@ -22,6 +23,10 @@ PublishTrocarFrame::~PublishTrocarFrame()
 
 bool PublishTrocarFrame::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
 {
+
+  	_dynRecCallback = boost::bind(&PublishTrocarFrame::dynamicReconfigureCallback, this, _1, _2);
+  	_dynRecServer.setCallback(_dynRecCallback);
+
 	//Subscriber definitions	
 	signal(SIGINT,PublishTrocarFrame::stopNode);
 	
@@ -82,9 +87,18 @@ void PublishTrocarFrame::run()
 void PublishTrocarFrame::updateTf()
 {
 
-	tf::Vector3 origin(_torsoFrameOrigin(0)+_trocarOffset(0),_torsoFrameOrigin(1)+_trocarOffset(1),_torsoFrameOrigin(2)+_trocarOffset(2));
+	Eigen::Vector3f temp;
+	temp = _torsoFrameOrigin+_trocarOffset0+_trocarOffset;
+	tf::Vector3 origin(temp(0),temp(1),temp(2));
   _transform.setOrigin(origin);
   _transform.setRotation(tf::Quaternion(0,0,0,1));
   _br.sendTransform(tf::StampedTransform(_transform, ros::Time::now(), "world",_frameName+"_trocar_frame"));
 
+}
+
+
+void PublishTrocarFrame::dynamicReconfigureCallback(surgical_simulator::publishTrocarFrame_paramsConfig &config, uint32_t level)
+{
+  ROS_INFO("Reconfigure request. Updatig the parameters ...");
+  _trocarOffset << config.xOffset, config.yOffset, config.zOffset;
 }

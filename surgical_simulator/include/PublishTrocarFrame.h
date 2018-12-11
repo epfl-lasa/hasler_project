@@ -17,6 +17,9 @@
 #include "Eigen/Eigen"
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
+#include <dynamic_reconfigure/server.h>
+#include "surgical_simulator/publishTrocarFrame_paramsConfig.h"
+
 
 using namespace std;
 
@@ -40,12 +43,13 @@ class PublishTrocarFrame
     
     //!other variables
     Eigen::Vector3f _trocarOffset;
+    Eigen::Vector3f _trocarOffset0;
     std::string _frameName;
     bool _getTorsoFrame;
     Eigen::Vector3f _torsoFrameOrigin;
 
-    //std::mutex _mutex;
-    //ros::WallTime _last_commanded_time;
+	dynamic_reconfigure::Server<surgical_simulator::publishTrocarFrame_paramsConfig> _dynRecServer;
+	dynamic_reconfigure::Server<surgical_simulator::publishTrocarFrame_paramsConfig>::CallbackType _dynRecCallback;
     
 	public:
 	PublishTrocarFrame(ros::NodeHandle &n, double frequency, std::string name, Eigen::Vector3f trocarOffset);
@@ -53,6 +57,7 @@ class PublishTrocarFrame
 	bool  init();
 	void run();
 	void updateTf();
+    void dynamicReconfigureCallback(surgical_simulator::publishTrocarFrame_paramsConfig &config, uint32_t level);
 	
 	private:
 	
