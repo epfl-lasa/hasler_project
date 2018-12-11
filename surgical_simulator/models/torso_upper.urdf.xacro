@@ -28,7 +28,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
       <geometry>
-        <mesh filename="package://surgical_simulator/models/torso_complete2.dae" scale="${scale} ${scale} ${scale}"/>
+        <mesh filename="package://surgical_simulator/models/torso_with_organs2.dae" scale="${scale} ${scale} ${scale}"/>
       </geometry>
     </collision>
     <visual>
@@ -36,11 +36,17 @@
       <geometry>
         <!-- <mesh filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg scale)} ${0.05*$(arg scale)} ${0.05*$(arg scale)}"/> -->
         <!-- <mesh filename="package://surgical_simulator/models/Torso_Upper_Part.dae" scale="${scale} ${scale} ${scale}"/> -->
-        <mesh filename="package://surgical_simulator/models/torso_complete2.dae" scale="${scale} ${scale} ${scale}"/>
+        <mesh filename="package://surgical_simulator/models/torso_with_organs2.dae" scale="${scale} ${scale} ${scale}"/>
       </geometry>
     </visual>
   </link>
 
+   <gazebo reference="${name}_base_link">
+      <minDepth>0</minDepth>
+      <maxVel>0</maxVel>
+  </gazebo>
+
    </xacro:macro>
+
 
 </robot>
