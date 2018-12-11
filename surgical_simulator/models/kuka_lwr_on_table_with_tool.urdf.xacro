@@ -3,6 +3,9 @@
   <xacro:arg name="origin.x" default="0"/>
   <xacro:arg name="origin.y" default="0"/>
   <xacro:arg name="origin.z" default="0"/>
+  <xacro:arg name="origin.ax" default="0"/>
+  <xacro:arg name="origin.ay" default="0"/>
+  <xacro:arg name="origin.az" default="0"/>
   <xacro:arg name="robotName" default="lwr"/>
   <xacro:arg name="addCamera" default="0"/>
   <xacro:property name="toolMass" value="0.1"/>
@@ -35,7 +38,7 @@
 
   <xacro:kuka_lwr base_link="$(arg robotName)_table_plate_link" name="$(arg robotName)">
     <!-- <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="0 0 0"/> -->
-    <origin xyz="${tableLength/2} ${-tableWidth/2} 0" rpy="0 0 0"/>
+    <origin xyz="${tableLength/2} ${-tableWidth/2} 0" rpy="$(arg origin.ax) $(arg origin.ay) $(arg origin.az)"/>
   </xacro:kuka_lwr>
 
   <link name='$(arg robotName)_tool'>

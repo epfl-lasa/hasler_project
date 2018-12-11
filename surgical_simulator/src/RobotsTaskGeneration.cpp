@@ -106,6 +106,8 @@ void RobotsTaskGeneration::run()
     {
       _mutex.lock();
 
+      receiveFrames();
+
       if(_alignedWithTrocar[LEFT] && _alignedWithTrocar[RIGHT])
       {
         trackTarget();
@@ -169,6 +171,8 @@ void RobotsTaskGeneration::receiveFrames()
     { 
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_base_link",ros::Time::now(), _transform);
       _xLeftRobotOrigin << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+      _qLeftRobotOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRl = Utils::quaternionToRotationMatrix(_qLeftRobotOrigin).transpose(); 
       _leftRobotOriginReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left robot origin received: " << _xLeftRobotOrigin.transpose() << std::endl;
     } 
@@ -203,6 +207,27 @@ void RobotsTaskGeneration::receiveFrames()
     {
     }
   }
+
+  if(_rightTrocarFrameReceived && _leftTrocarFrameReceived)
+  {
+    try
+    { 
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time::now(), _transform);
+      _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+    } 
+    catch (tf::TransformException ex)
+    {
+    }
+
+    try
+    { 
+      _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time::now(), _transform);
+      _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+    } 
+    catch (tf::TransformException ex)
+    {
+    }
+  }
 }
 
 void RobotsTaskGeneration::alignWithTrocar()
@@ -216,6 +241,12 @@ void RobotsTaskGeneration::alignWithTrocar()
     Eigen::Vector3f w;
     Eigen::Vector3f zBd;
     zBd = (_xTrocar[k]-(_x[k]-_toolOffsetFromEE*_wRb[k].col(2))).normalized();
+    if((int) k == LEFT)
+    {
+      std::cerr << _x[k].transpose() << std::endl;
+      std::cerr << _wRb[k].col(2).transpose() << std::endl;
+      std::cerr << zBd.transpose() << std::endl;
+    }
     w = (_wRb[k].col(2)).cross(zBd);
     float c = (_wRb[k].col(2)).transpose()*zBd;  
     float s = w.norm();
@@ -584,6 +615,14 @@ void RobotsTaskGeneration::publishData()
   for(int k = 0; k < NB_ROBOTS; k++)
   {
     // Publish desired twist (passive ds controller)
+    if(k == (int) LEFT)
+    {
+      _vd[k] = _rRl.transpose()*_vd[k];
+      _omegad[k] = _rRl.transpose()*_omegad[k];
+      Eigen::Matrix3f Rd;
+      Rd = Utils::quaternionToRotationMatrix(_qd[k]);
+      _qd[k] = Utils::rotationMatrixToQuaternion(_rRl.transpose()*Rd);
+    }
     _msgDesiredTwist.linear.x  = _vd[k](0);
     _msgDesiredTwist.linear.y  = _vd[k](1);
     _msgDesiredTwist.linear.z  = _vd[k](2);
@@ -621,7 +660,9 @@ void RobotsTaskGeneration::updateRobotPose(const geometry_msgs::Pose::ConstPtr& 
 
   if(k==(int)LEFT)
   {
-    _x[k] += _xLeftRobotOrigin;
+    _x[k] = _rRl*_x[k]+_xLeftRobotOrigin;
+    _wRb[k] = _rRl*_wRb[k];
+    _q[k] = Utils::rotationMatrixToQuaternion(_wRb[k]);
   }
 
   if(!_firstRobotPose[k])

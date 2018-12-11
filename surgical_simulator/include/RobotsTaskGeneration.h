@@ -89,6 +89,8 @@ class RobotsTaskGeneration
     Eigen::Vector3f _vd[NB_ROBOTS];        // Desired modulated DS [m/s] (3x1)
   	Eigen::Vector3f _xTrocar[NB_ROBOTS];
   	Eigen::Vector3f _xLeftRobotOrigin;
+  	Eigen::Vector4f _qLeftRobotOrigin;
+  	Eigen::Matrix3f _rRl;
 
     // Booleans
 		bool _firstRobotPose[NB_ROBOTS];			 // Monitor the first robot pose update

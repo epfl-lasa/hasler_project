@@ -8,9 +8,15 @@
   <arg name="rightRobotOrigin.x" default="0"/>
   <arg name="rightRobotOrigin.y" default="0"/>
   <arg name="rightRobotOrigin.z" default="0"/>
-  <arg name="leftRobotOrigin.x" default="0"/>
+  <arg name="rightRobotOrigin.ax" default="0"/>
+  <arg name="rightRobotOrigin.ay" default="0"/>
+  <arg name="rightRobotOrigin.az" default="0"/>
+  <arg name="leftRobotOrigin.x" default="-1"/>
   <arg name="leftRobotOrigin.y" default="0.7"/>
   <arg name="leftRobotOrigin.z" default="0"/>
+  <arg name="leftRobotOrigin.ax" default="0"/>
+  <arg name="leftRobotOrigin.ay" default="0"/>
+  <arg name="leftRobotOrigin.az" default="${M_PI}"/>
   <arg name="robotsMiddle.x" default="$(eval 0.5*arg('rightRobotOrigin.x')+0.5*arg('leftRobotOrigin.x'))"/>
   <arg name="robotsMiddle.y" default="$(eval 0.5*arg('rightRobotOrigin.y')+0.5*arg('leftRobotOrigin.y'))"/>
   <arg name="robotsMiddle.z" default="$(eval 0.5*arg('rightRobotOrigin.z')+0.5*arg('leftRobotOrigin.z'))"/>
@@ -60,7 +66,7 @@
   
   <!-- ROBOT -->
   <group ns="right_lwr">
-    <param name="robot_description" command="$(find xacro)/xacro.py $(arg lwrRobotUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) addCamera:=0"/>
+    <param name="robot_description" command="$(find xacro)/xacro.py $(arg lwrRobotUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) origin.ax:=$(arg rightRobotOrigin.ax) origin.ay:=$(arg rightRobotOrigin.ay) origin.az:=$(arg rightRobotOrigin.az) addCamera:=0"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/right_lwr kuka_joint_state_controller"/>
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/right_lwr $(arg controllers)"/>
@@ -70,7 +76,7 @@
   </group>
 
   <group ns="left_lwr">
-    <param name="robot_description" command="$(find xacro)/xacro.py $(arg lwrRobotUrdfFile) robotName:=$(arg leftRobotName) origin.x:=$(arg leftRobotOrigin.x) origin.y:=$(arg leftRobotOrigin.y) origin.z:=$(arg leftRobotOrigin.z) addCamera:=1"/>
+    <param name="robot_description" command="$(find xacro)/xacro.py $(arg lwrRobotUrdfFile) robotName:=$(arg leftRobotName) origin.x:=$(arg leftRobotOrigin.x) origin.y:=$(arg leftRobotOrigin.y) origin.z:=$(arg leftRobotOrigin.z) origin.ax:=$(arg leftRobotOrigin.ax) origin.ay:=$(arg leftRobotOrigin.ay) origin.az:=$(arg leftRobotOrigin.az) addCamera:=1"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="kuka_joint_state_controller"/>
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="$(arg controllers)"/>

@@ -31,7 +31,7 @@
                     width="${tableWidth}"
                     height="${tableHeight}"
                     plate_thickness="0.1">
-    <origin xyz="${$(arg origin.x)-tableLength/2+xOffset} ${$(arg origin.y)+tableWidth/2} ${tableHeight}" rpy="0 0 0"/>
+    <origin xyz="${$(arg origin.x)-tableLength/2} ${$(arg origin.y)+tableWidth/2} ${tableHeight}" rpy="0 0 0"/>
   </xacro:model_table>
 
   <xacro:include filename="$(find surgical_simulator)/models/torso_upper.urdf.xacro"/>
@@ -43,6 +43,5 @@
                     scale="${torsoScale}">
     <origin xyz="${tableLength/2} ${-0.6*tableWidth} ${torsoScale*0.4*torsoYDim}" rpy="0 0 0"/>
   </xacro:torso_upper>
-
 
 </robot>
