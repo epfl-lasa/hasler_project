@@ -173,7 +173,8 @@ void RobotsTaskGeneration::receiveFrames()
   {  
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_base_link",ros::Time::now(), _transform);
+      _lr.waitForTransform("/right_lwr_base_link", "/left_lwr_base_link", ros::Time(0), ros::Duration(3.0));
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_base_link",ros::Time(0), _transform);
       _xLeftRobotOrigin << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       _qLeftRobotOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
       _rRl = Utils::quaternionToRotationMatrix(_qLeftRobotOrigin); 
@@ -188,7 +189,8 @@ void RobotsTaskGeneration::receiveFrames()
   {  
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time::now(), _transform);
+      _lr.waitForTransform("/right_lwr_base_link", "/left_lwr_trocar_frame", ros::Time(0), ros::Duration(3.0));
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       _leftTrocarFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left trocar frame received" << _xTrocar[LEFT].transpose() << std::endl;
@@ -202,7 +204,8 @@ void RobotsTaskGeneration::receiveFrames()
   {  
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time::now(), _transform);
+      _lr.waitForTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time(0), ros::Duration(3.0));
+      _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       _rightTrocarFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Right trocar frame received" << _xTrocar[RIGHT].transpose() << std::endl;
@@ -216,7 +219,8 @@ void RobotsTaskGeneration::receiveFrames()
   {  
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time::now(), _transform);
+      _lr.waitForTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), ros::Duration(3.0));
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), _transform);
       _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
       _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
       _leftCameraFrameReceived = true;
@@ -231,7 +235,7 @@ void RobotsTaskGeneration::receiveFrames()
   {
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time::now(), _transform);
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
     } 
     catch (tf::TransformException ex)
@@ -240,7 +244,7 @@ void RobotsTaskGeneration::receiveFrames()
 
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time::now(), _transform);
+      _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
     } 
     catch (tf::TransformException ex)
@@ -249,7 +253,7 @@ void RobotsTaskGeneration::receiveFrames()
 
     try
     { 
-      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time::now(), _transform);
+      _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), _transform);
       _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
       _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
     } 
