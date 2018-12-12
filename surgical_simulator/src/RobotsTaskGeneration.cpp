@@ -41,6 +41,29 @@ RobotsTaskGeneration::RobotsTaskGeneration(ros::NodeHandle &n, double frequency)
 
   _selfRotationCommand = 0.0f;
 
+  _joyAxes.setConstant(0.0f);
+
+
+  // _msgMarker.header.frame_id = "torso_upper_base_link";
+  // _msgMarker.header.stamp = ros::Time();
+  // _msgMarker.ns = "marker_test_triangle_list";
+  // _msgMarker.id = 0;
+  // _msgMarker.type = visualization_msgs::Marker::CUBE;
+  // _msgMarker.action = visualization_msgs::Marker::ADD;
+  // _msgMarker.pose.position.x = 0.0f;
+  // _msgMarker.pose.position.y = 0.15f;
+  // _msgMarker.pose.position.z = 0.1f;
+  // _msgMarker.pose.orientation.x = 0.0;
+  // _msgMarker.pose.orientation.y = 1.0;
+  // _msgMarker.pose.orientation.z = 0.0;
+  // _msgMarker.pose.orientation.w = 0.0;
+  // _msgMarker.scale.x = 0.3;
+  // _msgMarker.scale.y = 0.5;
+  // _msgMarker.scale.z = 0.2;
+  // _msgMarker.color.a = 1.0;
+  // _msgMarker.color.r = 1.0;
+  // _msgMarker.color.g = 0.0;
+  // _msgMarker.color.b = 0.0;
 
   // for(int k = 0; k < NB_ROBOTS; k++)
   // {
@@ -70,6 +93,8 @@ bool RobotsTaskGeneration::init()
 
   _pubDesiredTwist[LEFT] = _nh.advertise<geometry_msgs::Twist>("/left_lwr/joint_controllers/passive_ds_command_vel", 1);
   _pubDesiredOrientation[LEFT] = _nh.advertise<geometry_msgs::Quaternion>("/left_lwr/joint_controllers/passive_ds_command_orient", 1);
+
+  // _pubMarker = _nh.advertise<visualization_msgs::Marker>("RobotsTaskGeneration/marker", 1);
 
   // Dynamic reconfigure definition
   _dynRecCallback = boost::bind(&RobotsTaskGeneration::dynamicReconfigureCallback, this, _1, _2);
@@ -330,8 +355,42 @@ void RobotsTaskGeneration::alignWithTrocar()
 }
 
 
+void RobotsTaskGeneration::computeAttractors()
+{
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    Eigen::Vector3f rToolTrocar;
+    rToolTrocar = _x[k]-_xTrocar[k];
+
+    float arcLength;
+    arcLength = 50.0f*M_PI/180.0f*rToolTrocar.norm();
+
+    _xdOffset[k].setConstant(0.0f);
+    if(k==(int)LEFT)
+    {
+      Eigen::Vector3f temp;
+      _xdOffset[k] = arcLength*(_rRc.col(1)*_joyAxes(0)+_rRc.col(2)*_joyAxes(1));
+      _xdOffset[k] += _rRc.col(0)*(0.1f*_joyAxes(4));
+      std::cerr << "offset: " <<_xdOffset[k].transpose() << " a: " << arcLength << std::endl;
+      std::cerr << _joyAxes.transpose() << std::endl;
+    } 
+
+    // Eigen::Vector3f tempOffset[NB_ROBOTS];
+    // tempOffset[LEFT] << msg->axes[1],0.0f,msg->axes[0];//,0.0f;
+    // tempOffset[RIGHT] << msg->axes[4],0.0f,msg->axes[3];//,0.0f;
+
+    // _xdOffset[LEFT] = tempOffset[LEFT]*0.15f; 
+    // _xdOffset[RIGHT] = tempOffset[RIGHT]*0.15f; 
+  
+    // _xdOffset[RIGHT].setConstant(0.0f);
+
+  }
+}
+
 void RobotsTaskGeneration::trackTarget()
 {
+
+  computeAttractors();
 
   for(int k = 0; k < NB_ROBOTS; k++)
   {
@@ -421,7 +480,8 @@ void RobotsTaskGeneration::trackTarget()
 
       if(k==(int) LEFT)
       {
-        _omegad[k] += _selfRotationCommand*dir; 
+        // _omegad[k] += _selfRotationCommand*dir; 
+        _omegad[k] += _selfRotationCommand*_wRb[k].col(2); 
       }
 
       // // // Compute nullspace basis
@@ -536,9 +596,9 @@ void RobotsTaskGeneration::trackTarget()
     //   _vd[k] = 0.3f*_vd[k]/_vd[k].norm();
     // }
     
-    std::cerr << "[RobotsTaskGeneration]: " << k << " xd: " << _xd[k].transpose() << std::endl;
-    std::cerr << "[RobotsTaskGeneration]: " << k << " vd: " << _vd[k].transpose() << std::endl;
-    std::cerr << "[RobotsTaskGeneration]: " << k << " x: " << _x[k].transpose() << std::endl;
+    // std::cerr << "[RobotsTaskGeneration]: " << k << " xd: " << _xd[k].transpose() << std::endl;
+    // std::cerr << "[RobotsTaskGeneration]: " << k << " vd: " << _vd[k].transpose() << std::endl;
+    // std::cerr << "[RobotsTaskGeneration]: " << k << " x: " << _x[k].transpose() << std::endl;
     // std::cerr << _xdOffset[k].transpose() << std::endl;
     // if(k==(int)LEFT)
     // {
@@ -688,6 +748,8 @@ void RobotsTaskGeneration::publishData()
 
     _pubDesiredOrientation[k].publish(_msgDesiredOrientation);
   }
+
+  // _pubMarker.publish(_msgMarker);
 }
 
 void RobotsTaskGeneration::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg, int k)
@@ -745,10 +807,15 @@ void RobotsTaskGeneration::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg)
     _xdOffset[LEFT] = tempOffset[LEFT]*0.15f; 
     _xdOffset[RIGHT] = tempOffset[RIGHT]*0.15f; 
   
-    _xdOffset[RIGHT].setConstant(0.0f);
-    _xdOffset[LEFT] = 0.15f*(_rRc.col(1)*msg->axes[0]+_rRc.col(2)*msg->axes[1]+_rRc.col(0)*msg->axes[4]);
+    // _xdOffset[RIGHT].setConstant(0.0f);
+    // _xdOffset[LEFT] = 0.15f*(_rRc.col(1)*msg->axes[0]+_rRc.col(2)*msg->axes[1]+_rRc.col(0)*msg->axes[4]);
 
     _selfRotationCommand = msg->axes[2]-msg->axes[5];
+
+    _joyAxes << msg->axes[0], msg->axes[1], msg->axes[2], msg->axes[3], 
+                msg->axes[4], msg->axes[5], msg->axes[6], msg->axes[7]; 
+
+
     // std::cerr << _xdOffset[LEFT].transpose() << std::endl;
   }
   // _v[k] << msg->linear.x, msg->linear.y, msg->linear.z;

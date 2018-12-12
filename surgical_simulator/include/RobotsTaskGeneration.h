@@ -25,6 +25,8 @@
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
 #include "sensor_msgs/Joy.h"
+#include "visualization_msgs/Marker.h"
+
 // #include "custom_msgs/FootOutputMsg.h"
 
 
@@ -38,6 +40,7 @@
 #define FOOT_INTERFACE_X_RANGE_LEFT 0.350
 #define FOOT_INTERFACE_Y_RANGE_LEFT 0.293
 #define FOOT_INTERFACE_PHI_RANGE_LEFT 35
+#define NB_AXES_JOYSTICK 8
 
 enum ROBOT {LEFT = 0, RIGHT = 1};
 
@@ -63,13 +66,16 @@ class RobotsTaskGeneration
     // Publisher declaration
     ros::Publisher _pubDesiredTwist[NB_ROBOTS];         // Desired twist to DS-impdedance controller
     ros::Publisher _pubDesiredOrientation[NB_ROBOTS];   // Desired orientation to DS-impedance controller
+		ros::Publisher _pubMarker;						  		// Marker (RVIZ) 
+
     
     // Subsciber and publisher messages declaration
     geometry_msgs::Pose _msgRealPose;
     geometry_msgs::Pose _msgDesiredPose;
     geometry_msgs::Quaternion _msgDesiredOrientation;
     geometry_msgs::Twist _msgDesiredTwist;
-		
+		visualization_msgs::Marker _msgMarker;
+
 		// Tool characteristics
     float _toolOffsetFromEE;                    // Tool offset along z axis of end effector [m]             
 
@@ -94,6 +100,7 @@ class RobotsTaskGeneration
   	Eigen::Matrix3f _rRl;
   	Eigen::Matrix3f _rRc;
   	float _selfRotationCommand;
+  	Eigen::Matrix<float,NB_AXES_JOYSTICK,1> _joyAxes;
 
     // Booleans
 		bool _firstRobotPose[NB_ROBOTS];			 // Monitor the first robot pose update
@@ -168,6 +175,8 @@ class RobotsTaskGeneration
     void alignWithTrocar();
 
 		void trackTarget();
+
+		void computeAttractors();
 
 		// Compute modulated DS
 		void computeModulatedDS();
