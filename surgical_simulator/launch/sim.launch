@@ -5,14 +5,14 @@
   <!-- The robot name is required for gazebo to spawn a model. -->
   <arg name="rightRobotName" default="right_lwr"/>
   <arg name="leftRobotName" default="left_lwr"/>
-  <arg name="rightRobotOrigin.x" default="0"/>
+  <arg name="rightRobotOrigin.x" default="0.5"/>
   <arg name="rightRobotOrigin.y" default="0"/>
   <arg name="rightRobotOrigin.z" default="0"/>
   <arg name="rightRobotOrigin.ax" default="0"/>
   <arg name="rightRobotOrigin.ay" default="0"/>
   <arg name="rightRobotOrigin.az" default="0"/>
-  <arg name="leftRobotOrigin.x" default="-1"/>
-  <arg name="leftRobotOrigin.y" default="0.7"/>
+  <arg name="leftRobotOrigin.x" default="-0.5"/>
+  <arg name="leftRobotOrigin.y" default="0.5"/>
   <arg name="leftRobotOrigin.z" default="0"/>
   <arg name="leftRobotOrigin.ax" default="0"/>
   <arg name="leftRobotOrigin.ay" default="0"/>
@@ -23,9 +23,9 @@
   <arg name="rightTrocarOffset.x" default="0"/>
   <arg name="rightTrocarOffset.y" default="0"/>
   <arg name="rightTrocarOffset.z" default="0.2"/>
-  <arg name="leftTrocarOffset.x" default="0"/>
+  <arg name="leftTrocarOffset.x" default="-0.1"/>
   <arg name="leftTrocarOffset.y" default="0.3"/>
-  <arg name="leftTrocarOffset.z" default="0.2"/>
+  <arg name="leftTrocarOffset.z" default="0.3"/>
 
   <!-- The recommended way of specifying the URDF file is to pass it in
        directly. -->
@@ -63,10 +63,15 @@
 
     <!-- <node name="worldRightTransform" pkg="foot_control_xy" type="worldActorTransform" args="foot -x 2.0 -y 0.0 -z 0 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/> -->
 
+  <group ns="environment">
+    <param name="robot_description" command="$(find xacro)/xacro.py $(arg environmentUrdfFile) origin.x:=0 origin.y:=0 origin.z:=0"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="environment_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /environment/robot_description -urdf -model environment" respawn="false" output="screen" />
+  </group>
   
   <!-- ROBOT -->
   <group ns="right_lwr">
-    <param name="robot_description" command="$(find xacro)/xacro.py $(arg lwrRobotUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) origin.ax:=$(arg rightRobotOrigin.ax) origin.ay:=$(arg rightRobotOrigin.ay) origin.az:=$(arg rightRobotOrigin.az) addCamera:=0"/>
+    <param name="robot_description" command="$(find xacro)/xacro.py $(arg lwrRobotUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) origin.ax:=$(arg rightRobotOrigin.ax) origin.ay:=$(arg rightRobotOrigin.ay) origin.az:=$(arg rightRobotOrigin.az) addCamera:=0 addFrame:=1"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/right_lwr kuka_joint_state_controller"/>
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/right_lwr $(arg controllers)"/>
@@ -97,11 +102,6 @@
 
   <!-- <node pkg="tf" type="static_transform_publisher" name="right_to_left_transform" args="$(arg leftRobotOrigin.x) $(arg leftRobotOrigin.y) $(arg leftRobotOrigin.z) 0 0 0 /world /left_robot_basis 200"/>  -->
 
-  <group ns="environment">
-    <param name="robot_description" command="$(find xacro)/xacro.py $(arg environmentUrdfFile) origin.x:=$(arg robotsMiddle.x) origin.y:=$(arg robotsMiddle.y) origin.z:=$(arg robotsMiddle.z)"/>
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
-    <node name="environment_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /environment/robot_description -urdf -model environment" respawn="false" output="screen" />
-  </group>
 
 <!--   <group ns="pancreas">
     <param name="robot_description" command="$(find xacro)/xacro.py $(arg pancreasUrdfFile)"/>

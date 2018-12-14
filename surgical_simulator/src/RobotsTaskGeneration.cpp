@@ -21,12 +21,22 @@ RobotsTaskGeneration::RobotsTaskGeneration(ros::NodeHandle &n, double frequency)
     _vd[k].setConstant(0.0f);
     _omegad[k].setConstant(0.0f);
     _qd[k].setConstant(0.0f);
+    _qdPrev[k].setConstant(0.0f);
     _xTrocar[k].setConstant(0.0f);
 
     _firstRobotPose[k] = false;
     _firstRobotTwist[k] = false;
     _alignedWithTrocar[k] = false;
     _xdOffset[k].setConstant(0.0f);
+    _joyAxes[k].setConstant(0.0f);
+    _selfRotationCommand[k] = 0.0f;
+
+    _footPose[k].setConstant(0.0f);
+    _footWrench[k].setConstant(0.0f);
+    _footTwist[k].setConstant(0.0f);
+    // _footDesiredWrench[k].setConstant(0.0f);
+    _footPosition[k].setConstant(0.0f);
+    _firstFootOutput[k] = false;
   }
 
   _stop = false;
@@ -37,11 +47,10 @@ RobotsTaskGeneration::RobotsTaskGeneration(ros::NodeHandle &n, double frequency)
   
   _xLeftRobotOrigin.setConstant(0.0f);
 
-  _strategy = PRIMARY_TASK;
+  // _strategy = PRIMARY_TASK;
+  _strategy = VIRTUAL_RCM;
 
-  _selfRotationCommand = 0.0f;
 
-  _joyAxes.setConstant(0.0f);
 
 
   // _msgMarker.header.frame_id = "torso_upper_base_link";
@@ -82,11 +91,14 @@ bool RobotsTaskGeneration::init()
   // Subscriber definitions
   _subRobotPose[RIGHT] = _nh.subscribe<geometry_msgs::Pose>("/right_lwr/ee_pose", 1, boost::bind(&RobotsTaskGeneration::updateRobotPose,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subRobotTwist[RIGHT] = _nh.subscribe<geometry_msgs::Twist>("/right_lwr/joint_controllers/twist", 1, boost::bind(&RobotsTaskGeneration::updateRobotTwist,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subJoystick[RIGHT] = _nh.subscribe<sensor_msgs::Joy>("/right_lwr/joy", 1, boost::bind(&RobotsTaskGeneration::updateJoystick,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&RobotsTaskGeneration::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
   _subRobotPose[LEFT] = _nh.subscribe<geometry_msgs::Pose>("/left_lwr/ee_pose", 1, boost::bind(&RobotsTaskGeneration::updateRobotPose,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subRobotTwist[LEFT] = _nh.subscribe<geometry_msgs::Twist>("/left_lwr/joint_controllers/twist", 1, boost::bind(&RobotsTaskGeneration::updateRobotTwist,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subJoystick[LEFT] = _nh.subscribe<sensor_msgs::Joy>("/left_lwr/joy", 1, boost::bind(&RobotsTaskGeneration::updateJoystick,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&RobotsTaskGeneration::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-  _subJoystick = _nh.subscribe<sensor_msgs::Joy>("/joy", 1, &RobotsTaskGeneration::updateJoystick, this, ros::TransportHints().reliable().tcpNoDelay());
   // Publisher definitions
   _pubDesiredTwist[RIGHT] = _nh.advertise<geometry_msgs::Twist>("/right_lwr/joint_controllers/passive_ds_command_vel", 1);
   _pubDesiredOrientation[RIGHT] = _nh.advertise<geometry_msgs::Quaternion>("/right_lwr/joint_controllers/passive_ds_command_orient", 1);
@@ -217,6 +229,9 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.waitForTransform("/right_lwr_base_link", "/left_lwr_trocar_frame", ros::Time(0), ros::Duration(3.0));
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+      Eigen::Vector4f qtemp;
+      qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRt[LEFT] = Utils::quaternionToRotationMatrix(qtemp); 
       _leftTrocarFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left trocar frame received" << _xTrocar[LEFT].transpose() << std::endl;
     } 
@@ -232,6 +247,9 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.waitForTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time(0), ros::Duration(3.0));
       _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+      Eigen::Vector4f qtemp;
+      qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRt[RIGHT] = Utils::quaternionToRotationMatrix(qtemp); 
       _rightTrocarFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Right trocar frame received" << _xTrocar[RIGHT].transpose() << std::endl;
     } 
@@ -248,6 +266,7 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), _transform);
       _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
       _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
+      _rRcp = _rRc;
       _leftCameraFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left camera link received" << std::endl;
     } 
@@ -262,6 +281,10 @@ void RobotsTaskGeneration::receiveFrames()
     { 
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+      Eigen::Vector4f qtemp;
+      qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRt[LEFT] = Utils::quaternionToRotationMatrix(qtemp); 
+
     } 
     catch (tf::TransformException ex)
     {
@@ -271,6 +294,9 @@ void RobotsTaskGeneration::receiveFrames()
     { 
       _lr.lookupTransform("/right_lwr_base_link", "/right_lwr_trocar_frame",ros::Time(0), _transform);
       _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+      Eigen::Vector4f qtemp;
+      qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRt[RIGHT] = Utils::quaternionToRotationMatrix(qtemp); 
     } 
     catch (tf::TransformException ex)
     {
@@ -280,6 +306,7 @@ void RobotsTaskGeneration::receiveFrames()
     { 
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), _transform);
       _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
+      _rRcp = _rRc;
       _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
     } 
     catch (tf::TransformException ex)
@@ -365,37 +392,106 @@ void RobotsTaskGeneration::computeAttractors()
     float arcLength;
     arcLength = 50.0f*M_PI/180.0f*rToolTrocar.norm();
 
-    _xdOffset[k].setConstant(0.0f);
     if(k==(int)LEFT)
     {
-      Eigen::Vector3f temp;
-      _xdOffset[k] = arcLength*(_rRc.col(1)*_joyAxes(0)+_rRc.col(2)*_joyAxes(1));
-      _xdOffset[k] += _rRc.col(0)*(0.1f*_joyAxes(4));
-      std::cerr << "offset: " <<_xdOffset[k].transpose() << " a: " << arcLength << std::endl;
-      std::cerr << _joyAxes.transpose() << std::endl;
+      Eigen::Vector3f xDtemp;
+      xDtemp = arcLength*(_rRc.col(1)*_joyAxes[k](0)+_rRc.col(2)*_joyAxes[k](1));
+      xDtemp += _rRc.col(0)*(0.25f*std::max(0.0f,_joyAxes[k](4)));
+      Eigen::Vector3f a,b;
+      a = xDtemp;
+      a(2) -=0.05f;
+      b = -_rRt[k].col(2);
+      if(a.dot(b)<0)
+      {
+        b = -b;
+      }
+      float angle = std::acos(a.dot(b)/(a.norm()*b.norm())); 
+      if(std::fabs(std::acos(a.dot(b)/(a.norm()*b.norm())))<50.0f*M_PI/180.0f)
+      {
+        _xdOffset[k] = xDtemp;
+      }
+      // std::cerr << _xdOffset[k].transpose() << " " << angle*180.0f/M_PI << std::endl;
     } 
+    else
+    {
+      Eigen::Vector3f xDtemp;
+      xDtemp = arcLength*(_wRb[k].col(1)*_joyAxes[k](0)-_wRb[k].col(0)*_joyAxes[k](1));
+      xDtemp += _wRb[k].col(2)*(0.15f*std::max(0.0f,_joyAxes[k](4)));
+      Eigen::Vector3f a,b;
+      a = xDtemp;
+      a(2) -=0.05f;
+      b = -_rRt[k].col(2);
+      if(a.dot(b)<0)
+      {
+        b = -b;
+      }
+      if(std::fabs(std::acos(a.dot(b)/(a.norm()*b.norm())))<50.0f*M_PI/180.0f)
+      {
+        _xdOffset[k] = xDtemp;
+      }
+    }
+  }
+}
 
-    // Eigen::Vector3f tempOffset[NB_ROBOTS];
-    // tempOffset[LEFT] << msg->axes[1],0.0f,msg->axes[0];//,0.0f;
-    // tempOffset[RIGHT] << msg->axes[4],0.0f,msg->axes[3];//,0.0f;
+void RobotsTaskGeneration::footPositionMapping()
+{
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    Eigen::Vector3f rToolTrocar;
+    rToolTrocar = _x[k]-_xTrocar[k];
 
-    // _xdOffset[LEFT] = tempOffset[LEFT]*0.15f; 
-    // _xdOffset[RIGHT] = tempOffset[RIGHT]*0.15f; 
-  
-    // _xdOffset[RIGHT].setConstant(0.0f);
+    float arcLength;
+    arcLength = 50.0f*M_PI/180.0f*rToolTrocar.norm();
 
+    if(k==(int)LEFT)
+    {
+      Eigen::Vector3f xDtemp;
+      xDtemp = arcLength*(-_rRc.col(1)*2.0f*_footPose[k](0)/FOOT_INTERFACE_X_RANGE_LEFT+_rRc.col(2)*2.0f*_footPose[k](1)/FOOT_INTERFACE_Y_RANGE_LEFT);
+      xDtemp += _rRc.col(0)*(0.25f*2.0f*std::max(0.0f,-2.0f*_footPose[k](3))/FOOT_INTERFACE_PHI_RANGE_LEFT);
+      Eigen::Vector3f a,b;
+      a = xDtemp;
+      a(2) -=0.05f;
+      b = -_rRt[k].col(2);
+      if(a.dot(b)<0)
+      {
+        b = -b;
+      }
+      if(std::fabs(std::acos(a.dot(b)/(a.norm()*b.norm())))<50.0f*M_PI/180.0f)
+      {
+        _xdOffset[k] = xDtemp;
+      }
+
+    } 
+    else
+    {
+      Eigen::Vector3f xDtemp;
+      xDtemp = arcLength*(_wRb[k].col(0)*2.0f*_footPose[k](0)/FOOT_INTERFACE_X_RANGE_RIGHT+_wRb[k].col(1)*2.0f*_footPose[k](1)/FOOT_INTERFACE_Y_RANGE_RIGHT);
+      xDtemp += _wRb[k].col(2)*(0.15f*2.0f*std::max(0.0f,-2.0f*_footPose[k](3))/FOOT_INTERFACE_PHI_RANGE_LEFT);
+      Eigen::Vector3f a,b;
+      a = xDtemp;
+      a(2) -=0.05f;
+      b = -_rRt[k].col(2);
+      if(a.dot(b)<0)
+      {
+        b = -b;
+      }
+      if(std::fabs(std::acos(a.dot(b)/(a.norm()*b.norm())))<50.0f*M_PI/180.0f)
+      {
+        _xdOffset[k] = xDtemp;
+      }
+    }
   }
 }
 
 void RobotsTaskGeneration::trackTarget()
 {
 
-  computeAttractors();
-
+  // computeAttractors();
+  footPositionMapping();
   for(int k = 0; k < NB_ROBOTS; k++)
   {
     _xd[k] = _xTrocar[k]+_xdOffset[k];
-    _xd[k](2) -= 0.1f;
+    _xd[k](2) -= 0.05f;
 
     Eigen::Vector3f vdTool, rToolEE,rTrocarEE, xEE;
     vdTool = 3.0f*(_xd[k]-_x[k]);
@@ -419,8 +515,9 @@ void RobotsTaskGeneration::trackTarget()
       {
         _omegad[k] = 1.5f*_omegad[k]/_omegad[k].norm();
       }
-      vdRCM = 10.0f*(_xTrocar[k]-xRCM);
+      vdRCM = 20.0f*(_xTrocar[k]-xRCM);
       _vd[k] = vdTool-_omegad[k].cross(rToolEE)+vdRCM;
+      _omegad[k] += _selfRotationCommand[k]*_wRb[k].col(2); 
     }
     else
     {
@@ -477,12 +574,7 @@ void RobotsTaskGeneration::trackTarget()
       twistB = gains.cwiseProduct(Linv*(sd-dir));
       _vd[k] += _wRb[k]*twistB.segment(0,3);
       _omegad[k] += _wRb[k]*twistB.segment(3,3);
-
-      if(k==(int) LEFT)
-      {
-        // _omegad[k] += _selfRotationCommand*dir; 
-        _omegad[k] += _selfRotationCommand*_wRb[k].col(2); 
-      }
+      _omegad[k] += _selfRotationCommand[k]*_wRb[k].col(2); 
 
       // // // Compute nullspace basis
       // Eigen::Vector3f ex, ey;
@@ -557,39 +649,59 @@ void RobotsTaskGeneration::trackTarget()
       // _omegad[k] += _wRb[k]*twistB.segment(3,3);
     }
 
-    Eigen::Vector3f w;
+    // Eigen::Vector3f w;
     Eigen::Vector3f zBd;
     zBd = (_xTrocar[k]-(_x[k]-_toolOffsetFromEE*_wRb[k].col(2))).normalized();
-    w = (_wRb[k].col(2)).cross(zBd);
-    float c = (_wRb[k].col(2)).transpose()*zBd;  
-    float s = w.norm();
-    w /= s;
+    // w = (_wRb[k].col(2)).cross(zBd);
+    // float c = (_wRb[k].col(2)).transpose()*zBd;  
+    // float s = w.norm();
+    // w /= s;
     
-    Eigen::Matrix3f K;
-    K << Utils::getSkewSymmetricMatrix(w);
+    // Eigen::Matrix3f K;
+    // K << Utils::getSkewSymmetricMatrix(w);
 
     Eigen::Matrix3f Re;
-    if(fabs(s)< FLT_EPSILON)
-    {
-      Re = Eigen::Matrix3f::Identity();
-    }
-    else
-    {
-      Re = Eigen::Matrix3f::Identity()+s*K+(1-c)*K*K;
-    }
-    
-    // Convert rotation error into axis angle representation
-    Eigen::Vector3f omega;
-    float angle;
-    Eigen::Vector4f qtemp = Utils::rotationMatrixToQuaternion(Re);
-    Utils::quaternionToAxisAngle(qtemp,omega,angle);
+    // if(fabs(s)< FLT_EPSILON)
+    // {
+    //   Re = Eigen::Matrix3f::Identity();
+    // }
+    // else
+    // {
+    //   Re = Eigen::Matrix3f::Identity()+s*K+(1-c)*K*K;
+    // }
+    Eigen::Matrix3f Rd;
+    Rd.col(2) = zBd;
+    Rd.col(1) = ((Eigen::Matrix3f::Identity()-zBd*zBd.transpose())*_wRb[k].col(1)).normalized();
+    Rd.col(0) = Rd.col(1).cross(Rd.col(2));
+    Rd.col(0).normalize();
+    // Re = Rd*_wRb[k].transpose();
 
-    // Compute final quaternion on plane
-    Eigen::Vector4f qf = Utils::quaternionProduct(qtemp,_q[k]);
+    // // Convert rotation error into axis angle representation
+    // Eigen::Vector3f omega;
+    // float angle;
+    // Eigen::Vector4f qtemp = Utils::rotationMatrixToQuaternion(Re);
+    // Utils::quaternionToAxisAngle(qtemp,omega,angle);
 
-    // Perform quaternion slerp interpolation to progressively orient the end effector while approaching the surface
-    // _qd[k] = Utils::slerpQuaternion(_q[k],qf,1.0f-std::tanh(5.0f*_vd[k].norm()));
-    _qd[k] = qf;
+    // // Compute final quaternion on plane
+    // Eigen::Vector4f qf = Utils::quaternionProduct(qtemp,_q[k]);
+
+    // // Perform quaternion slerp interpolation to progressively orient the end effector while approaching the surface
+    // // _qd[k] = Utils::slerpQuaternion(_q[k],qf,1.0f-std::tanh(5.0f*_vd[k].norm()));
+    // _qd[k] = qf;
+    _qd[k] = Utils::rotationMatrixToQuaternion(Rd);
+
+    if(_qd[k].dot(_q[k])<0.0f)
+    {
+      _qd[k] *=-1.0f;
+    }
+    // Eigen::Vector4f wq;
+    // wq << 0.0f, _selfRotationCommand[k]*(_wRb[k].transpose()).col(2);
+    // _qd[k] += Utils::quaternionProduct(_qd[k],wq);
+  // qcurI(0) = _q(0);
+  // qcurI.segment(1,3) = -_q.segment(1,3);
+  // wq = 5.0f*Utils::quaternionProduct(qcurI,_qd-_q);
+  // Eigen::Vector3f omegaTemp = _wRb*wq.segment(1,3);
+  // _omegad = omegaTemp; 
 
     // if (_vd[k].norm() > 0.3f) 
     // {
@@ -605,6 +717,7 @@ void RobotsTaskGeneration::trackTarget()
     //   std::cerr << _xdOffset[LEFT] << std::endl;
     //   std::cerr << _rRc << std::endl;
     // }
+    _qdPrev[k] = _qd[k];
   }  
 }
 
@@ -778,6 +891,7 @@ void RobotsTaskGeneration::updateRobotPose(const geometry_msgs::Pose::ConstPtr& 
     _firstRobotPose[k] = true;
     _xd[k] = _x[k];
     _qd[k] = _q[k];
+    _qdPrev[k] = _qd[k];
     _vd[k].setConstant(0.0f);
   }
 }
@@ -795,50 +909,58 @@ void RobotsTaskGeneration::updateRobotTwist(const geometry_msgs::Twist::ConstPtr
 }
  
 
-void RobotsTaskGeneration::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg)
+void RobotsTaskGeneration::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int k)
 {
 
   if(_alignedWithTrocar[LEFT] && _alignedWithTrocar[RIGHT])
   {
-    Eigen::Vector3f tempOffset[NB_ROBOTS];
-    tempOffset[LEFT] << msg->axes[1],0.0f,msg->axes[0];//,0.0f;
-    tempOffset[RIGHT] << msg->axes[4],0.0f,msg->axes[3];//,0.0f;
-
-    _xdOffset[LEFT] = tempOffset[LEFT]*0.15f; 
-    _xdOffset[RIGHT] = tempOffset[RIGHT]*0.15f; 
-  
-    // _xdOffset[RIGHT].setConstant(0.0f);
-    // _xdOffset[LEFT] = 0.15f*(_rRc.col(1)*msg->axes[0]+_rRc.col(2)*msg->axes[1]+_rRc.col(0)*msg->axes[4]);
-
-    _selfRotationCommand = msg->axes[2]-msg->axes[5];
-
-    _joyAxes << msg->axes[0], msg->axes[1], msg->axes[2], msg->axes[3], 
-                msg->axes[4], msg->axes[5], msg->axes[6], msg->axes[7]; 
+    _joyAxes[k] << msg->axes[0], msg->axes[1], msg->axes[2], msg->axes[3], 
+                   msg->axes[4], msg->axes[5], msg->axes[6], msg->axes[7]; 
 
 
-    // std::cerr << _xdOffset[LEFT].transpose() << std::endl;
+    _selfRotationCommand[k] = _joyAxes[k](2)-_joyAxes[k](5);
+
   }
-  // _v[k] << msg->linear.x, msg->linear.y, msg->linear.z;
-  // _w[k] << msg->angular.x, msg->angular.y, msg->angular.z;
-
-  // if(!_firstRobotTwist[k])
-  // {
-  //   _firstRobotTwist[k] = true;
-  // }
 }
-// void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
-// {
 
-//   _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
-//   _footWrench[k] << msg->Fx, msg->Fy,0.0f, msg->Tphi, msg->Ttheta, msg->Tpsi;
-//   _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
-//   _footState[k] = msg->state;
+void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
+{
 
-//   if(!_firstFootOutput[k])
-//   {
-//     _firstFootOutput[k] = true;
-//   }
-// }
+  _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
+  _footWrench[k] << msg->Fx, msg->Fy,0.0f, msg->Tphi, msg->Ttheta, msg->Tpsi;
+  _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
+  _footState[k] = msg->state;
+
+  _footPosition[k](0) = _footPose[k](1);
+  _footPosition[k](1) = -_footPose[k](0);
+  _footPosition[k](2) = _footPose[k](3);
+
+  if(_footPose[k](3)>FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
+  {
+    _footPose[k](3) = FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
+  }
+  else if(_footPose[k](3)<-FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
+  {
+    _footPose[k](3) = -FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
+  }
+
+
+
+  if(!_firstFootOutput[k])
+  {
+    _firstFootOutput[k] = true;
+    _footPose0[k] = _footPose[k];
+  }
+  _selfRotationCommand[k] = -2.0f*Utils::deadZone(msg->psi-_footPose0[k](5),-5.0f,5.0f)/FOOT_INTERFACE_PSI_RANGE;
+  if(_selfRotationCommand[k]>1.0f)
+  {
+    _selfRotationCommand[k]=1.0f;
+  }
+  else if(_selfRotationCommand[k]<-1.0f)
+  {
+    _selfRotationCommand[k]=-1.0f;
+  }
+}
 
 
 void RobotsTaskGeneration::dynamicReconfigureCallback(surgical_simulator::robotsTaskGeneration_paramsConfig &config, uint32_t level)

@@ -41,7 +41,7 @@
                     yDim="${torsoYDim}"
                     zDim="${torsoZDim}"
                     scale="${torsoScale}">
-    <origin xyz="${tableLength/2} ${-0.6*tableWidth} ${torsoScale*0.4*torsoYDim}" rpy="0 0 0"/>
+    <origin xyz="${tableLength/2} ${-tableWidth/2} ${torsoScale*0.4*torsoYDim}" rpy="0 0 0"/>
   </xacro:torso_upper>
 
 </robot>
