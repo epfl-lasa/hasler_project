@@ -37,6 +37,10 @@ RobotsTaskGeneration::RobotsTaskGeneration(ros::NodeHandle &n, double frequency)
     // _footDesiredWrench[k].setConstant(0.0f);
     _footPosition[k].setConstant(0.0f);
     _firstFootOutput[k] = false;
+    _vdOffset[k].setConstant(0.0f);
+    _sequenceID[k] = 0;
+    _joystickSequenceID[k] = 100;
+    _desiredFootWrench[k].setConstant(0.0f);
   }
 
   _stop = false;
@@ -49,6 +53,7 @@ RobotsTaskGeneration::RobotsTaskGeneration(ros::NodeHandle &n, double frequency)
 
   // _strategy = PRIMARY_TASK;
   _strategy = VIRTUAL_RCM;
+  _humanInput = FOOT;
 
 
 
@@ -106,6 +111,8 @@ bool RobotsTaskGeneration::init()
   _pubDesiredTwist[LEFT] = _nh.advertise<geometry_msgs::Twist>("/left_lwr/joint_controllers/passive_ds_command_vel", 1);
   _pubDesiredOrientation[LEFT] = _nh.advertise<geometry_msgs::Quaternion>("/left_lwr/joint_controllers/passive_ds_command_orient", 1);
 
+  _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg>("/FI_Input/Right", 1);
+  _pubFootInput[LEFT] = _nh.advertise<custom_msgs::FootInputMsg>("/FI_Input/Left", 1);
   // _pubMarker = _nh.advertise<visualization_msgs::Marker>("RobotsTaskGeneration/marker", 1);
 
   // Dynamic reconfigure definition
@@ -157,6 +164,8 @@ void RobotsTaskGeneration::run()
       {
         alignWithTrocar();
       }
+      
+      computeDesiredFootWrench();
 
       // Publish data to topics
       publishData();
@@ -378,6 +387,7 @@ void RobotsTaskGeneration::alignWithTrocar()
     }
 
     std::cerr << "[RobotsTaskGeneration]: " << k << " position error: " << _vd[k].norm() << " angular error: " << angle << std::endl;
+    _xd[k] = _x[k];
   }
 }
 
@@ -390,7 +400,7 @@ void RobotsTaskGeneration::computeAttractors()
     rToolTrocar = _x[k]-_xTrocar[k];
 
     float arcLength;
-    arcLength = 50.0f*M_PI/180.0f*rToolTrocar.norm();
+    arcLength = 60.0f*M_PI/180.0f*rToolTrocar.norm();
 
     if(k==(int)LEFT)
     {
@@ -400,16 +410,65 @@ void RobotsTaskGeneration::computeAttractors()
       Eigen::Vector3f a,b;
       a = xDtemp;
       a(2) -=0.05f;
+      // a = rToolTrocar;
       b = -_rRt[k].col(2);
       if(a.dot(b)<0)
       {
         b = -b;
       }
       float angle = std::acos(a.dot(b)/(a.norm()*b.norm())); 
-      if(std::fabs(std::acos(a.dot(b)/(a.norm()*b.norm())))<50.0f*M_PI/180.0f)
+      std::cerr << "a1: " << angle*180.0f/M_PI << " " << rToolTrocar.norm() <<std::endl;
+
+      if(std::fabs(angle)<60.0f*M_PI/180.0f)
       {
         _xdOffset[k] = xDtemp;
       }
+      else
+      {
+        Eigen::Vector3f w = (-_rRt[k].col(2)).cross(_rRc.col(0));
+        float c = (-_rRt[k].col(2)).transpose()*_rRc.col(0);  
+        float s = w.norm();
+        w /= s;
+        Eigen::Vector3f v;
+        if(a.norm()>0.3f)
+        {
+          v = -_rRt[k].col(2)*0.3f;
+        }
+        else
+        {
+          v = -_rRt[k].col(2)*a.norm();
+        }
+        v = -_rRt[k].col(2)*rToolTrocar.norm();
+        angle = 60.0f*M_PI/180.0f;
+        c= cos(angle);
+        s=sin(angle);
+        _xdOffset[k] = c*v+s*w.cross(v)+(1-c)*w.dot(v)*w;
+        std::cerr << std::acos(_xdOffset[k].dot(-_rRt[k].col(2))/_xdOffset[k].norm())*180.0f/M_PI << std::endl;
+        _xdOffset[k](2) += 0.05f;
+    
+    // Eigen::Matrix3f K;
+    // K << Utils::getSkewSymmetricMatrix(w);
+        // _xdOffset[k] =  _rRc.col(0)*(0.25f*std::max(0.0f,_joyAxes[k](4)));
+        // a = xDtemp;
+        // a(2) -=0.05f;
+        // if(a.dot(b)<0)
+        // {
+        //   b = -b;
+        // }
+        // angle = std::acos(a.dot(b)/(a.norm()*b.norm())); 
+        // if(std::fabs(angle)<50.0f*M_PI/180.0f)
+        // {
+        //   _xdOffset[k] = xDtemp;
+        // }
+        // else
+        // {
+        //   _xdOffset[k] = rToolTrocar;
+        //   _xdOffset[k](2)+=0.05;
+        // }  
+      }
+
+
+      std::cerr << "a2: " << angle*180.0f/M_PI << std::endl;
       // std::cerr << _xdOffset[k].transpose() << " " << angle*180.0f/M_PI << std::endl;
     } 
     else
@@ -431,6 +490,20 @@ void RobotsTaskGeneration::computeAttractors()
       }
     }
   }
+
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    if(k==(int)LEFT)
+    {
+      _vdOffset[k] = 0.2f*(_rRc.col(1)*_joyAxes[k](0)+_rRc.col(2)*_joyAxes[k](1)+_rRc.col(0)*_joyAxes[k](4));
+    }
+    else
+    {
+      // _vdOffset[k] = 0.2f*(_wRb[k].col(1)*_joyAxes[k](0)-_wRb[k].col(0)*_joyAxes[k](1)+_wRb[k].col(2)*_joyAxes[k](4));
+      _vdOffset[k] = 0.2f*(_rRc.col(1)*_joyAxes[k](0)+_rRc.col(2)*_joyAxes[k](1)+_rRc.col(0)*_joyAxes[k](4));
+
+    }
+  }
 }
 
 void RobotsTaskGeneration::footPositionMapping()
@@ -448,6 +521,7 @@ void RobotsTaskGeneration::footPositionMapping()
       Eigen::Vector3f xDtemp;
       xDtemp = arcLength*(-_rRc.col(1)*2.0f*_footPose[k](0)/FOOT_INTERFACE_X_RANGE_LEFT+_rRc.col(2)*2.0f*_footPose[k](1)/FOOT_INTERFACE_Y_RANGE_LEFT);
       xDtemp += _rRc.col(0)*(0.25f*2.0f*std::max(0.0f,-2.0f*_footPose[k](3))/FOOT_INTERFACE_PHI_RANGE_LEFT);
+      // _xdOffset[k] = xDtemp;
       Eigen::Vector3f a,b;
       a = xDtemp;
       a(2) -=0.05f;
@@ -456,10 +530,12 @@ void RobotsTaskGeneration::footPositionMapping()
       {
         b = -b;
       }
-      if(std::fabs(std::acos(a.dot(b)/(a.norm()*b.norm())))<50.0f*M_PI/180.0f)
+      float angle = std::acos(a.dot(b)/(a.norm()*b.norm()));
+      if(std::fabs(angle)<50.0f*M_PI/180.0f)
       {
         _xdOffset[k] = xDtemp;
       }
+
 
     } 
     else
@@ -481,6 +557,25 @@ void RobotsTaskGeneration::footPositionMapping()
       }
     }
   }
+    for(int k = 0; k < NB_ROBOTS; k++)
+  {
+
+    Eigen::Vector3f x;
+    x << -2.0f*_footPosition[k](2)/FOOT_INTERFACE_PHI_RANGE_LEFT,-2.0f*_footPosition[k](0)/FOOT_INTERFACE_X_RANGE_LEFT,2.0f*_footPosition[k](1)/FOOT_INTERFACE_Y_RANGE_LEFT;
+    // if(k==(int)LEFT)
+    // {
+      _vdOffset[k] = 0.2f*_rRc*x;
+    // }
+    // else
+    // {
+    //   // _vdOffset[k] = 0.2f*(_wRb[k].col(1)*_joyAxes[k](0)-_wRb[k].col(0)*_joyAxes[k](1)+_wRb[k].col(2)*_joyAxes[k](4));
+    //   _vdOffset[k] = 0.2f*(-_rRc.col(1)*2.0f*_footPose[k](0)/FOOT_INTERFACE_X_RANGE_LEFT+_rRc.col(2)*2.0f*_footPose[k](1)/FOOT_INTERFACE_Y_RANGE_LEFT
+    //   -_rRc.col(0)*2.0f*_footPose[k](3)/FOOT_INTERFACE_PHI_RANGE_LEFT);
+
+    // }
+    std::cerr << k << " : " << x.transpose() << std::endl;
+    // _vdOffset[k].setConstant(0.0f);
+  }
 }
 
 void RobotsTaskGeneration::trackTarget()
@@ -490,26 +585,40 @@ void RobotsTaskGeneration::trackTarget()
   footPositionMapping();
   for(int k = 0; k < NB_ROBOTS; k++)
   {
-    _xd[k] = _xTrocar[k]+_xdOffset[k];
-    _xd[k](2) -= 0.05f;
+    // _xd[k] = _xTrocar[k]+_xdOffset[k];
+    // _xd[k](2) -= 0.05f;
 
     Eigen::Vector3f vdTool, rToolEE,rTrocarEE, xEE;
-    vdTool = 3.0f*(_xd[k]-_x[k]);
-    if(vdTool.norm()>0.3f)
-    {
-      vdTool *= 0.3f/vdTool.norm();
-    }
+    // vdTool = 3.0f*(_xd[k]-_x[k]);
+
+    // if(fabs(_joyAxes[k](0))<FLT_EPSILON && fabs(_joyAxes[k](1))<FLT_EPSILON && fabs(_joyAxes[k](3))<FLT_EPSILON) 
+    // {
+    //   vdTool = (_xd[k]-_x[k]);
+    // }
+    // else
+    // {
+      vdTool = _vdOffset[k];
+    //   _xd[k] = _x[k];
+    // }
+    // if(vdTool.norm()>0.3f)
+    // {
+    //   vdTool *= 0.3f/vdTool.norm();
+    // }
 
     xEE = _x[k]-_toolOffsetFromEE*_wRb[k].col(2);  
     rToolEE = _wRb[k].col(2)*_toolOffsetFromEE;
     rTrocarEE = _xTrocar[k]-xEE;
 
+    Eigen::Vector3f xRCM, rRCMEE, vdRCM;
+    xRCM = xEE+rTrocarEE.dot(_wRb[k].col(2))*_wRb[k].col(2);
+    rRCMEE = xRCM-xEE;
+    if(rRCMEE.norm()>_toolOffsetFromEE && vdTool.dot(_wRb[k].col(2))<0.0f)
+    {
+      vdTool.setConstant(0.0f);
+    }
 
     if(_strategy==VIRTUAL_RCM)
     {
-      Eigen::Vector3f xRCM, rRCMEE, vdRCM;
-      xRCM = xEE+rTrocarEE.dot(_wRb[k].col(2))*_wRb[k].col(2);
-      rRCMEE = xRCM-xEE;
       _omegad[k] = (rToolEE-rRCMEE).cross((Eigen::Matrix3f::Identity()-_wRb[k].col(2)*_wRb[k].col(2).transpose())*vdTool)/(rToolEE-rRCMEE).squaredNorm();
       if (_omegad[k].norm() > 1.5f) 
       {
@@ -796,6 +905,68 @@ void RobotsTaskGeneration::computeDesiredOrientation()
 //   }
 // }
 
+void RobotsTaskGeneration::computeDesiredFootWrench()
+{
+  // Eigen::Vector3f temp;
+  // temp = _wRb[RIGHT]*_filteredWrench[RIGHT].segment(0,3);
+
+  // // temp.setConstant(0.0f);
+  // _desiredFootWrench[RIGHT](1) = temp(0);
+  // _desiredFootWrench[RIGHT](0) = -temp(1);
+  // _desiredFootWrench[RIGHT](3) = temp(2)*0.205/5;
+  for(int k = 0; k < NB_ROBOTS; k++)
+  { 
+    _desiredFootWrench[k](0) = -_kxy*_footPose[k](0)-_dxy*_footTwist[k](0);
+    _desiredFootWrench[k](1) = -_kxy*_footPose[k](1)-_dxy*_footTwist[k](1);
+    _desiredFootWrench[k](3) = -_kphi*_footPose[k](3)-_dphi*_footTwist[k](3);
+  }
+  std::cerr << _kxy << " " << _dxy << " " << _kphi << " " << _dphi << std::endl;  
+  std::cerr << _desiredFootWrench[LEFT].transpose() << std::endl;
+
+  for(int k = 0 ; k < 3; k++)
+  {
+    if(_desiredFootWrench[RIGHT](k)>25.0f)
+    {
+      _desiredFootWrench[RIGHT](k) = 25.0f;
+    }
+    else if(_desiredFootWrench[RIGHT](k)<-25.0f)
+    {
+      _desiredFootWrench[RIGHT](k) = -25.0f;
+    }
+
+    if(_desiredFootWrench[LEFT](k)>25.0f)
+    {
+      _desiredFootWrench[LEFT](k) = 25.0f;
+    }
+    else if(_desiredFootWrench[LEFT](k)<-25.0f)
+    {
+      _desiredFootWrench[LEFT](k) = -25.0f;
+    }
+  }
+
+  for(int k = 0 ; k < 3; k++)
+  {
+    if(_desiredFootWrench[RIGHT](k+3)>0.187f*40/9.15)
+    {
+      _desiredFootWrench[RIGHT](k+3) = 0.187f*40/9.15;
+    }
+    else if(_desiredFootWrench[RIGHT](k+3)<-0.187f*40/9.15)
+    {
+      _desiredFootWrench[RIGHT](k+3) = -0.187f*40/9.15;
+    }
+
+    if(_desiredFootWrench[LEFT](k+3)>0.212f*40/9.15)
+    {
+      _desiredFootWrench[LEFT](k+3) = 0.212f*40/9.15;
+    }
+    else if(_desiredFootWrench[LEFT](k+3)<-0.212f*40/9.15)
+    {
+      _desiredFootWrench[LEFT](k+3) = -0.212f*40/9.15;
+    }
+
+  }
+}
+
 void RobotsTaskGeneration::logData()
 {
   // _outputFile << ros::Time::now() << " "
@@ -860,6 +1031,14 @@ void RobotsTaskGeneration::publishData()
     _msgDesiredOrientation.z = _qd[k](3);
 
     _pubDesiredOrientation[k].publish(_msgDesiredOrientation);
+
+    _msgFootInput.FxDes = _desiredFootWrench[k](0);
+    _msgFootInput.FyDes = _desiredFootWrench[k](1);
+    _msgFootInput.TphiDes = _desiredFootWrench[k](3);
+    _msgFootInput.TthetaDes = _desiredFootWrench[k](4);
+    _msgFootInput.TpsiDes = _desiredFootWrench[k](5);
+    _msgFootInput.stateDes = 2;
+    _pubFootInput[k].publish(_msgFootInput);
   }
 
   // _pubMarker.publish(_msgMarker);
@@ -918,22 +1097,32 @@ void RobotsTaskGeneration::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg,
                    msg->axes[4], msg->axes[5], msg->axes[6], msg->axes[7]; 
 
 
-    _selfRotationCommand[k] = _joyAxes[k](2)-_joyAxes[k](5);
-
+     if(_humanInput==JOYSTICK)
+     {
+      _selfRotationCommand[k] = _joyAxes[k](2)-_joyAxes[k](5);
+      
+     }
+     else 
+     {
+      _selfRotationCommand[LEFT] = -_joyAxes[k](0);
+      _selfRotationCommand[RIGHT] = -_joyAxes[k](3);
+     }
+    _joystickSequenceID[k] = msg->header.seq;
   }
 }
 
 void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
 {
 
+  // _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
   _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
   _footWrench[k] << msg->Fx, msg->Fy,0.0f, msg->Tphi, msg->Ttheta, msg->Tpsi;
   _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
   _footState[k] = msg->state;
 
-  _footPosition[k](0) = _footPose[k](1);
-  _footPosition[k](1) = -_footPose[k](0);
-  _footPosition[k](2) = _footPose[k](3);
+  _footPosition[k](0) = Utils::deadZone(_footPose[k](0),-0.05,0.05);
+  _footPosition[k](1) = Utils::deadZone(_footPose[k](1),-0.05,0.05);
+  _footPosition[k](2) = Utils::deadZone(_footPose[k](3),-5.0f,5.0f);
 
   if(_footPose[k](3)>FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
   {
@@ -944,22 +1133,20 @@ void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::Co
     _footPose[k](3) = -FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
   }
 
-
-
-  if(!_firstFootOutput[k])
-  {
-    _firstFootOutput[k] = true;
-    _footPose0[k] = _footPose[k];
-  }
-  _selfRotationCommand[k] = -2.0f*Utils::deadZone(msg->psi-_footPose0[k](5),-5.0f,5.0f)/FOOT_INTERFACE_PSI_RANGE;
-  if(_selfRotationCommand[k]>1.0f)
-  {
-    _selfRotationCommand[k]=1.0f;
-  }
-  else if(_selfRotationCommand[k]<-1.0f)
-  {
-    _selfRotationCommand[k]=-1.0f;
-  }
+  // if(!_firstFootOutput[k])
+  // {
+  //   _firstFootOutput[k] = true;
+  //   _footPose0[k] = _footPose[k];
+  // }
+  // _selfRotationCommand[k] = -2.0f*Utils::deadZone(msg->psi-_footPose0[k](5),-5.0f,5.0f)/FOOT_INTERFACE_PSI_RANGE;
+  // if(_selfRotationCommand[k]>1.0f)
+  // {
+  //   _selfRotationCommand[k]=1.0f;
+  // }
+  // else if(_selfRotationCommand[k]<-1.0f)
+  // {
+  //   _selfRotationCommand[k]=-1.0f;
+  // }
 }
 
 
@@ -970,6 +1157,10 @@ void RobotsTaskGeneration::dynamicReconfigureCallback(surgical_simulator::robots
   _velocityLimit = config.velocityLimit;
   _xdOffset[RIGHT] << config.rightTargetXOffset, config.rightTargetYOffset, config.rightTargetZOffset;
   _xdOffset[LEFT] << config.leftTargetXOffset, config.leftTargetYOffset, config.leftTargetZOffset;
+  _kxy = config.kxy;
+  _dxy = config.dxy;
+  _kphi = config.kphi;
+  _dphi = config.dphi;
 }
 
 

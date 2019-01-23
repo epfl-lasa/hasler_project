@@ -27,6 +27,7 @@
 #include "sensor_msgs/Joy.h"
 #include "visualization_msgs/Marker.h"
 #include "custom_msgs/FootOutputMsg.h"
+#include "custom_msgs/FootInputMsg.h"
 
 
 #define NB_SAMPLES 50
@@ -34,10 +35,10 @@
 #define NB_ROBOTS 2
 #define FOOT_INTERFACE_X_RANGE_RIGHT 0.350
 #define FOOT_INTERFACE_Y_RANGE_RIGHT 0.293
-#define FOOT_INTERFACE_PHI_RANGE_RIGHT 35
+#define FOOT_INTERFACE_PHI_RANGE_RIGHT 50
 #define FOOT_INTERFACE_X_RANGE_LEFT 0.350
 #define FOOT_INTERFACE_Y_RANGE_LEFT 0.293
-#define FOOT_INTERFACE_PHI_RANGE_LEFT 35
+#define FOOT_INTERFACE_PHI_RANGE_LEFT 50
 #define FOOT_INTERFACE_PSI_RANGE 45
 #define NB_AXES_JOYSTICK 8
 
@@ -50,6 +51,8 @@ class RobotsTaskGeneration
     enum ROBOT {LEFT = 0, RIGHT = 1};
 
     enum TROCAR_CONSTRAINT_STRATEGY {VIRTUAL_RCM=0, PRIMARY_TASK=1};
+
+    enum HUMAN_INPUT {JOYSTICK=0, FOOT=1};
 
   private:
     // ROS variables
@@ -66,6 +69,7 @@ class RobotsTaskGeneration
     ros::Publisher _pubDesiredTwist[NB_ROBOTS];         // Desired twist to DS-impdedance controller
     ros::Publisher _pubDesiredOrientation[NB_ROBOTS];   // Desired orientation to DS-impedance controller
     ros::Publisher _pubMarker;                  // Marker (RVIZ) 
+    ros::Publisher _pubFootInput[NB_ROBOTS];
 
     
     // Subsciber and publisher messages declaration
@@ -74,6 +78,7 @@ class RobotsTaskGeneration
     geometry_msgs::Quaternion _msgDesiredOrientation;
     geometry_msgs::Twist _msgDesiredTwist;
     visualization_msgs::Marker _msgMarker;
+    custom_msgs::FootInputMsg _msgFootInput;
 
     // Tool characteristics
     float _toolOffsetFromEE;                    // Tool offset along z axis of end effector [m]             
@@ -113,7 +118,9 @@ class RobotsTaskGeneration
     bool _rightTrocarFrameReceived;
     bool _leftCameraFrameReceived;
     bool _alignedWithTrocar[NB_ROBOTS];
-    bool _firstJoystick;
+    bool _firstJoystick[NB_ROBOTS];
+    uint32_t _joystickSequenceID[NB_ROBOTS];
+
 
 
     ros::Subscriber _subFootOutput[NB_ROBOTS];
@@ -127,18 +134,26 @@ class RobotsTaskGeneration
     bool _firstFootOutput[NB_ROBOTS];
     int _footState[NB_ROBOTS];
 
-    // User variables
+    Eigen::Matrix<float,6,1> _desiredFootWrench[NB_ROBOTS];     // User variables
     float _velocityLimit;       // Velocity limit [m/s]
     Eigen::Vector3f _xdOffset[NB_ROBOTS];
+    Eigen::Vector3f _vdOffset[NB_ROBOTS];
+
+    HUMAN_INPUT _humanInput;
     
     // Other variables
-    uint32_t _sequenceID;
+    uint32_t _sequenceID[NB_ROBOTS];
     std::string _fileName;
     std::ifstream _inputFile;
     std::ofstream _outputFile;
 
     tf::TransformListener _lr;
     tf::StampedTransform _transform;
+
+    float _kxy;     
+    float _dxy;     
+    float _kphi;        
+    float _dphi; 
 
     TROCAR_CONSTRAINT_STRATEGY _strategy;
 
@@ -181,6 +196,7 @@ class RobotsTaskGeneration
     // Compute modulated DS
     void computeModulatedDS();
 
+    void computeDesiredFootWrench();
     // Compute desired orientation
     void computeDesiredOrientation();
     
