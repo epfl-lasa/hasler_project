@@ -44,7 +44,7 @@ bool ReachTarget::init()
   
   ROS_INFO("[ReachTarget]: Filename: %s", _filename.c_str());
 
-  _outputFile.open(ros::package::getPath(std::string("demo_scientastic"))+"/data/"+_filename+".txt");
+  _outputFile.open(ros::package::getPath(std::string("demo_scientastic"))+"/data/"+"test_reach_target_"+_filename+".txt");
 
   if(!_outputFile.is_open())
   {
@@ -137,7 +137,7 @@ void ReachTarget::checkIfObjectGrasped()
   float error = (centerFeetPosition-_cubePosition).segment(0,3).norm();
 
   // std::cerr << error << " " << feetDistance << std::endl;
-  if(error< 0.5f && feetDistance < 2.5f && !_cubeGrasped)
+  if(error< 0.5f && feetDistance < 2.5f && _force[LEFT].norm()>3 && _force[RIGHT].norm()>3 && !_cubeGrasped)
   {
     _cubeGrasped = true;
     _startingTime = _currentTime;
@@ -170,23 +170,26 @@ void ReachTarget::logData()
               << _footPosition[RIGHT].transpose() << " "
               << _targetPosition.transpose() << " "
               << _cubePosition.transpose() << " "
+              << _cubeOrientation.transpose() << " "
               << _force[LEFT].transpose() << " "
-              << _force[RIGHT].transpose() << std::endl;
+              << _force[RIGHT].transpose() << " "
+              << (int) _cubeGrasped << " " 
+              << (int) _targetReached << std::endl;
 }
 
 
 void ReachTarget::publishData()
 {
-  _msgTargetPose.header.frame_id = "world";
-  _msgTargetPose.header.stamp = ros::Time::now();
-  _msgTargetPose.pose.position.x = _targetPosition(0);
-  _msgTargetPose.pose.position.y = _targetPosition(1);
-  _msgTargetPose.pose.position.z = _targetPosition(2);
-  _msgTargetPose.pose.orientation.x = 0.0f;
-  _msgTargetPose.pose.orientation.y = 0.0f;
-  _msgTargetPose.pose.orientation.z = 0.0f;
-  _msgTargetPose.pose.orientation.w = 1.0f;
-  _pubTargetPose.publish(_msgTargetPose);
+  // _msgTargetPose.header.frame_id = "world";
+  // _msgTargetPose.header.stamp = ros::Time::now();
+  // _msgTargetPose.pose.position.x = _targetPosition(0);
+  // _msgTargetPose.pose.position.y = _targetPosition(1);
+  // _msgTargetPose.pose.position.z = _targetPosition(2);
+  // _msgTargetPose.pose.orientation.x = 0.0f;
+  // _msgTargetPose.pose.orientation.y = 0.0f;
+  // _msgTargetPose.pose.orientation.z = 0.0f;
+  // _msgTargetPose.pose.orientation.w = 1.0f;
+  // _pubTargetPose.publish(_msgTargetPose);
 
   std_msgs::Float32 msg;
   if(_cubeGrasped && !_targetReached)
@@ -217,6 +220,7 @@ void ReachTarget::updateFootPose(const geometry_msgs::Pose::ConstPtr& msg, int k
 void ReachTarget::updateCubePose(const geometry_msgs::Pose::ConstPtr& msg)
 {
   _cubePosition << msg->position.x, msg->position.y, msg->position.z;
+  _cubeOrientation << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
 
   if(!_firstCubePose)
   {

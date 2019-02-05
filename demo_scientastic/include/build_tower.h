@@ -1,5 +1,5 @@
-#ifndef __REACH_TARGET_H__
-#define __REACH_TARGET_H__
+#ifndef __BUILD_TOWER_H__
+#define __BUILD_TOWER_H__
 
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
@@ -17,7 +17,8 @@
 #include <ros/package.h>
 
 
-class ReachTarget
+
+class BuildTower
 {
 	private:
 	
@@ -30,7 +31,7 @@ class ReachTarget
 
 		//! Subscribers and publishers
 		ros::Subscriber _subFootPose[2];
-		ros::Subscriber _subCubePose;
+		ros::Subscriber _subCubePose[3];
 		ros::Subscriber _subForce[2];
 		ros::Publisher _pubTargetPose;
 		ros::Publisher _pubCurrentTime;
@@ -46,9 +47,9 @@ class ReachTarget
 		//! Boolean variables
 		bool _stop;
 		bool _firstFootPosition[2];
-		bool _firstCubePose;
+		bool _firstCubePose[3];
 		bool _cubeGrasped;
-		bool _targetReached;
+		bool _towerBuilt;
     bool _firstForce[2];
 
     double _startingTime;		
@@ -56,11 +57,10 @@ class ReachTarget
     double _initialTime;
     double _reachedTime;
 
-
-
 		Eigen::Vector3f _footPosition[2];
-		Eigen::Vector3f _cubePosition;
-		Eigen::Vector4f _cubeOrientation;
+		Eigen::Vector3f _cubePosition[3];
+		Eigen::Vector4f _cubeOrientation[3];
+
     Eigen::Vector3f _force[2];
 
 
@@ -68,25 +68,24 @@ class ReachTarget
 		std::string _filename;
 		std::ofstream _outputFile;
   	std::mutex _mutex;
-		static ReachTarget* me;
+		static BuildTower* me;
 
     
 	public:
-		ReachTarget(ros::NodeHandle &n, double frequency, std::string filename);
+		BuildTower(ros::NodeHandle &n, double frequency, std::string filename);
 		bool  init();
 		void run();
 	
 	private:
 		static void stopNode(int sig);
-		void receiveFrames();
 		void logData();
 		void publishData();
-		void checkIfObjectGrasped();
-		void checkIfTargetReached();
+		void checkIfCubeGrasped();
+		void checkIfTowerBuilt();
 		void updateFootPose(const geometry_msgs::Pose::ConstPtr& msg, int k);
-		void updateCubePose(const geometry_msgs::Pose::ConstPtr& msg);
+		void updateCubePose(const geometry_msgs::Pose::ConstPtr& msg, int k);
 		void updateForce(const geometry_msgs::Vector3::ConstPtr& msg, int k);
 
 
 };
-#endif  // __REACH_TARGET_H__
+#endif  // __BUILD_TOWER_H__

@@ -63,6 +63,10 @@ add_executable(reach_target src/reach_target_node.cpp src/reach_target.cpp)
 target_link_libraries(reach_target ${catkin_LIBRARIES})
 add_dependencies(reach_target ${PROJECT_NAME}_gencpp)
 
+add_executable(build_tower src/build_tower_node.cpp src/build_tower.cpp)
+target_link_libraries(build_tower ${catkin_LIBRARIES})
+add_dependencies(build_tower ${PROJECT_NAME}_gencpp)
+
 add_library(footTfUpdate SHARED src/gz_plugins/footTfUpdate.cc)
 target_link_libraries(footTfUpdate 
             ${catkin_LIBRARIES}

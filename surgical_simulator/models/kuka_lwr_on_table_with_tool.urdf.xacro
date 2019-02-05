@@ -33,7 +33,8 @@
                     length="${tableLength}"
                     width="${tableWidth}"
                     height="${tableHeight}"
-                    plate_thickness="0.1">
+                    plate_thickness="0.1"
+                    color="grey">
     <origin xyz="${$(arg origin.x)-tableLength/2} ${$(arg origin.y)+tableWidth/2} ${tableHeight}" rpy="0 0 0"/>
   </xacro:model_table>
 
