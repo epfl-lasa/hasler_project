@@ -20,6 +20,8 @@ _dt(1.0f/frequency)
     _footPosition[k].setConstant(0.0f);
     _footState[k] = 0;
     _force[k].setConstant(0.0f);
+    _ftSensorForce[k].setConstant(0.0f);
+    _filteredForce[k].setConstant(0.0f);
     _desiredFootPosition[k].setConstant(0.0f);
     _desiredFootWrench[k].setConstant(0.0f);
 
@@ -29,9 +31,7 @@ _dt(1.0f/frequency)
     _firstForce[k] = false;
     _xyPositionMapping = 14.0f;
     _zPositionMapping = 14.0f;
-
   }
-
 }
 
 bool FootControl::init()
@@ -44,6 +44,10 @@ bool FootControl::init()
   _subForce[RIGHT] = _n.subscribe<geometry_msgs::Vector3>("/right_foot/force",1, boost::bind(&FootControl::updateForce,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subForce[LEFT] = _n.subscribe<geometry_msgs::Vector3>("/left_foot/force",1, boost::bind(&FootControl::updateForce,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
+  _subFtSensorForce[RIGHT] = _n.subscribe<geometry_msgs::WrenchStamped>("/right_foot/ft_sensor",1, boost::bind(&FootControl::updateFtSensorForce,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subFtSensorForce[LEFT] = _n.subscribe<geometry_msgs::WrenchStamped>("/left_foot/ft_sensor",1, boost::bind(&FootControl::updateFtSensorForce,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  
+
   //Publisher definitions
   _pubDesiredFootPose[RIGHT] = _n.advertise<geometry_msgs::PoseStamped>("right_foot/pose", 1);
   _pubDesiredFootPose[LEFT] = _n.advertise<geometry_msgs::PoseStamped>("left_foot/pose", 1);
@@ -159,10 +163,18 @@ void FootControl::positionPositionMapping()
 
 void FootControl::computeDesiredFootWrench()
 {
+  for(int k = 0 ; k < 2; k++)
+  {
+    _filteredForce[k] = 0.7f*_filteredForce[k]+0.3f*_ftSensorForce[k];
+  }
+
   Eigen::Vector3f temp;
 
   temp.setConstant(0.0f);
   temp(1) = -_force[RIGHT](0)*1.0f;
+  // temp(1) = -_filteredForce[RIGHT](0)/30.0f;
+  // temp(0) = _filteredForce[RIGHT](1)/30.0f;
+  // temp(2) = _filteredForce[RIGHT](2)/30.0f;
 
   // temp.setConstant(0.0f);
   _desiredFootWrench[RIGHT](1) = temp(0);
@@ -171,7 +183,12 @@ void FootControl::computeDesiredFootWrench()
 
 
   temp.setConstant(0.0f);
-  temp(1) = _force[LEFT](0)*1.0f;  
+  temp(1) = _force[LEFT](0)*1.0f; 
+  // temp(1) = -_filteredForce[LEFT](0)/30.0f;
+  // temp(0) = _filteredForce[LEFT](1)/30.0f;
+  // temp(2) = _filteredForce[LEFT](2)/30.0f;
+
+ 
   _desiredFootWrench[LEFT](1) = temp(0);
   _desiredFootWrench[LEFT](0) = -temp(1);
   _desiredFootWrench[LEFT](3) = temp(2)*0.205/5;
@@ -248,6 +265,16 @@ void FootControl::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& m
 void FootControl::updateForce(const geometry_msgs::Vector3::ConstPtr& msg, int k)
 {
   _force[k] << msg->x, msg->y, msg->z;
+  if(!_firstForce[k])
+  {
+    _firstForce[k] = true;
+  }
+}
+
+
+void FootControl::updateFtSensorForce(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k)
+{
+  _ftSensorForce[k] << msg->wrench.force.x, msg->wrench.force.y, msg->wrench.force.z;
   if(!_firstForce[k])
   {
     _firstForce[k] = true;

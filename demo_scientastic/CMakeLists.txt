@@ -51,7 +51,6 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 
 #list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 # Generate executable
-
 add_executable(foot_control src/foot_control_node.cpp src/foot_control.cpp)
 target_link_libraries(foot_control ${catkin_LIBRARIES})
 add_dependencies(foot_control ${PROJECT_NAME}_gencpp)
@@ -60,12 +59,27 @@ add_executable(reset_boxes_pose src/reset_boxes_pose_node.cpp)
 target_link_libraries(reset_boxes_pose ${catkin_LIBRARIES})
 add_dependencies(reset_boxes_pose ${PROJECT_NAME}_gencpp)
 
+add_executable(reach_target src/reach_target_node.cpp src/reach_target.cpp)
+target_link_libraries(reach_target ${catkin_LIBRARIES})
+add_dependencies(reach_target ${PROJECT_NAME}_gencpp)
+
 add_library(footTfUpdate SHARED src/gz_plugins/footTfUpdate.cc)
 target_link_libraries(footTfUpdate 
             ${catkin_LIBRARIES}
             ${GAZEBO_LIBRARIES}
             ${Boost_LIBRARIES})
 
+add_library(objectPosePublishing SHARED src/gz_plugins/objectPosePublishing.cc)
+target_link_libraries(objectPosePublishing 
+            ${catkin_LIBRARIES}
+            ${GAZEBO_LIBRARIES}
+            ${Boost_LIBRARIES})
+
+add_executable(set_object_pose src/set_object_pose.cpp)
+target_link_libraries(set_object_pose ${catkin_LIBRARIES})
+add_dependencies(set_object_pose ${PROJECT_NAME}_gencpp)
+
+# add_executable(python_node src/python_node.py)
 # Mark launch files for installation
 
 install (FILES

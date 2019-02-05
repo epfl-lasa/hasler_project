@@ -18,7 +18,23 @@
     <inertia ixx="${table_mass * 10 * mm2_to_m2}" ixy="0.0" ixz="0.0" iyy="${table_mass * 10 * mm2_to_m2}" iyz="0.0" izz="${table_mass * 10 * mm2_to_m2}"/>
 </xacro:property>
 
-<xacro:macro name="table_leg" params="parent name *origin">
+<material name="green">
+    <color rgba="0.0 1.0 0.0 1.0"/>
+</material>
+
+<material name="red">
+    <color rgba="1.0 0.0 0.0 1.0"/>
+</material>
+
+<material name="blue">
+    <color rgba="0.0 0.0 1.0 1.0"/>
+</material>
+
+<material name="grey">
+    <color rgba="0.5 0.5 0.5 1.0"/>
+</material>
+
+<xacro:macro name="table_leg" params="parent name *origin color">
     <joint name="${name}_joint" type="fixed">
         <xacro:insert_block name="origin"/>
         <parent link="${parent}" />
@@ -32,7 +48,7 @@
 			<geometry>
 				<box size="${leg_width/2} -${leg_width} ${height - plate_thickness}"/>
 			</geometry>
-			<material name="Vito/Black"/>
+			<material name="${color}"/>
 		</visual>
 		<collision>
 			<geometry>
@@ -46,7 +62,7 @@
     </gazebo>
 </xacro:macro>
 
-<xacro:macro name="model_table" params="parent name *origin length width height plate_thickness">
+<xacro:macro name="model_table" params="parent name *origin length width height plate_thickness color">
     <joint name="${parent}_${name}_base_joint" type="fixed">
         <xacro:insert_block name="origin"/>
         <parent link="${parent}"/>
@@ -61,7 +77,10 @@
             <geometry>
                 <box size="${length} ${width} ${plate_thickness}"/>
 			</geometry>
-			<material name="Vito/LightGrey"/>
+			<!-- <material name="Vito/LightGrey"/> -->
+            <material name="${color}">
+                <!-- <color rgba="0.0 1.0 0.0 1.0"/> -->
+            </material>
 		</visual>
         <collision>
             <origin xyz="${1/2 * length} ${-1/2 * width} ${-1/2 * plate_thickness}"/>
@@ -70,16 +89,16 @@
             </geometry>
         </collision>
     </link>
-    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_0">
+    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_0" color="${color}">
         <origin xyz="${border_offset} -${border_offset} -${1/2 * (plate_thickness + height)}"/>
     </xacro:table_leg>
-    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_1">
+    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_1" color="${color}">
         <origin xyz="${length - border_offset} -${border_offset} -${1/2 * (plate_thickness + height)}"/>
     </xacro:table_leg>
-    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_2">
+    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_2" color="${color}">
         <origin xyz="${border_offset} -${width - border_offset} -${1/2 * (plate_thickness + height)}"/>
     </xacro:table_leg>
-    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_3">
+    <xacro:table_leg parent="${name}_plate_link" name="${name}_leg_3" color="${color}">
         <origin xyz="${length - border_offset} -${width - border_offset} -${1/2 * (plate_thickness + height)}"/>
     </xacro:table_leg>
 

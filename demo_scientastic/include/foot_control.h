@@ -6,6 +6,7 @@
 #include <tf/tf.h>
 #include <mutex>
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/WrenchStamped.h"
 #include <signal.h>
 #include <Eigen/Eigen>
 #include <string>
@@ -36,6 +37,7 @@ class FootControl
 
 		//! Subscribers and publishers
 		ros::Subscriber _subForce[2];
+		ros::Subscriber _subFtSensorForce[2];
 		ros::Subscriber _subFootOutput[2];       
 		ros::Publisher _pubFootInput[2]; 
 		ros::Publisher _pubDesiredFootPose[2];
@@ -56,6 +58,8 @@ class FootControl
 	    Eigen::Vector3f _footPosition[2];
 	    Eigen::Vector3f _desiredFootPosition[2];
 	    Eigen::Vector3f _force[2];
+	    Eigen::Vector3f _ftSensorForce[2];
+	    Eigen::Vector3f _filteredForce[2];
 	    int _footState[2];
 	    uint32_t _footInterfaceSequenceID[2];
 	    float _xyPositionMapping;
@@ -86,6 +90,7 @@ class FootControl
 
 		void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k); 
 		void updateForce(const geometry_msgs::Vector3::ConstPtr& msg, int k);
+		void updateFtSensorForce(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
 
 
 

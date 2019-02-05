@@ -43,6 +43,9 @@
       <geometry>
         <box size="0.1 1 1"/>
       </geometry>
+      <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0"/>
+      </material>
     </visual>
   </link> 
   <joint name="$(arg link_name)/sensor_joint" type="prismatic">
@@ -57,24 +60,26 @@
     <gazebo>
       <plugin name="footTfUpdate" filename="libfootTfUpdate.so">
 	      <actorName>$(arg link_name)</actorName>
-        <jointStiffness>1000</jointStiffness>
-        <jointDamping>10</jointDamping>
+        <jointStiffness>1500</jointStiffness>
+        <jointDamping>5</jointDamping>
       </plugin>
     </gazebo>
   </xacro:if>
 
+
 <!--   <gazebo reference="$(arg link_name)/sensor_joint">
-  <provideFeedback>true</provideFeedback>
-</gazebo>
+    <provideFeedback>true</provideFeedback>
+    <disableFixedJointLumping>true</disableFixedJointLumping>
+  </gazebo>
 
   <gazebo>
     <plugin name="ft_sensor" filename="libgazebo_ros_ft_sensor.so">
       <alwaysOn>true</alwaysOn>
-      <updateRate>30.0</updateRate>
-      <topicName>$(arg link_name)/ft_sensor</topicName>
+      <updateRate>200</updateRate>
+      <topicName>ft_sensor</topicName>
       <jointName>$(arg link_name)/sensor_joint</jointName>
+      <gaussianNoise>0.0001</gaussianNoise>
     </plugin>
   </gazebo> -->
-
-
+  
 </robot>

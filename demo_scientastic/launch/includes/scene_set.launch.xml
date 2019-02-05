@@ -6,7 +6,10 @@
 	<arg name="right_foot_pos.X" default="0"/>
 	<arg name="right_foot_pos.Y" default="0"/>
 	<arg name="right_foot_pos.Z" default="0"/>
-	<arg name="scale.t" default="0.5"/>
+	<arg name="target_pos.X" default="0"/>
+	<arg name="target_pos.Y" default="0"/>
+	<arg name="target_pos.Z" default="0"/>
+	<arg name="scale.t" default="1"/>
 	<arg name="scale.c" default="0.5"/>
 	<arg name="scale.l" default="0.5"/>
 
@@ -25,6 +28,16 @@
 		<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
 			<arg name="init_pose" value="-x $(arg right_foot_pos.X) -y $(arg right_foot_pos.Y) -z $(arg right_foot_pos.Z)" />
 			<arg name="robot_name" value="right_foot"/>
+		</include>
+	</group>
+
+	
+	<group ns="target">
+		<arg name="model" default="$(find foot_control_xy)/models/target/urdf/target_plane.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) enableGzPlugin:=true scale:=$(arg scale.t) --xacro-ns --inorder" />
+		<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+			<arg name="init_pose" value="-x $(arg target_pos.X) -y $(arg target_pos.Y) -z $(arg target_pos.Z)" />
+			<arg name="robot_name" value="target"/>
 		</include>
 	</group>
 

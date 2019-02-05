@@ -10,6 +10,7 @@
 #include <tf/transform_listener.h>
 #include <boost/thread.hpp>
 #include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Pose.h>
 
 namespace gazebo
 {
@@ -38,7 +39,9 @@ namespace gazebo
 			double _jointDamping;
 
 			geometry_msgs::Vector3 _msgForce;
+			geometry_msgs::Pose _msgFootPose;
 			ros::Publisher _pubForce;
+			ros::Publisher _pubFootPose;
 
 			
 		//! Constructor and destroyer
@@ -66,6 +69,7 @@ namespace gazebo
 			}
 			
 			_pubForce = _n.advertise<geometry_msgs::Vector3>(_actorName+"/force", 1);
+			_pubFootPose = _n.advertise<geometry_msgs::Pose>(_actorName+"/simulated_pose", 1);
 			std::cerr << _actorName << std::endl;
 			
 			int argc = 0;
@@ -124,6 +128,7 @@ namespace gazebo
 			  _actorPose.rot.z=_actorTransform.getRotation().z();
 			  _actorPose.rot.w=_actorTransform.getRotation().w();
 			  		
+			// _actorBaseLink->SetWorldPose(_actorPose);
 			math::Vector3 temp(0.1f,0.0f,0.0f);
 			math::Vector3 footAttractor(_actorTransform.getOrigin().x(),_actorTransform.getOrigin().y(),
 				                                  _actorTransform.getOrigin().z());
@@ -143,7 +148,6 @@ namespace gazebo
 			double angle;
 			math::Vector3 axis;
 			qe.GetAsAxis(axis,angle);
-			// _actorBaseLink->SetWorldPose(pose);
 			_actorBaseLink->SetForce(force);
 			// std::cerr << _actorBaseLink->GetRelativeForce() << std::endl;
 			// std::cerr << force << std::endl;
@@ -155,9 +159,18 @@ namespace gazebo
 			// std::cerr << _actorName << " " << jointPosition << " " << jointForce << std::endl;
 
 			_msgForce.x = jointForce;
+			// _msgForce.x = 0.0f;
 			_msgForce.y = 0.0f;
 			_msgForce.z = 0.0f;
 			_pubForce.publish(_msgForce);
+			_msgFootPose.position.x = pose.pos.x;
+			_msgFootPose.position.y = pose.pos.y;
+			_msgFootPose.position.z = pose.pos.z;
+			_msgFootPose.orientation.w = 1.0f;
+			_msgFootPose.orientation.x = 0.0f;
+			_msgFootPose.orientation.y = 0.0f;
+			_msgFootPose.orientation.z = 0.0f;
+			_pubFootPose.publish(_msgFootPose);
 
 
 			}

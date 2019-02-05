@@ -69,7 +69,6 @@ void Actor::updateTf()
     _transform.setOrigin(origin);
     _transform.setRotation(tf::Quaternion(_actorPose.orientation.x, _actorPose.orientation.y, _actorPose.orientation.z, _actorPose.orientation.w));
     _br.sendTransform(tf::StampedTransform(_transform, ros::Time::now(), "world", _actorName + "/base_link"));
-
 }
 
 void Actor::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg)
