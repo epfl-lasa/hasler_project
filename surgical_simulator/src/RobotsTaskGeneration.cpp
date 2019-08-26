@@ -1116,7 +1116,7 @@ void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::Co
 
   // _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
   _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
-  _footWrench[k] << msg->Fx, msg->Fy,0.0f, msg->Tphi, msg->Ttheta, msg->Tpsi;
+  _footWrench[k] << msg->Fx_m, msg->Fy_m,0.0f, msg->Tphi_m, msg->Ttheta_m, msg->Tpsi_m;
   _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
   _footState[k] = msg->state;
 
