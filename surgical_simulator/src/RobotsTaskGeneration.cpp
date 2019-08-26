@@ -223,7 +223,7 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_base_link",ros::Time(0), _transform);
       _xLeftRobotOrigin << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       _qLeftRobotOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRl = Utils::quaternionToRotationMatrix(_qLeftRobotOrigin); 
+      _rRl = Utils<float>::quaternionToRotationMatrix(_qLeftRobotOrigin); 
       _leftRobotOriginReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left robot origin received: " << _xLeftRobotOrigin.transpose() << std::endl;
     } 
@@ -240,7 +240,7 @@ void RobotsTaskGeneration::receiveFrames()
       _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       Eigen::Vector4f qtemp;
       qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRt[LEFT] = Utils::quaternionToRotationMatrix(qtemp); 
+      _rRt[LEFT] = Utils<float>::quaternionToRotationMatrix(qtemp); 
       _leftTrocarFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left trocar frame received" << _xTrocar[LEFT].transpose() << std::endl;
     } 
@@ -258,7 +258,7 @@ void RobotsTaskGeneration::receiveFrames()
       _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       Eigen::Vector4f qtemp;
       qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRt[RIGHT] = Utils::quaternionToRotationMatrix(qtemp); 
+      _rRt[RIGHT] = Utils<float>::quaternionToRotationMatrix(qtemp); 
       _rightTrocarFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Right trocar frame received" << _xTrocar[RIGHT].transpose() << std::endl;
     } 
@@ -274,7 +274,7 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.waitForTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), ros::Duration(3.0));
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), _transform);
       _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
+      _rRc = Utils<float>::quaternionToRotationMatrix(_qLeftCameraOrigin); 
       _rRcp = _rRc;
       _leftCameraFrameReceived = true;
       std::cerr << "[RobotsTaskGeneration]: Left camera link received" << std::endl;
@@ -292,7 +292,7 @@ void RobotsTaskGeneration::receiveFrames()
       _xTrocar[LEFT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       Eigen::Vector4f qtemp;
       qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRt[LEFT] = Utils::quaternionToRotationMatrix(qtemp); 
+      _rRt[LEFT] = Utils<float>::quaternionToRotationMatrix(qtemp); 
 
     } 
     catch (tf::TransformException ex)
@@ -305,7 +305,7 @@ void RobotsTaskGeneration::receiveFrames()
       _xTrocar[RIGHT] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
       Eigen::Vector4f qtemp;
       qtemp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
-      _rRt[RIGHT] = Utils::quaternionToRotationMatrix(qtemp); 
+      _rRt[RIGHT] = Utils<float>::quaternionToRotationMatrix(qtemp); 
     } 
     catch (tf::TransformException ex)
     {
@@ -316,7 +316,7 @@ void RobotsTaskGeneration::receiveFrames()
       _lr.lookupTransform("/right_lwr_base_link", "/left_lwr_camera_link",ros::Time(0), _transform);
       _qLeftCameraOrigin << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
       _rRcp = _rRc;
-      _rRc = Utils::quaternionToRotationMatrix(_qLeftCameraOrigin); 
+      _rRc = Utils<float>::quaternionToRotationMatrix(_qLeftCameraOrigin); 
     } 
     catch (tf::TransformException ex)
     {
@@ -349,7 +349,7 @@ void RobotsTaskGeneration::alignWithTrocar()
     w /= s;
     
     Eigen::Matrix3f K;
-    K << Utils::getSkewSymmetricMatrix(w);
+    K << Utils<float>::getSkewSymmetricMatrix(w);
 
     Eigen::Matrix3f Re;
     if(fabs(s)< FLT_EPSILON)
@@ -364,20 +364,20 @@ void RobotsTaskGeneration::alignWithTrocar()
     // Convert rotation error into axis angle representation
     Eigen::Vector3f omega;
     float angle;
-    Eigen::Vector4f qtemp = Utils::rotationMatrixToQuaternion(Re);
-    Utils::quaternionToAxisAngle(qtemp,omega,angle);
+    Eigen::Vector4f qtemp = Utils<float>::rotationMatrixToQuaternion(Re);
+    Utils<float>::quaternionToAxisAngle(qtemp,omega,angle);
 
     // Compute final quaternion on plane
-    Eigen::Vector4f qf = Utils::quaternionProduct(qtemp,_q[k]);
+    Eigen::Vector4f qf = Utils<float>::quaternionProduct(qtemp,_q[k]);
 
     // Perform quaternion slerp interpolation to progressively orient the end effector while approaching the surface
-    _qd[k] = Utils::slerpQuaternion(_q[k],qf,1.0f-std::tanh(5.0f*_vd[k].norm()));
+    _qd[k] = Utils<float>::slerpQuaternion(_q[k],qf,1.0f-std::tanh(5.0f*_vd[k].norm()));
 
     // Compute needed angular velocity to perform the desired quaternion
     Eigen::Vector4f qcurI, wq;
     qcurI(0) = _q[k](0);
     qcurI.segment(1,3) = -_q[k].segment(1,3);
-    wq = 2.0f*Utils::quaternionProduct(qcurI,_qd[k]-_q[k]);
+    wq = 2.0f*Utils<float>::quaternionProduct(qcurI,_qd[k]-_q[k]);
     Eigen::Vector3f omegaTemp = _wRb[k]*wq.segment(1,3);
     _omegad[k] = omegaTemp; 
 
@@ -447,7 +447,7 @@ void RobotsTaskGeneration::computeAttractors()
         _xdOffset[k](2) += 0.05f;
     
     // Eigen::Matrix3f K;
-    // K << Utils::getSkewSymmetricMatrix(w);
+    // K << Utils<float>::getSkewSymmetricMatrix(w);
         // _xdOffset[k] =  _rRc.col(0)*(0.25f*std::max(0.0f,_joyAxes[k](4)));
         // a = xDtemp;
         // a(2) -=0.05f;
@@ -645,7 +645,7 @@ void RobotsTaskGeneration::trackTarget()
       Eigen::Matrix3f P = Eigen::Matrix3f::Identity()-dir*dir.transpose();
       
       Eigen::Matrix3f S;
-      S = Utils::getSkewSymmetricMatrix(dir);
+      S = Utils<float>::getSkewSymmetricMatrix(dir);
     
       Eigen::Matrix<float,3,6> L;
       L.block(0,0,3,3) = -P/distance;
@@ -767,7 +767,7 @@ void RobotsTaskGeneration::trackTarget()
     // w /= s;
     
     // Eigen::Matrix3f K;
-    // K << Utils::getSkewSymmetricMatrix(w);
+    // K << Utils<float>::getSkewSymmetricMatrix(w);
 
     Eigen::Matrix3f Re;
     // if(fabs(s)< FLT_EPSILON)
@@ -788,16 +788,16 @@ void RobotsTaskGeneration::trackTarget()
     // // Convert rotation error into axis angle representation
     // Eigen::Vector3f omega;
     // float angle;
-    // Eigen::Vector4f qtemp = Utils::rotationMatrixToQuaternion(Re);
-    // Utils::quaternionToAxisAngle(qtemp,omega,angle);
+    // Eigen::Vector4f qtemp = Utils<float>::rotationMatrixToQuaternion(Re);
+    // Utils<float>::quaternionToAxisAngle(qtemp,omega,angle);
 
     // // Compute final quaternion on plane
-    // Eigen::Vector4f qf = Utils::quaternionProduct(qtemp,_q[k]);
+    // Eigen::Vector4f qf = Utils<float>::quaternionProduct(qtemp,_q[k]);
 
     // // Perform quaternion slerp interpolation to progressively orient the end effector while approaching the surface
-    // // _qd[k] = Utils::slerpQuaternion(_q[k],qf,1.0f-std::tanh(5.0f*_vd[k].norm()));
+    // // _qd[k] = Utils<float>::slerpQuaternion(_q[k],qf,1.0f-std::tanh(5.0f*_vd[k].norm()));
     // _qd[k] = qf;
-    _qd[k] = Utils::rotationMatrixToQuaternion(Rd);
+    _qd[k] = Utils<float>::rotationMatrixToQuaternion(Rd);
 
     if(_qd[k].dot(_q[k])<0.0f)
     {
@@ -805,10 +805,10 @@ void RobotsTaskGeneration::trackTarget()
     }
     // Eigen::Vector4f wq;
     // wq << 0.0f, _selfRotationCommand[k]*(_wRb[k].transpose()).col(2);
-    // _qd[k] += Utils::quaternionProduct(_qd[k],wq);
+    // _qd[k] += Utils<float>::quaternionProduct(_qd[k],wq);
   // qcurI(0) = _q(0);
   // qcurI.segment(1,3) = -_q.segment(1,3);
-  // wq = 5.0f*Utils::quaternionProduct(qcurI,_qd-_q);
+  // wq = 5.0f*Utils<float>::quaternionProduct(qcurI,_qd-_q);
   // Eigen::Vector3f omegaTemp = _wRb*wq.segment(1,3);
   // _omegad = omegaTemp; 
 
@@ -1010,8 +1010,8 @@ void RobotsTaskGeneration::publishData()
       _vd[k] = _rRl.transpose()*_vd[k];
       _omegad[k] = _rRl.transpose()*_omegad[k];
       Eigen::Matrix3f Rd;
-      Rd = Utils::quaternionToRotationMatrix(_qd[k]);
-      _qd[k] = Utils::rotationMatrixToQuaternion(_rRl.transpose()*Rd);
+      Rd = Utils<float>::quaternionToRotationMatrix(_qd[k]);
+      _qd[k] = Utils<float>::rotationMatrixToQuaternion(_rRl.transpose()*Rd);
     }
     _msgDesiredTwist.linear.x  = _vd[k](0);
     _msgDesiredTwist.linear.y  = _vd[k](1);
@@ -1055,14 +1055,14 @@ void RobotsTaskGeneration::updateRobotPose(const geometry_msgs::Pose::ConstPtr& 
   // Update end effecotr pose (position+orientation)
   _x[k] << msg->position.x, msg->position.y, msg->position.z;
   _q[k] << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
-  _wRb[k] = Utils::quaternionToRotationMatrix(_q[k]);
+  _wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
   _x[k] = _x[k]+_toolOffsetFromEE*_wRb[k].col(2);
 
   if(k==(int)LEFT)
   {
     _x[k] = _rRl*_x[k]+_xLeftRobotOrigin;
     _wRb[k] = _rRl*_wRb[k];
-    _q[k] = Utils::rotationMatrixToQuaternion(_wRb[k]);
+    _q[k] = Utils<float>::rotationMatrixToQuaternion(_wRb[k]);
   }
 
   if(!_firstRobotPose[k])
@@ -1120,9 +1120,9 @@ void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::Co
   _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
   _footState[k] = msg->state;
 
-  _footPosition[k](0) = Utils::deadZone(_footPose[k](0),-0.05,0.05);
-  _footPosition[k](1) = Utils::deadZone(_footPose[k](1),-0.05,0.05);
-  _footPosition[k](2) = Utils::deadZone(_footPose[k](3),-5.0f,5.0f);
+  _footPosition[k](0) = Utils<float>::deadZone(_footPose[k](0),-0.05,0.05);
+  _footPosition[k](1) = Utils<float>::deadZone(_footPose[k](1),-0.05,0.05);
+  _footPosition[k](2) = Utils<float>::deadZone(_footPose[k](3),-5.0f,5.0f);
 
   if(_footPose[k](3)>FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
   {
@@ -1138,7 +1138,7 @@ void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::Co
   //   _firstFootOutput[k] = true;
   //   _footPose0[k] = _footPose[k];
   // }
-  // _selfRotationCommand[k] = -2.0f*Utils::deadZone(msg->psi-_footPose0[k](5),-5.0f,5.0f)/FOOT_INTERFACE_PSI_RANGE;
+  // _selfRotationCommand[k] = -2.0f*Utils<float>::deadZone(msg->psi-_footPose0[k](5),-5.0f,5.0f)/FOOT_INTERFACE_PSI_RANGE;
   // if(_selfRotationCommand[k]>1.0f)
   // {
   //   _selfRotationCommand[k]=1.0f;
