@@ -17,8 +17,16 @@ add_message_files(
   DIRECTORY msg
 	FILES 
 	FootInputMsg.msg
+  FootInputMsg_v2.msg
 	FootOutputMsg.msg
+  FootOutputMsg_v2.msg
 	FeetOutputMsg.msg)
+
+add_service_files(
+  FILES
+  setControllerSrv.srv
+  setStateSrv.srv
+)
 
 generate_messages(DEPENDENCIES std_msgs)
 

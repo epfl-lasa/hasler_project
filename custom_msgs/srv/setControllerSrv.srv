@@ -1,0 +1,12 @@
+uint8 set_ctrlType # {TORQUE_ONLY, POSE_ONLY, TWIST_ONLY, POSE_TWIST_CASCADE, TWIST_POSE_CASCADE}
+bool default_ctrl # 1: use values from definitions_2.h in firmware, 0: use the values
+
+float32[5] pos_p
+float32[5] pos_i
+float32[5] pos_d
+
+float32[5] speed_p
+float32[5] speed_i
+float32[5] speed_d
+---
+bool sC_ok

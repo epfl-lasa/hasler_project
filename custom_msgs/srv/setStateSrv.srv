@@ -1,0 +1,4 @@
+int8 machine_state #HOMING,TELEOPERATION, ROBOT_STATE_CONTROL, ETC
+uint8[4] wrench_comp #[NORMAL, CONSTRAINS, COMPENSATION, FEEDFORWARD]
+---
+bool mS_new # new state or the same?
