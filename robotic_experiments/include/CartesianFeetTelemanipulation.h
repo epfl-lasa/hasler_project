@@ -22,14 +22,16 @@
 #include "visualization_msgs/Marker.h"
 #include <dynamic_reconfigure/server.h>
 #include "robotic_experiments/feetTelemanipulation_paramsConfig.h"
-#include "custom_msgs/FootInputMsg.h"
-#include "custom_msgs/FootOutputMsg.h"
+#include "custom_msgs/FootInputMsg_v2.h"
+#include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
 
 #define NB_ROBOTS 2
 #define NB_SAMPLES 50
 #define FOOT_INTERFACE_X_RANGE 0.195
 #define FOOT_INTERFACE_Y_RANGE 0.180
+#define FOOT_INTERFACE_Z_RANGE 0.2
+
 #define FOOT_INTERFACE_PITCH_RANGE 48.0
 #define FOOT_INTERFACE_ROLL_RANGE 40.0
 #define FOOT_INTERFACE_YAW_RANGE 40.0
@@ -76,11 +78,11 @@ class CartesianFeetTelemanipulation
 		geometry_msgs::Twist _msgDesiredTwist;
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
-		custom_msgs::FootInputMsg _msgFootInput;
+		custom_msgs::FootInputMsg_v2 _msgFootInput;
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
-		float _toolOffsetFromEE;										// Tool offset along z axis of end effector [m]							
+		float _toolOffsetFromEE[NB_ROBOTS];										// Tool offset along z axis of end effector [m]							
 		Eigen::Vector3f _toolComPositionFromSensor;   // Offset of the tool [m]	(3x1)
 		Eigen::Vector3f _gravity;										// Gravity vector [m/s^2] (3x1)
 
@@ -113,13 +115,21 @@ class CartesianFeetTelemanipulation
     Eigen::Matrix<float,5,1> _footWrench[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
 		Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];		// Filtered wrench [N and Nm] (6x1)
+		Eigen::Matrix<float,5,1> _footOffset;
     uint32_t _footInterfaceSequenceID[NB_ROBOTS];
     int _footState[NB_ROBOTS];
     float _xyPositionMapping;
     float _zPositionMapping;
+    float _rollGain;
+    float _yawGain;
     Eigen::Vector3f _vdFoot[NB_ROBOTS];
     Eigen::Vector3f _xdFoot[NB_ROBOTS];
     Eigen::Vector3f _FdFoot[NB_ROBOTS];
+    Eigen::Vector3f _footTipPosition[NB_ROBOTS];
+    Eigen::Matrix3f _footTipOrientation[NB_ROBOTS];
+    Eigen::Vector3f _xdFootTip[NB_ROBOTS];
+
+    Eigen::Matrix4f _H0;
 
     // Booleans
     bool _useLeftRobot;
@@ -221,7 +231,7 @@ class CartesianFeetTelemanipulation
     void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg, int k); 
 
     // Callback to update data from foot interface
-		void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k); 
+		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
 
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);

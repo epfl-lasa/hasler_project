@@ -41,7 +41,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 
-add_executable(cartesian_feet_telemanipulation src/cartesianFeetTelemanipulation_node.cpp src/CartesianFeetTelemanipulation.cpp)
+add_executable(cartesian_feet_telemanipulation src/cartesianFeetTelemanipulation_node.cpp src/CartesianFeetTelemanipulation.cpp src/FootPlatformModel.cpp)
 target_link_libraries(cartesian_feet_telemanipulation ${catkin_LIBRARIES})
 add_dependencies(cartesian_feet_telemanipulation ${PROJECT_NAME}_gencpp)
 

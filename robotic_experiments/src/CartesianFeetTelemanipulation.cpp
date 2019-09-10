@@ -1,5 +1,6 @@
 #include "CartesianFeetTelemanipulation.h"
 #include "Utils.h"
+#include "FootPlatformModel.h"
 
 CartesianFeetTelemanipulation* CartesianFeetTelemanipulation::me = NULL;
 
@@ -11,13 +12,14 @@ CartesianFeetTelemanipulation::CartesianFeetTelemanipulation(ros::NodeHandle &n,
 {
   me = this;
 
-  _useLeftRobot = false;
+  _useLeftRobot = true;
   _useRightRobot = true;
-  _sim = true;
+  _sim = false;
 
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.02f;
-  _toolOffsetFromEE = 0.13f;
+  _toolOffsetFromEE[LEFT] = 0.1315f;
+  _toolOffsetFromEE[RIGHT] = 0.1265f;
   _toolMass = 0.2f;
 
   for(int k = 0; k < NB_ROBOTS; k++)
@@ -59,6 +61,11 @@ CartesianFeetTelemanipulation::CartesianFeetTelemanipulation(ros::NodeHandle &n,
     _desiredFootWrench[k].setConstant(0.0f);
     _FdFoot[k].setConstant(0.0f);
     _normalForceAverage[k] = 0.0f;
+
+    _footTipPosition[k].setConstant(0.0f);
+    _footTipOrientation[k].setIdentity();
+    _xdFootTip[k].setConstant(0.0f);
+
   }
 
   _stop = false;
@@ -79,6 +86,12 @@ CartesianFeetTelemanipulation::CartesianFeetTelemanipulation(ros::NodeHandle &n,
   _kphi = 0.0f;
   _dphi = 0.0f;
 
+  _footOffset << 0.0f,0.0f,10.0f,0.0f,0.0f;
+
+  Eigen::Matrix<float,5,1> temp;
+  temp << FOOT_INTERFACE_X_RANGE/2.0f,FOOT_INTERFACE_Y_RANGE/2.0f,0.0f,0.0f,0.0f;
+  _H0 = FootPlatformModel::forwardKinematics(temp);
+
   // _strategy = AUTONOMOUS_LOAD_SUPPORT;
   _strategy = PURE_TELEMANIPULATION;
 }
@@ -91,26 +104,26 @@ bool CartesianFeetTelemanipulation::init()
   _subRobotTwist[LEFT] = _n.subscribe<geometry_msgs::Twist>("/lwr2/joint_controllers/twist", 1, boost::bind(&CartesianFeetTelemanipulation::updateRobotTwist,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subDampingMatrix[LEFT] = _n.subscribe<std_msgs::Float32MultiArray>("/lwr2/joint_controllers/passive_ds_damping_matrix", 1, boost::bind(&CartesianFeetTelemanipulation::updateDampingMatrix,this,_1,LEFT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
   _subForceTorqueSensor[LEFT] = _n.subscribe<geometry_msgs::WrenchStamped>("/ft_sensor_left/netft_data", 1, boost::bind(&CartesianFeetTelemanipulation::updateRobotWrench,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-  _subFootOutput[LEFT] = _n.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&CartesianFeetTelemanipulation::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subFootOutput[LEFT] = _n.subscribe<custom_msgs::FootOutputMsg_v2>("/FI_Output/Left",1, boost::bind(&CartesianFeetTelemanipulation::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
   _subRobotPose[RIGHT] = _n.subscribe<geometry_msgs::Pose>("/lwr/ee_pose", 1, boost::bind(&CartesianFeetTelemanipulation::updateRobotPose,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subRobotTwist[RIGHT] = _n.subscribe<geometry_msgs::Twist>("/lwr/joint_controllers/twist", 1, boost::bind(&CartesianFeetTelemanipulation::updateRobotTwist,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subDampingMatrix[RIGHT] = _n.subscribe<std_msgs::Float32MultiArray>("/lwr/joint_controllers/passive_ds_damping_matrix", 1, boost::bind(&CartesianFeetTelemanipulation::updateDampingMatrix,this,_1,RIGHT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
   _subForceTorqueSensor[RIGHT] = _n.subscribe<geometry_msgs::WrenchStamped>("/ft_sensor_right/netft_data", 1, boost::bind(&CartesianFeetTelemanipulation::updateRobotWrench,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-  _subFootOutput[RIGHT] = _n.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&CartesianFeetTelemanipulation::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subFootOutput[RIGHT] = _n.subscribe<custom_msgs::FootOutputMsg_v2>("/FI_Output/Right",1, boost::bind(&CartesianFeetTelemanipulation::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
  
   // Publisher definitions
   _pubDesiredTwist[LEFT] = _n.advertise<geometry_msgs::Twist>("/lwr2/joint_controllers/passive_ds_command_vel", 1);
   _pubDesiredOrientation[LEFT] = _n.advertise<geometry_msgs::Quaternion>("/lwr2/joint_controllers/passive_ds_command_orient", 1);
   _pubFilteredWrench[LEFT] = _n.advertise<geometry_msgs::WrenchStamped>("CartesianFeetTelemanipulation/filteredWrenchLeft", 1);
   _pubNormalForce[LEFT] = _n.advertise<std_msgs::Float32>("CartesianFeetTelemanipulation/normalForceLeft", 1);
-  _pubFootInput[LEFT] = _n.advertise<custom_msgs::FootInputMsg>("/FI_Input/Left", 1);
+  _pubFootInput[LEFT] = _n.advertise<custom_msgs::FootInputMsg_v2>("/FI_Input/Left", 1);
 
   _pubDesiredTwist[RIGHT] = _n.advertise<geometry_msgs::Twist>("/lwr/joint_controllers/passive_ds_command_vel", 1);
   _pubDesiredOrientation[RIGHT] = _n.advertise<geometry_msgs::Quaternion>("/lwr/joint_controllers/passive_ds_command_orient", 1);
   _pubFilteredWrench[RIGHT] = _n.advertise<geometry_msgs::WrenchStamped>("CartesianFeetTelemanipulation/filteredWrenchRight", 1);
   _pubNormalForce[RIGHT] = _n.advertise<std_msgs::Float32>("CartesianFeetTelemanipulation/normalForceRight", 1);
-  _pubFootInput[RIGHT] = _n.advertise<custom_msgs::FootInputMsg>("/FI_Input/Right", 1);
+  _pubFootInput[RIGHT] = _n.advertise<custom_msgs::FootInputMsg_v2>("/FI_Input/Right", 1);
 
   // Dynamic reconfigure definition
   _dynRecCallback = boost::bind(&CartesianFeetTelemanipulation::dynamicReconfigureCallback, this, _1, _2);
@@ -120,7 +133,7 @@ bool CartesianFeetTelemanipulation::init()
 
   _outputFile.open(ros::package::getPath(std::string("robotic_experiments"))+"/data_foot/"+_filename+".txt");
 
-  if(!_n.getParamCached("/lwr/ds_param/damping_eigval0",_d1[RIGHT]) && _useRightRobot && !_sim)
+  if(!_n.getParamCached("/lwr/joint_controllers/ds_param/damping_eigval0",_d1[RIGHT]) && _useRightRobot && !_sim)
   {
     ROS_ERROR("[CartesianFeetTelemanipulation]: Cannot read first eigen value of passive ds controller for right robot");
     return false;
@@ -169,7 +182,7 @@ void CartesianFeetTelemanipulation::run()
       _mutex.lock();
 
       // Check for update of the DS-impedance controller gain
-      ros::param::getCached("/lwr/ds_param/damping_eigval0",_d1[RIGHT]);
+      ros::param::getCached("/lwr/joint_controllers/ds_param/damping_eigval0",_d1[RIGHT]);
       ros::param::getCached("/lwr2/ds_param/damping_eigval0",_d1[LEFT]);
           
       // Compute control command
@@ -237,6 +250,7 @@ bool CartesianFeetTelemanipulation::allDataReceived()
   }
   else if(_useRightRobot && _sim)
   {
+    std::cerr << _firstRobotPose[RIGHT] << " " <<  _firstRobotTwist[RIGHT] << " " <<  _firstDampingMatrix[RIGHT] << " " <<  _firstFootOutput[RIGHT] << std::endl;
     return (_firstRobotPose[RIGHT] && _firstRobotTwist[RIGHT] && _firstDampingMatrix[RIGHT] && _firstFootOutput[RIGHT]);
   }
   else
@@ -292,6 +306,26 @@ void CartesianFeetTelemanipulation::computeCommand()
 
 void CartesianFeetTelemanipulation::footDataTransformation()
 {
+
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    Eigen::Matrix<float,5,1> offset;
+    offset << FOOT_INTERFACE_X_RANGE/2.0f,FOOT_INTERFACE_Y_RANGE/2.0f,0.0f,0.0f,0.0f;
+    Eigen::Matrix4f H;
+    H = FootPlatformModel::forwardKinematics(_footPose[k]+offset);
+    _footTipPosition[k] = H.block(0,3,3,1);
+    _footTipOrientation[k] = H.block(0,0,3,3);
+    if(k==LEFT)
+    {
+      std::cerr << "joints: "<<_footPose[k]+offset << std::endl;
+      std::cerr <<"Position: " << _footTipPosition[k].transpose()-_H0.block(0,3,3,1).transpose() << std::endl;
+      std::cerr << "Orientation: " << std::endl;
+      std::cerr << _footTipOrientation[k] << std::endl;
+    }
+
+  }
+
+
   Eigen::Matrix3f R;
   R << 0.0f, 1.0f, 0.0f,
        -1.0f,0.0f,0.0f,
@@ -304,15 +338,32 @@ void CartesianFeetTelemanipulation::footDataTransformation()
 void CartesianFeetTelemanipulation::positionPositionMapping()
 {
   Eigen::Vector3f gains[NB_ROBOTS];
-  gains[RIGHT] << 2*_xyPositionMapping/FOOT_INTERFACE_Y_RANGE, 2*_xyPositionMapping/FOOT_INTERFACE_X_RANGE, 2*_zPositionMapping/FOOT_INTERFACE_PITCH_RANGE;
-  gains[LEFT] << 2*_xyPositionMapping/FOOT_INTERFACE_Y_RANGE, 2*_xyPositionMapping/FOOT_INTERFACE_X_RANGE, 2*_zPositionMapping/FOOT_INTERFACE_PITCH_RANGE;
+  gains[RIGHT] << 2*_xyPositionMapping/FOOT_INTERFACE_X_RANGE, 2*_xyPositionMapping/FOOT_INTERFACE_Y_RANGE, 2*_zPositionMapping/FOOT_INTERFACE_PITCH_RANGE;
+  gains[LEFT] << 2*_xyPositionMapping/FOOT_INTERFACE_X_RANGE, 2*_xyPositionMapping/FOOT_INTERFACE_Y_RANGE, 2*_zPositionMapping/FOOT_INTERFACE_PITCH_RANGE;
   
   for(int k = 0; k < NB_ROBOTS; k++)
   {
     _xdFoot[k] = gains[k].cwiseProduct(_footPosition[k]);
-    if(_xdFoot[k](2)+_x0[k](2)<0.03f)
+    if(_xdFoot[k](2)+_x0[k](2)<0.1f)
     {
-      _xdFoot[k](2) = 0.03f-_x0[k](2);
+      _xdFoot[k](2) = 0.1f-_x0[k](2);
+    }
+  }
+
+  Eigen::Vector3f gain;
+
+  Eigen::Matrix3f R;
+  R << 0.0f, 1.0f, 0.0f,
+     -1.0f,0.0f,0.0f,
+     0.0f,0.0f,1.0f;
+
+  gain << 2*_xyPositionMapping/FOOT_INTERFACE_Y_RANGE, 2*_xyPositionMapping/FOOT_INTERFACE_X_RANGE, 2*_zPositionMapping/FOOT_INTERFACE_Z_RANGE;
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    _xdFootTip[k] = gain.cwiseProduct(R*(_footTipPosition[k]-_H0.block(0,3,3,1)));
+    if(_xdFootTip[k](2)+_x0[k](2)<0.1f)
+    {
+      _xdFootTip[k](2) = 0.1f-_x0[k](2);
     }
     // std::cerr << "Master position " << k << " : " <<_xdFoot[k].transpose() << std::endl;
   }
@@ -370,7 +421,7 @@ void CartesianFeetTelemanipulation::updateObjectGraspingState()
   {
     _objectGrasped = false;
   }
-  std::cerr << "Object grapsed: " <<(int) _objectGrasped << std::endl;
+  // std::cerr << "Object grapsed: " <<(int) _objectGrasped << std::endl;
 }
 
 
@@ -378,7 +429,7 @@ void CartesianFeetTelemanipulation::pureTelemanipulation()
 {
   for(int k = 0; k < NB_ROBOTS; k++)
   {
-    _xd[k] = _xdFoot[k];
+    _xd[k] = _xdFootTip[k];
     _vd[k] = _x0[k]+_xd[k]-_x[k];
 
     if(_vd[k].norm()>0.3f)
@@ -388,6 +439,8 @@ void CartesianFeetTelemanipulation::pureTelemanipulation()
     // std::cerr << k << "a: " << (_x0[k]+_xd[k]).transpose() << std::endl;
     // std::cerr << k << "v: " << _vd[k].transpose() << std::endl;
     _FdFoot[k] =  _wRb[k]*_filteredWrench[k].segment(0,3);
+    std::cerr << "Fd foot: " << k << " :" << _FdFoot[k].transpose() << std::endl;
+
   }
 }
 
@@ -405,7 +458,7 @@ void CartesianFeetTelemanipulation::autonomousLoadSupport()
       _Fd[k] = 0.0f;
     }
 
-    _xd[k] = _xdFoot[k];
+    _xd[k] = _xdFootTip[k];
     _vd[k] = _x0[k]+_xd[k]-_x[k]+(_Fd[k]/_d1[k])*_wRb[k].col(2);
 
     if(_vd[k].norm()>0.3f)
@@ -426,21 +479,90 @@ void CartesianFeetTelemanipulation::computeDesiredFootWrench()
   // temp.setConstant(0.0f);
   _desiredFootWrench[RIGHT](1) = _FdFoot[RIGHT](0);
   _desiredFootWrench[RIGHT](0) = -_FdFoot[RIGHT](1);
-  _desiredFootWrench[RIGHT](2) = _FdFoot[RIGHT](2)*0.205/5;
-  // _desiredFootWrench[RIGHT](0) += -_kxy*_footPose[RIGHT](0)-_dxy*_footTwist[RIGHT](0);
-  // _desiredFootWrench[RIGHT](1) += -_kxy*_footPose[RIGHT](1)-_dxy*_footTwist[RIGHT](1);
-  // _desiredFootWrench[RIGHT](3) += -_kphi*_footPose[RIGHT](3)-_dphi*_footTwist[RIGHT](3);
+  _desiredFootWrench[RIGHT](2) = _FdFoot[RIGHT](2)*0.2;
+  _desiredFootWrench[RIGHT](0) += -_kxy*_footPose[RIGHT](0)-_dxy*_footTwist[RIGHT](0);
+  _desiredFootWrench[RIGHT](1) += -_kxy*_footPose[RIGHT](1)-_dxy*_footTwist[RIGHT](1);
+  _desiredFootWrench[RIGHT](2) += -_kphi*_footPose[RIGHT](2)-_dphi*_footTwist[RIGHT](2);
+  _desiredFootWrench[RIGHT](3) += -_kphi*_footPose[RIGHT](3)-_dphi*_footTwist[RIGHT](3);
+  _desiredFootWrench[RIGHT](4) += -_kphi*_footPose[RIGHT](4)-_dphi*_footTwist[RIGHT](4);
 
   _desiredFootWrench[LEFT](1) = _FdFoot[LEFT](0);
   _desiredFootWrench[LEFT](0) = -_FdFoot[LEFT](1);
-  _desiredFootWrench[LEFT](2) = _FdFoot[LEFT](2)*0.205/5;
+  _desiredFootWrench[LEFT](2) = _FdFoot[LEFT](2)*0.2;
+  _desiredFootWrench[LEFT](0) += -_kxy*_footPose[LEFT](0)-_dxy*_footTwist[LEFT](0);
+  _desiredFootWrench[LEFT](1) += -_kxy*_footPose[LEFT](1)-_dxy*_footTwist[LEFT](1);
+  _desiredFootWrench[LEFT](2) += -_kphi*_footPose[LEFT](2)-_dphi*_footTwist[LEFT](2);
+  _desiredFootWrench[LEFT](3) += -_kphi*_footPose[LEFT](3)-_dphi*_footTwist[LEFT](3);
+  _desiredFootWrench[LEFT](4) += -_kphi*_footPose[LEFT](4)-_dphi*_footTwist[LEFT](4);
 
-    for(int k = 0; k < NB_ROBOTS; k++)
-  { 
-    _desiredFootWrench[k](0) += -_kxy*_footPose[k](0)-_dxy*_footTwist[k](0);
-    _desiredFootWrench[k](1) += -_kxy*_footPose[k](1)-_dxy*_footTwist[k](1);
-    _desiredFootWrench[k](2) += -_kphi*_footPose[k](3)-_dphi*_footTwist[k](3);
+  _desiredFootWrench[LEFT].setConstant(0.0f);
+  _desiredFootWrench[RIGHT].setConstant(0.0f);
+
+
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    Eigen::Matrix<float,6,5> J;
+    Eigen::Matrix<float,5,1> offset,temp;
+    offset << FOOT_INTERFACE_X_RANGE/2.0f,FOOT_INTERFACE_Y_RANGE/2.0f,0.0f,0.0f,0.0f;
+    J = FootPlatformModel::geometricJacobian(_footPose[k]+offset);
+    Eigen::Matrix<float,6,1> Fd;
+    Eigen::Matrix3f R;
+    R << 0.0f, -1.0f, 0.0f,
+       1.0f,0.0f,0.0f,
+       0.0f,0.0f,1.0f;
+    Fd.setConstant(0.0f);
+    Fd.segment(0,3) = R*_FdFoot[k];
+    temp = J.transpose()*Fd;
+    _desiredFootWrench[k](0) = temp(1);
+    _desiredFootWrench[k](1) = temp(0);
+    _desiredFootWrench[k](2) = -temp(2);
+    _desiredFootWrench[k](3) = temp(3);
+    _desiredFootWrench[k](4) = temp(4);
+
+    _desiredFootWrench[k](0) += -_dxy*_footTwist[k](0);
+    _desiredFootWrench[k](1) += -_dxy*_footTwist[k](1);
+    _desiredFootWrench[k](2) += -_dphi*_footTwist[k](2);
+    _desiredFootWrench[k](3) += -_dphi*_footTwist[k](3);
+    _desiredFootWrench[k](4) += -_dphi*_footTwist[k](4);
   }
+
+  // if(_objectGrasped)
+  {
+    _desiredFootWrench[RIGHT](0) += _kxy*(_footPose[LEFT](0)-_footPose[RIGHT](0));
+    _desiredFootWrench[RIGHT](1) += _kxy*(_footPose[LEFT](1)-_footPose[RIGHT](1));
+    _desiredFootWrench[RIGHT](2) += _kphi*(_footPose[LEFT](2)-_footPose[RIGHT](2));
+    _desiredFootWrench[RIGHT](3) += _kphi*(_footPose[LEFT](3)-_footPose[RIGHT](3));
+    _desiredFootWrench[RIGHT](4) += _kphi*(_footPose[LEFT](4)-_footPose[RIGHT](4)); 
+
+    _desiredFootWrench[LEFT](0) += _kxy*(_footPose[RIGHT](0)-_footPose[LEFT](0));
+    _desiredFootWrench[LEFT](1) += _kxy*(_footPose[RIGHT](1)-_footPose[LEFT](1));
+    _desiredFootWrench[LEFT](2) += _kphi*(_footPose[RIGHT](2)-_footPose[LEFT](2));
+    _desiredFootWrench[LEFT](3) += _kphi*(_footPose[RIGHT](3)-_footPose[LEFT](3));
+    _desiredFootWrench[LEFT](4) += _kphi*(_footPose[RIGHT](4)-_footPose[LEFT](4));    
+
+  }
+
+
+    //   _desiredFootWrench[RIGHT](0) += _kxy*(_footPose[LEFT](0)-_footPose[RIGHT](0))+_dxy*(_footTwist[LEFT](0)-_footTwist[RIGHT](0));
+    // _desiredFootWrench[RIGHT](1) += _kxy*(_footPose[LEFT](1)-_footPose[RIGHT](1))+_dxy*(_footTwist[LEFT](1)-_footTwist[RIGHT](1));
+    // _desiredFootWrench[RIGHT](2) += _kphi*(_footPose[LEFT](2)-_footPose[RIGHT](2))+_dphi*(_footTwist[LEFT](2)-_footTwist[RIGHT](2));
+    // _desiredFootWrench[RIGHT](3) += _kphi*(_footPose[LEFT](3)-_footPose[RIGHT](3))+_dphi*(_footTwist[LEFT](3)-_footTwist[RIGHT](3));
+    // _desiredFootWrench[RIGHT](4) += _kphi*(_footPose[LEFT](4)-_footPose[RIGHT](4))+_dphi*(_footTwist[LEFT](4)-_footTwist[RIGHT](4)); 
+
+    // _desiredFootWrench[LEFT](0) += _kxy*(_footPose[RIGHT](0)-_footPose[LEFT](0))+_dxy*(_footTwist[RIGHT](0)-_footTwist[LEFT](0));
+    // _desiredFootWrench[LEFT](1) += _kxy*(_footPose[RIGHT](1)-_footPose[LEFT](1))+_dxy*(_footTwist[RIGHT](1)-_footTwist[LEFT](1));
+    // _desiredFootWrench[LEFT](2) += _kphi*(_footPose[RIGHT](2)-_footPose[LEFT](2))+_dphi*(_footTwist[RIGHT](2)-_footTwist[LEFT](2));
+    // _desiredFootWrench[LEFT](3) += _kphi*(_footPose[RIGHT](3)-_footPose[LEFT](3))+_dphi*(_footTwist[RIGHT](3)-_footTwist[LEFT](3));
+    // _desiredFootWrench[LEFT](4) += _kphi*(_footPose[RIGHT](4)-_footPose[LEFT](4))+_dphi*(_footTwist[RIGHT](4)-_footTwist[LEFT](4));  
+
+  // _desiredFootWrench[RIGHT].setConstant(0.0f);
+
+  //   for(int k = 0; k < NB_ROBOTS; k++)
+  // { 
+  //   _desiredFootWrench[k](0) += -_kxy*_footPose[k](0)-_dxy*_footTwist[k](0);
+  //   _desiredFootWrench[k](1) += -_kxy*_footPose[k](1)-_dxy*_footTwist[k](1);
+  //   _desiredFootWrench[k](2) += -_kphi*_footPose[k](3)-_dphi*_footTwist[k](3);
+  // }
 
   for(int k = 0; k < 2; k++)
   {
@@ -465,22 +587,22 @@ void CartesianFeetTelemanipulation::computeDesiredFootWrench()
 
   for(int k = 0 ; k < 3; k++)
   {
-    if(_desiredFootWrench[RIGHT](k+2)>0.187f*40/9.15)
+    if(_desiredFootWrench[RIGHT](k+2)>5.0f)
     {
-      _desiredFootWrench[RIGHT](k+2) = 0.187f*40/9.15;
+      _desiredFootWrench[RIGHT](k+2) = 5.0f;
     }
-    else if(_desiredFootWrench[RIGHT](k+2)<-0.187f*40/9.15)
+    else if(_desiredFootWrench[RIGHT](k+2)<-5.0f)
     {
-      _desiredFootWrench[RIGHT](k+2) = -0.187f*40/9.15;
+      _desiredFootWrench[RIGHT](k+2) = -5.0f;
     }
 
-    if(_desiredFootWrench[LEFT](k+2)>0.212f*40/9.15)
+    if(_desiredFootWrench[LEFT](k+2)>5.0f)
     {
-      _desiredFootWrench[LEFT](k+2) = 0.212f*40/9.15;
+      _desiredFootWrench[LEFT](k+2) = 5.0f;
     }
-    else if(_desiredFootWrench[LEFT](k+2)<-0.212f*40/9.15)
+    else if(_desiredFootWrench[LEFT](k+2)<-5.0f)
     {
-      _desiredFootWrench[LEFT](k+2) = -0.212f*40/9.15;
+      _desiredFootWrench[LEFT](k+2) = -5.0f;
     }
   }
 }
@@ -505,8 +627,16 @@ void CartesianFeetTelemanipulation::computeDesiredOrientation()
     }
 
     Eigen::Matrix3f Rtemp;
-    float phi = -_footPose[k](ROLL)*M_PI/180.0f;
-    float theta = _footPose[k](YAW)*M_PI/180.0f;
+    float phi = -_rollGain*_footPose[k](ROLL)*M_PI/180.0f;
+    float theta;
+    if(k==RIGHT)
+    {
+      theta = _yawGain*_footPose[k](YAW)*M_PI/180.0f;
+    }
+    else
+    {
+      theta = -_yawGain*_footPose[k](YAW)*M_PI/180.0f;
+    }
     float psi = 0.0f;
     float cphi = std::cos(phi);
     float sphi = std::sin(phi);
@@ -517,8 +647,19 @@ void CartesianFeetTelemanipulation::computeDesiredOrientation()
     Rtemp << cpsi*ctheta, cpsi*stheta*sphi-spsi*cphi, cpsi*stheta*cphi+spsi*sphi,
              spsi*ctheta, spsi*stheta*sphi+cpsi*cphi, spsi*stheta*cphi-cpsi*sphi,
              -stheta, ctheta*sphi, ctheta*cphi;
-    Rd = Rd*Rtemp;
 
+
+    // Rd = Rd*Rtemp;
+    Eigen::Matrix3f Re = (_H0.block(0,0,3,3).inverse()*_footTipOrientation[k]);
+    Eigen::Vector4f qe;
+    qe = Utils<float>::rotationMatrixToQuaternion(Re);
+    Eigen::Vector3f axis;
+    float angle;
+    Utils<float>::quaternionToAxisAngle(qe,axis,angle);
+    angle *= _rollGain;
+    qe = Utils<float>::axisAngleToQuaterion(axis,angle);
+    Rd = Utils<float>::quaternionToRotationMatrix(qe)*Rd;
+    // Rd = (_H0.block(0,0,3,3).inverse()*_footTipOrientation[k])*Rd;
     _qd[k] = Utils<float>::rotationMatrixToQuaternion(Rd);
 
     if(_q[k].dot(_qd[k])<0)
@@ -633,12 +774,11 @@ void CartesianFeetTelemanipulation::publishData()
     msg.data = _normalForce[k];
     _pubNormalForce[k].publish(msg); 
 
-    _msgFootInput.FxDes = _desiredFootWrench[k](0);
-    _msgFootInput.FyDes = _desiredFootWrench[k](1);
-    _msgFootInput.TphiDes = _desiredFootWrench[k](2);
-    _msgFootInput.TthetaDes = _desiredFootWrench[k](3);
-    _msgFootInput.TpsiDes = _desiredFootWrench[k](4);
-    _msgFootInput.stateDes = 2;
+    _msgFootInput.set_axis = -1;
+    for(int m = 0; m < 5; m++)
+    {
+      _msgFootInput.set_effort[m] = _desiredFootWrench[k](m);
+    }
     _pubFootInput[k].publish(_msgFootInput);
   }
 }
@@ -653,7 +793,7 @@ void CartesianFeetTelemanipulation::updateRobotPose(const geometry_msgs::Pose::C
   _x[k] << msg->position.x, msg->position.y, msg->position.z;
   _q[k] << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
   _wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
-  _x[k] = _x[k]+_toolOffsetFromEE*_wRb[k].col(2);
+  _x[k] = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
 
   if(k==(int)LEFT)
   {
@@ -732,12 +872,17 @@ void CartesianFeetTelemanipulation::updateDampingMatrix(const std_msgs::Float32M
 }
 
 
-void CartesianFeetTelemanipulation::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
+void CartesianFeetTelemanipulation::updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k)
 {
-  _footPose[k] << msg->x, msg->y, msg->phi, msg->theta, msg->psi;
-  _footWrench[k] << msg->Fx_m, msg->Fy_m, msg->Tphi_m, msg->Ttheta_m, msg->Tpsi_m;
-  _footTwist[k] << msg->vx, msg->vy, msg->wphi, msg->wtheta, msg->wpsi;
-  _footState[k] = msg->state;
+
+  for(int m = 0; m < 5; m++)
+  {
+    _footPose[k](m) = msg->position[m];
+    _footTwist[k](m) = msg->speed[m];
+    _footWrench[k](m) = msg->meas_efforts[m];
+  }
+  // _footPose[k] -= _footOffset;
+  _footState[k] = msg->machine_state;
 
   if(!_firstFootOutput[k])
   {
@@ -758,6 +903,8 @@ void CartesianFeetTelemanipulation::dynamicReconfigureCallback(robotic_experimen
   _dphi = config.dphi;
   _xyPositionMapping = config.xyPositionMapping;
   _zPositionMapping = config.zPositionMapping;
+  _rollGain = config.rollGain;
+  _yawGain = config.yawGain;
   _useSharedControl = config.useSharedControl;
   if(_useSharedControl)
   {
