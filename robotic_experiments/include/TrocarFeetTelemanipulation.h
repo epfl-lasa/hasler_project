@@ -22,8 +22,8 @@
 #include "visualization_msgs/Marker.h"
 #include <dynamic_reconfigure/server.h>
 #include "robotic_experiments/feetTelemanipulation_paramsConfig.h"
-#include "custom_msgs/FootInputMsg.h"
-#include "custom_msgs/FootOutputMsg.h"
+#include "custom_msgs/FootInputMsg_v2.h"
+#include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
 
 #define NB_ROBOTS 2
@@ -34,6 +34,7 @@
 #define FOOT_INTERFACE_ROLL_RANGE 40.0
 #define FOOT_INTERFACE_YAW_RANGE 40.0
 #define WINDOW_SIZE 10
+#define NB_TROCARS 3
 
 
 class TrocarFeetTelemanipulation 
@@ -42,7 +43,7 @@ class TrocarFeetTelemanipulation
     // Robot ID, left or right
 		enum ROBOT {LEFT = 0, RIGHT = 1};
 
-		enum Strategy {PURE_TELEMANIPULATION = 0, AUTONOMOUS_LOAD_SUPPORT = 1};
+		enum Mode {TROCAR_SELECTION = 0, TROCAR_INSERTION = 1, TROCAR_SPACE = 2};
 
 		enum Axis {X = 0, Y = 1, PITCH = 2, ROLL = 3, YAW = 4};
 
@@ -77,7 +78,7 @@ class TrocarFeetTelemanipulation
 		geometry_msgs::Twist _msgDesiredTwist;
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
-		custom_msgs::FootInputMsg _msgFootInput;
+		custom_msgs::FootInputMsg_v2 _msgFootInput;
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
@@ -87,6 +88,7 @@ class TrocarFeetTelemanipulation
 
 		// Tool state variables
 		Eigen::Vector3f _x[NB_ROBOTS];													// Position [m] (3x1)
+		Eigen::Vector3f _xEE[NB_ROBOTS];													// Position [m] (3x1)
 		Eigen::Vector3f _x0[NB_ROBOTS];													// Position [m] (3x1)
 		Eigen::Vector4f _q[NB_ROBOTS];													// Quaternion (4x1)
 		Eigen::Matrix3f _wRb[NB_ROBOTS];												// Orientation matrix (3x1) (form end effector to world frame)
@@ -157,12 +159,25 @@ class TrocarFeetTelemanipulation
 		std::ifstream _inputFile;
 		std::ofstream _outputFile;
 		std::mutex _mutex;
-		Strategy _strategy;
+		Mode _mode;
     float _normalForceAverage[NB_ROBOTS];
 		std::deque<float> _normalForceWindow[NB_ROBOTS];
 
 		Eigen::Matrix<float,6,1> _nullspaceWrench[NB_ROBOTS];
 		static TrocarFeetTelemanipulation* me;
+
+		Eigen::Vector3f _trocarPosition[NB_TROCARS];
+		Eigen::Vector3f _trocarOrientation[NB_TROCARS];
+		Eigen::Vector3f _rEETrocar[NB_TROCARS];
+		Eigen::Vector3f _xRCM[NB_TROCARS];
+		Eigen::Vector3f _xdEE[NB_TROCARS];
+		Eigen::Vector3f _fxk[NB_TROCARS];
+		Eigen::Matrix<float,NB_TROCARS,1> _beliefs;
+		Eigen::Matrix<float,NB_TROCARS,1> _dbeliefs;
+
+		float _adaptationRate;
+		bool _alignedWithTrocar[NB_ROBOTS];
+
 
 		// Dynamic reconfigure (server+callback)
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig> _dynRecServer;
@@ -192,6 +207,18 @@ class TrocarFeetTelemanipulation
     void updateObjectGraspingState();
 
     void trackTarget();
+
+    void alignWithTrocar();
+
+    void updateTrocarInformation();
+
+    void selectMode();
+
+    void trocarSelection();
+
+    void trocarAdaptation();
+
+    void trocarInsertion();
         
     void footDataTransformation();
 
@@ -223,10 +250,13 @@ class TrocarFeetTelemanipulation
     void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg, int k); 
 
     // Callback to update data from foot interface
-		void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k); 
+		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
 
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);
+
+    Eigen::MatrixXf pseudoInverse(const Eigen::MatrixXf &M_, bool damped = true);
+
 };
 
 

@@ -12,7 +12,13 @@
   <arg name="robotOrigin.az" default="0"/>
   <arg name="trocarOffset.x" default="-0.5"/>
   <arg name="trocarOffset.y" default="0.0"/>
-  <arg name="trocarOffset.z" default="0.45"/>
+  <arg name="trocarOffset.z" default="0.1"/>
+  <arg name="trocarOffset2.x" default="-0.5"/>
+  <arg name="trocarOffset2.y" default="0.15"/>
+  <arg name="trocarOffset2.z" default="0.1"/>
+  <arg name="trocarOffset3.x" default="-0.5"/>
+  <arg name="trocarOffset3.y" default="-0.15"/>
+  <arg name="trocarOffset3.z" default="0.1"/>
 
   <!-- The recommended way of specifying the URDF file is to pass it in
        directly. -->
@@ -53,7 +59,9 @@
     <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/lwr kuka_joint_state_controller"/>
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/lwr $(arg controllers)"/>
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /lwr/robot_description -urdf -model $(arg robotName)" respawn="false" output="screen" />
-    <node name="publish_trocar_frame" pkg="surgical_simulator" type="publish_trocar_frame" args="$(arg robotName) -x $(arg trocarOffset.x) -y $(arg trocarOffset.y) -z $(arg trocarOffset.z)"/>
+    <node name="publish_trocar_frame" pkg="surgical_simulator" type="publish_trocar_frame" args="trocar -x $(arg trocarOffset.x) -y $(arg trocarOffset.y) -z $(arg trocarOffset.z)"/>
+    <node name="publish_trocar_frame2" pkg="surgical_simulator" type="publish_trocar_frame" args="trocar2 -x $(arg trocarOffset2.x) -y $(arg trocarOffset2.y) -z $(arg trocarOffset2.z)"/>
+    <node name="publish_trocar_frame3" pkg="surgical_simulator" type="publish_trocar_frame" args="trocar3 -x $(arg trocarOffset3.x) -y $(arg trocarOffset3.y) -z $(arg trocarOffset3.z)"/>
 
   </group>
 
