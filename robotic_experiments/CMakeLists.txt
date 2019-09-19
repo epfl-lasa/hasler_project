@@ -49,6 +49,11 @@ add_executable(trocar_feet_telemanipulation src/trocarFeetTelemanipulation_node.
 target_link_libraries(trocar_feet_telemanipulation ${catkin_LIBRARIES})
 add_dependencies(trocar_feet_telemanipulation ${PROJECT_NAME}_gencpp)
 
+
+add_executable(publish_spherical_trocar_frames src/publishSphericalTrocarFrames_node.cpp src/PublishSphericalTrocarFrames.cpp)
+target_link_libraries(publish_spherical_trocar_frames ${catkin_LIBRARIES})
+add_dependencies(publish_spherical_trocar_frames ${PROJECT_NAME}_gencpp)
+
 FILE(GLOB SRCS src/CartesianFeetTelemanipulation.cpp)
 FILE(GLOB INCS include/CartesianFeetTelemanipulation.h)
 

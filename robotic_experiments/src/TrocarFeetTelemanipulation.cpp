@@ -17,7 +17,7 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
 
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.02f;
-  _toolOffsetFromEE = 0.4f;
+  _toolOffsetFromEE = 0.533f;
   _toolMass = 0.2f;
 
   for(int k = 0; k < NB_ROBOTS; k++)
@@ -91,12 +91,82 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   _trocarOrientation[1] << 0, -0.5, -0.86603;;
   _trocarPosition[2] << -0.5f,-0.15f,0.1f;
   _trocarOrientation[2] << 0, 0.5, -0.86603;
+
+
+  Eigen::Vector3f offset;
+  // offset << -0.5f, 0.0f, 0.0f;
+  offset << -0.33f, -0.316f, -0.015f;
+
+  float sphereRadius = 0.13f;
+  float medialDivision = 10.0f;
+  float transversalDivision = 12.0f;
+
+  float angle1 = M_PI/medialDivision;
+  float angle2  = 2*M_PI/transversalDivision;
+
+  // int id = 0;
+  // _trocarPosition[id] << 0.0f,0.0f,sphereRadius;
+  // _trocarPosition[id]+=offset;
+  // _trocarOrientation[id] << 0.0f, 0.0f, -1.0f;
+  // id++;
+  // for(int k = 1; k <medialDivision/2; k+=2)
+  // {
+  //   for(int m = 1 ; m < transversalDivision+1; m+=3)
+  //   {
+  //     _trocarPosition[id] << sphereRadius*cos(k*angle1)*cos((m-1)*angle2),
+  //                                sphereRadius*cos(k*angle1)*sin((m-1)*angle2),
+  //                                sphereRadius*sin(k*angle1);
+  //           _trocarPosition[id]+=offset;
+  //           _trocarOrientation[id] = -(_trocarPosition[id]-offset).normalized();
+  //           id++;
+  //   }
+  // }
+
+  Eigen::MatrixXf positions;
+  Eigen::MatrixXf orientations;
+  positions.resize((medialDivision/2-1)*transversalDivision+1,3);
+  orientations.resize((medialDivision/2-1)*transversalDivision+1,3);
+
+  int id = 0;
+  positions.row(id) << 0.0f,0.0f,sphereRadius;
+  positions.row(id)+=offset.transpose();
+  orientations.row(id) << 0.0f, 0.0f, 1.0f;
+  id++;
+  for(int k = 1; k <medialDivision/2; k+=1)
+  {
+    for(int m = 1 ; m < transversalDivision+1; m+=1)
+    {
+      positions.row(id) << sphereRadius*cos(k*angle1)*cos((m-1)*angle2),
+                                 sphereRadius*cos(k*angle1)*sin((m-1)*angle2),
+                                 sphereRadius*sin(k*angle1);
+            positions.row(id)+=offset.transpose();
+            orientations.row(id) = -(positions.row(id)-offset.transpose()).normalized();
+            id++;
+    }
+  }
+  std::vector<int> idConserved;
+  // idConserved.push_back(0);
+  idConserved.push_back(28);
+  idConserved.push_back(4);
+  idConserved.push_back(25);
+
+  for(int k = 0; k < idConserved.size(); k++)
+  {
+    _trocarPosition[k] = positions.row(idConserved[k]).transpose();
+    _trocarOrientation[k] = orientations.row(idConserved[k]).transpose();
+    std::cerr << k << " " << _trocarPosition[k].transpose() << std::endl;
+    std::cerr << k << " " << _trocarOrientation[k].transpose() << std::endl;
+  }
+
   _adaptationRate = 50.0f;
   _mode = TROCAR_SELECTION;
 
   _beliefs.setConstant(0.0f);
   _beliefs[0] = 1.0f;
   _dbeliefs.setConstant(0.0f);
+
+  _useJoystick = true;
+  _firstJoystick = false;
 }
 
 
@@ -115,6 +185,11 @@ bool TrocarFeetTelemanipulation::init()
   _subForceTorqueSensor[RIGHT] = _n.subscribe<geometry_msgs::WrenchStamped>("/ft_sensor_right/netft_data", 1, boost::bind(&TrocarFeetTelemanipulation::updateRobotWrench,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   _subFootOutput[RIGHT] = _n.subscribe<custom_msgs::FootOutputMsg_v2>("/FI_Output/Left",1, boost::bind(&TrocarFeetTelemanipulation::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
  
+
+  if(_useJoystick)
+  {
+    _subJoystick = _n.subscribe<sensor_msgs::Joy>("/joy",1, &TrocarFeetTelemanipulation::updateJoystick, this, ros::TransportHints().reliable().tcpNoDelay());
+  }
   // Publisher definitions
   _pubDesiredTwist[LEFT] = _n.advertise<geometry_msgs::Twist>("/lwr2/joint_controllers/passive_ds_command_vel", 1);
   _pubDesiredOrientation[LEFT] = _n.advertise<geometry_msgs::Quaternion>("/lwr2/joint_controllers/passive_ds_command_orient", 1);
@@ -258,7 +333,7 @@ bool TrocarFeetTelemanipulation::allDataReceived()
   {
     // return (_firstRobotPose[RIGHT] && _firstRobotTwist[RIGHT] && _firstDampingMatrix[RIGHT] && _firstFootOutput[RIGHT]);
     // std::cerr << _firstRobotPose[RIGHT] << " " << _firstRobotTwist[RIGHT] << std::endl;
-    return (_firstRobotPose[RIGHT] && _firstRobotTwist[RIGHT] && _firstFootOutput[RIGHT]);
+    return (_firstRobotPose[RIGHT] && _firstRobotTwist[RIGHT] && (_firstFootOutput[RIGHT]|| _firstJoystick));
   }
   else
   {
@@ -290,6 +365,7 @@ void TrocarFeetTelemanipulation::computeCommand()
     }
     case TROCAR_SPACE:
     {
+      trocarSpace();
       break;
     }
     default:
@@ -331,14 +407,20 @@ void TrocarFeetTelemanipulation::selectMode()
     if(_alignedWithTrocar[RIGHT]==true)
     {
       float distance = (_trocarPosition[indexMax]-_xEE[RIGHT]).dot(_wRb[RIGHT].col(2))-_toolOffsetFromEE;
-      if(distance >0.1f)
+      if(distance >= 0.05f)
       {
         _mode = TROCAR_SELECTION;
       }
       else
+
+      // else if(distance >= -0.03f && distance < 0.1f)
       {
         _mode = TROCAR_INSERTION;
       }
+      // else
+      // {
+      //   _mode = TROCAR_SPACE;
+      // }
     }
   }
 }
@@ -355,24 +437,43 @@ void TrocarFeetTelemanipulation::trocarSelection()
   Eigen::MatrixXf::Index indexMax;
   float bmax = _beliefs.array().maxCoeff(&indexMax);
 
+  Eigen::Vector3f offset;
+  // offset << -0.5f, 0.0f, 0.0f;
+  offset << -0.33f, -0.316f, -0.015f;
+
   if(fabs(bmax-1.0f)>FLT_EPSILON)
   {
     _alignedWithTrocar[RIGHT] = false;
-    _vd[RIGHT] = _fx[RIGHT];
+    // _vd[RIGHT] = _fx[RIGHT];
+    _vd[RIGHT] = Utils<float>::orthogonalProjector((offset-_xEE[RIGHT]).normalized())*_fx[RIGHT];
+
     std::cerr << "TROCAR NOT SELECTED" << std::endl;
   }
   else 
   {
     if(!_alignedWithTrocar[RIGHT])
     {
-      _vd[RIGHT] = _fx[RIGHT];
+      // _vd[RIGHT] = _fx[RIGHT];
+      _vd[RIGHT] = Utils<float>::orthogonalProjector((offset-_xEE[RIGHT]).normalized())*_fx[RIGHT];
     }
     else
     {
       _vd[RIGHT] = 2.0f*(_trocarPosition[indexMax]-_xRCM[indexMax]);
-      _vd[RIGHT]+= -2.0f*0.1*Utils<float>::deadZone(_footPosition[RIGHT](2),-5,5)/FOOT_INTERFACE_PITCH_RANGE*(_rEETrocar[indexMax].normalized());
+      if(!_useJoystick)
+      {
+        _vd[RIGHT]+= -2.0f*0.1*Utils<float>::deadZone(_footPosition[RIGHT](2),-5,5)/FOOT_INTERFACE_PITCH_RANGE*(_rEETrocar[indexMax].normalized());
+      }
+      else
+      {
+        _vd[RIGHT] += 0.1*Utils<float>::deadZone(_footPosition[RIGHT](2),-0.1f,0.1f)*(-_rEETrocar[indexMax].normalized());
+      }
     }
   }
+
+  if(_vd[RIGHT].norm()>0.3f)
+  {
+    _vd[RIGHT] *= 0.3f/_vd[RIGHT].norm();
+  } 
   
   Eigen::Vector4f qek[NB_TROCARS];
   for(int k = 0; k < NB_TROCARS; k++)
@@ -390,12 +491,15 @@ void TrocarFeetTelemanipulation::trocarSelection()
   _qd[RIGHT] = Utils<float>::quaternionProduct(qe,_q[RIGHT]);
 
 
-  std::cerr << "angle: " << angle << "distance: " << _fx[RIGHT].norm() << std::endl;
+  // std::cerr << "angle: " << angle << "distance: " << _fx[RIGHT].norm() << std::endl;
+  std::cerr << "angle1: " << angle << "angle2: " << std::acos(_trocarOrientation[indexMax].dot(_wRb[RIGHT].col(2))) << std::endl;
 
-  if(std::fabs(angle) < 0.05f && (_fx[RIGHT]).norm()<0.04 && _alignedWithTrocar[RIGHT] == false && fabs(bmax-1.0f)<FLT_EPSILON)
+  // if(std::fabs(angle) < 0.05f && (_fx[RIGHT]).norm()<0.04 && _alignedWithTrocar[RIGHT] == false && fabs(bmax-1.0f)<FLT_EPSILON)
+  if(std::fabs(angle) < 0.05f && std::fabs(std::acos(_trocarOrientation[indexMax].dot(_wRb[RIGHT].col(2))))<0.05f && _alignedWithTrocar[RIGHT] == false && fabs(bmax-1.0f)<FLT_EPSILON)
   {
     _alignedWithTrocar[RIGHT] = true;
   }
+
 
 
   _omegad[RIGHT] = Utils<float>::quaternionToAngularVelocity(_q[RIGHT],_qd[RIGHT],5.0f);
@@ -418,8 +522,11 @@ void TrocarFeetTelemanipulation::trocarAdaptation()
     n << 0.0f,0.0f,1.0f;
 
     // Compute attractor that is aligned with the desired trocar orientation
-    float s = -n.dot(_xEE[RIGHT]-_trocarPosition[k])/(n.dot(_trocarOrientation[k]));
-    _xdEE[k] = _trocarPosition[k]-_trocarOrientation[k]*s;
+    // float s = -n.dot(_xEE[RIGHT]-_trocarPosition[k])/(n.dot(_trocarOrientation[k]));
+    // _xdEE[k] = _trocarPosition[k]-_trocarOrientation[k]*s;
+    _xdEE[k] = _trocarPosition[k]-_trocarOrientation[k]*(_toolOffsetFromEE+0.15f);
+    _xdEE[k] = _trocarPosition[k]+std::max(_rEETrocar[k].dot(_trocarOrientation[k]),_toolOffsetFromEE+0.05f)*(-_trocarOrientation[k]);
+
 
     // Linear DS to go to the attractor
     _fxk[k]= _xdEE[k]-_xEE[RIGHT];
@@ -433,9 +540,28 @@ void TrocarFeetTelemanipulation::trocarAdaptation()
 
   float velocityLimit = 0.3f;
   Eigen::Vector3f gains;
-  gains << 2.0f*velocityLimit/FOOT_INTERFACE_X_RANGE, 2.0f*velocityLimit/FOOT_INTERFACE_Y_RANGE, 0.0f;
+  if(!_useJoystick)
+  {
+    gains << 2.0f*velocityLimit/FOOT_INTERFACE_X_RANGE, 2.0f*velocityLimit/FOOT_INTERFACE_Y_RANGE, 0.0f;
+  }
+  else
+  {
+    gains.setConstant(velocityLimit);
+    gains(2) = 0.0f;
+  }
   
-  _vdFoot[RIGHT] = gains.cwiseProduct(_footPosition[RIGHT]);
+  Eigen::Vector3f temp;
+  temp(0) = Utils<float>::deadZone(_footPosition[RIGHT](0),-0.02f,0.02f);
+  temp(1) = Utils<float>::deadZone(_footPosition[RIGHT](1),-0.02f,0.02f);
+  if(!_useJoystick)
+  {
+    temp(2) = Utils<float>::deadZone(_footPosition[RIGHT](2),-5.0f,5.0f);
+  }
+  else
+  {
+    temp(2) = Utils<float>::deadZone(_footPosition[RIGHT](2),-0.02f,0.02f);
+  }
+  _vdFoot[RIGHT] = gains.cwiseProduct(temp);
 
   if(_vdFoot[RIGHT].norm()>velocityLimit)
   {
@@ -455,10 +581,14 @@ void TrocarFeetTelemanipulation::trocarAdaptation()
 
   Eigen::MatrixXf::Index indexMax;
 
+  float a, b;
   for(int k = 0; k < NB_TROCARS; k++)
   {
-    _dbeliefs(k) = _adaptationRate*((_vdFoot[RIGHT]-_fx[RIGHT]).dot(_fxk[k])+0.5f*(_beliefs(k)-0.5f)*_fxk[k].squaredNorm());
-    std::cerr << "Dbeliefs " << k << ": " <<  (_vdFoot[RIGHT]-_fx[RIGHT]).dot(_fxk[k]) << " " << 0.5f*(_beliefs(k)-0.5f)*_fxk[k].squaredNorm() << std::endl;
+    a = _adaptationRate*((_vdFoot[RIGHT]-_fx[RIGHT]).dot(_fxk[k]));
+    b = _adaptationRate*(0.5f*(_beliefs(k)-0.5f)*_fxk[k].squaredNorm());
+
+    _dbeliefs(k) = a+b;
+    std::cerr << "Dbeliefs " << k << ": " << a << " " << b << std::endl;
   }
 
   std::cerr << "a: " << _dbeliefs.transpose() << std::endl;
@@ -532,8 +662,14 @@ void TrocarFeetTelemanipulation::trocarInsertion()
   float bmax = _beliefs.array().maxCoeff(&indexMax);
 
   _vd[RIGHT] = 2.0f*(_trocarPosition[indexMax]-_xRCM[indexMax]);
-  _vd[RIGHT] += -2.0f*0.1*Utils<float>::deadZone(_footPosition[RIGHT](2),-5,5)/FOOT_INTERFACE_PITCH_RANGE*(_rEETrocar[indexMax].normalized());
-
+  if(!_useJoystick)
+  {
+    _vd[RIGHT] += -2.0f*0.1*Utils<float>::deadZone(_footPosition[RIGHT](2),-5,5)/FOOT_INTERFACE_PITCH_RANGE*(_rEETrocar[indexMax].normalized());
+  }
+  else
+  {
+    _vd[RIGHT] += 0.1*Utils<float>::deadZone(_footPosition[RIGHT](2),-0.1f,0.1f)*(-_rEETrocar[indexMax].normalized());
+  }
   Eigen::Vector4f qe;
   qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[RIGHT].col(2),_rEETrocar[indexMax]));
 
@@ -544,14 +680,259 @@ void TrocarFeetTelemanipulation::trocarInsertion()
 }
 
 
+void TrocarFeetTelemanipulation::trocarSpace()
+{
+
+  // ROS_INFO("TROCAR_SPACE");
+  Eigen::MatrixXf::Index indexMax;
+  float bmax = _beliefs.array().maxCoeff(&indexMax);
+
+  Eigen::Vector3f vdTool, gains;
+
+  if(!_useJoystick)
+  {
+    gains.setConstant(0.0f);
+  }
+  else
+  {
+    gains.setConstant(0.1f);
+  }
+  vdTool = _wRb[RIGHT]*(gains.cwiseProduct(_footPosition[RIGHT].segment(0,3)));
+
+  _vd[RIGHT] = 40.0f*(_trocarPosition[indexMax]-_xRCM[indexMax])+vdTool;
+  // _vd[RIGHT] = vdTool;
+
+  Eigen::Vector3f rEETool, rEERCM;
+  rEETool = _toolOffsetFromEE*_wRb[RIGHT].col(2);
+  rEERCM = _xRCM[indexMax]-_xEE[RIGHT];
+
+  _vd[RIGHT] = vdTool;
+
+  _nullspaceWrench[RIGHT].setConstant(0.0f);
+  _nullspaceWrench[RIGHT].segment(0,3) = 40000.0f*(_trocarPosition[indexMax]-_xRCM[indexMax]);
+
+
+
+  ///////////////////1
+  // Eigen::Matrix<float,9,6> A;
+  // A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[RIGHT].col(2));
+  // A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[RIGHT].col(2))*Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+  // A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEETool);
+  // A.block(6,0,3,3) = Eigen::Matrix3f::Identity();
+  // A.block(6,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // Eigen::Matrix<float,6,1> x;
+  // Eigen::Matrix<float,9,1> b;
+  // b.setConstant(0.0f);
+  // b.segment(3,3) = vdTool;
+  // b.segment(6,3) = 5*(_trocarPosition[indexMax]-_xRCM[indexMax]);
+
+  ////////////////2
+  // Eigen::Matrix<float,6,6> A;
+  // A.block(0,0,3,3) = Eigen::Matrix3f::Identity();
+  // A.block(0,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+  // A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEETool);
+  // Eigen::Matrix<float,6,1> x, b;
+  // b.segment(0,3) = 10.0f*(_trocarPosition[indexMax]-_xRCM[indexMax]);
+  // b.segment(3,3) = vdTool;
+
+  // x = A.colPivHouseholderQr().solve(b);
+  // // std::cerr << x.transpose() << std::endl;
+  // _vd[RIGHT] = x.segment(0,3);
+
+  // _omegad[RIGHT] = x.segment(3,3);
+
+
+  ////////////////3
+  // Eigen::Matrix<float,6,6> A;
+  // A.block(0,0,3,3) = Utils<float>::getSkewSymmetricMatrix(_wRb[RIGHT].col(2));
+  // A.block(0,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_wRb[RIGHT].col(2))*Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+  // A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEETool);
+  // Eigen::Matrix<float,6,1> x, b;
+  // b.segment(0,3).setConstant(0.0f);
+  // b.segment(3,3) = vdTool;
+
+  // x = A.colPivHouseholderQr().solve(b);
+  // // std::cerr << x.transpose() << std::endl;
+  // _vd[RIGHT] = x.segment(0,3);
+
+  // _omegad[RIGHT] = x.segment(3,3);
+
+  ///////////////4
+  // Eigen::Matrix<float,6,6> C;
+  // C.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[RIGHT].col(2));
+  // C.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[RIGHT].col(2))*Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // C.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+  // C.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEETool);
+  // Eigen::Matrix<float,3,6> A;
+  // A.block(0,0,3,3) = -Eigen::Matrix3f::Identity();
+  // A.block(0,3,3,3) = Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // Eigen::Vector3f b;
+  // b = -100.0f*(_trocarPosition[indexMax]-_xRCM[indexMax]);
+  // Eigen::Matrix<float,12,12> M;
+  // M.setConstant(0.0f);
+  // M.block(0,0,6,6) = A.transpose()*A;
+  // M.block(0,6,6,6) = C.transpose();
+  // M.block(6,0,6,6) = C;
+
+  // Eigen::Matrix<float,6,1> d;
+  // d.segment(0,3).setConstant(0.0f);
+  // d.segment(3,3) = vdTool;
+  // Eigen::Matrix<float,12,1> B;
+  // B.segment(0,6) = A.transpose()*b;
+  // B.segment(6,6) = d;
+
+  // Eigen::Matrix<float,12,1> Y;
+  // Y = M.colPivHouseholderQr().solve(B);
+  // _vd[RIGHT] = Y.segment(0,3);
+  // _omegad[RIGHT] = Y.segment(3,3);
+
+
+  // Eigen::Matrix<float,3,6> C;
+  // C.block(0,0,3,3) = Eigen::Matrix3f::Identity();
+  // C.block(0,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rEERCM);
+  // Eigen::Matrix<float,3,6> A;
+  // A.block(0,0,3,3) = -Eigen::Matrix3f::Identity();
+  // A.block(0,3,3,3) = Utils<float>::getSkewSymmetricMatrix(rEETool);
+  // Eigen::Vector3f b;
+  // b = -vdTool;
+  // Eigen::Matrix<float,9,9> M;
+  // M.setConstant(0.0f);
+  // M.block(0,0,6,6) = A.transpose()*A;
+  // M.block(0,6,6,3) = C.transpose();
+  // M.block(6,0,3,6) = C;
+
+  // Eigen::Vector3f d;
+  // d = 10.0f*(_trocarPosition[indexMax]-_xRCM[indexMax]);
+  // Eigen::Matrix<float,9,1> B;
+  // B.segment(0,6) = A.transpose()*b;
+  // B.segment(6,3) = d;
+  // Eigen::Matrix<float,9,1> Y;
+  // Y = M.colPivHouseholderQr().solve(B);
+  // std::cerr << Y.transpose() << std::endl;
+  // _vd[RIGHT] = Y.segment(0,3);
+  // _omegad[RIGHT] = Y.segment(3,3);
+
+  Eigen::Vector4f qe;
+  qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[RIGHT].col(2),_rEETrocar[indexMax]));
+
+  // // Compute final quaternion on plane
+  _qd[RIGHT] = Utils<float>::quaternionProduct(qe,_q[RIGHT]);
+
+  _omegad[RIGHT] = Utils<float>::quaternionToAngularVelocity(_q[RIGHT],_qd[RIGHT]);
+  
+  // _omegad[RIGHT] = Utils<float>::quaternionToAngularVelocity(_q[RIGHT],_qd[RIGHT])+(rEETool-rEERCM).cross((Eigen::Matrix3f::Identity()-_wRb[RIGHT].col(2)*_wRb[RIGHT].col(2).transpose())*vdTool)/(rEETool-rEERCM).squaredNorm(); 
+
+
+
+  Eigen::Vector3f dir;
+  dir = _wRb[RIGHT].transpose()*_rEETrocar[indexMax];
+  float distance = dir.norm();
+  dir.normalize();
+    
+  Eigen::Matrix3f P = Eigen::Matrix3f::Identity()-dir*dir.transpose();
+
+    
+  Eigen::Matrix3f S;
+  S = Utils<float>::getSkewSymmetricMatrix(dir);
+  
+  Eigen::Matrix<float,3,6> L;
+  L.block(0,0,3,3) = -P/distance;
+  L.block(0,3,3,3) = S;
+
+  Eigen::Matrix<float,6,3> Linv;
+  Linv = pseudoInverse(L);
+  
+  Eigen::Vector3f sd;
+  sd << 0.0f,0.0f,1.0f;
+  // sd << _wRb[RIGHT].transpose()*zt;
+  // std::cerr << _wRb[RIGHT].transpose() << std::endl;
+  // std::cerr << "sd: " << sd.transpose() << std::endl;
+
+  Eigen::Matrix<float,6,1> twistB,gainsB;
+  gainsB << 10.0f*Eigen::Vector3f::Ones(), 10.0f*Eigen::Vector3f::Ones();  
+  twistB = gainsB.cwiseProduct(Linv*(sd-dir));
+  // _vd[RIGHT] += _wRb[RIGHT]*twistB.segment(0,3);
+  // _omegad[RIGHT] += _wRb[RIGHT]*twistB.segment(3,3);
+    // _omegad[k] += _selfRotationCommand[k]*_wRb[k].col(2); 
+
+    // // Compute nullspace basis
+    Eigen::Vector3f ex, ey;
+    ex << 1.0f, 0.0f, 0.0f;
+    ey << 0.0f, 1.0f, 0.0f;
+
+    // ex = -_wRb[k].transpose()*ex;
+    // ey = -_wRb[k].transpose()*ey;
+
+    Eigen::Matrix<float, 6,1> n1,n2,n3,n4;
+    n1.setConstant(0.0f);
+    n2.setConstant(0.0f);
+    n3.setConstant(0.0f);
+    n4.setConstant(0.0f);
+
+    n1.segment(0,3) = dir;
+    n2.segment(3,3) = dir;
+    n3.segment(0,3) = -S*ey;
+    n3.segment(3,3) = -P*ey/distance;
+    n4.segment(0,3) = S*ex;
+    n4.segment(3,3) = P*ex/distance;
+
+    Eigen::MatrixXf N;
+    N.resize(6,4);
+    N.col(0) = n1;
+    N.col(1) = n2;
+    N.col(2) = n3;
+    N.col(3) = n4;
+
+   Eigen::Matrix<float,4,6> Ninv;
+    // Ninv = pseudoInverse(N);
+   Eigen::Matrix<float,6,6> res;
+   res.setIdentity();
+   Ninv = N.colPivHouseholderQr().solve(res);
+    Eigen::Matrix<float,6,1> X,X2;
+    X.setConstant(0.0f);
+    // X.segment(0 = _wRb[RIGHT].transpose()*(xEEd-xEE);
+    vdTool = gains.cwiseProduct(_footPosition[RIGHT].segment(0,3));
+    X.segment(0,3) = vdTool;
+    X2 = N*N.colPivHouseholderQr().solve(X);
+    // std::cerr << (N.colPivHouseholderQr().solve(X)).transpose() << std::endl;
+    // _vd[RIGHT] += _wRb[RIGHT]*X2.segment(0,3);
+    // _omegad[RIGHT] += _wRb[RIGHT]*X2.segment(3,3);
+
+  // Eigen::Vector4f qe;
+  // qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[RIGHT].col(2),_rEETrocar[indexMax]));
+
+  // Compute final quaternion on plane
+  // _qd[RIGHT] = Utils<float>::quaternionProduct(qe,_q[RIGHT]);
+
+  // _omegad[RIGHT] = Utils<float>::quaternionToAngularVelocity(_q[RIGHT],_qd[RIGHT]);
+
+
+}
+
+
+
+
 
 void TrocarFeetTelemanipulation::footDataTransformation()
 {
   Eigen::Matrix3f R;
+
+  if(!_useJoystick)
+  {
+
   R << 0.0f, 1.0f, 0.0f,
        -1.0f,0.0f,0.0f,
        0.0f,0.0f,1.0f;
-
+  }
+  else
+  {
+    R << 0.0f, 1.0f, 0.0f,
+          1.0f,0.0f,0.0f,
+          0.0f,0.0f,1.0f;
+  }
   _footPosition[RIGHT] = R*_footPose[RIGHT].segment(0,3);
   _footPosition[LEFT] = R*_footPose[LEFT].segment(0,3);
 }
@@ -609,7 +990,9 @@ void TrocarFeetTelemanipulation::trackTarget()
     offset(2) -= 0.2f;
 
     Eigen::Vector3f gains;
+
     gains << 2*0.15f/FOOT_INTERFACE_Y_RANGE, 2*0.15f/FOOT_INTERFACE_X_RANGE, 2*0.15f/FOOT_INTERFACE_PITCH_RANGE;
+
     _xdFoot[k] = gains.cwiseProduct(_footPosition[k]);
   
     Eigen::Vector3f vdTool, rToolEE,rTrocarEE, xEE;
@@ -1288,6 +1671,25 @@ void TrocarFeetTelemanipulation::updateFootOutput(const custom_msgs::FootOutputM
   if(!_firstFootOutput[k])
   {
     _firstFootOutput[k] = true;
+  }
+}
+
+
+void TrocarFeetTelemanipulation::updateJoystick(const sensor_msgs::Joy::ConstPtr& joy)
+{
+
+  _footPose[RIGHT].setConstant(0.0f);
+  _footPose[RIGHT](X) = joy->axes[0];
+  _footPose[RIGHT](Y) = joy->axes[1];
+  _footPose[RIGHT](PITCH) = joy->axes[4];
+
+  // _chaserVelocity << -joy->axes[_axeX], joy->axes[_axeY], joy->axes[_axeZ];
+  // _chaserVelocity*=_scale;
+  // _chaserVelocity.setConstant(0.0f);
+  
+  if(!_firstJoystick)
+  {
+    _firstJoystick= true;
   }
 }
 

@@ -14,6 +14,7 @@ _trocarOffset0(trocarOffset)
 	_stop = false;
 	_getTorsoFrame = false;	
 	_trocarOffset.setConstant(0.0f);
+	_torsoFrameOrigin.setConstant(0.0f);
 }
 
 PublishTrocarFrame::~PublishTrocarFrame()
@@ -53,22 +54,22 @@ void PublishTrocarFrame::run()
 {
   while (!_stop) 
   {	
-		if(!_getTorsoFrame)
-		{	
-	  	try
-			{	
-      	_lr.lookupTransform("/world", "/torso_upper_base_link",ros::Time::now(), _transform);
-      	_torsoFrameOrigin << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
-      	std::cerr << _transform.getOrigin().x() << " " << _transform.getOrigin().y() << " " << _transform.getOrigin().z() << std::endl;
-      	_getTorsoFrame = true;
-	    } 
-	    catch (tf::TransformException ex)
-	    {
-         // ROS_ERROR("%s",ex.what());
-         // ros::Duration(1.0).sleep();
-			}
-		}
-		else
+		// if(!_getTorsoFrame)
+		// {	
+	  // 	try
+			// {	
+   //    	_lr.lookupTransform("/world", "/torso_upper_base_link",ros::Time::now(), _transform);
+   //    	_torsoFrameOrigin << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
+   //    	std::cerr << _transform.getOrigin().x() << " " << _transform.getOrigin().y() << " " << _transform.getOrigin().z() << std::endl;
+   //    	_getTorsoFrame = true;
+	  //   } 
+	 //    catch (tf::TransformException ex)
+	 //    {
+  //        // ROS_ERROR("%s",ex.what());
+  //        // ros::Duration(1.0).sleep();
+		// 	}
+		// }
+		// else
 		{
 			updateTf();
 		}

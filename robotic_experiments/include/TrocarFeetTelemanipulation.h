@@ -25,6 +25,7 @@
 #include "custom_msgs/FootInputMsg_v2.h"
 #include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
+#include "sensor_msgs/Joy.h"
 
 #define NB_ROBOTS 2
 #define NB_SAMPLES 50
@@ -61,6 +62,7 @@ class TrocarFeetTelemanipulation
 		ros::Subscriber _subFootInterfacePose[NB_ROBOTS];
 		ros::Subscriber _subFootInterfaceWrench[NB_ROBOTS];
 		ros::Subscriber _subFootOutput[NB_ROBOTS];
+		ros::Subscriber _subJoystick;
 
 		// Publisher declaration
 		ros::Publisher _pubDesiredTwist[NB_ROBOTS];						// Desired twist to DS-impdedance controller
@@ -138,7 +140,9 @@ class TrocarFeetTelemanipulation
 		bool _firstFootInterfacePose[NB_ROBOTS];
 		bool _firstFootInterfaceWrench[NB_ROBOTS];
 		bool _firstFootOutput[NB_ROBOTS];
+		bool _firstJoystick;
 		bool _sim;
+		bool _useJoystick;
 		
 		// User variables
 		float _velocityLimit;				// Velocity limit [m/s]
@@ -169,6 +173,8 @@ class TrocarFeetTelemanipulation
 		Eigen::Vector3f _trocarPosition[NB_TROCARS];
 		Eigen::Vector3f _trocarOrientation[NB_TROCARS];
 		Eigen::Vector3f _rEETrocar[NB_TROCARS];
+		Eigen::Vector3f _rToolTrocar[NB_TROCARS];
+		Eigen::Vector3f _rEERCM[NB_TROCARS];
 		Eigen::Vector3f _xRCM[NB_TROCARS];
 		Eigen::Vector3f _xdEE[NB_TROCARS];
 		Eigen::Vector3f _fxk[NB_TROCARS];
@@ -219,6 +225,8 @@ class TrocarFeetTelemanipulation
     void trocarAdaptation();
 
     void trocarInsertion();
+
+    void trocarSpace();
         
     void footDataTransformation();
 
@@ -251,6 +259,8 @@ class TrocarFeetTelemanipulation
 
     // Callback to update data from foot interface
 		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
+
+		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy);
 
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);
