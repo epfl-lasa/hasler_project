@@ -1636,10 +1636,10 @@ void TrocarFeetTelemanipulation::publishData()
     msg.data = _normalForce[k];
     _pubNormalForce[k].publish(msg); 
 
-    _msgFootInput.set_axis = -1;
+    // _msgFootInput.set_axis = -1;
     for(int m = 0; m < 5; m++)
     {
-      _msgFootInput.set_effort[m] = _desiredFootWrench[k](m);
+      _msgFootInput.ros_effort[m] = _desiredFootWrench[k](m);
     }
     _pubFootInput[k].publish(_msgFootInput);
 
@@ -1756,12 +1756,12 @@ void TrocarFeetTelemanipulation::updateFootOutput(const custom_msgs::FootOutputM
 {
   for(int m = 0; m < 5; m++)
   {
-    _footPose[k](m) = msg->position[m];
-    _footTwist[k](m) = msg->speed[m];
-    _footWrench[k](m) = msg->meas_efforts[m];
+    _footPose[k](m) = msg->platform_position[m];
+    _footTwist[k](m) = msg->platform_speed[m];
+    _footWrench[k](m) = msg->platform_effortD[m];
   }
   // _footPose[k] -= _footOffset;
-  _footState[k] = msg->machine_state;
+  _footState[k] = msg->platform_machineState;
 
   if(!_firstFootOutput[k])
   {
