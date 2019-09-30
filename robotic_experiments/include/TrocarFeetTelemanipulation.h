@@ -26,6 +26,7 @@
 #include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
 #include "sensor_msgs/Joy.h"
+#include "sensor_msgs/JointState.h"
 
 #define NB_ROBOTS 2
 #define NB_SAMPLES 50
@@ -36,6 +37,11 @@
 #define FOOT_INTERFACE_YAW_RANGE 40.0
 #define WINDOW_SIZE 10
 #define NB_TROCARS 3
+
+
+
+
+
 
 
 class TrocarFeetTelemanipulation 
@@ -63,16 +69,18 @@ class TrocarFeetTelemanipulation
 		ros::Subscriber _subFootInterfaceWrench[NB_ROBOTS];
 		ros::Subscriber _subFootOutput[NB_ROBOTS];
 		ros::Subscriber _subJoystick;
+		ros::Subscriber _subCurrentJoints[NB_ROBOTS];
 
 		// Publisher declaration
 		ros::Publisher _pubDesiredTwist[NB_ROBOTS];						// Desired twist to DS-impdedance controller
 		ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  		// Desired orientation to DS-impedance controller
 		ros::Publisher _pubFilteredWrench[NB_ROBOTS];					// Filtered measured wrench
 		ros::Publisher _pubNormalForce[NB_ROBOTS];							// Measured normal force
-    ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];                          // Marker (RVIZ) 
-    ros::Publisher _pubFootInput[NB_ROBOTS];                          // Marker (RVIZ) 
-    ros::Publisher _pubDesiredWrench[NB_ROBOTS];                          // Marker (RVIZ) 
-		
+  	ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];                          // Marker (RVIZ) 
+  	ros::Publisher _pubFootInput[NB_ROBOTS];                          // Marker (RVIZ) 
+  	ros::Publisher _pubDesiredWrench[NB_ROBOTS];                          // Marker (RVIZ) 
+		ros::Publisher _pubNullspaceCommand[NB_ROBOTS];                          // Marker (RVIZ) 
+
 		// Messages declaration
 		geometry_msgs::Pose _msgRealPose;
 		geometry_msgs::Pose _msgDesiredPose;
@@ -81,6 +89,7 @@ class TrocarFeetTelemanipulation
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
 		custom_msgs::FootInputMsg_v2 _msgFootInput;
+		std_msgs::Float32MultiArray _msgNullspaceCommand;		
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
@@ -143,6 +152,7 @@ class TrocarFeetTelemanipulation
 		bool _firstJoystick;
 		bool _sim;
 		bool _useJoystick;
+		bool _firstJointsUpdate[NB_ROBOTS];		
 		
 		// User variables
 		float _velocityLimit;				// Velocity limit [m/s]
@@ -180,6 +190,8 @@ class TrocarFeetTelemanipulation
 		Eigen::Vector3f _fxk[NB_TROCARS];
 		Eigen::Matrix<float,NB_TROCARS,1> _beliefs;
 		Eigen::Matrix<float,NB_TROCARS,1> _dbeliefs;
+		Eigen::Matrix<float,7,1> _nullspaceCommand[NB_ROBOTS];
+		Eigen::Matrix<float,7,1> _currentJoints[NB_ROBOTS];
 
 		float _adaptationRate;
 		bool _alignedWithTrocar[NB_ROBOTS];
@@ -261,6 +273,8 @@ class TrocarFeetTelemanipulation
 		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
 
 		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy);
+
+		void updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& msg, int k); 
 
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);
