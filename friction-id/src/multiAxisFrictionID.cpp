@@ -68,7 +68,7 @@ _dt(1.0f/frequency)
 		_flagStairCaseStarted[k] = false;
 		_flagNextStep[k][0] = false;
 		_flagNextStep[k][1] = false;
-		_flagIntegratorsZeroed[k]=true;
+		_flagIntegratorsZeroed[k]=false;
 	}
 
 
@@ -140,14 +140,11 @@ void multiAxisFrictionID::run()
 				{
 					_flagIntegratorsZeroed[X]=true;
 				}
+
 				if (_flagIntegratorsZeroed[X])
 					{
 						staircaseJointGen(X, FORWARD);
 					}
-				if (_currentStep[X]==_nSteps[X]) 
-				{
-					_flagIntegratorsZeroed[X] = false;
-				}
 				
 				publishPositionOnly();
 			}
@@ -237,6 +234,7 @@ void multiAxisFrictionID::staircaseJointGen(int axis_, int dir_)
 				_flagStairCaseFinished[axis_] = true;
 				_flagStairCaseStarted[axis_] = false;
 				ROS_INFO("Staircase finished for axis %i", axis_);
+				_flagIntegratorsZeroed[X] = false;
 			}
 		}
 	}
