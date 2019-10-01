@@ -23,7 +23,7 @@ int main(int argc, char **argv)
  
 
   
-  float frequency = 500.0f;
+  float frequency = 700.0f;
   footVarSynchronizer footVarSynchronizer(nh_machine_state,frequency,platform_id_);  
 
   

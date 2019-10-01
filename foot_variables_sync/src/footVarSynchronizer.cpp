@@ -541,6 +541,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 	if(_flagControlThisPosition && !_flagCapturePlatformPosition)
 	{
 		_flagPositionOnlyPublished = false;
+		requestSetController();
 		publishPositionOnly();
 		ROS_INFO("A new desired position has been sent to the platform!");
 		_flagParamsActionsTaken= true;
@@ -594,8 +595,8 @@ void footVarSynchronizer::publishPositionOnly()
 		{
 			_msgFootInput.ros_position[k]=_ros_position[k];
 			//! Keep send the same valuest that the platform is broadcasting
-			_msgFootInput.ros_speed[k]=_platform_speed[k];
-			_msgFootInput.ros_effort[k]=_platform_effortD[k];
+			_msgFootInput.ros_speed[k]=_ros_speed[k];
+			_msgFootInput.ros_effort[k]=_ros_effort[k];
 		}
 	_pubFootInput.publish(_msgFootInput);
 	_flagPositionOnlyPublished = true;
@@ -699,9 +700,7 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
 	_ros_effortComp[COMPENSATION]=(uint8_t) config.effortComp_compensation;
 	_ros_effortComp[FEEDFORWARD]=(uint8_t) config.effortComp_feedforward;
 
-	if (!_ros_defaultControl)
-	{
-		ROS_DEBUG("Updating_GAINS");
+	
 		_ros_posP[X]=config.kp_Position_X; 
 		_ros_posP[Y]=config.kp_Position_Y;
 		_ros_posP[PITCH]=config.kp_Position_PITCH;
@@ -735,7 +734,7 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
 		_ros_speedD[PITCH]=config.kd_Speed_PITCH;
 		_ros_speedD[ROLL]=config.kd_Speed_ROLL;
 		_ros_speedD[YAW]=config.kd_Speed_YAW;
-	}
+		
 	_config = config;
 }
 

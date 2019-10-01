@@ -88,19 +88,19 @@ class footVarSynchronizer
         //! FootOutputMsg_v2 -> Internal for the platform
             int8_t _platform_id;
             
-            Eigen::Matrix<float,NB_AXIS,1> _platform_position;
-            Eigen::Matrix<float,NB_AXIS,1> _platform_speed;
-            Eigen::Matrix<float,NB_AXIS,1> _platform_effortD;
-            Eigen::Matrix<float,NB_AXIS,1> _platform_effortM;
+            Eigen::Matrix<double,NB_AXIS,1> _platform_position;
+            Eigen::Matrix<double,NB_AXIS,1> _platform_speed;
+            Eigen::Matrix<double,NB_AXIS,1> _platform_effortD;
+            Eigen::Matrix<double,NB_AXIS,1> _platform_effortM;
             
             Controller _platform_controllerType;
             State _platform_machineState;
 
     //! FootInputMsg_v2 + setStateSrv + setControllerSrv -> External = within the ros network
         
-            Eigen::Matrix<float,NB_AXIS,1> _ros_position;
-            Eigen::Matrix<float,NB_AXIS,1> _ros_speed;
-            Eigen::Matrix<float,NB_AXIS,1> _ros_effort;
+            Eigen::Matrix<double,NB_AXIS,1> _ros_position;
+            Eigen::Matrix<double,NB_AXIS,1> _ros_speed;
+            Eigen::Matrix<double,NB_AXIS,1> _ros_effort;
 
             bool _ros_defaultControl;
 
@@ -118,12 +118,12 @@ class footVarSynchronizer
         // PID variables
         //General Variables
 
-        Eigen::Matrix<float,NB_AXIS,1> _ros_posP;
-        Eigen::Matrix<float,NB_AXIS,1> _ros_posI;
-        Eigen::Matrix<float,NB_AXIS,1> _ros_posD;
-        Eigen::Matrix<float,NB_AXIS,1> _ros_speedP;
-        Eigen::Matrix<float,NB_AXIS,1> _ros_speedI;
-        Eigen::Matrix<float,NB_AXIS,1> _ros_speedD;
+        Eigen::Matrix<double,NB_AXIS,1> _ros_posP;
+        Eigen::Matrix<double,NB_AXIS,1> _ros_posI;
+        Eigen::Matrix<double,NB_AXIS,1> _ros_posD;
+        Eigen::Matrix<double,NB_AXIS,1> _ros_speedP;
+        Eigen::Matrix<double,NB_AXIS,1> _ros_speedI;
+        Eigen::Matrix<double,NB_AXIS,1> _ros_speedD;
 
         // Other variables
     public:
