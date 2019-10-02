@@ -68,7 +68,7 @@ class TrocarFeetTelemanipulation
 		ros::Subscriber _subFootInterfacePose[NB_ROBOTS];
 		ros::Subscriber _subFootInterfaceWrench[NB_ROBOTS];
 		ros::Subscriber _subFootOutput[NB_ROBOTS];
-		ros::Subscriber _subJoystick;
+		ros::Subscriber _subJoystick[NB_ROBOTS];
 		ros::Subscriber _subCurrentJoints[NB_ROBOTS];
 
 		// Publisher declaration
@@ -93,7 +93,7 @@ class TrocarFeetTelemanipulation
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
-		float _toolOffsetFromEE;										// Tool offset along z axis of end effector [m]							
+		float _toolOffsetFromEE[NB_ROBOTS];										// Tool offset along z axis of end effector [m]							
 		Eigen::Vector3f _toolComPositionFromSensor;   // Offset of the tool [m]	(3x1)
 		Eigen::Vector3f _gravity;										// Gravity vector [m/s^2] (3x1)
 
@@ -149,7 +149,7 @@ class TrocarFeetTelemanipulation
 		bool _firstFootInterfacePose[NB_ROBOTS];
 		bool _firstFootInterfaceWrench[NB_ROBOTS];
 		bool _firstFootOutput[NB_ROBOTS];
-		bool _firstJoystick;
+		bool _firstJoystick[NB_ROBOTS];
 		bool _sim;
 		bool _useJoystick;
 		bool _firstJointsUpdate[NB_ROBOTS];		
@@ -173,28 +173,31 @@ class TrocarFeetTelemanipulation
 		std::ifstream _inputFile;
 		std::ofstream _outputFile;
 		std::mutex _mutex;
-		Mode _mode;
+		Mode _mode[NB_ROBOTS];
     float _normalForceAverage[NB_ROBOTS];
 		std::deque<float> _normalForceWindow[NB_ROBOTS];
 
 		Eigen::Matrix<float,6,1> _nullspaceWrench[NB_ROBOTS];
 		static TrocarFeetTelemanipulation* me;
 
-		Eigen::Vector3f _trocarPosition[NB_TROCARS];
-		Eigen::Vector3f _trocarOrientation[NB_TROCARS];
-		Eigen::Vector3f _rEETrocar[NB_TROCARS];
-		Eigen::Vector3f _rToolTrocar[NB_TROCARS];
-		Eigen::Vector3f _rEERCM[NB_TROCARS];
-		Eigen::Vector3f _xRCM[NB_TROCARS];
-		Eigen::Vector3f _xdEE[NB_TROCARS];
-		Eigen::Vector3f _fxk[NB_TROCARS];
-		Eigen::Matrix<float,NB_TROCARS,1> _beliefs;
-		Eigen::Matrix<float,NB_TROCARS,1> _dbeliefs;
+
+		std::vector<Eigen::Vector3f> _trocarPosition[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _trocarOrientation[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _rEETrocar[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _rToolTrocar[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _rEERCM[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _xRCM[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _xdEE[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _fxk[NB_ROBOTS];
+		Eigen::VectorXf _beliefs[NB_ROBOTS];
+		Eigen::VectorXf _dbeliefs[NB_ROBOTS];
 		Eigen::Matrix<float,7,1> _nullspaceCommand[NB_ROBOTS];
 		Eigen::Matrix<float,7,1> _currentJoints[NB_ROBOTS];
+		Eigen::Vector3f _sphereCenter;
 
 		float _adaptationRate;
 		bool _alignedWithTrocar[NB_ROBOTS];
+		int _nbTrocar[NB_ROBOTS];
 
 
 		// Dynamic reconfigure (server+callback)
@@ -232,13 +235,13 @@ class TrocarFeetTelemanipulation
 
     void selectMode();
 
-    void trocarSelection();
+    void trocarSelection(int r);
 
-    void trocarAdaptation();
+    void trocarAdaptation(int r);
 
-    void trocarInsertion();
+    void trocarInsertion(int r);
 
-    void trocarSpace();
+    void trocarSpace(int r);
         
     void footDataTransformation();
 
@@ -272,7 +275,7 @@ class TrocarFeetTelemanipulation
     // Callback to update data from foot interface
 		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
 
-		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy);
+		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy, int k);
 
 		void updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& msg, int k); 
 

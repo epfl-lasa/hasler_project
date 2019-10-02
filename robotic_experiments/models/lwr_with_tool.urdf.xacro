@@ -10,7 +10,7 @@
   <xacro:arg name="addFrame" default="0"/>
   <xacro:arg name="addCamera" default="0"/>
   <xacro:property name="toolMass" value="0.1"/>
-  <xacro:property name="toolLength" value="0.533"/>
+  <xacro:property name="toolLength" value="0.433"/>
   <xacro:property name="toolRadius" value="0.005"/>
 
   <link name="world"/>
@@ -25,8 +25,7 @@
   <!-- <xacro:include filename="$(find kuka_lwr_bringup)/models/table/table.urdf.xacro"/> -->
 
   <xacro:kuka_lwr base_link="world" name="$(arg robotName)">
-    <!-- <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="0 0 0"/> -->
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="0 0 0"/>
   </xacro:kuka_lwr>
 
   <link name='$(arg robotName)_tool'>
@@ -74,7 +73,7 @@
   </joint>
  </xacro:if>
 
-<!-- <xacro:if value="${$(arg addCamera)==1}">
+<xacro:if value="${$(arg addCamera)==1}">
 
   <link name="$(arg robotName)_camera_link">
     <inertial>
@@ -83,13 +82,13 @@
       <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
     </inertial>
   </link>
- -->
-<!--   <joint name="$(arg robotName)_camera_joint" type="fixed">
+
+  <joint name="$(arg robotName)_camera_joint" type="fixed">
         <parent link="$(arg robotName)_tool"/>
         <child link="$(arg robotName)_camera_link"/>
         <origin xyz="0 0 ${toolLength}" rpy="0 ${-M_PI/2} ${M_PI}"/>
-  </joint> -->
-<!-- 
+  </joint>
+
   <gazebo reference='$(arg robotName)_camera_link'>
     <sensor type="camera" name="camera_camera_sensor">
       <alwaysOn>true</alwaysOn>
@@ -122,8 +121,8 @@
         <distortionT2>0.0</distortionT2>
       </plugin>
     </sensor>
-  </gazebo> -->
-<!-- </xacro:if> -->
+  </gazebo>
+</xacro:if>
 
 
 <!-- <xacro:if value="${$(arg addCamera)==0}"> -->

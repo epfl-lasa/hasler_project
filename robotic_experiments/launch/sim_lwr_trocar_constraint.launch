@@ -4,12 +4,20 @@
 
   <!-- The robot name is required for gazebo to spawn a model. -->
   <arg name="robotName" default="lwr"/>
-  <arg name="robotOrigin.x" default="0.5"/>
+  <arg name="robotOrigin.x" default="0"/>
   <arg name="robotOrigin.y" default="0"/>
   <arg name="robotOrigin.z" default="0"/>
   <arg name="robotOrigin.ax" default="0"/>
   <arg name="robotOrigin.ay" default="0"/>
-  <arg name="robotOrigin.az" default="0"/>
+  <arg name="robotOrigin.az" default="0"/>  
+  <arg name="leftRobotName" default="lwr2"/>
+  <arg name="leftRobotOrigin.x" default="0.066"/>
+  <arg name="leftRobotOrigin.y" default="0.9"/>
+  <arg name="leftRobotOrigin.z" default="0"/>
+  <arg name="leftRobotOrigin.ax" default="0"/>
+  <arg name="leftRobotOrigin.ay" default="0"/>
+  <arg name="leftRobotOrigin.az" default="0"/>
+
   <arg name="trocarOffset.x" default="-0.5"/>
   <arg name="trocarOffset.y" default="0.0"/>
   <arg name="trocarOffset.z" default="0.1"/>
@@ -36,7 +44,7 @@
 
   <arg name="hw_interface_file" default="$(find single_lwr_robot)/config/hw_interface.yaml"/>
   <arg name="controller_config_file" default="$(find single_lwr_robot)/config/controllers.yaml"/>
-  <arg name="gazebo_world_file" default="$(find single_lwr_robot)/worlds/simple_environment.world"/>
+  <arg name="gazebo_world_file" default="$(find robotic_experiments)/world/test_world.world"/>
   <arg name="t1_limits_file" default="$(find single_lwr_robot)/config/t1_joint_limits.yaml"/>
 
 
@@ -51,10 +59,16 @@
   <!-- load all controller configurations to rosparam server -->
   <rosparam command="load" file="$(arg controller_config_file)"/>
 
+  <arg name="lwr2_hw_interface_file" default="$(find robotic_experiments)/config/lwr2_hw_interface.yaml"/>
+  <arg name="lwr2_controller_config_file" default="$(find robotic_experiments)/config/lwr2_controllers.yaml"/>
+  <rosparam command="load" file="$(arg lwr2_hw_interface_file)"/>
+  <rosparam command="load" file="$(arg lwr2_controller_config_file)"/>
+
+
     <!-- <node name="worldRightTransform" pkg="foot_control_xy" type="worldActorTransform" args="foot -x 2.0 -y 0.0 -z 0 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/> -->
   <!-- ROBOT -->
   <group ns="lwr">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg lwrRobotUrdfFile) robotName:=$(arg robotName) origin.x:=$(arg robotOrigin.x) origin.y:=$(arg robotOrigin.y) origin.z:=$(arg robotOrigin.z) origin.ax:=$(arg robotOrigin.ax) origin.ay:=$(arg robotOrigin.ay) origin.az:=$(arg robotOrigin.az) addCamera:=0 addFrame:=1"/>
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg lwrRobotUrdfFile) robotName:=$(arg robotName) origin.x:=$(arg robotOrigin.x) origin.y:=$(arg robotOrigin.y) origin.z:=$(arg robotOrigin.z) origin.ax:=$(arg robotOrigin.ax) origin.ay:=$(arg robotOrigin.ay) origin.az:=$(arg robotOrigin.az) addCamera:=1 addFrame:=1"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/lwr kuka_joint_state_controller"/>
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/lwr $(arg controllers)"/>
@@ -62,7 +76,15 @@
 <!--     <node name="publish_trocar_frame" pkg="surgical_simulator" type="publish_trocar_frame" args="trocar -x $(arg trocarOffset.x) -y $(arg trocarOffset.y) -z $(arg trocarOffset.z)"/>
     <node name="publish_trocar_frame2" pkg="surgical_simulator" type="publish_trocar_frame" args="trocar2 -x $(arg trocarOffset2.x) -y $(arg trocarOffset2.y) -z $(arg trocarOffset2.z)"/>
     <node name="publish_trocar_frame3" pkg="surgical_simulator" type="publish_trocar_frame" args="trocar3 -x $(arg trocarOffset3.x) -y $(arg trocarOffset3.y) -z $(arg trocarOffset3.z)"/> -->
+  </group>
 
+
+  <group ns="lwr2">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg lwrRobotUrdfFile) robotName:=$(arg leftRobotName) origin.x:=$(arg leftRobotOrigin.x) origin.y:=$(arg leftRobotOrigin.y) origin.z:=$(arg leftRobotOrigin.z) origin.ax:=$(arg leftRobotOrigin.ax) origin.ay:=$(arg leftRobotOrigin.ay) origin.az:=$(arg leftRobotOrigin.az) addCamera:=1"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="kuka_joint_state_controller"/>
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--namespace=/lwr2 $(arg controllers)"/>
+    <node name="left_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /lwr2/robot_description -urdf -model $(arg leftRobotName)" respawn="false" output="screen" />
   </group>
 
   <!-- GAZEBO -->

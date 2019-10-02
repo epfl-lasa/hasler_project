@@ -13,7 +13,10 @@ _dt(1.0f/frequency)
 
 
 	// _offset << -0.5f, 0.0f, 0.0f;
-	_offset << -0.33f, -0.316f, -0.015f;
+	// _offset << -0.33f-0.13f, -0.316f, -0.015f;
+	// _offset << -0.33f-0.13f, 0.45, -0.015f;
+	  _offset << -0.33f-0.13f, 0.45f, -0.015f;
+
 
 	float sphereRadius = 0.13f;
 	float medialDivision = 10.0f;
@@ -70,6 +73,8 @@ _dt(1.0f/frequency)
 	idConserved.push_back(28);
 	idConserved.push_back(4);
 	idConserved.push_back(25);
+	idConserved.push_back(34);
+	idConserved.push_back(10);
 
 	_trocarPosition.resize(idConserved.size(),3);
 	_trocarOrientation.resize(idConserved.size(),3);
@@ -80,6 +85,8 @@ _dt(1.0f/frequency)
 		_trocarOrientation.row(k) = orientations.row(idConserved[k]);
 	}
 
+	// _trocarPosition = positions;
+	// _trocarOrientation = orientations;
 
 
 }
