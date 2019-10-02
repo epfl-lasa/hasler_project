@@ -14,8 +14,8 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   me = this;
 
   _useLeftRobot = true;
-  _useRightRobot = true;
-  _sim = true;
+  _useRightRobot = false;
+  _sim = false;
 
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.02f;
@@ -103,7 +103,8 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   Eigen::Vector3f offset;
   // offset << -0.5f, 0.0f, 0.0f;
   // _sphereCenter << -0.33f-0.13f, 0.45f, -0.015f;
-  _sphereCenter << -0.503, 0.452f, 0.012f;
+  // _sphereCenter << -0.503, 0.452f, 0.012f;
+  _sphereCenter << -0.23, 0.452f, -0.015f;
 
   float sphereRadius = 0.13f;
   float medialDivision = 10.0f;
@@ -138,7 +139,7 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   int id = 0;
   positions.row(id) << 0.0f,0.0f,sphereRadius;
   positions.row(id)+=_sphereCenter.transpose();
-  orientations.row(id) << 0.0f, 0.0f, 1.0f;
+  orientations.row(id) = -(positions.row(id)-_sphereCenter.transpose()).normalized();
   id++;
   for(int k = 1; k <medialDivision/2; k+=1)
   {
@@ -154,22 +155,50 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   }
   std::vector<int> idConserved[NB_ROBOTS];
   // idConserved.push_back(0);
+  idConserved[LEFT].push_back(0);
   idConserved[LEFT].push_back(28);
   idConserved[LEFT].push_back(4);
-  idConserved[LEFT].push_back(25);
   idConserved[RIGHT].push_back(34);
   idConserved[RIGHT].push_back(10);
 
+  // for(int r = 0; r < NB_ROBOTS; r++)
+  // {
+  //   _nbTrocar[r] = idConserved[r].size();
+  //   for(int k = 0; k < _nbTrocar[r]; k++)
+  //   {
+  //     _trocarPosition[r].push_back(positions.row(idConserved[r][k]).transpose());
+  //     _trocarOrientation[r].push_back(orientations.row(idConserved[r][k]).transpose());
+  //     std::cerr << r << ": " << k << ":  " << _trocarPosition[r][k].transpose() << std::endl;
+  //     std::cerr << r << ": " << k << ":  " << _trocarOrientation[r][k].transpose() << std::endl;
+  //   }
+  //   _rEETrocar[r].resize(_nbTrocar[r]);
+  //   _rToolTrocar[r].resize(_nbTrocar[r]);
+  //   _rEERCM[r].resize(_nbTrocar[r]);
+  //   _xRCM[r].resize(_nbTrocar[r]);
+  //   _xdEE[r].resize(_nbTrocar[r]);
+  //   _fxk[r].resize(_nbTrocar[r]);
+  //   _beliefs[r].resize(_nbTrocar[r]);
+  //   _beliefs[r].setConstant(0.0f);
+  //   _beliefs[r](0) = 1.0f;
+  //   _dbeliefs[r].resize(_nbTrocar[r]);
+  //   _dbeliefs[r].setConstant(0.0f);
+  //   _mode[r] = TROCAR_SELECTION;
+  // }
+  Eigen::Vector3f temp;
+  temp << -0.35, 0.46f, 0.14f;
+  _trocarPosition[LEFT].push_back(temp);
+  _trocarPosition[RIGHT].push_back(temp);
+  temp << 0.0f,0.0f,-1.0f;
+  _trocarOrientation[LEFT].push_back(temp);
+  _trocarOrientation[RIGHT].push_back(temp);
+  // temp << -0.46, 0.54, 0.14;
+  // _trocarPosition[LEFT].push_back(temp)
+  // _trocarPosition[RIGHT].push_back(temp)
+
+
   for(int r = 0; r < NB_ROBOTS; r++)
   {
-    _nbTrocar[r] = idConserved[r].size();
-    for(int k = 0; k < _nbTrocar[r]; k++)
-    {
-      _trocarPosition[r].push_back(positions.row(idConserved[r][k]).transpose());
-      _trocarOrientation[r].push_back(orientations.row(idConserved[r][k]).transpose());
-      std::cerr << r << ": " << k << ":  " << _trocarPosition[r][k].transpose() << std::endl;
-      std::cerr << r << ": " << k << ":  " << _trocarOrientation[r][k].transpose() << std::endl;
-    }
+    _nbTrocar[r] = _trocarPosition[r].size();
     _rEETrocar[r].resize(_nbTrocar[r]);
     _rToolTrocar[r].resize(_nbTrocar[r]);
     _rEERCM[r].resize(_nbTrocar[r]);
@@ -183,9 +212,8 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
     _dbeliefs[r].setConstant(0.0f);
     _mode[r] = TROCAR_SELECTION;
   }
-
-
   _adaptationRate = 50.0f;
+
 
   _useJoystick = true;
 }
@@ -342,8 +370,8 @@ bool TrocarFeetTelemanipulation::allDataReceived()
   {
     // std::cerr <<(int) _firstRobotPose[RIGHT] << (int) _firstRobotTwist[RIGHT] << (int) _wrenchBiasOK[RIGHT] << (int) _firstDampingMatrix[RIGHT] << (int) _firstFootOutput[RIGHT] << (int)
     //         _firstRobotPose[LEFT] << (int) _firstRobotTwist[LEFT] << (int) _wrenchBiasOK[LEFT] << (int) _firstDampingMatrix[LEFT] << (int) _firstFootOutput[LEFT] << std::endl;
-    return (_firstRobotPose[RIGHT] && _firstRobotTwist[RIGHT] && _wrenchBiasOK[RIGHT] && _firstDampingMatrix[RIGHT] && _firstFootOutput[RIGHT] &&
-            _firstRobotPose[LEFT] && _firstRobotTwist[LEFT] && _wrenchBiasOK[LEFT] && _firstDampingMatrix[LEFT] && _firstFootOutput[LEFT]);
+    return (_firstRobotPose[RIGHT] && _firstRobotTwist[RIGHT] && _wrenchBiasOK[RIGHT] && _firstDampingMatrix[RIGHT] && _firstJointsUpdate[RIGHT] && (_firstFootOutput[RIGHT] || _firstJoystick[RIGHT]) &&
+            _firstRobotPose[LEFT] && _firstRobotTwist[LEFT] && _wrenchBiasOK[LEFT] && _firstDampingMatrix[LEFT] && _firstJointsUpdate[LEFT] && (_firstFootOutput[LEFT] || _firstJoystick[LEFT]) );
      
   }
   else if(_useLeftRobot && _useRightRobot && _sim)
@@ -355,7 +383,7 @@ bool TrocarFeetTelemanipulation::allDataReceived()
      
   }  else if(_useLeftRobot && !_useRightRobot && !_sim)
   {
-    return (_firstRobotPose[LEFT] && _firstRobotTwist[LEFT] && _wrenchBiasOK[LEFT] && _firstDampingMatrix[LEFT] && _firstFootOutput[LEFT]);
+    return (_firstRobotPose[LEFT] && _firstRobotTwist[LEFT] && _wrenchBiasOK[LEFT] && _firstDampingMatrix[LEFT] && _firstJointsUpdate[LEFT] && (_firstFootOutput[LEFT] || _firstJoystick[LEFT]));
   }
   else if(!_useLeftRobot && _useRightRobot && !_sim)
   {
@@ -428,7 +456,7 @@ void TrocarFeetTelemanipulation::computeCommand()
 
   // computeDesiredOrientation();
 
-  if(!_sim)
+  if(!_sim && !_useJoystick)
   {
     computeDesiredFootWrench();
   }
@@ -451,8 +479,9 @@ void TrocarFeetTelemanipulation::updateTrocarInformation()
       // Compute attractor that is aligned with the desired trocar orientation
       // float s = -n.dot(_xEE[r]-_trocarPosition[k])/(n.dot(_trocarOrientation[k]));
       // _xdEE[r][k] = _trocarPosition[k]-_trocarOrientation[k]*s;
-      _xdEE[r][k] = _trocarPosition[r][k]-_trocarOrientation[r][k]*(_toolOffsetFromEE[r]+0.15f);
-      _xdEE[r][k] = _trocarPosition[r][k]+std::max(_rEETrocar[r][k].dot(_trocarOrientation[r][k]),_toolOffsetFromEE[r]+0.05f)*(-_trocarOrientation[r][k]);
+      // _xdEE[r][k] = _trocarPosition[r][k]-_trocarOrientation[r][k]*(_toolOffsetFromEE[r]+0.15f);
+      // _xdEE[r][k] = _trocarPosition[r][k]+std::max(_rEETrocar[r][k].dot(_trocarOrientation[r][k]),_toolOffsetFromEE[r]+0.05f)*(-_trocarOrientation[r][k]);
+      _xdEE[r][k] = _trocarPosition[r][k]-_rEETrocar[r][k].dot(_trocarOrientation[r][k])*_trocarOrientation[r][k];
 
 
       // Linear DS to go to the attractor
@@ -517,20 +546,30 @@ void TrocarFeetTelemanipulation::trocarSelection(int r)
   std::cerr << r << ": TROCAR_SELECTION" << std::endl;
 
 
-  // Perform task adaptation
-  trocarAdaptation(r);  
-
+  if(_nbTrocar[r]>1)
+  {
+    // Perform task adaptation
+    trocarAdaptation(r);  
+  }
+  else
+  {
+    _beliefs[r](0) = 1.0f;
+    _fx[r] = _fxk[r][0];
+  }
   // Find max belief
   Eigen::MatrixXf::Index indexMax;
   float bmax = _beliefs[r].array().maxCoeff(&indexMax);
 
+  std::cerr << _trocarPosition[r][indexMax].transpose() << std::endl;
+  std::cerr << _x[r].transpose() << std::endl;
   Eigen::Vector3f offset = _sphereCenter;
 
   if(fabs(bmax-1.0f)>FLT_EPSILON)
   {
     _alignedWithTrocar[r] = false;
     // _vd[r] = _fx[r];
-    _vd[r] = Utils<float>::orthogonalProjector((offset-_xEE[r]).normalized())*_fx[r];
+    // _vd[r] = Utils<float>::orthogonalProjector((offset-_xEE[r]).normalized())*_fx[r];
+    _vd[r] = _fx[r];
 
     std::cerr << "TROCAR NOT SELECTED" << std::endl;
   }
@@ -538,13 +577,16 @@ void TrocarFeetTelemanipulation::trocarSelection(int r)
   {
     if(!_alignedWithTrocar[r])
     {
-      _vd[r] = Utils<float>::orthogonalProjector((offset-_xEE[r]).normalized())*_fx[r];
+      // _vd[r] = Utils<float>::orthogonalProjector((offset-_xEE[r]).normalized())*_fx[r];
+      _vd[r] = _fx[r];
+
     }
     else
     {
       // _vd[r] = 2.0f*(_trocarPosition[r][indexMax]-_xRCM[r][indexMax]);
       // _vd[r].setConstant(0.0f);
-      _vd[r] = Utils<float>::orthogonalProjector((offset-_xEE[r]).normalized())*_fx[r];
+      // _vd[r] = Utils<float>::orthogonalProjector((offset-_xEE[r]).normalized())*_fx[r];
+      _vd[r] = _fx[r];
 
       if(!_useJoystick)
       {
@@ -568,7 +610,16 @@ void TrocarFeetTelemanipulation::trocarSelection(int r)
     qek[k] = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r][k]));
   }
 
-  Eigen::Vector4f qe = Utils<float>::slerpQuaternion(qek,_beliefs[r],_nbTrocar[r]);
+  Eigen::Vector4f qe;
+
+  if(_nbTrocar[r]>1)
+  {
+    qe = Utils<float>::slerpQuaternion(qek,_beliefs[r],_nbTrocar[r]);
+  }
+  else
+  {
+    qe = qek[0];
+  }
 
   Eigen::Vector3f axis;  
   float angle;
@@ -738,17 +789,28 @@ void TrocarFeetTelemanipulation::trocarInsertion(int r)
   // offset << -0.5f, 0.0f, 0.0f;
   // _vd[RIGHT] = 2.0f*(_trocarPosition[r][indexMax]-_xRCM[r][indexMax]);
 
-  //  _fx[RIGHT]= _fxk[indexMax];
+   // _fx[r] = _fxk[r][indexMax];
+
 
   // _vd[RIGHT] = Utils<float>::orthogonalProjector((offset-_xEE[RIGHT]).normalized())*_fx[RIGHT];
   _vd[r].setConstant(0.0f);
+   // float distance = (_trocarPosition[r][indexMax]-_xEE[r]).dot(_wRb[r].col(2))-_toolOffsetFromEE[r];
   if(!_useJoystick)
   {
+
+    // if(distance> 0.0f)
+    // {
+    //   _vd[r] = Utils<float>::orthogonalProjector((_sphereCenter-_xEE[r]).normalized())*_fx[r];
+    // }
     _vd[r] += -2.0f*0.1*Utils<float>::deadZone(_footPosition[r](2),-5,5)/FOOT_INTERFACE_PITCH_RANGE*(_rEETrocar[r][indexMax].normalized());
   }
   else
   {
-    _vd[r] += 0.1*Utils<float>::deadZone(_footPosition[r](2),-0.1f,0.1f)*(-_rEETrocar[r][indexMax].normalized());
+    // if(distance>0.0f)
+    // {
+    //   _vd[r] = Utils<float>::orthogonalProjector((_sphereCenter-_xEE[r]).normalized())*_fx[r];
+    // }
+    _vd[r] += -0.1*Utils<float>::deadZone(_footPosition[r](2),-0.1f,0.1f)*_rEETrocar[r][indexMax].normalized();
   }
   Eigen::Vector4f qe;
   qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r][indexMax]));
@@ -974,7 +1036,15 @@ void TrocarFeetTelemanipulation::trocarSpace(int r)
   // // Compute final quaternion on plane
   _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
 
-  float selfRotationCommand = -2.0f*1.0f*_footPose[r](YAW)/FOOT_INTERFACE_YAW_RANGE;
+  float selfRotationCommand;
+  if(!_useJoystick)
+  {
+    selfRotationCommand = -2.0f*1.0f*_footPose[r](YAW)/FOOT_INTERFACE_YAW_RANGE;
+  }
+  else
+  {
+    selfRotationCommand = -1.0f*_footPose[r](YAW);
+  }
   _omegad[r] += Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r])+selfRotationCommand*_wRb[r].col(2);
   
   std::cerr << "omega: " <<_omegad[r].transpose() << std::endl;
@@ -1804,8 +1874,9 @@ void TrocarFeetTelemanipulation::updateJoystick(const sensor_msgs::Joy::ConstPtr
   _footPose[k].setConstant(0.0f);
   _footPose[k](X) = joy->axes[0];
   _footPose[k](Y) = joy->axes[1];
-  // _footPose[k](PITCH) = joy->axes[3];
-  _footPose[k](PITCH) = joy->axes[4];
+  _footPose[k](PITCH) = joy->axes[3];
+  _footPose[k](YAW) = joy->axes[2];
+  // _footPose[k](PITCH) = joy->axes[4];
   
   if(!_firstJoystick[k])
   {
