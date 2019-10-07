@@ -14,5 +14,10 @@
   <run_depend>custom_msgs</run_depend>
   <run_depend>demo_scientastic</run_depend>
   <run_depend>surgical_simulator</run_depend>
+  <run_depend>foot_variables_sync</run_depend>
+  <run_depend>multiaxis_friction_identification</run_depend>
+
+  
+
 </package>
 

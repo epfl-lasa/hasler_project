@@ -1,0 +1,4 @@
+[submodule "5_axis_platform"]
+	path = 5_axis_platform
+	url = https://github.com/epfl-lasa/5_axis_platform
+	branch = origin/dev-v2
