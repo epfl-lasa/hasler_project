@@ -167,6 +167,7 @@ void footVarSynchronizer::run()
 				_config.use_default_gains=true;
 				_ros_defaultControl=true;
 				_ros_position=_platform_position;
+				_config.controlled_axis=-1;
 				_dynRecServer.setConfigDefault(_config);
 				_dynRecServer.updateConfig(_config);
 				_configPrev = _config;
@@ -734,7 +735,7 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
 		_ros_speedD[PITCH]=config.kd_Speed_PITCH;
 		_ros_speedD[ROLL]=config.kd_Speed_ROLL;
 		_ros_speedD[YAW]=config.kd_Speed_YAW;
-		
+
 	_config = config;
 }
 

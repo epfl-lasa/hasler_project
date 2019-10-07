@@ -11,15 +11,21 @@
 #include <custom_msgs/FootOutputMsg_v2.h>
 #include <custom_msgs/FootInputMsg_v2.h>
 
-
-
 using namespace std;
+
+#define NB_DIR 2
+#define NB_ERROR_CHECKS 2 
+#define NB_STEPS_DEFAULT 20
+#define TAU_DEFAULT 11.2f
 
 class multiAxisFrictionID
 {
 
     public:
-        enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2};    
+        enum Direction {FORWARD=0, REVERSE=1};
+        enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2};
+        enum Strategy {NONE, STEPS, RAMP};    
+        enum Sequence {ONE_AFTER_THE_OTHER, ALL_TOGETHER};
 	private:
         enum JointState {POSITION, SPEED, ACCELERATION}; 
         enum EffortComp {NORMAL,CONSTRAINS,COMPENSATION,FEEDFORWARD}; 
@@ -33,11 +39,12 @@ class multiAxisFrictionID
     float _dt;
     
     public:
-        //Stair case variables
-        Eigen::Matrix<float, NB_AXIS, 1> _limitWS;
-        float _tau[NB_AXIS];                                 // time constant of the loading of the step
-        int8_t _nSteps[NB_AXIS];                            // number of steps
+        //Strate case variables
+        float _tau;                                 // time constant of the loading of the step
+        int _nSteps[NB_AXIS];                            // number of steps
+        float _stepSize[NB_AXIS];
         int8_t _currentStep[NB_AXIS];
+        int8_t _currentOffset[NB_AXIS];
         ros::Duration _ros_dt;
         ros::Time _currentTime;
         ros::Time _prevTime[NB_AXIS];
@@ -81,7 +88,14 @@ class multiAxisFrictionID
 
     Controller _platform_controllerType;
     State _platform_machineState;
-    
+    Strategy _strategy;
+    int8_t _whichAxis;
+    uint8_t _currentAxis;
+
+    //Variables related to the methods
+        Direction _direction;
+        Direction _direction_prev;
+        float _WS[NB_AXIS];
     //Flags 
 
 public:
@@ -89,18 +103,20 @@ public:
     bool _flagPlatformInCommStarted;
     bool _flagPlatformOutCommStarted;
     bool _flagPositionOnlyPublished;
-    bool _flagInitialConfig;
-    bool _flagIntegratorsZeroed[NB_AXIS];
+    bool _flagIntegratorsZeroed[NB_AXIS][NB_DIR];
+    bool _flagROSINFO;
 
 private:
-    bool _flagStairCaseStarted[NB_AXIS];
-    bool _flagStairCaseFinished[NB_AXIS];
-    bool _flagNextStep[NB_AXIS][2];
+    bool _flagStrategyStarted[NB_AXIS][NB_DIR]; //!Backwards-Forwards
+    bool _flagStrategyFinished[NB_AXIS][NB_DIR];
+    bool _flagNextStep[NB_AXIS][NB_DIR][NB_ERROR_CHECKS];
+    bool _flagNextAxis;
+    bool _flagWSDefined[NB_AXIS][NB_DIR];
 
     // METHODS
 public:
 	// multiAxisFrictionID(ros::NodeHandle &n_1, ros::NodeHandle &n_2, ros::NodeHandle &n_3, double frequency, multiAxisFrictionID::Platform_Name platform_id_);
-	multiAxisFrictionID(ros::NodeHandle &n_1, double frequency, multiAxisFrictionID::Platform_Name platform_id_);
+	multiAxisFrictionID(ros::NodeHandle &n_1, double frequency,multiAxisFrictionID::Platform_Name platform_id, multiAxisFrictionID::Strategy strategy_, float tau_, int8_t whichAxis_); 
 	
     ~multiAxisFrictionID();
 	
@@ -115,9 +131,11 @@ public:
     void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);     
     void publishPositionOnly();
     
-    //! OTHER METHODS
-    double stepFunGen(int axis_, int dir_);
-    void staircaseJointGen(int axis_, int dir_);
+    //! FUNCTION GENERATOR METHODS
+    double stepFunGen(int axis_, Direction direction_, float tau_, Strategy strategy_);
+    void funcJointGen(int axis_, Direction direction_, float tau_);
+    void rampJointGen(int axis_, Direction direction_, float slope_);
+    void axisSequenceControl(int whichAxis_, Sequence whichSequence_);
     static void stopNode(int sig);
 };
 #endif  // __multiAxisFrictionID_H__
