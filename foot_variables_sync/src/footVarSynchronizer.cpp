@@ -7,6 +7,8 @@ char const *Axis_names[]{
 	AXES};
 #undef ListofAxes
 
+char const *Platform_Names[]{"none", "right", "left"};
+
 footVarSynchronizer* footVarSynchronizer::me = NULL;
 
 footVarSynchronizer::footVarSynchronizer(ros::NodeHandle &n_1, double frequency,footVarSynchronizer::Platform_Name platform_id): 
@@ -96,7 +98,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 
 	if (_platform_name==LEFT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT,1, boost::bind(&footVarSynchronizer::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_LEFT);
@@ -104,7 +106,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 	}
 	if (_platform_name==RIGHT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT,1, boost::bind(&footVarSynchronizer::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
@@ -175,17 +177,27 @@ void footVarSynchronizer::run()
 				_flagInitialConfig=true;
 				ROS_INFO("Updating default parameters from the platform in the rqt_reconfig...");
 			}
+
+			// else if (_flagInitialConfig && !_flagOutputMessageReceived && _flagWasDynReconfCalled)
+			// {
+			// 	ROS_ERROR("The %s platform is not communicating", Platform_Names[_platform_name]);
+			// 	_config=_configPrev;
+			// 	_dynRecServer.updateConfig(_config);
+			// 	_flagWasDynReconfCalled = false;
+			// }
+
 			else
-			{
-				changeParamCheck();
-				if (_flagWasDynReconfCalled){
+				{
 					changeParamCheck();
-					_flagParamsActionsTaken= false;
-					requestDoActionsParams();
-					if (_flagParamsActionsTaken)
+					if (_flagWasDynReconfCalled)
+					{
+						changeParamCheck();
+						_flagParamsActionsTaken = false;
+						requestDoActionsParams();
+						if (_flagParamsActionsTaken)
 						{ updateConfigAfterParamsChanged();}
 					_flagWasDynReconfCalled = false;
-				}
+					}
 				changedPlatformCheck();
 				if (_flagOutputMessageReceived)
 				{
@@ -493,6 +505,18 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 	void footVarSynchronizer::requestDoActionsParams()
 	{
 
+		if (_config.machine_state == TELEOPERATION &&
+			_flagCapturePlatformPosition)
+		{
+			_config.desired_Position_X = C_WS_RANGE_X;
+			_config.desired_Position_Y = C_WS_RANGE_Y;
+			_config.desired_Position_PITCH = C_WS_RANGE_PITCH;
+			_config.desired_Position_ROLL = C_WS_RANGE_ROLL;
+			_config.desired_Position_YAW = C_WS_RANGE_YAW;
+			_ros_position << C_WS_RANGE_X, C_WS_RANGE_Y, C_WS_RANGE_PITCH, C_WS_RANGE_ROLL, C_WS_RANGE_YAW;
+			_flagParamsActionsTaken = true;
+		}
+
 		//! Send Variables of the Set State Service
 		if ( (!_flagIsParamStillSame[Params_Category::M_STATE]) ||
 			 (!_flagIsParamStillSame[Params_Category::EFF_COMP]) )
@@ -543,11 +567,13 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 	{
 		_flagPositionOnlyPublished = false;
 		requestSetController();
+		if (_ros_newState==TELEOPERATION)
+		{_ros_position=_ros_position.cwiseAbs();}
 		publishPositionOnly();
-		ROS_INFO("A new desired position has been sent to the platform!");
+		ROS_INFO("A new desired position has been published (no acknowledgement)!");
 		_flagParamsActionsTaken= true;
 	}
-	if (_flagControlThisPosition && _flagCapturePlatformPosition)
+	else if (_flagControlThisPosition && _flagCapturePlatformPosition)
 	{
 		ROS_WARN("You cannot sent a position while capturing the platform position");
 	}
@@ -573,20 +599,23 @@ void footVarSynchronizer::requestDoActionsPlatform()
 		_flagPlatformActionsTaken= true;
 	}
 
-	if (
+	 if (
 		(!_flagIsPlatformStillSame[FootOutput_Category::FO_POS]
 		 && _flagCapturePlatformPosition) 
 		// && (_flagIsParamStillSame[Params_Category::DES_POS])
 		)
 	{
-		_config.desired_Position_X = _platform_position[X];
-		_config.desired_Position_Y = _platform_position[Y];
-		_config.desired_Position_PITCH = _platform_position[PITCH];
-		_config.desired_Position_ROLL = _platform_position[ROLL];
-		_config.desired_Position_YAW = _platform_position[YAW];
-		_ros_position=_platform_position;
-		_flagPlatformActionsTaken= true;
+		if (_ros_newState!=TELEOPERATION){
+			_config.desired_Position_X = _platform_position[X];
+			_config.desired_Position_Y = _platform_position[Y];
+			_config.desired_Position_PITCH = _platform_position[PITCH];
+			_config.desired_Position_ROLL = _platform_position[ROLL];
+			_config.desired_Position_YAW = _platform_position[YAW];
+			_ros_position=_platform_position;
+		}
+			_flagPlatformActionsTaken= true;
 	}
+
 }
 
 void footVarSynchronizer::publishPositionOnly() 

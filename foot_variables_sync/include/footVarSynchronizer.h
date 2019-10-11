@@ -129,20 +129,20 @@ class footVarSynchronizer
     public:
 
 
-        bool _flagWasDynReconfCalled;
+        volatile bool _flagWasDynReconfCalled;
         bool _flagInitialConfig;
         bool _flagParamsActionsTaken;
         bool _flagPlatformActionsTaken;
 
-        bool _flagPlatformOutCommStarted;
-        bool _flagOutputMessageReceived;
-        bool _flagPlatformInCommStarted;
-        bool _flagPositionOnlyPublished;
-        
-        bool _flagControlThisPosition; //! To make sure you don't send a torque and position in the same message
-        bool _flagCapturePlatformPosition;
+        volatile bool _flagPlatformOutCommStarted;
+        volatile bool _flagOutputMessageReceived;
+        volatile bool _flagPlatformInCommStarted;
+        volatile bool _flagPositionOnlyPublished;
 
-        bool _flagUpdateConfig;
+        volatile bool _flagControlThisPosition; //! To make sure you don't send a torque and position in the same message
+        volatile bool _flagCapturePlatformPosition;
+
+        volatile bool _flagUpdateConfig;
 
         bool _flagIsParamStillSame[NB_PARAMS_CATEGORIES];
         
