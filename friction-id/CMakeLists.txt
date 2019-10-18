@@ -28,7 +28,7 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-add_executable(multiAxisFrictionID src/multiAxisFrictionID.cpp src/multiAxisFrictionID_node.cpp)
+add_executable(multiAxisFrictionID src/multiAxisFrictionID.cpp src/multiAxisFrictionID_node.cpp src/lp_filter.cpp)
 target_link_libraries(multiAxisFrictionID ${catkin_LIBRARIES})
 
 add_dependencies(multiAxisFrictionID ${PROJECT_NAME}_gencpp)

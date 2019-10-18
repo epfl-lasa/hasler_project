@@ -2,13 +2,14 @@
 #include "../../5_axis_platform/lib/platform/src/definitions.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 
+
 #define ListofAxes(enumeration, names) names,
 char const *Axis_names[]{
 	AXES};
 #undef ListofAxes
 
-char const *Strategy_names[] {"none", "steps", "ramp"};
-char const *Direction_names[] {"forward", "reverse"};
+char const *Strategy_names[] {"NONE", "STAIRCASE", "RAMP"};
+char const *Direction_names[] {"FORWARD_1", "REVERSE_1", "REVERSE_2", "FORWARD_2"};
 
 #define FUNC_ERROR 0
 #define POS_ERROR 1
@@ -21,7 +22,7 @@ float clampSymmetric(float input_, float limit_)
 
 multiAxisFrictionID* multiAxisFrictionID::me = NULL;
 
-multiAxisFrictionID::multiAxisFrictionID(ros::NodeHandle &n_1, double frequency,multiAxisFrictionID::Platform_Name platform_id, multiAxisFrictionID::Strategy strategy_, float tau_, int8_t whichAxis_): 
+multiAxisFrictionID::multiAxisFrictionID(ros::NodeHandle &n_1, double frequency,multiAxisFrictionID::Platform_Name platform_id, multiAxisFrictionID::Strategy strategy_, float tau_, int whichAxis_): 
 _n(n_1),
 _platform_name(platform_id),
 _loopRate(frequency),
@@ -30,9 +31,9 @@ _tau(tau_),
 _whichAxis(whichAxis_),
 _dt(1.0f/frequency)
 {
-	
 	 me=this;
 	_stop = false;
+	_sequence = ALL_TOGETHER;
     _flagOutputMessageReceived = false;
 	_flagPlatformInCommStarted=false;
 	_flagPlatformOutCommStarted = false;
@@ -57,44 +58,44 @@ _dt(1.0f/frequency)
 	for (int k = 0; k < NB_AXIS; k++)
 	{
 		_ros_position[k]=0.0f;
+		_ros_positionFilter[k] = new lp_filter(0.5);
 		_ros_speed[k]=0.0f;
 		_ros_effort[k]=0.0f;
+		_direction[k] = FORWARD_1;
 	}
-
-    _whichAxis=-1;
     _currentAxis=X;
-	_direction=FORWARD;
+	
     
 	    //Staircase
 
 	_currentTime =ros::Time::now();
 		
-	for(int k = 0 ; k<NB_AXIS; k++)
+	for(unsigned int k = 0 ; k<NB_AXIS; k++)
 	{
 		_prevTime[k] = ros::Time::now();
 		_nSteps[k]= NB_STEPS_DEFAULT;
 		_currentStep[k] = 0;
 		_currentOffset[k]= 0;
-		_flagStrategyFinished[k][FORWARD] = false;
-		_flagStrategyFinished[k][REVERSE] = false;
-		_flagStrategyStarted[k][FORWARD] = false;
-		_flagStrategyStarted[k][REVERSE] = false;
-		_flagNextStep[k][FORWARD][FUNC_ERROR] = false;
-		_flagNextStep[k][FORWARD][POS_ERROR] = false;
-		_flagNextStep[k][REVERSE][FUNC_ERROR] = false;
-		_flagNextStep[k][REVERSE][POS_ERROR] = false;
 
-		_flagIntegratorsZeroed[k][FORWARD]=false;
-		_flagIntegratorsZeroed[k][REVERSE]=false;
-		_flagWSDefined[k][FORWARD]=false;
-		_flagWSDefined[k][REVERSE]=false;				
-
+		for (unsigned int j = 0; j<NB_DIR; j++)
+		{
+			_flagStrategyFinished[k][j] = false;
+			_flagStrategyStarted[k][j] = false;
+			_flagNextStep[k][j][FUNC_ERROR] = false;
+			_flagNextStep[k][j][POS_ERROR] = false;
+			_flagIntegratorsZeroed[k][j] = false;
+		}
+		_flagWSDefined[k] = false;
 	}
 
 
 }
 multiAxisFrictionID::~multiAxisFrictionID()
 {
+	for (int k=0; k<NB_AXIS; k++)
+	{
+		delete(_ros_positionFilter[k]); 
+	}
 	me->_n.shutdown();
 }
 
@@ -142,54 +143,9 @@ void multiAxisFrictionID::run()
 			(_platform_controllerType == POSITION_ONLY) && 
 			(_platform_machineState == ROBOT_STATE_CONTROL))
 		{
-			//! Direction Check
-			if (_direction_prev != _direction)
-				{
-					ROS_INFO("Switching to direction %s", Direction_names[_direction]);
-					_direction_prev = _direction;
-				}
-
-			axisSequenceControl(X, ONE_AFTER_THE_OTHER);
-
-			//! Empty integrators Check
-
-			 if (abs(_platform_effortM[_currentAxis]) <= 0.001) //! [N] || [N/m]
-			 {
-			 	ROS_INFO("Integrator in %s went to zero!", Axis_names[_currentAxis]);
-			 	_flagIntegratorsZeroed[_currentAxis][_direction]=true;
-			 }
-
-			if (_flagIntegratorsZeroed[_currentAxis][_direction])
-				{
-
-					if (!_flagStrategyStarted[_currentAxis][_direction])
-					{
-						if (!_flagWSDefined[_currentAxis][FORWARD] && !_flagWSDefined[_currentAxis][REVERSE])
-						{
-							{
-								ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[_currentAxis], Direction_names[_direction]);
-								int dir_ = _direction == FORWARD ? 1 : -1;
-								_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis] - _platform_position[_currentAxis]));
-								_stepSize[_currentAxis] = _WS[_currentAxis] / NB_STEPS_DEFAULT;
-								ROS_INFO("Stepsize fixed at %f", _stepSize[_currentAxis]);
-								_flagWSDefined[_currentAxis][_direction] = true;
-							}
-						}
-
-					}
-
-					funcJointGen(_currentAxis, _direction, _tau);
-				}
-
-				if (_flagStrategyFinished[_currentAxis][FORWARD])
-				{
-					_direction = REVERSE;
-				}
-				if (_flagStrategyFinished[_currentAxis][REVERSE])
-				{
-					ROS_INFO("Identification using %s in axis %s completed", Strategy_names[_strategy], Axis_names[_currentAxis]);
-				}
-			
+			axisSequenceControl(_whichAxis, _sequence);
+			functionControl(_whichAxis, _sequence);
+		
 			publishPositionOnly();
 		}
 	ros::spinOnce();
@@ -197,24 +153,27 @@ void multiAxisFrictionID::run()
 	}
 
 	//! Finish the node putting the set position to zero
-	while ((ros::Time::now()-_currentTime).toSec() <= 1.0f)
-	{
-			for (int k = 0; k < NB_AXIS; k++)
-			{
-				_ros_position[k] = 0.0f;
-				_ros_speed[k] = _platform_speed[k];
-				_ros_effort[k] = _platform_effortD[k];
-			}
+	// while ((ros::Time::now()-_currentTime).toSec() <= 1.0f)
+	// {
+	// 		for (int k = 0; k < NB_AXIS; k++)
+	// 		{
+	// 			_ros_position[k] = 0.0f;
+	// 			_ros_speed[k] = _platform_speed[k];
+	// 			_ros_effort[k] = _platform_effortD[k];
+	// 		}
 
-		publishPositionOnly();
-		ros::spinOnce();
-		_loopRate.sleep();
-	}
+	// 	publishPositionOnly();
+	// 	ros::spinOnce();
+	// 	_loopRate.sleep();
+	// }
 	ROS_INFO("Friction Identification stoped");
 	ros::spinOnce();
 	_loopRate.sleep();
 	ros::shutdown();
 }
+
+
+
 
 void multiAxisFrictionID::axisSequenceControl(int whichAxis_, Sequence whichSequence_)
 {
@@ -228,11 +187,23 @@ void multiAxisFrictionID::axisSequenceControl(int whichAxis_, Sequence whichSequ
 			case ONE_AFTER_THE_OTHER :
 
 			{
-				if (_flagStrategyFinished[_currentAxis][FORWARD] &&
-					_flagStrategyFinished[_currentAxis][REVERSE] && _currentAxis < YAW)
+				//! Direction Check
+				if (_direction_prev[_currentAxis] != _direction[_currentAxis])
+				{
+					ROS_INFO("Switching to direction %s", Direction_names[_direction[_currentAxis]]);
+					_direction_prev[_currentAxis] = _direction[_currentAxis];
+				}
+
+				if (_flagStrategyFinished[_currentAxis][FORWARD_1] &&
+					_flagStrategyFinished[_currentAxis][REVERSE_1] &&
+					_flagStrategyFinished[_currentAxis][FORWARD_2] &&
+					_flagStrategyFinished[_currentAxis][REVERSE_2] &&
+					_currentAxis < YAW)
 				{
 					_flagNextAxis = true;
 					_currentAxis++;
+					_direction[_currentAxis]=FORWARD_1;
+					_direction_prev[_currentAxis]=FORWARD_2;
 				}
 
 				
@@ -240,8 +211,10 @@ void multiAxisFrictionID::axisSequenceControl(int whichAxis_, Sequence whichSequ
 				{
 					_flagNextAxis = false;
 					if (_currentAxis == YAW &&
-						_flagStrategyFinished[_currentAxis][FORWARD] &&
-						_flagStrategyFinished[_currentAxis][REVERSE])
+					_flagStrategyFinished[_currentAxis][FORWARD_1] &&
+					_flagStrategyFinished[_currentAxis][REVERSE_1] &&
+					_flagStrategyFinished[_currentAxis][FORWARD_2] &&
+					_flagStrategyFinished[_currentAxis][REVERSE_2]) 
 					{
 						ROS_INFO("Sequencial Axis Identification Completed");
 						_stop = true;
@@ -252,7 +225,22 @@ void multiAxisFrictionID::axisSequenceControl(int whichAxis_, Sequence whichSequ
 
 			case ALL_TOGETHER:
 			{
-				// TDB
+				bool flagAllFinished = true;
+
+				for (int k = 0; k<NB_AXIS; k++)
+				{
+					for (int j = 0 ; j < NB_DIR ; j++)
+					{
+						flagAllFinished = flagAllFinished && _flagStrategyFinished[k][j];
+					}
+					 
+				}
+				if (flagAllFinished)
+				{
+					ROS_INFO("Simultaneous Axis Identification Completed");
+					_stop = true;
+				}
+
 				break;
 			}
 		}
@@ -260,13 +248,177 @@ void multiAxisFrictionID::axisSequenceControl(int whichAxis_, Sequence whichSequ
 	else
 	{
 		_currentAxis = whichAxis_;
-		if (_flagStrategyFinished[_currentAxis][FORWARD] &&
-			_flagStrategyFinished[_currentAxis][REVERSE])
+		if (_flagStrategyFinished[_currentAxis][FORWARD_1] &&
+			_flagStrategyFinished[_currentAxis][REVERSE_1] &&
+			_flagStrategyFinished[_currentAxis][FORWARD_2] &&
+			_flagStrategyFinished[_currentAxis][REVERSE_2])
 		{
 			ROS_INFO("%s axis idenfification completed", Axis_names[_currentAxis]);
 			_stop = true;
 		}
 	}
+}
+
+void multiAxisFrictionID::functionControl(int whichAxis_, Sequence whichSequence_)
+{
+	if (whichAxis_ == -1)
+	{
+
+		switch (whichSequence_)
+		{
+
+			case ONE_AFTER_THE_OTHER:
+
+			{
+				//! Empty integrators Check
+
+				//if (abs(_platform_effortM[_currentAxis]) <= 0.001) //! [N] || [N/m]
+				if (true)
+				{
+					//ROS_INFO("Integrator in %s went to zero!", Axis_names[_currentAxis]);
+					_flagIntegratorsZeroed[_currentAxis][_direction[_currentAxis]] = true;
+				}
+
+				if (_flagIntegratorsZeroed[_currentAxis][_direction[_currentAxis]])
+				{
+
+					if (!_flagStrategyStarted[_currentAxis][_direction[_currentAxis]])
+					{
+
+						if (!_flagWSDefined[_currentAxis])
+						{
+							{
+								ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[_currentAxis], Direction_names[_direction[_currentAxis]]);
+								int dir_ = (_direction[_currentAxis] == FORWARD_1 || _direction[_currentAxis] == FORWARD_2) ? 1 : -1;
+								_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis] - _platform_position[_currentAxis]));
+								_stepSize[_currentAxis] = _WS[_currentAxis] / NB_STEPS_DEFAULT;
+								ROS_INFO("Stepsize fixed at %f", _stepSize[_currentAxis]);
+								_flagWSDefined[_currentAxis] = true;
+							}
+						}
+					}
+
+					funcJointGen(_currentAxis, _tau);
+				}
+
+				if (_flagStrategyFinished[_currentAxis][_direction[_currentAxis]])
+				{
+					_direction[_currentAxis] = (Direction)((int)_direction[_currentAxis] + 1);
+					_direction[_currentAxis] = (int)_direction[_currentAxis] < NB_DIR ? _direction[_currentAxis] : (Direction)(NB_DIR - 1);
+				}
+
+				if (_flagStrategyFinished[_currentAxis][FORWARD_2])
+				{
+					ROS_INFO("Identification using %s in axis %s completed", Strategy_names[_strategy], Axis_names[_currentAxis]);
+				}
+
+				break;
+			}
+
+			case ALL_TOGETHER:
+			{
+				bool finished = true;
+				for (int k = 0; k<NB_AXIS; k++)
+				{
+					//! Empty integrators Check
+
+					//if (abs(_platform_effortM[_currentAxis]) <= 0.001) //! [N] || [N/m]
+					if (true)
+					{
+						//ROS_INFO("Integrator in %s went to zero!", Axis_names[_currentAxis]);
+						_flagIntegratorsZeroed[k][_direction[k]] = true;
+					}
+
+					if (_flagIntegratorsZeroed[k][_direction[k]])
+					{
+
+						if (!_flagStrategyStarted[k][_direction[k]])
+						{
+
+							if (!_flagWSDefined[k])
+							{
+								{
+									ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[k], Direction_names[_direction[k]]);
+									int dir_ = (_direction[k] == FORWARD_1 || _direction[k] == FORWARD_2) ? 1 : -1;
+									_WS[k] = abs(dir_ * (WS_LIMITS[k] - _platform_position[k]));
+									_stepSize[k] = _WS[k] / NB_STEPS_DEFAULT;
+									ROS_INFO("Stepsize fixed at %f", _stepSize[k]);
+									_flagWSDefined[k] = true;
+								}
+							}
+						}
+
+						funcJointGen(k, _tau);
+					}
+
+					if (_flagStrategyFinished[k][_direction[k]])
+					{
+						_direction[k] = (Direction)((int)_direction[k] + 1);
+						_direction[k] = (int)_direction[k] < NB_DIR ? _direction[k] : (Direction)(NB_DIR - 1);
+					}
+
+					if (_flagStrategyFinished[k][FORWARD_2])
+					{
+						ROS_INFO("Identification using %s in axis %s completed", Strategy_names[_strategy], Axis_names[_currentAxis]);
+						finished = true; 
+					}
+					else{
+						finished = false;
+					}
+
+				}
+				if (finished) { _stop = true;}
+				break;	
+			}
+		}
+	}
+	else
+	{
+		_currentAxis = whichAxis_;
+		//! Empty integrators Check
+
+		//if (abs(_platform_effortM[_currentAxis]) <= 0.001) //! [N] || [N/m]
+		if (true)
+		{
+			//ROS_INFO("Integrator in %s went to zero!", Axis_names[_currentAxis]);
+			_flagIntegratorsZeroed[_currentAxis][_direction[_currentAxis]] = true;
+		}
+
+		if (_flagIntegratorsZeroed[_currentAxis][_direction[_currentAxis]])
+		{
+
+			if (!_flagStrategyStarted[_currentAxis][_direction[_currentAxis]])
+			{
+
+				if (!_flagWSDefined[_currentAxis])
+				{
+					{
+						ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[_currentAxis], Direction_names[_direction[_currentAxis]]);
+						int dir_ = (_direction[_currentAxis] == FORWARD_1 || _direction[_currentAxis] == FORWARD_2) ? 1 : -1;
+						_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis] - _platform_position[_currentAxis]));
+						_stepSize[_currentAxis] = _WS[_currentAxis] / NB_STEPS_DEFAULT;
+						ROS_INFO("Stepsize fixed at %f", _stepSize[_currentAxis]);
+						_flagWSDefined[_currentAxis] = true;
+					}
+				}
+			}
+
+			funcJointGen(_currentAxis, _tau);
+		}
+
+		if (_flagStrategyFinished[_currentAxis][_direction[_currentAxis]])
+		{
+			_direction[_currentAxis] = (Direction)((int)_direction[_currentAxis] + 1);
+			_direction[_currentAxis] = (int)_direction[_currentAxis] < NB_DIR ? _direction[_currentAxis] : (Direction)(NB_DIR - 1);
+		}
+
+		if (_flagStrategyFinished[_currentAxis][FORWARD_2])
+		{
+			ROS_INFO("Identification using %s in axis %s completed", Strategy_names[_strategy], Axis_names[_currentAxis]);
+		}
+	}
+	
+
 }
 
 
@@ -276,24 +428,11 @@ void multiAxisFrictionID::axisSequenceControl(int whichAxis_, Sequence whichSequ
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-double multiAxisFrictionID::stepFunGen(int axis_, Direction direction_, float tau_, Strategy strategy_)
+double multiAxisFrictionID::stepFunGen(int axis_, float tau_, Strategy strategy_)
 {
-	int dir_ = direction_ == FORWARD ? 1 : -1; 
+	int dir_ = (_direction[axis_] == FORWARD_1 || _direction[axis_] == FORWARD_2) ? 1 : -1;
 	double outputQ = 0.0;
 	bool flagStep = false;
-
-
 
 	_currentTime = ros::Time::now();
 
@@ -311,15 +450,15 @@ double multiAxisFrictionID::stepFunGen(int axis_, Direction direction_, float ta
 	}
 
 	if (1.0f == outputQ) 
-		{ _flagNextStep[axis_][_direction][FUNC_ERROR] = true;
+		{ _flagNextStep[axis_][_direction[_currentAxis]][FUNC_ERROR] = true;
 		  _currentOffset[axis_] += dir_;}
 
-		if (_flagNextStep[axis_][direction_][FUNC_ERROR])// &&
-			//_flagNextStep[axis_][direction_][POS_ERROR])
+		if (_flagNextStep[axis_][_direction[axis_]][FUNC_ERROR]) // &&
+		//_flagNextStep[axis_][direction_][POS_ERROR])
 		{
 			ROS_INFO("Step %i completed for axis %s", _currentStep[axis_], Axis_names[axis_]);
-			ROS_INFO("Friction value %f in %s", _platform_effortM[axis_], Axis_names[axis_]);
-			_flagNextStep[axis_][direction_][FUNC_ERROR] = false;
+			// ROS_INFO("Friction value %f in %s", _platform_effortM[axis_], Axis_names[axis_]);
+			_flagNextStep[axis_][_direction[axis_]][FUNC_ERROR] = false;
 			_currentStep[axis_] += 1;
 			_prevTime[axis_] = ros::Time::now();
 	}
@@ -333,49 +472,51 @@ double multiAxisFrictionID::stepFunGen(int axis_, Direction direction_, float ta
 
 
 
-void multiAxisFrictionID::funcJointGen(int axis_, Direction direction_, float tau_)
+void multiAxisFrictionID::funcJointGen(int axis_, float tau_)
 {
 	if (axis_==-1)
 	{
 		for (int k=0; k<NB_AXIS; k++)
 		{
-			funcJointGen(k, direction_,tau_);
+			funcJointGen(k, tau_);
 		}
 	}
 
 	else
 	{
 
-		if (!_flagStrategyFinished[axis_][_direction])
+		if (!_flagStrategyFinished[axis_][_direction[_currentAxis]])
 		{	
-			if (!_flagStrategyStarted[axis_][_direction])
+			if (!_flagStrategyStarted[axis_][_direction[_currentAxis]])
 			{
 			_currentStep[axis_]=1;
-			ROS_INFO("HERE");
+			//ROS_INFO("HERE");
 			_prevTime[axis_] = ros::Time::now();
-			_flagStrategyStarted[axis_][_direction] = true;
+			_flagStrategyStarted[axis_][_direction[_currentAxis]] = true;
 			}
 			
-			if (_currentStep[axis_] <= _nSteps[axis_])
+			if ( (_currentStep[axis_] <= _nSteps[axis_]) )
+			
 			{
 				if ( ( abs(_ros_position[axis_] - _platform_position[axis_]) <= 28e-6f) ) //!28um
 				{
-					_flagNextStep[axis_][direction_][POS_ERROR]=true;
+					_flagNextStep[axis_][_direction[_currentAxis]][POS_ERROR]=true;
 				}
 				else{
-					_flagNextStep[axis_][direction_][POS_ERROR] = false;
+					_flagNextStep[axis_][_direction[_currentAxis]][POS_ERROR] = false;
 				}
-				int dir_ = direction_ == FORWARD ? 1 : -1;
-				_ros_position[axis_] = _stepSize[axis_] * (_currentOffset[axis_] + dir_*stepFunGen(axis_, direction_, tau_, _strategy));
+				int dir_ = (_direction[_currentAxis] == FORWARD_1 || _direction[_currentAxis] == FORWARD_2 ) ? 1 : -1;
+				_ros_position[axis_] = _stepSize[axis_] * (_currentOffset[axis_] + dir_*stepFunGen(axis_, tau_, _strategy));
 				_ros_position[axis_] = clampSymmetric(_ros_position[axis_], WS_LIMITS[axis_]);
+				_ros_position[axis_] = _ros_positionFilter[axis_]->update(_ros_position[axis_]);
 			}
 
 			else
 			{
-				_flagStrategyStarted[axis_][_direction] = false;
-				_flagStrategyFinished[axis_][_direction] = true;
-                 ROS_INFO("Staircase finished for axis %i for direction %s", axis_,Direction_names[_direction]);
-				_flagIntegratorsZeroed[axis_][_direction] = false;
+				_flagStrategyStarted[axis_][_direction[_currentAxis]] = false;
+				_flagStrategyFinished[axis_][_direction[_currentAxis]] = true;
+				ROS_INFO("%s finished for axis %i for direction %s", Strategy_names[_strategy], axis_, Direction_names[_direction[_currentAxis]]);
+				_flagIntegratorsZeroed[axis_][_direction[_currentAxis]] = false;
 			}
 		}
 	}
