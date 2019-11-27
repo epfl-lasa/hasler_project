@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/lsrob107772/catkin_hasler/devel/include/**",
+                "/opt/ros/kinetic/include",
+                "/home/lsrob107772/catkin_ws/devel/include/**",
+                "/opt/ros/kinetic/include/**",
+                "/home/lsrob107772/catkin_ws/src/sg_differentiation/include/**",
+                "/home/lsrob107772/catkin_ws/src/utils/include/**",
+                "/usr/include/**",
+                "/usr/include/eigen3/Eigen",
+                "/home/lsrob107772/catkin_hasler/src/5_axis_platform_firmware/lib/platform/src",
+                "/opt/ros/kinetic/include/ros"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

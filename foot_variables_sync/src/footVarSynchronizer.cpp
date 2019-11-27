@@ -147,6 +147,7 @@ void footVarSynchronizer::run()
 
 	if (_flagPlatformOutCommStarted)
 	{
+		_mutex.lock();
 		if ((_platform_id!=(uint8_t) _platform_name)&&(_platform_id!=UNKNOWN))
 		{
 			ROS_ERROR("This node for variables synchronization is acting on the wrong platform");
@@ -220,6 +221,7 @@ void footVarSynchronizer::run()
 				}
 			}
 		}
+	_mutex.unlock();
 	}
 	ros::spinOnce();
 	_loopRate.sleep();
