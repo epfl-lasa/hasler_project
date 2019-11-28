@@ -55,8 +55,9 @@ class footVarLogger
     
     // Publishers declarations
 
-    ros::Publisher _pubFTSensorFilteredWrench;					// Filtered measured wrench
-    ros::Publisher _pubFootPose; 
+    ros::Publisher _pubFtSensorFilteredWrench;					// Filtered measured wrench
+    ros::Publisher _pubFootPose;
+    ros::Publisher _pubMotorsEffortM;
     // Subscribers declarations
     ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
     ros::Subscriber _subFootInput;            // FootInputMsg_v2
@@ -67,7 +68,7 @@ class footVarLogger
     custom_msgs::FootOutputMsg_v2 _msgFootOutput;
     geometry_msgs::WrenchStamped _msgFilteredWrench;
 	geometry_msgs::Wrench _msgDesiredFootWrench;
-    
+    geometry_msgs::PoseStamped _msgFootPoseStamped;
     //foot_variables_sync::FootOutputMsg_v2 _msgFootOutput;
 
     //!boolean variables
@@ -104,27 +105,28 @@ class footVarLogger
 		Eigen::Vector3f _footComPositionFromSensor;                     // Offset of the foot [m]	(3x1)
 		Eigen::Vector3f _gravity;										// Gravity vector [m/s^2] (3x1)
         
-        Eigen::Matrix<float,NB_AXIS,1> _footEffort;
-        Eigen::Matrix<float,NB_AXIS,1> _desiredFootEffort;		// Filtered wrench [N and Nm] (6x1)
+       // Eigen::Matrix<float,NB_AXIS,1> _footEffort;
+        Eigen::Matrix<float,NB_AXIS,1> _desiredMotorsEffort;		// Filtered wrench [N and Nm] (6x1)
         
         // Eigen::Vector3f _vdFoot;
         // Eigen::Vector3f _xdFoot;
         // Eigen::Vector3f _FdFoot;
-        Eigen::Vector3f _footTipPosition;
+        Eigen::Vector3f _footFtSensorPosition;
 
-        Eigen::Matrix3f _footTipOrientation;
-        //Eigen::Vector4f _footTipQuaternion;    
+        Eigen::Matrix3f _footFtSensorOrientation;
+        Eigen::Quaternionf _footFtSensorQuaternion;    
         // Eigen::Vector3f _xdFootTip;
         Eigen::Matrix<float,NB_AXIS,1> _footOffset;   
         Eigen::Matrix4f _H0;
-        Eigen::Matrix<float,6,1> _ftSensorWrench;						// Wrench [N and Nm] (6x1)
-		Eigen::Matrix<float,6,1> _ftSensorWrenchBias;				// Wrench bias [N and Nm] (6x1)
-		Eigen::Matrix<float,6,1> _ftSensorFilteredWrench;		// Filtered wrench [N and Nm] (6x1)
-		int _ftSensorWrenchCount;
+        Eigen::Matrix<float,6,1> _ftWrench;						// Wrench [N and Nm] (6x1)
+		Eigen::Matrix<float,6,1> _ftWrenchBias;				// Wrench bias [N and Nm] (6x1)
+        Eigen::Matrix<float, 6, 1> _ftFilteredWorldWrench;          // Filtered wrench [N and Nm] (6x1)
+        Eigen::Matrix<float, 6, 1> _ftFilteredSensorWrench;          // Filtered wrench [N and Nm] (6x1)
+        int _ftWrenchCount;
 
 		float _filteredForceGain;		// Filtering gain for force/torque sensor
 
-		bool _ftSensorWrenchBiasOK;							// Check if computation of force/torque sensor bias is OK
+		bool _ftWrenchBiasOK;							// Check if computation of force/torque sensor bias is OK
 
 
 
@@ -148,12 +150,14 @@ class footVarLogger
 	private:
 	
     void footDataTransformation();
+    void computeMotorsEffortFtSensor();
 
-    //! ROS METHODS
+        //! ROS METHODS
 
-    //! Callbacks 
-    
-    void updateFtSensorWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg);
+        //! Callbacks
+
+        void
+        updateFtSensorWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void publishData(); 
     
     //bool allSubscribersOK();
