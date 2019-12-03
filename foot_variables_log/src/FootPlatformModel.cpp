@@ -65,13 +65,13 @@ Eigen::Matrix<float, 6, 5> FootPlatformModel::geometricJacobian(Eigen::Matrix<fl
   {
     theta = -joints(2) * M_PI / 180.0f;
     phi = joints(3) * M_PI / 180.0f;
-    psi = joints(4) * M_PI / 180.0f;
+    psi = joints(4) * M_PI / 180.0f - M_PI_2;
   }
   else
   {
     theta = -joints(2);
     phi = joints(3);
-    psi = joints(4);
+    psi = joints(4) - M_PI_2;
   }
   Eigen::Matrix<float, 6, 5> J;
   J.setConstant(0.0f);

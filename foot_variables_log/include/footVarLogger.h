@@ -56,6 +56,8 @@ class footVarLogger
     // Publishers declarations
 
     ros::Publisher _pubFtSensorFilteredWrench;					// Filtered measured wrench
+    ros::Publisher _pubDesiredWrench;                  // Filtered measured wrench
+    ros::Publisher _pubMeasuredWrench;                  // Filtered measured wrench
     ros::Publisher _pubFootPose;
     ros::Publisher _pubMotorsEffortM;
     // Subscribers declarations
@@ -67,7 +69,8 @@ class footVarLogger
     // Subsciber and publisher messages declaration
     custom_msgs::FootOutputMsg_v2 _msgFootOutput;
     geometry_msgs::WrenchStamped _msgFilteredWrench;
-	geometry_msgs::Wrench _msgDesiredFootWrench;
+    geometry_msgs::WrenchStamped _msgDesiredWrench;
+    geometry_msgs::WrenchStamped _msgMeasuredWrench;
     geometry_msgs::PoseStamped _msgFootPoseStamped;
     //foot_variables_sync::FootOutputMsg_v2 _msgFootOutput;
 
@@ -94,7 +97,7 @@ class footVarLogger
 
     //! Variables for Logging    
         std::string _filename;
-		std::ifstream _inputFile;
+        std::ifstream _inputFile;
 		std::ofstream _outputFile;    
 
     //! User variables
@@ -105,9 +108,11 @@ class footVarLogger
 		Eigen::Vector3f _footComPositionFromSensor;                     // Offset of the foot [m]	(3x1)
 		Eigen::Vector3f _gravity;										// Gravity vector [m/s^2] (3x1)
         
-       // Eigen::Matrix<float,NB_AXIS,1> _footEffort;
+       
         Eigen::Matrix<float,NB_AXIS,1> _desiredMotorsEffort;		// Filtered wrench [N and Nm] (6x1)
-        
+        Eigen::Matrix<float, 6, 1> _desiredFootWrench; // Filtered wrench [N and Nm] (6x1)
+        Eigen::Matrix<float, 6, 1> _measuredFootWrench; // Filtered wrench [N and Nm] (6x1)
+
         // Eigen::Vector3f _vdFoot;
         // Eigen::Vector3f _xdFoot;
         // Eigen::Vector3f _FdFoot;
@@ -116,12 +121,11 @@ class footVarLogger
         Eigen::Matrix3f _footFtSensorOrientation;
         Eigen::Quaternionf _footFtSensorQuaternion;    
         // Eigen::Vector3f _xdFootTip;
-        Eigen::Matrix<float,NB_AXIS,1> _footOffset;   
-        Eigen::Matrix4f _H0;
         Eigen::Matrix<float,6,1> _ftWrench;						// Wrench [N and Nm] (6x1)
 		Eigen::Matrix<float,6,1> _ftWrenchBias;				// Wrench bias [N and Nm] (6x1)
         Eigen::Matrix<float, 6, 1> _ftFilteredWorldWrench;          // Filtered wrench [N and Nm] (6x1)
         Eigen::Matrix<float, 6, 1> _ftFilteredSensorWrench;          // Filtered wrench [N and Nm] (6x1)
+
         int _ftWrenchCount;
 
 		float _filteredForceGain;		// Filtering gain for force/torque sensor

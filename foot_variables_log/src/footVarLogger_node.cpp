@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
   ros::NodeHandle nh_;
 
-  float frequency = 150.0f;
+  float frequency = 300.0f;
   footVarLogger footVarLogger(nh_,frequency,platform_id_, filename_);  
 
   if (!footVarLogger.init()) 

@@ -3,6 +3,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 #include "FootPlatformModel.h"
+#include "Pseudoinverse.h"
 #include "geometry_msgs/WrenchStamped.h"
 
 #define ListofAxes(enumeration, names) names,
@@ -46,14 +47,9 @@ _filename(filename_)
 	_footFtSensorPosition.setConstant(0.0f);
     _footFtSensorOrientation.setIdentity();
 	_footFtSensorQuaternion.setIdentity();
-    // _xdFootFtSensor.setConstant(0.0f);
-	
-	_footOffset << 0.0f,0.0f,10.0f,0.0f,0.0f;
 
-  		Eigen::Matrix<float,NB_AXIS,1> temp;
-  		//temp << WS_LIMITS[X],WS_LIMITS[Y],0.0f,0.0f,0.0f;
-		temp << 0.0, 0.0, 0.0f, 0.0f, 0.0f;
-		_H0 = FootPlatformModel::forwardKinematics(temp,true);
+	_desiredMotorsEffort.setConstant(0.0f);
+	_desiredFootWrench.setConstant(0.0f);
     
 	for (int k=0; k<NB_AXIS; k++)
 	{       
@@ -85,16 +81,20 @@ bool footVarLogger::init() //! Initialization of the node. Its datatype (bool) r
 
 	if (_platform_name==LEFT){
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-    	_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/sensorFilteredFT", 1);
-		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Left/sensorPose", 1);
-		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Left/motorsEffortFromFTSensor", 1);
+    	_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_filtered", 1);
+		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Left/sensor_pose", 1);
+		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Left/motors_invDyn", 1);
+		_pubDesiredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_desired", 1);
+		_pubMeasuredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_measured", 1);
 		_subForceTorqueSensor = _n.subscribe<geometry_msgs::WrenchStamped>("ft_sensor_left/netft_data", 1, boost::bind(&footVarLogger::updateFtSensorWrench, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
 	if (_platform_name==RIGHT){
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/sensorFilteredFT", 1);
-		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Right/sensorPose", 1);
-		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Right/motorsEffortFromFTSensor", 1);
+		_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_filtered", 1);
+		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Right/sensor_pose", 1);
+		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Right/motors_effort", 1);
+		_pubDesiredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_desired", 1);
+		_pubMeasuredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_measured", 1);
 		_subForceTorqueSensor = _n.subscribe<geometry_msgs::WrenchStamped>("ft_sensor_right/netft_data", 1, boost::bind(&footVarLogger::updateFtSensorWrench, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
 
@@ -157,7 +157,6 @@ void footVarLogger::run()
 			if (_platform_id!=0){
 				 footDataTransformation();
 				 computeMotorsEffortFtSensor();
-				 //computeFtSensorWrenchDesiredMotors();
 				 logData();
 				 publishData();
 			}
@@ -198,9 +197,9 @@ void footVarLogger::updateFtSensorWrench(const geometry_msgs::WrenchStamped::Con
 	  //! Set the bias...
 	  if (!_ftWrenchBiasOK && _flagPlatformOutCommStarted && _platform_id != 0)
   {
-    // Eigen::Vector3f loadForce = _footFtSensorOrientation.transpose()*_footMass*_gravity;
-    // _ftWrenchBias.segment(0,3) += loadForce;
-    // _ftWrenchBias.segment(3,3) += _footComPositionFromSensor.cross(loadForce);
+    Eigen::Vector3f loadForce = _footFtSensorOrientation.transpose()*_footMass*_gravity;
+    _ftWrenchBias.segment(0,3) -= loadForce;
+    _ftWrenchBias.segment(3,3) -= _footComPositionFromSensor.cross(loadForce);
     _ftWrenchBias += raw; 
     _ftWrenchCount++;
     if(_ftWrenchCount==NB_SAMPLES)
@@ -264,6 +263,26 @@ void footVarLogger::publishData()
 	_msgFootOutput.platform_effortM[3] = _desiredMotorsEffort(3);
 	_msgFootOutput.platform_effortM[4] = _desiredMotorsEffort(4);
 	_pubMotorsEffortM.publish(_msgFootOutput);
+
+	_msgDesiredWrench.header.frame_id = "world";
+	_msgDesiredWrench.header.stamp = ros::Time::now();
+	_msgDesiredWrench.wrench.force.x = _desiredFootWrench(0);
+	_msgDesiredWrench.wrench.force.y = _desiredFootWrench(1);
+	_msgDesiredWrench.wrench.force.z = _desiredFootWrench(2);
+	_msgDesiredWrench.wrench.torque.x = _desiredFootWrench(3);
+	_msgDesiredWrench.wrench.torque.y = _desiredFootWrench(4);
+	_msgDesiredWrench.wrench.torque.z = _desiredFootWrench(5);
+	_pubDesiredWrench.publish(_msgDesiredWrench);
+
+	_msgMeasuredWrench.header.frame_id = "world";
+	_msgMeasuredWrench.header.stamp = ros::Time::now();
+	_msgMeasuredWrench.wrench.force.x = _measuredFootWrench(0);
+	_msgMeasuredWrench.wrench.force.y = _measuredFootWrench(1);
+	_msgMeasuredWrench.wrench.force.z = _measuredFootWrench(2);
+	_msgMeasuredWrench.wrench.torque.x = _measuredFootWrench(3);
+	_msgMeasuredWrench.wrench.torque.y = _measuredFootWrench(4);
+	_msgMeasuredWrench.wrench.torque.z = _measuredFootWrench(5);
+	_pubMeasuredWrench.publish(_msgMeasuredWrench);
 }
 
 void footVarLogger::footDataTransformation()
@@ -278,7 +297,7 @@ void footVarLogger::footDataTransformation()
 		_footFtSensorOrientation = H.block(0,0,3,3);
 		_footFtSensorQuaternion = Eigen::Quaternionf(_footFtSensorOrientation);
 		//   std::cerr << "joints: "<<_platform_position+offset << std::endl;
-		//   std::cerr <<"Position: " << _footFtSensorPosition.transpose()-_H0.block(0,3,3,1).transpose() << std::endl;
+		//   std::cerr <<"Position: " << _footFtSensorPosition.transpose()<< std::endl;
 		//   std::cerr << "Orientation: " << std::endl;
 		//   std::cerr << _footFtSensorOrientation << std::endl;
 	}
@@ -286,18 +305,38 @@ void footVarLogger::footDataTransformation()
 
   void footVarLogger::computeMotorsEffortFtSensor()
   {
-	 	Eigen::Matrix<float, 6, 5> J;
-		Eigen::Matrix<float, 5, 1> offset, temp;
-		offset << 0.0f, 0.0f, 0.0f, 0.0f, 0.0f;
-		J = FootPlatformModel::geometricJacobian(_platform_position + offset);
-		
-		temp = J.transpose() * _ftFilteredWorldWrench;
-		_desiredMotorsEffort(0) = temp(1);
-		_desiredMotorsEffort(1) = temp(0);
-		_desiredMotorsEffort(2) = -temp(2);
-		_desiredMotorsEffort(3) = temp(3);
-		_desiredMotorsEffort(4) = temp(4);
-	}
+	  Eigen::Matrix<float, 6, 5> J_;
+	  Eigen::Matrix<float, 5, 6> Jt_, JtInv_;
+	  Eigen::Matrix<float, 5, 1> offset, temp, temp2, temp3;
+	  temp.setConstant(0.0f);
+	  offset.setConstant(0.0f);
+	  temp2.setConstant(0.0f);
+	  temp3.setConstant(0.0f);
+	  J_.setConstant(0.0f);
+	  Jt_.setConstant(0.0f);
+	  JtInv_.setConstant(0.0f);
+
+	  J_ = FootPlatformModel::geometricJacobian(_platform_position + offset);
+
+	  temp = J_.transpose() * _ftFilteredWorldWrench;
+	  _desiredMotorsEffort(0) = temp(1);
+	  _desiredMotorsEffort(1) = temp(0);
+	  _desiredMotorsEffort(2) = -temp(2);
+	  _desiredMotorsEffort(3) = temp(3);
+	  _desiredMotorsEffort(4) = temp(4);
+
+	  temp2 = _platform_effortD;
+	  temp2(2) = -_platform_effortD(2);
+
+	  _desiredFootWrench = pseudoInverse(J_.transpose())*temp2;
+	  
+	  temp3 = _platform_effortM;
+	  temp3(2) = -_platform_effortM(2);
+
+	  //std::cerr << J_.transpose()<< std::endl;
+
+	  _measuredFootWrench = pseudoInverse(J_.transpose()) * temp3;
+		}
 
   void footVarLogger::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr &msg)
   {
