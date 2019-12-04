@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 
-project(foot_variables_log)
+project(mouse_platforms)
 
 # Add support for c++11
 add_definitions(-std=c++11 -O3)
@@ -36,17 +36,13 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-add_executable(footVarLogger src/footVarLogger.cpp src/footVarLogger_node.cpp src/FootPlatformModel.cpp)
-target_link_libraries(footVarLogger ${catkin_LIBRARIES})
+add_executable(mousePlatform src/mousePlatform.cpp src/mousePlatform_node.cpp)
+target_link_libraries(mousePlatform ${catkin_LIBRARIES})
 
-add_executable(frictionLogger src/frictionLogger.cpp src/frictionLogger_node.cpp)
-target_link_libraries(frictionLogger ${catkin_LIBRARIES})
+add_dependencies(mousePlatform ${PROJECT_NAME}_gencpp)
 
-add_dependencies(footVarLogger ${PROJECT_NAME}_gencpp)
-add_dependencies(frictionLogger ${PROJECT_NAME}_gencpp)
-
-FILE(GLOB SRCS src/footVarLogger.cpp)
-FILE(GLOB INCS include/footVarLogger.h)
+FILE(GLOB SRCS src/mousePlatform.cpp)
+FILE(GLOB INCS include/mousePlatform.h)
 
 add_library(${PROJECT_NAME} ${SRCS} ${INCS})
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})

@@ -5,24 +5,27 @@
 #include "geometry_msgs/WrenchStamped.h"
 
 
-#define NB_RUNS 1
+#define NB_RUNS 5
 #define NB_DATA_POINTS 1
-#define NB_DIVISIONS 2
+#define NB_DIVISIONS 30
 #define NB_POSITIONS (NB_DIVISIONS + 1)
 #define NB_REPETITIONS 1
 
+int total_points; 
+int nPoint_;
 // // #define NB_POSITIONS 3
 // #define NB_POSITIONS 2
 
 #define ListofAxes(enumeration, names) names,
-char const *Axis_names[]{
-	AXES};
+						   char const *
+						   Axis_names[]{
+							   AXES};
 #undef ListofAxes
 
 char const *Platform_Names[]{"none", "right", "left"};
 
 float const SPEED_DEADZONE[NB_AXIS] = {0.001f, 0.001f, 0.05f, 0.09f,0.09f};
-float const MIN_SPEED[NB_AXIS] = {0.00001f, 0.00001f, 0.00002f, 0.01f, 0.01f};
+float const MIN_SPEED[NB_AXIS] = {0.00002f, 0.00002f, 0.00002f, 0.02f, 0.02f};
 float const RESOLUTION_EFFORT[NB_AXIS] = {0.001f, 0.001f, 0.00005f, 0.00005f, 0.00005f};
 float const FILTER_GAIN =  0.9f;
 // float const des_positions_[NB_POSITIONS+1] = {-1.0f, 0.0f, 1.0f, 0.0f};
@@ -118,6 +121,7 @@ _rawFilename(filename_)
 		_nAxis=_frictionAxis;
 	}
 
+    total_points = NB_RUNS * NB_DATA_POINTS * NB_POSITIONS * NB_REPETITIONS * (NB_AXIS+1-_nAxis);
 }
 frictionLogger::~frictionLogger()
 {
@@ -150,12 +154,16 @@ bool frictionLogger::init() //! Initialization of the node. Its datatype (bool) 
 		_flagLoggingOk = true;
 	}
 	if(_flagLoggingOk)
-	{
-		_filename=_rawFilename+ "_" + std::string(Axis_names[_nAxis]);
-		_outputFile.open(ros::package::getPath(std::string("foot_variables_log")) + "/data/friction/" + _filename + ".txt");
+	{	
+          _filename = _rawFilename + "_" +
+                      std::string(Platform_Names[_platform_name]) + "_" +
+                      std::string(Axis_names[_nAxis]);
+          _outputFile.open(
+              ros::package::getPath(std::string("foot_variables_log")) +
+              "/data/friction/" + _filename + ".txt");
 	}
 
-	
+	nPoint_=0;
 	// std::cerr << "next position : " << _desiredMotorsPosition(_nAxis) << endl;
 
 	if (_n.ok()) 
@@ -185,12 +193,12 @@ void frictionLogger::logData()
 	if (_filename != std::string("no_file"))
 	{
 		if (fabs(_frictionMotorsEffort(_nAxis))>=0.005f){
-			_outputFile << relativeTime.toSec() << " "
-						<< (int)_platform_id << " "
-						<< _platform_position_last.transpose() << " "
-						<< _platform_position.transpose() << " "
-						<< _platform_speed.transpose() << " "
-						<< _frictionMotorsEffort(_nAxis) << std::endl;
+			_outputFile << relativeTime.toSec() << '\t'
+						<< (int)_platform_id << '\t'
+						<< _platform_position_last.transpose() << '\t'
+						<< _platform_position.transpose() << '\t'
+						<< _platform_speed.transpose() << '\t'
+						<< _frictionMotorsEffort(_nAxis) <<std::endl;
 		}
 	}
 }
@@ -204,7 +212,6 @@ void frictionLogger::run()
 		{
 			case COMM_BEGIN:
 			{
-				beginning = ros::Time::now();
 				_lastDecisionState = _decisionState;
 
 				if (_flagPlatformOutCommStarted)
@@ -228,6 +235,7 @@ void frictionLogger::run()
 				else
 				{
 					ROS_INFO("Platform Identified");
+					beginning = ros::Time::now();
 					_decisionState=REQ_ROBOT_STATE;
 				}
 				break;
@@ -247,7 +255,7 @@ void frictionLogger::run()
 					if (!_flagReqSetStateForPosition)
 					{
 						requestSetState(ROBOT_STATE_CONTROL, &_flagReqSetStateForPosition);
-						ros::spinOnce;
+						ros::spinOnce();
 						_loopRate.sleep();
 						_flagReqSetStateForPosition=false;
 					}
@@ -262,7 +270,7 @@ void frictionLogger::run()
 				else
 				{
 					ROS_ERROR("Couldn't move to robot state control, trying again...");
-					usleep(5e-6); // wait five seconds and try again
+					usleep(5e6f); // wait five seconds and try again
 				}
 
 				break;
@@ -273,7 +281,7 @@ void frictionLogger::run()
 				_lastDecisionState = _decisionState;
 				
 				publishDesiredPosition();
-				ros::spinOnce;
+				ros::spinOnce();
 				_loopRate.sleep();
 
 				if (_platform_controllerType==POSITION_ONLY)
@@ -286,8 +294,8 @@ void frictionLogger::run()
 					{
 						// std::cerr << "desired position : " << _desiredMotorsPosition(_nAxis) << endl;
 						requestSetController(POSITION_ONLY, &_flagReqSetControllerForPosition);
-						ros::spinOnce;
-						_loopRate.sleep();
+						ros::spinOnce();
+						// _loopRate.sleep();
 						_flagReqSetControllerForPosition=false;
 					}
 				}
@@ -301,7 +309,7 @@ void frictionLogger::run()
 				else
 				{
 					ROS_ERROR("Couldn't request to the platform to control a position, trying again...");
-					usleep(5e-6); // wait five seconds and try again
+					usleep(5e6f); // wait five seconds and try again
 				}
 				
 				break;
@@ -316,8 +324,8 @@ void frictionLogger::run()
 				//Conditional to leave state
 				if ((_desiredMotorsPosition - _platform_position).norm() <= tolerance_.norm())
 				{
-					usleep(1.5e6); // delay for stability;
-					ROS_INFO("New point in %s logged", Axis_names[_nAxis]);
+					usleep(5e6f); // delay for stability;
+					ROS_INFO("New point in %s reached", Axis_names[_nAxis]);
 					_decisionState = REQ_TELEOP_CTRL;
 				}
 				else
@@ -340,8 +348,8 @@ void frictionLogger::run()
 					if (!_flagReqSetStateForFrictionID)
 					{
 						requestSetState(TELEOPERATION, &_flagReqSetStateForFrictionID);
-						ros::spinOnce;
-						_loopRate.sleep();
+						ros::spinOnce();
+						// _loopRate.sleep();
 						_flagReqSetStateForFrictionID = false;
 					}
 				}
@@ -356,7 +364,7 @@ void frictionLogger::run()
 				else
 				{
 					ROS_ERROR("Couldn't start teleoperation, trying again...");
-					usleep(5e-6); // wait five seconds and try again
+					usleep(5e6f); // wait five seconds and try again
 				}
 
 				break;
@@ -369,8 +377,8 @@ void frictionLogger::run()
 				_desiredMotorsEffort.setConstant(0.0f);
 				_lastDecisionState = _decisionState;
 				publishFootEffort(); //! Publish zero torque
-				ros::spinOnce;
-				_loopRate.sleep();
+				ros::spinOnce();
+				// _loopRate.sleep();
 
 				//Main
 				if (_platform_controllerType==TORQUE_ONLY)
@@ -382,8 +390,8 @@ void frictionLogger::run()
 					if (!_flagReqSetControllerForFrictionID)
 					{
 						requestSetController(TORQUE_ONLY, &_flagReqSetControllerForFrictionID);
-						ros::spinOnce;
-						_loopRate.sleep();
+						ros::spinOnce();
+						// _loopRate.sleep();
 						_flagReqSetControllerForFrictionID = false;
 					}
 				}	
@@ -391,14 +399,15 @@ void frictionLogger::run()
 				if (_flagResponseSetController)
 					{
 						ROS_INFO("Torque Control Requested");
-						_decisionState = COMP_FRICTION;
+						usleep(3e6f);
+						_decisionState = COMPUTE_FRICTION;
 						_flagResponseSetController = false;
 					}
 
 				else
 					{
 						ROS_ERROR("Couldn't could control for torque, trying again...");
-						usleep(5e-6); // wait five seconds and try again
+						usleep(5e6); // wait five seconds and try again
 					}
 
 					//Leave State
@@ -406,11 +415,11 @@ void frictionLogger::run()
 					break;
 			}
 			
-			case COMP_FRICTION:
+			case COMPUTE_FRICTION:
 			{
 				//Main
 				
-				if (_lastDecisionState!=COMP_FRICTION)
+				if (_lastDecisionState!=COMPUTE_FRICTION)
 				{
 					ROS_INFO("Computing the friction"); 
 					_platform_position_last = _platform_position;
@@ -424,7 +433,13 @@ void frictionLogger::run()
 				if (fabs(_platform_speed[_nAxis]) <= MIN_SPEED[_nAxis])
 				{
 					_desiredMotorsEffort(_nAxis) += _motionSign * RESOLUTION_EFFORT[_nAxis];
-					//Main
+					if (fabs(_desiredMotorsEffort(_nAxis)>=USER_MAX_EFFORTS[_nAxis]))
+					{
+						_decisionState=REQ_ROBOT_STATE;
+						ROS_ERROR("Limit of the motor %s reached, setting position again",
+						Axis_names[_nAxis]);
+					}
+                                        //Main
 				}
 
 				else if (fabs(_platform_speed[_nAxis]) >= SPEED_DEADZONE[_nAxis])
@@ -461,9 +476,11 @@ void frictionLogger::run()
 				
 				else
 				{
-					ROS_INFO("It's weird, this effort is too low, trying again...");
-					usleep(1e-6f);
-					_decisionState = COMP_FRICTION;
+					//ROS_INFO("It's weird, this effort is too low, trying again...");
+					usleep(3e6f);
+					ros::spinOnce();
+					_loopRate.sleep();
+					_decisionState = COMPUTE_FRICTION;
 				}
 				
 				
@@ -480,6 +497,7 @@ void frictionLogger::run()
 				//Main
 
 				_nDataPoints++;
+				nPoint_++;
 
 				ROS_INFO("Taking a new data point at %f in axis %s", _desiredMotorsPosition(_nAxis),
 				Axis_names[_nAxis]);
@@ -495,7 +513,10 @@ void frictionLogger::run()
 
 				else
 				{
-					_decisionState = COMP_FRICTION;
+					usleep(3e6f);
+					ros::spinOnce();
+					_loopRate.sleep();
+					_decisionState = COMPUTE_FRICTION;
 				}
 
 				_lastDecisionState = _decisionState;
@@ -512,6 +533,8 @@ void frictionLogger::run()
 				ROS_INFO("Direction change  # %i to %i on point %f on axis %s", _nSignChanges,
 						 _motionSign, _desiredMotorsPosition(_nAxis),
 						 Axis_names[_nAxis]);
+				float progress= ((float)nPoint_/(float)total_points)*100.0f;
+				ROS_INFO("OVERALL PROGRESS: %f PERCENT", progress); 
 				// std::cerr << "nSignChanges: " << _nSignChanges << std::endl;
 
 				//Conditionals to leave state
@@ -524,7 +547,10 @@ void frictionLogger::run()
 
 				else
 				{
-					_decisionState = COMP_FRICTION;
+					usleep(3e6f);
+					ros::spinOnce();
+					_loopRate.sleep();
+					_decisionState = COMPUTE_FRICTION;
 				}
 
 				break;
@@ -577,9 +603,8 @@ void frictionLogger::run()
 					{
 						ROS_INFO("Writing data in log file...");
 						_outputFile.close();
-						_filename = _rawFilename + "_" + std::string(Axis_names[_nAxis]);
-						_outputFile.open(ros::package::getPath(std::string("foot_variables_log")) + "/data/friction/" + _filename + ".txt");
-					}
+						_filename = _rawFilename + "_"+std::string(Platform_Names[_platform_id])+"_" + std::string(Axis_names[_nAxis]);
+						_outputFile.open(ros::package::getPath(std::string("foot_variables_log")) + "/data/friction/" + _filename + ".txt");					}
 					// ROS_INFO("Changing to axis %s", Axis_names[_nAxis]);
 					 std::cerr << "Changing to Axis: " << Axis_names[_nAxis] << std::endl;
 					_decisionState = CHANGE_POSITION;
@@ -633,7 +658,7 @@ void frictionLogger::generateNewRefPoints()
 
 void frictionLogger::publishIDFriction()
 {
-	if (_frictionMotorsEffort(_nAxis) >= 0.001f)
+	if (_frictionMotorsEffort(_nAxis) >= 0.01f)
 	{
 		_msgStaticFriction.platform_stamp = ros::Time::now();
 		_msgStaticFriction.platform_id = (int)_platform_id;
@@ -644,10 +669,6 @@ void frictionLogger::publishIDFriction()
 			_msgStaticFriction.platform_speed[k] = _platform_speed[k];
 		}
 		_pubFriction.publish(_msgStaticFriction);
-	}
-	else
-	{
-		_decisionState = COMP_FRICTION;
 	}
 }
 
@@ -725,13 +746,28 @@ void frictionLogger::requestSetController(Controller controller_, bool *controll
 	_flagResponseSetController = false;
 
 	_srvSetController.request.ros_controllerType = controller_;
-	_srvSetController.request.ros_defaultControl = true;
+	_srvSetController.request.ros_defaultControl = false;
 	_srvSetController.request.ros_controlledAxis = -1;
+	_srvSetController.request.ros_posP[X] = 5000;
+    _srvSetController.request.ros_posP[Y] = 5000;
+    _srvSetController.request.ros_posP[PITCH] = 10000;
+    _srvSetController.request.ros_posP[ROLL] = 5000;
+    _srvSetController.request.ros_posP[YAW] = 5000;
+    _srvSetController.request.ros_posI[X] = 10000;
+    _srvSetController.request.ros_posI[Y] = 10000;
+    _srvSetController.request.ros_posI[PITCH] = 10000;
+    _srvSetController.request.ros_posI[ROLL] = 10000;
+    _srvSetController.request.ros_posI[YAW] = 10000;
+    _srvSetController.request.ros_posD[X] = 10;
+    _srvSetController.request.ros_posD[Y] = 10;
+    _srvSetController.request.ros_posD[PITCH] = 30;
+    _srvSetController.request.ros_posD[ROLL] = 35;
+    _srvSetController.request.ros_posD[YAW] = 35;
 
-	_clientSetController.call(_srvSetController);
+    _clientSetController.call(_srvSetController);
 
-	_flagResponseSetController = _srvSetController.response.platform_controlOk;
-	// _mutex.unlock();
+    _flagResponseSetController = _srvSetController.response.platform_controlOk;
+    // _mutex.unlock();
 }
 
 float frictionLogger::clamp(float x, float out_min, float out_max)

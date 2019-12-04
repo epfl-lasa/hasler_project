@@ -40,7 +40,7 @@ int main(int argc, char **argv)
     {
       
       try{
-        if (std::string(argv[3])!=" ") 
+        if (std::string(argv[3])!="") 
         {
           filename_= std::string(argv[3]);
         }
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
   ros::NodeHandle nh_;
 
-  float frequency = 170.0f;
+  float frequency = 173.0f;
   frictionLogger frictionLogger(nh_,frequency,platform_id_, axis_, filename_);  
 
   if (!frictionLogger.init()) 

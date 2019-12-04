@@ -102,8 +102,7 @@ bool footVarLogger::init() //! Initialization of the node. Its datatype (bool) r
 	//Subscriber definitions	
 	signal(SIGINT,footVarLogger::stopNode);
 
-	if (_filename != std::string("no_file") || _filename != "")
-	{
+	if(_filename != std::string("no_file")){
 		_outputFile.open(ros::package::getPath(std::string("foot_variables_log")) + "/data/" + _filename + ".txt");
 	}
 	if (_n.ok()) 
