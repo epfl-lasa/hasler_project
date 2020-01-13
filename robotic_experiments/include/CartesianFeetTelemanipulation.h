@@ -44,7 +44,7 @@ class CartesianFeetTelemanipulation
     // Robot ID, left or right
 		enum ROBOT {LEFT = 0, RIGHT = 1};
 
-		enum Strategy {PURE_TELEMANIPULATION = 0, AUTONOMOUS_LOAD_SUPPORT = 1};
+		enum Strategy {PURE_TELEMANIPULATION = 0, AUTONOMOUS_LOAD_SUPPORT = 1, SINGLE_FOOT_TELEMANIPULATION = 2};
 
 		enum Axis {X = 0, Y = 1, PITCH = 2, ROLL = 3, YAW = 4};
 
@@ -141,6 +141,7 @@ class CartesianFeetTelemanipulation
 		bool _wrenchBiasOK[NB_ROBOTS];							// Check if computation of force/torque sensor bias is OK
 		bool _stop;																	// Check for CTRL+C
 		bool _objectGrasped;												
+		bool _prevObjectGrasped;												
 		bool _firstFootInterfacePose[NB_ROBOTS];
 		bool _firstFootInterfaceWrench[NB_ROBOTS];
 		bool _firstFootOutput[NB_ROBOTS];
@@ -169,6 +170,14 @@ class CartesianFeetTelemanipulation
     float _normalForceAverage[NB_ROBOTS];
 		std::deque<float> _normalForceWindow[NB_ROBOTS];
 		static CartesianFeetTelemanipulation* me;
+
+		Eigen::Vector3f _xC;
+		Eigen::Vector3f _xCd;
+		Eigen::Vector3f _xD;
+		Eigen::Vector3f _xDd;
+		Eigen::Vector3f _xDd0;
+
+
 
 		// Dynamic reconfigure (server+callback)
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig> _dynRecServer;
@@ -200,6 +209,8 @@ class CartesianFeetTelemanipulation
     void pureTelemanipulation();
 
     void autonomousLoadSupport();
+
+    void singleFootTelemanipulation();
         
     void footDataTransformation();
 

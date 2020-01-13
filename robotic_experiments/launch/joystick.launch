@@ -2,15 +2,15 @@
 
 	<node respawn="true" pkg="joy"
         type="joy_node" name="joy_input_left" >
-    <param name="dev" type="string" value="/dev/input/js1" />
+    <param name="dev" type="string" value="/dev/input/js0" />
     <param name="deadzone" value="0.12" />
     <remap from="joy" to="left/joy" />
     </node>
 
-	<node respawn="true" pkg="joy"
+<!-- 	<node respawn="true" pkg="joy"
         type="joy_node" name="joy_input_right" >
-    <param name="dev" type="string" value="/dev/input/js3" />
+    <param name="dev" type="string" value="/dev/input/js1" />
     <param name="deadzone" value="0.12" />
     <remap from="joy" to="right/joy" />
-    </node>
+    </node> -->
 </launch>

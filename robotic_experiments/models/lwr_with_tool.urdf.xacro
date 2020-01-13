@@ -10,7 +10,7 @@
   <xacro:arg name="addFrame" default="0"/>
   <xacro:arg name="addCamera" default="0"/>
   <xacro:property name="toolMass" value="0.1"/>
-  <xacro:property name="toolLength" value="0.433"/>
+  <xacro:property name="toolLength" value="0.13"/>
   <xacro:property name="toolRadius" value="0.005"/>
 
   <link name="world"/>

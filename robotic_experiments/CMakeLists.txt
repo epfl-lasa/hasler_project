@@ -45,6 +45,12 @@ add_executable(cartesian_feet_telemanipulation src/cartesianFeetTelemanipulation
 target_link_libraries(cartesian_feet_telemanipulation ${catkin_LIBRARIES})
 add_dependencies(cartesian_feet_telemanipulation ${PROJECT_NAME}_gencpp)
 
+
+add_executable(shared_four_arm_manipulation src/sharedFourArmManipulation_node.cpp src/SharedFourArmManipulation.cpp src/FootPlatformModel.cpp)
+target_link_libraries(shared_four_arm_manipulation ${catkin_LIBRARIES})
+add_dependencies(shared_four_arm_manipulation ${PROJECT_NAME}_gencpp)
+
+
 add_executable(trocar_feet_telemanipulation src/trocarFeetTelemanipulation_node.cpp src/TrocarFeetTelemanipulation.cpp)
 target_link_libraries(trocar_feet_telemanipulation ${catkin_LIBRARIES})
 add_dependencies(trocar_feet_telemanipulation ${PROJECT_NAME}_gencpp)

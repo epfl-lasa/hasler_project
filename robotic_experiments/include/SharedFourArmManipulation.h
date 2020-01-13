@@ -1,5 +1,5 @@
-#ifndef __TROCAR_FEET_TELEMANIPULATION_H__
-#define __TROCAR_FEET_TELEMANIPULATION_H__
+#ifndef __SHARED_FOUR_ARM_MANIPULATION_H__
+#define __SHARED_FOUR_ARM_MANIPULATION_H__
 
 #include <signal.h>
 #include <mutex>
@@ -25,38 +25,39 @@
 #include "custom_msgs/FootInputMsg_v2.h"
 #include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
-#include "sensor_msgs/Joy.h"
-#include "sensor_msgs/JointState.h"
 
 #define NB_ROBOTS 2
 #define NB_SAMPLES 50
 #define FOOT_INTERFACE_X_RANGE 0.195
 #define FOOT_INTERFACE_Y_RANGE 0.180
+#define FOOT_INTERFACE_Z_RANGE 0.2
+
 #define FOOT_INTERFACE_PITCH_RANGE 48.0
 #define FOOT_INTERFACE_ROLL_RANGE 40.0
 #define FOOT_INTERFACE_YAW_RANGE 40.0
 #define WINDOW_SIZE 10
-#define NB_TROCARS 3
+#define SAFETY_Z 0.18f
+#define XD_MIN_NORM 0.05f
+#define XD_MAX_NORM 0.5f
 
 
-
-
-
-
-
-class TrocarFeetTelemanipulation 
+class SharedFourArmManipulation 
 {
 	public:
     // Robot ID, left or right
 		enum ROBOT {LEFT = 0, RIGHT = 1};
 
-		enum Mode {TROCAR_SELECTION = 0, TROCAR_INSERTION = 1, TROCAR_SPACE = 2};
+		enum CoordinationMode {NO_COORDINATION = 0, STRICTLY_COORDINATED = 1, AUTOMATIC = 2};
+
+		enum ControlStrategy {SINGLE_FOOT_SINGLE_ARM = 0, SINGLE_FOOT_DUAL_ARM = 1};
+
+		enum HapticFeedbackStrategy {NO_FEEDBACK = 0, MEASURED_FORCE = 1, MEASURED_ERROR = 2};
 
 		enum Axis {X = 0, Y = 1, PITCH = 2, ROLL = 3, YAW = 4};
 
 	private:
 		// ROS variables
-		ros::NodeHandle _n;
+		ros::NodeHandle _nh;
 		ros::Rate _loopRate;
 		float _dt;
 
@@ -68,19 +69,15 @@ class TrocarFeetTelemanipulation
 		ros::Subscriber _subFootInterfacePose[NB_ROBOTS];
 		ros::Subscriber _subFootInterfaceWrench[NB_ROBOTS];
 		ros::Subscriber _subFootOutput[NB_ROBOTS];
-		ros::Subscriber _subJoystick[NB_ROBOTS];
-		ros::Subscriber _subCurrentJoints[NB_ROBOTS];
 
 		// Publisher declaration
 		ros::Publisher _pubDesiredTwist[NB_ROBOTS];						// Desired twist to DS-impdedance controller
 		ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  		// Desired orientation to DS-impedance controller
 		ros::Publisher _pubFilteredWrench[NB_ROBOTS];					// Filtered measured wrench
 		ros::Publisher _pubNormalForce[NB_ROBOTS];							// Measured normal force
-  	ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];                          // Marker (RVIZ) 
-  	ros::Publisher _pubFootInput[NB_ROBOTS];                          // Marker (RVIZ) 
-  	ros::Publisher _pubDesiredWrench[NB_ROBOTS];                          // Marker (RVIZ) 
-		ros::Publisher _pubNullspaceCommand[NB_ROBOTS];                          // Marker (RVIZ) 
-
+    ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];                          // Marker (RVIZ) 
+    ros::Publisher _pubFootInput[NB_ROBOTS];                          // Marker (RVIZ) 
+		
 		// Messages declaration
 		geometry_msgs::Pose _msgRealPose;
 		geometry_msgs::Pose _msgDesiredPose;
@@ -89,7 +86,6 @@ class TrocarFeetTelemanipulation
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
 		custom_msgs::FootInputMsg_v2 _msgFootInput;
-		std_msgs::Float32MultiArray _msgNullspaceCommand;		
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
@@ -99,7 +95,6 @@ class TrocarFeetTelemanipulation
 
 		// Tool state variables
 		Eigen::Vector3f _x[NB_ROBOTS];													// Position [m] (3x1)
-		Eigen::Vector3f _xEE[NB_ROBOTS];													// Position [m] (3x1)
 		Eigen::Vector3f _x0[NB_ROBOTS];													// Position [m] (3x1)
 		Eigen::Vector4f _q[NB_ROBOTS];													// Quaternion (4x1)
 		Eigen::Matrix3f _wRb[NB_ROBOTS];												// Orientation matrix (3x1) (form end effector to world frame)
@@ -110,7 +105,6 @@ class TrocarFeetTelemanipulation
 		Eigen::Matrix<float,6,1> _filteredWrench[NB_ROBOTS];		// Filtered wrench [N and Nm] (6x1)
     float _normalForce[NB_ROBOTS];													// Normal force to the surface [N]
     Eigen::Vector3f _leftRobotOrigin;
-    Eigen::Vector3f _xTrocar[NB_ROBOTS];
 
 		// Tool control variables
 		Eigen::Vector3f _xd[NB_ROBOTS];				// Desired position [m] (3x1)
@@ -120,6 +114,7 @@ class TrocarFeetTelemanipulation
 		Eigen::Vector3f _vd[NB_ROBOTS];				// Desired modulated velocity [m/s] (3x1)
 		float _targetForce;										// Target force in contact [N]
 		float _Fd[NB_ROBOTS];									// Desired force profile
+		float _Fdh[NB_ROBOTS];									// Desired force profile
 		float _graspingForceThreshold;
 
     // Foot interface variables
@@ -128,17 +123,24 @@ class TrocarFeetTelemanipulation
     Eigen::Matrix<float,5,1> _footWrench[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
 		Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];		// Filtered wrench [N and Nm] (6x1)
+		Eigen::Matrix<float,5,1> _footOffset;
     uint32_t _footInterfaceSequenceID[NB_ROBOTS];
     int _footState[NB_ROBOTS];
     float _xyPositionMapping;
     float _zPositionMapping;
+    float _rollGain;
+    float _yawGain;
     Eigen::Vector3f _vdFoot[NB_ROBOTS];
     Eigen::Vector3f _xdFoot[NB_ROBOTS];
     Eigen::Vector3f _FdFoot[NB_ROBOTS];
+    Eigen::Vector3f _footTipPosition[NB_ROBOTS];
+    Eigen::Matrix3f _footTipOrientation[NB_ROBOTS];
+    Eigen::Vector3f _xdFootTip[NB_ROBOTS];
+
+    Eigen::Matrix4f _H0;
 
     // Booleans
-    bool _useLeftRobot;
-    bool _useRightRobot;
+    bool _useRobot[NB_ROBOTS];
 		bool _firstRobotPose[NB_ROBOTS];						// Monitor the first robot pose update
 		bool _firstRobotTwist[NB_ROBOTS];						// Monitor the first robot twist update
 		bool _firstWrenchReceived[NB_ROBOTS];				// Monitor first force/torque data update
@@ -146,13 +148,14 @@ class TrocarFeetTelemanipulation
 		bool _wrenchBiasOK[NB_ROBOTS];							// Check if computation of force/torque sensor bias is OK
 		bool _stop;																	// Check for CTRL+C
 		bool _objectGrasped;												
+		bool _prevObjectGrasped;												
 		bool _firstFootInterfacePose[NB_ROBOTS];
 		bool _firstFootInterfaceWrench[NB_ROBOTS];
 		bool _firstFootOutput[NB_ROBOTS];
-		bool _firstJoystick[NB_ROBOTS];
-		bool _sim;
-		bool _useJoystick;
-		bool _firstJointsUpdate[NB_ROBOTS];		
+		bool _useSim;
+		bool _waitForFoot[NB_ROBOTS];
+		bool _autonomousForceGeneration;
+
 		
 		// User variables
 		float _velocityLimit;				// Velocity limit [m/s]
@@ -173,35 +176,21 @@ class TrocarFeetTelemanipulation
 		std::ifstream _inputFile;
 		std::ofstream _outputFile;
 		std::mutex _mutex;
-		Mode _mode[NB_ROBOTS];
+		CoordinationMode _coordinationMode;
+		ControlStrategy _controlStrategy;
+		ControlStrategy _prevControlStrategy;
+		HapticFeedbackStrategy _hapticFeedbackStrategy;
     float _normalForceAverage[NB_ROBOTS];
 		std::deque<float> _normalForceWindow[NB_ROBOTS];
+		static SharedFourArmManipulation* me;
 
-		Eigen::Matrix<float,6,1> _nullspaceWrench[NB_ROBOTS];
-		static TrocarFeetTelemanipulation* me;
+		Eigen::Vector3f _xC;
+		Eigen::Vector3f _xCd;
+		Eigen::Vector3f _xD;
+		Eigen::Vector3f _xDd;
+		Eigen::Vector3f _xDd0;
 
 
-		std::vector<Eigen::Vector3f> _trocarPosition[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _trocarOrientation[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _rEETrocar[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _rToolTrocar[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _rEERCM[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _xRCM[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _xdEE[NB_ROBOTS];
-		std::vector<Eigen::Vector3f> _fxk[NB_ROBOTS];
-		Eigen::VectorXf _beliefs[NB_ROBOTS];
-		Eigen::VectorXf _dbeliefs[NB_ROBOTS];
-		Eigen::Matrix<float,7,1> _nullspaceCommand[NB_ROBOTS];
-		Eigen::Matrix<float,7,1> _currentJoints[NB_ROBOTS];
-		Eigen::Vector3f _sphereCenter;
-
-		float _adaptationRate;
-		bool _alignedWithTrocar[NB_ROBOTS];
-		int _nbTrocar[NB_ROBOTS];
-
-		Eigen::Matrix3f _wRb0[NB_ROBOTS];
-		Eigen::Vector3f _xd0[NB_ROBOTS];
-		Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
 		// Dynamic reconfigure (server+callback)
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig> _dynRecServer;
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig>::CallbackType _dynRecCallback;
@@ -209,7 +198,7 @@ class TrocarFeetTelemanipulation
 	public:
 
 		// Class constructor
-		TrocarFeetTelemanipulation(ros::NodeHandle &n, double frequency, std::string filename);
+		SharedFourArmManipulation(ros::NodeHandle &n, double frequency, std::string filename);
 
 		// Initialize node
 		bool init();
@@ -228,33 +217,27 @@ class TrocarFeetTelemanipulation
     void computeCommand();
     
     void updateObjectGraspingState();
-
-    void trackTarget();
-
-    void alignWithTrocar();
-
-    void updateTrocarInformation();
-
-    void selectMode();
-
-    void trocarSelection(int r);
-
-    void trocarAdaptation(int r);
-
-    void trocarInsertion(int r);
-
-    void trocarSpace(int r);
         
     void footDataTransformation();
 
-    void positionVelocityMapping();
+    void footPositionMapping();
 
-    void positionPositionMapping();
+    void updateControlStrategy();
+
+    void singleFootSingleArmControl();
+
+    void autonomousLoadSupport();
+
+    void singleFootDualArmControl();
+
+    void computeHapticFeedback();
 
   	void computeDesiredFootWrench();
 
 		// Compute desired orientation
 		void computeDesiredOrientation();
+
+
     
   	// Log data to text file
     void logData();
@@ -277,15 +260,8 @@ class TrocarFeetTelemanipulation
     // Callback to update data from foot interface
 		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
 
-		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy, int k);
-
-		void updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& msg, int k); 
-
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);
-
-    Eigen::MatrixXf pseudoInverse(const Eigen::MatrixXf &M_, bool damped = true);
-
 };
 
 
