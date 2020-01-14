@@ -189,7 +189,11 @@ class SharedFourArmManipulation
 		Eigen::Vector3f _xD;
 		Eigen::Vector3f _xDd;
 		Eigen::Vector3f _xDd0;
-
+		Eigen::Vector3f _vCd;
+		Eigen::Vector3f _vDd;
+		float _omegaH[NB_ROBOTS];
+		float _vH;
+		uint8_t _dominantFoot;
 
 		// Dynamic reconfigure (server+callback)
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig> _dynRecServer;
@@ -221,6 +225,8 @@ class SharedFourArmManipulation
     void footDataTransformation();
 
     void footPositionMapping();
+
+    void footOutputTransformation();
 
     void updateControlStrategy();
 
