@@ -152,7 +152,8 @@ class TrocarFeetTelemanipulation
 		bool _firstJoystick[NB_ROBOTS];
 		bool _sim;
 		bool _useJoystick;
-		bool _firstJointsUpdate[NB_ROBOTS];		
+		bool _firstJointsUpdate[NB_ROBOTS];	
+		bool _inputAlignedWithOrigin[NB_ROBOTS];	
 		
 		// User variables
 		float _velocityLimit;				// Velocity limit [m/s]

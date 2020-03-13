@@ -1,5 +1,5 @@
-#ifndef __SHARED_FOUR_ARM_MANIPULATION_H__
-#define __SHARED_FOUR_ARM_MANIPULATION_H__
+#ifndef __KUKA_DEMO_H__
+#define __KUKA_DEMO_H__
 
 #include <signal.h>
 #include <mutex>
@@ -25,33 +25,31 @@
 #include "custom_msgs/FootInputMsg_v2.h"
 #include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
+#include "sensor_msgs/Joy.h"
+#include "sensor_msgs/JointState.h"
+#include <termios.h>
+
 
 #define NB_ROBOTS 2
 #define NB_SAMPLES 50
 #define FOOT_INTERFACE_X_RANGE 0.195
 #define FOOT_INTERFACE_Y_RANGE 0.180
-#define FOOT_INTERFACE_Z_RANGE 0.2
-
 #define FOOT_INTERFACE_PITCH_RANGE 48.0
 #define FOOT_INTERFACE_ROLL_RANGE 40.0
 #define FOOT_INTERFACE_YAW_RANGE 40.0
 #define WINDOW_SIZE 10
-#define SAFETY_Z 0.15f
-#define XD_MIN_NORM 0.05f
-#define XD_MAX_NORM 0.5f
+#define NB_TROCARS 3
+#define MAX_ORIENTATION_ERROR 0.2
 
-
-class SharedFourArmManipulation 
+class KukaDemo 
 {
 	public:
     // Robot ID, left or right
 		enum ROBOT {LEFT = 0, RIGHT = 1};
 
-		enum CoordinationMode {NO_COORDINATION = 0, STRICTLY_COORDINATED = 1, AUTOMATIC = 2};
+		enum RobotMode {TROCAR_SELECTION = 0, TROCAR_INSERTION = 1, TROCAR_SPACE = 2};
 
-		enum ControlStrategy {SINGLE_FOOT_SINGLE_ARM = 0, SINGLE_FOOT_DUAL_ARM = 1};
-
-		enum HapticFeedbackStrategy {NO_FEEDBACK = 0, MEASURED_FORCE = 1, MEASURED_ERROR = 2};
+		enum FootMode {VELOCITY = 0, POSITION = 1};
 
 		enum Axis {X = 0, Y = 1, PITCH = 2, ROLL = 3, YAW = 4};
 
@@ -69,15 +67,18 @@ class SharedFourArmManipulation
 		ros::Subscriber _subFootInterfacePose[NB_ROBOTS];
 		ros::Subscriber _subFootInterfaceWrench[NB_ROBOTS];
 		ros::Subscriber _subFootOutput[NB_ROBOTS];
+		ros::Subscriber _subJoystick[NB_ROBOTS];
+		ros::Subscriber _subCurrentJoints[NB_ROBOTS];
 
 		// Publisher declaration
 		ros::Publisher _pubDesiredTwist[NB_ROBOTS];						// Desired twist to DS-impdedance controller
 		ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  		// Desired orientation to DS-impedance controller
 		ros::Publisher _pubFilteredWrench[NB_ROBOTS];					// Filtered measured wrench
-		ros::Publisher _pubNormalForce[NB_ROBOTS];							// Measured normal force
-    ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];                          // Marker (RVIZ) 
-    ros::Publisher _pubFootInput[NB_ROBOTS];                          // Marker (RVIZ) 
-		
+  	ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];                          // Marker (RVIZ) 
+  	ros::Publisher _pubFootInput[NB_ROBOTS];                          // Marker (RVIZ) 
+  	ros::Publisher _pubDesiredWrench[NB_ROBOTS];                          // Marker (RVIZ) 
+		ros::Publisher _pubNullspaceCommand[NB_ROBOTS];                          // Marker (RVIZ) 
+
 		// Messages declaration
 		geometry_msgs::Pose _msgRealPose;
 		geometry_msgs::Pose _msgDesiredPose;
@@ -86,6 +87,7 @@ class SharedFourArmManipulation
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
 		custom_msgs::FootInputMsg_v2 _msgFootInput;
+		std_msgs::Float32MultiArray _msgNullspaceCommand;		
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
@@ -95,6 +97,7 @@ class SharedFourArmManipulation
 
 		// Tool state variables
 		Eigen::Vector3f _x[NB_ROBOTS];													// Position [m] (3x1)
+		Eigen::Vector3f _xEE[NB_ROBOTS];												// Position [m] (3x1)
 		Eigen::Vector3f _x0[NB_ROBOTS];													// Position [m] (3x1)
 		Eigen::Vector4f _q[NB_ROBOTS];													// Quaternion (4x1)
 		Eigen::Matrix3f _wRb[NB_ROBOTS];												// Orientation matrix (3x1) (form end effector to world frame)
@@ -103,7 +106,6 @@ class SharedFourArmManipulation
 		Eigen::Matrix<float,6,1> _wrench[NB_ROBOTS];						// Wrench [N and Nm] (6x1)
 		Eigen::Matrix<float,6,1> _wrenchBias[NB_ROBOTS];				// Wrench bias [N and Nm] (6x1)
 		Eigen::Matrix<float,6,1> _filteredWrench[NB_ROBOTS];		// Filtered wrench [N and Nm] (6x1)
-    float _normalForce[NB_ROBOTS];													// Normal force to the surface [N]
     Eigen::Vector3f _leftRobotOrigin;
 
 		// Tool control variables
@@ -111,13 +113,9 @@ class SharedFourArmManipulation
 		Eigen::Vector4f _qd[NB_ROBOTS];				// Desired quaternion (4x1)
 		Eigen::Vector3f _omegad[NB_ROBOTS];		// Desired angular velocity [rad/s] (3x1)
 		Eigen::Vector3f _fx[NB_ROBOTS];				// Desired Nominal velociy [m/s] (3x1)
-		Eigen::Vector3f _vr[NB_ROBOTS];				// Desired Nominal velociy [m/s] (3x1)
-		Eigen::Vector3f _vF[NB_ROBOTS];				// Desired Nominal velociy [m/s] (3x1)
-		Eigen::Vector3f _vh[NB_ROBOTS];				// Desired Nominal velociy [m/s] (3x1)
 		Eigen::Vector3f _vd[NB_ROBOTS];				// Desired modulated velocity [m/s] (3x1)
 		float _targetForce;										// Target force in contact [N]
 		float _Fd[NB_ROBOTS];									// Desired force profile
-		float _Fdh[NB_ROBOTS];									// Desired force profile
 		float _graspingForceThreshold;
 
     // Foot interface variables
@@ -126,68 +124,31 @@ class SharedFourArmManipulation
     Eigen::Matrix<float,5,1> _footWrench[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
 		Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];		// Filtered wrench [N and Nm] (6x1)
-		Eigen::Matrix<float,5,1> _footOffset;
     uint32_t _footInterfaceSequenceID[NB_ROBOTS];
     int _footState[NB_ROBOTS];
     float _xyPositionMapping;
     float _zPositionMapping;
-    float _rollGain;
-    float _yawGain;
     Eigen::Vector3f _vdFoot[NB_ROBOTS];
     Eigen::Vector3f _xdFoot[NB_ROBOTS];
     Eigen::Vector3f _FdFoot[NB_ROBOTS];
-    Eigen::Vector3f _footTipPosition[NB_ROBOTS];
-    Eigen::Matrix3f _footTipOrientation[NB_ROBOTS];
-    Eigen::Vector3f _xdFootTip[NB_ROBOTS];
-    Eigen::Vector3f _n[NB_ROBOTS];
-
-    Eigen::Matrix4f _H0;
-
-
-    // Passivity variables
-    float _sR[NB_ROBOTS];				// Current tank level
-		float _smax;		            // Max tank level
-		float _alphaR[NB_ROBOTS];		// Scalar variable controlling the dissipated energy flow
-		float _betar[NB_ROBOTS];		// Scalar variable controlling the energy flow due to the non-conservative part of the nominal DS
-		float _betaF[NB_ROBOTS];		// Scalar variable controlling the energy flow due to the non-conservative part of the nominal DS
-		float _betah[NB_ROBOTS];		// Scalar variable controlling the energy flow due to the non-conservative part of the nominal DS
-		float _betarp[NB_ROBOTS];	  // Scalar variable correcting the non-conservative part of the nominal DS to ensure passivity
-		float _betaFp[NB_ROBOTS];   // Scalar variable controlling the energy flow due to the modulation term along the normal direction to the surface
-		float _betahp[NB_ROBOTS];   // Scalar variable correcting the modulation term along the normal direction to the surface to ensure passivity
-		float _pRr[NB_ROBOTS];			// Power due to the non-conservative part of the nominal DS
-		float _pRF[NB_ROBOTS];			// Power due to the modulation term along the normal direction to the surface
-		float _pRh[NB_ROBOTS];			// Dissipated power
-		float _pRd[NB_ROBOTS];			// Dissipated power
-		float _pRin[NB_ROBOTS];			// Dissipated power
-		float _pRout[NB_ROBOTS];		// Dissipated power
-    float _sM[NB_ROBOTS];				// Current tank level
-		float _alphaM[NB_ROBOTS];		// Scalar variable controlling the dissipated energy flow
-		float _gammaF[NB_ROBOTS];		// Scalar variable controlling the energy flow due to the non-conservative part of the nominal DS
-		float _gammaFp[NB_ROBOTS];	// Scalar variable controlling the energy flow due to the non-conservative part of the nominal DS
-		float _pMF[NB_ROBOTS];			// Dissipated power
-		float _pMd[NB_ROBOTS];			// Dissipated power
-		float _pMin[NB_ROBOTS];			// Robot's power flow
-		float _pMout[NB_ROBOTS];		// Dissipated power
-		float _dW[NB_ROBOTS];			// Robot's power flow
 
     // Booleans
+		bool _stop;																	// Check for CTRL+C
     bool _useRobot[NB_ROBOTS];
+		bool _useSim;
+		bool _useJoystick;
+		bool _useCustomTrocars;
+		bool _useSphericalTrocars;
+		bool _trocarsRegistered[NB_ROBOTS];
 		bool _firstRobotPose[NB_ROBOTS];						// Monitor the first robot pose update
 		bool _firstRobotTwist[NB_ROBOTS];						// Monitor the first robot twist update
 		bool _firstWrenchReceived[NB_ROBOTS];				// Monitor first force/torque data update
-		bool _firstDampingMatrix[NB_ROBOTS];				// Monitor first damping matrix update
 		bool _wrenchBiasOK[NB_ROBOTS];							// Check if computation of force/torque sensor bias is OK
-		bool _stop;																	// Check for CTRL+C
-		bool _objectGrasped;												
-		bool _prevObjectGrasped;												
-		bool _firstFootInterfacePose[NB_ROBOTS];
-		bool _firstFootInterfaceWrench[NB_ROBOTS];
+		bool _firstDampingMatrix[NB_ROBOTS];				// Monitor first damping matrix update
 		bool _firstFootOutput[NB_ROBOTS];
-		bool _useSim;
-		bool _waitForFoot[NB_ROBOTS];
-		bool _autonomousForceGeneration;
-		bool _useIndividualControlModeOnly;
-
+		bool _firstJoystick[NB_ROBOTS];
+		bool _firstJointsUpdate[NB_ROBOTS];		
+		bool _inputAlignedWithOrigin[NB_ROBOTS];
 		
 		// User variables
 		float _velocityLimit;				// Velocity limit [m/s]
@@ -196,38 +157,50 @@ class SharedFourArmManipulation
 		float _dxy;		
 		float _kphi;		
 		float _dphi;		
-		float _hapticGain;
 		bool _useSharedControl;
 
 		// Other variables
-    double _timeInit;
 		int _wrenchCount[NB_ROBOTS];
 		Eigen::Matrix3f _D[NB_ROBOTS];
 		float _d1[NB_ROBOTS];
 		uint32_t _sequenceID;
 		std::string _filename;
-		std::ifstream _inputFile;
 		std::ofstream _outputFile;
 		std::mutex _mutex;
-		CoordinationMode _coordinationMode;
-		ControlStrategy _controlStrategy;
-		ControlStrategy _prevControlStrategy;
-		HapticFeedbackStrategy _hapticFeedbackStrategy;
+		RobotMode _robotMode[NB_ROBOTS];
+		FootMode _footMode[NB_ROBOTS];
     float _normalForceAverage[NB_ROBOTS];
 		std::deque<float> _normalForceWindow[NB_ROBOTS];
-		static SharedFourArmManipulation* me;
 
-		Eigen::Vector3f _xC;
-		Eigen::Vector3f _xCd;
-		Eigen::Vector3f _xD;
-		Eigen::Vector3f _xDd;
-		Eigen::Vector3f _xDd0;
-		Eigen::Vector3f _vCd;
-		Eigen::Vector3f _vDd;
-		float _omegaH[NB_ROBOTS];
-		float _vH;
-		uint8_t _dominantFoot;
+		Eigen::Matrix<float,6,1> _nullspaceWrench[NB_ROBOTS];
+		static KukaDemo* me;
 
+
+		std::vector<Eigen::Vector3f> _trocarPosition[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _trocarOrientation[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _rEETrocar[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _rEERCM[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _xRCM[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _xdEE[NB_ROBOTS];
+		std::vector<Eigen::Vector3f> _fxk[NB_ROBOTS];
+		Eigen::VectorXf _beliefs[NB_ROBOTS];
+		Eigen::VectorXf _dbeliefs[NB_ROBOTS];
+		Eigen::Matrix<float,7,1> _nullspaceCommand[NB_ROBOTS];
+		Eigen::Matrix<float,7,1> _currentJoints[NB_ROBOTS];
+		Eigen::Vector3f _sphereCenter;
+
+		float _adaptationRate;
+		bool _alignedWithTrocar[NB_ROBOTS];
+		int _nbTrocar[NB_ROBOTS];
+
+		Eigen::Matrix3f _wRb0[NB_ROBOTS];
+		Eigen::Vector3f _xd0[NB_ROBOTS];
+		Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
+
+		Eigen::Vector3f _desiredOffset[NB_ROBOTS];
+		Eigen::Vector3f _vdToolPast[NB_ROBOTS];
+		Eigen::Vector3f _vdToolFiltPast[NB_ROBOTS];
+	float _joyOffsetPitch;
 		// Dynamic reconfigure (server+callback)
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig> _dynRecServer;
 		dynamic_reconfigure::Server<robotic_experiments::feetTelemanipulation_paramsConfig>::CallbackType _dynRecCallback;
@@ -235,7 +208,7 @@ class SharedFourArmManipulation
 	public:
 
 		// Class constructor
-		SharedFourArmManipulation(ros::NodeHandle &n, double frequency, std::string filename);
+		KukaDemo(ros::NodeHandle &n, double frequency, std::string filename);
 
 		// Initialize node
 		bool init();
@@ -253,29 +226,21 @@ class SharedFourArmManipulation
 		// Compute command to be sent to the DS-impedance controller
     void computeCommand();
     
-    void updateObjectGraspingState();
+    void updateTrocarInformation(int r);
+
+    void selectRobotMode(int r);
+
+    void trocarSelection(int r);
+
+    void trocarAdaptation(int r);
+
+    void trocarInsertion(int r);
+
+    void trocarSpace(int r);
         
     void footDataTransformation();
 
-    void footPositionMapping();
-
-    void footOutputTransformation();
-
-    void updateControlStrategy();
-
-    void singleFootSingleArmControl();
-
-    void autonomousLoadSupport();
-
-    void singleFootDualArmControl();
-
-    void computeHapticFeedback();
-
   	void computeDesiredFootWrench();
-
-		// Compute desired orientation
-		void computeDesiredOrientation();
-
     
   	// Log data to text file
     void logData();
@@ -298,11 +263,16 @@ class SharedFourArmManipulation
     // Callback to update data from foot interface
 		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
 
+		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy, int k);
+
+		void updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& msg, int k); 
+
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);
-		
-		void updateTankScalars();
-		void computePassiveCommands();
+
+    void initializeCustomTrocars();
+
+    void registerTrocars();
 };
 
 

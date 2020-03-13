@@ -22,7 +22,9 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   // _toolOffsetFromEE[LEFT] = 0.41f;
   // _toolOffsetFromEE[RIGHT] = 0.43f;
   // _toolOffsetFromEE[LEFT] = 0.44f+0.015f;
-  _toolOffsetFromEE[LEFT] = 0.408f+0.015f;
+  // _toolOffsetFromEE[LEFT] = 0.408f+0.015f;
+  // _toolOffsetFromEE[RIGHT] = 0.43f+0.015f;
+  _toolOffsetFromEE[LEFT] = 0.423f+0.015f;
   _toolOffsetFromEE[RIGHT] = 0.43f+0.015f;
 
   _toolMass = 0.2f;
@@ -73,12 +75,14 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
     _nullspaceWrench[k].setConstant(0.0f);
     _alignedWithTrocar[k] = false;
     _nullspaceCommand[k].setConstant(0.0f);
+    _inputAlignedWithOrigin[k] = false;
 
   }
 
   _stop = false;
   // _leftRobotOrigin << 0.066f, 0.9f, 0.0f;
-  _leftRobotOrigin << 0.07f, 1.083f, 0.0f;
+  // _leftRobotOrigin << 0.07f, 1.083f, 0.0f;
+  _leftRobotOrigin << 0.0f, 1.04f, 0.0f;
   // _leftRobotOrigin.setConstant(0.0f);
   // _x0[LEFT](0) = _leftRobotOrigin(0)-0.60f;
   // _x0[LEFT](1) = _leftRobotOrigin(1)-0.35f;
@@ -193,18 +197,22 @@ TrocarFeetTelemanipulation::TrocarFeetTelemanipulation(ros::NodeHandle &n, doubl
   // }
   Eigen::Vector3f temp;
   // temp << -0.35, 0.46f, 0.14f;
-  temp << -0.3, -0.45f, 0.243; // with respect to left robot
+  // temp << -0.3, -0.45f, 0.243; // with respect to left robot
+  temp << -0.282, -0.435f, 0.689f-_toolOffsetFromEE[LEFT]; // with respect to left robot
   temp += _leftRobotOrigin;
   _trocarPosition[LEFT].push_back(temp);
   
-  temp << -0.202, 0.507f, 0.266; // with respect to left robot
+  // temp << -0.202, 0.507f, 0.266; // with respect to left robot
+  temp << -0.279, 0.482f, 0.708f-_toolOffsetFromEE[RIGHT]; // with respect to left robot
   _trocarPosition[RIGHT].push_back(temp);
 
-  temp << 0.378f,-0.376f,-0.846f;
+  // temp << 0.378f,-0.376f,-0.846f;
+  temp << 0.285f,-0.499f,-0.818f;
   temp.normalize();
   _trocarOrientation[LEFT].push_back(temp);
   
-  temp << 0.104f,0.259f,-0.960f;
+  // temp << 0.104f,0.259f,-0.960f;
+  temp << 0.134f,0.167f,-0.977f;
   temp.normalize();
   _trocarOrientation[RIGHT].push_back(temp);
   // temp << -0.46, 0.54, 0.14;
@@ -520,7 +528,8 @@ void TrocarFeetTelemanipulation::updateTrocarInformation()
     {
       if((Utils<float>::orthogonalProjector(_rEETrocar[r][indexMax].normalized())*_filteredWrench[r].segment(0,3)).norm() > 30.0f)
       {
-        ROS_INFO("TROCAR UPDATE");
+        // ROS_INFO("TROCAR UPDATE");
+        std::cerr << "TROCAR UPDATE" << std::endl;
         _trocarPosition[r][indexMax] = _x[r];
       }
     }     
@@ -651,6 +660,16 @@ void TrocarFeetTelemanipulation::trocarSelection(int r)
   Utils<float>::quaternionToAxisAngle(qe,axis,angle);
 
   // Compute final quaternion on plane
+  _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
+
+  // Bound final quaternion
+  Eigen::Vector4f qinv;
+  qinv = _q[r];
+  qinv.segment(1,3) *=-1.0f;
+  qe = Utils<float>::quaternionProduct(_qd[r],qinv);
+  Utils<float>::quaternionToAxisAngle(qe,axis,angle);
+  std::cerr << "angle safety check: " << angle << std::endl;
+  qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angle,-0.2f,0.2f));
   _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
 
 
@@ -829,6 +848,12 @@ void TrocarFeetTelemanipulation::trocarInsertion(int r)
     // }
     // _vd[r] += -2.0f*0.1*Utils<float>::deadZone(_footPosition[r](2),-8,8)/FOOT_INTERFACE_PITCH_RANGE*(_rEETrocar[r][indexMax].normalized());
     // _vd[r] += 2.0f*0.15f*_footPosition[r](2)/FOOT_INTERFACE_Y_RANGE*(_rEETrocar[r][indexMax].normalized());
+    if(r==LEFT)
+    {
+      _vd[r] += 2.0f*0.15f*_footPosition[r](2)/FOOT_INTERFACE_Y_RANGE*_wRb[r].col(2);
+
+    }
+  
   }
   else
   {
@@ -849,6 +874,24 @@ void TrocarFeetTelemanipulation::trocarInsertion(int r)
   // Compute final quaternion on plane
   _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
 
+    if(_q[r].dot(_qd[r])<0)
+    {
+      _qd[r] *=-1.0f;
+    }
+
+  // Bound final quaternion
+  Eigen::Vector4f qinv;
+  qinv = _q[r];
+  qinv.segment(1,3) *=-1.0f;
+  qe = Utils<float>::quaternionProduct(_qd[r],qinv);
+  Utils<float>::quaternionToAxisAngle(qe,axis,angle);
+  qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angle,-0.2f,0.2f));
+  _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
+
+    if(_q[r].dot(_qd[r])<0)
+    {
+      _qd[r] *=-1.0f;
+    }
   _omegad[r] = Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r],5.0f);
 
   _nullspaceWrench[r].setConstant(0.0f);
@@ -856,6 +899,7 @@ void TrocarFeetTelemanipulation::trocarInsertion(int r)
 
   _wRb0[r] = _wRb[r];
   _xd0[r] = _x[r];
+  _inputAlignedWithOrigin[r] = false;
 }
 
 
@@ -907,19 +951,54 @@ void TrocarFeetTelemanipulation::trocarSpace(int r)
       gains << 2.0f/FOOT_INTERFACE_X_RANGE, 2.0f/FOOT_INTERFACE_Y_RANGE, 2.0f/FOOT_INTERFACE_PITCH_RANGE;
       temp  = gains.cwiseProduct(_footPosition[r]);
 
-      offset.setConstant(0.0f);
-      offset(2) = 0.25f*std::min(temp(2),0.0f);
-      if(std::fabs(offset(2))>0.03f)
+      // offset.setConstant(0.0f);
+      // offset(2) = 0.25f*std::min(temp(2),0.0f);
+      // if(std::fabs(offset(2))>0.03f)
+      // {
+      //   offset(1) = -offset(2)*std::tan(45.0f*M_PI/180.0f*std::min(std::max(temp(1),-1.0f),1.0f));
+      //   offset(0) = -offset(2)*std::tan(45.0f*M_PI/180.0f*std::min(std::max(temp(0),-1.0f),1.0f));        
+      //   xd = _xd0[r]+offset;
+      //   vdTool = 2.0f*(xd-_x[r]);
+      // }
+      // else
+      // {
+      //   vdTool.setConstant(0.0f);
+      // }
+
+      Eigen::Vector3f desiredOffset, currentOffset;
+      desiredOffset.setConstant(0.0f);
+      desiredOffset(2) = 0.25f*std::min(temp(2),0.0f);
+      desiredOffset(1) = -desiredOffset(2)*std::tan(45.0f*M_PI/180.0f*std::min(std::max(temp(1),-1.0f),1.0f));
+      desiredOffset(0) = -desiredOffset(2)*std::tan(45.0f*M_PI/180.0f*std::min(std::max(temp(0),-1.0f),1.0f));        
+      
+      currentOffset = _x[r]-_xd0[r];
+
+      if((desiredOffset-currentOffset).norm()<0.07f)
       {
-        offset(1) = -offset(2)*std::tan(45.0f*M_PI/180.0f*std::min(std::max(temp(1),-1.0f),1.0f));
-        offset(0) = -offset(2)*std::tan(45.0f*M_PI/180.0f*std::min(std::max(temp(0),-1.0f),1.0f));        
-        xd = _xd0[r]+offset;
-        vdTool = 2.0f*(xd-_x[r]);
+        _inputAlignedWithOrigin[r]=true;
+        // std::cerr << "bou: " << std::endl;
       }
-      else
+
+      if(_inputAlignedWithOrigin[r]==false)
       {
         vdTool.setConstant(0.0f);
       }
+      else
+      {
+        xd = _xd0[r]+desiredOffset;
+        vdTool = 2.0f*(xd-_x[r]);        
+      }
+
+      // if((desiredOffset-currentOffset).norm()>0.02f && _inputAlignedWithOrigin[r]==false)
+      // {
+      //   _inputAlignedWithOrigin[r] = true;
+      //   vdTool.setConstant(0.0f);
+      // }
+      // else
+      // {
+      //   xd = _xd0[r]+desiredOffset;
+      //   vdTool = 2.0f*(xd-_x[r]);
+      // }
 
 
       // if((_x[r]-_trocarPosition[r][indexMax]).norm()>0.04f)
@@ -934,7 +1013,11 @@ void TrocarFeetTelemanipulation::trocarSpace(int r)
         vdTool*=0.1f/vdTool.norm();
       }
 
-      std::cerr << r <<": offset: " << offset.transpose() << std::endl; 
+      std::cerr << r <<": Desired offset: " << desiredOffset.transpose() << std::endl; 
+      std::cerr << r <<": Current offset: " << currentOffset.transpose() << std::endl; 
+      std::cerr << r <<": a: " << (desiredOffset-currentOffset).norm() << ": " << (int) _inputAlignedWithOrigin[r] << std::endl; 
+
+      // std::cerr << r <<": offset: " << offset.transpose() << std::endl; 
       std::cerr << r <<": vd: " << vdTool.transpose() << std::endl; 
       std::cerr << r <<": xd: " << xd.transpose() << std::endl; 
       std::cerr << r <<": x: " << _x[r].transpose() << std::endl; 
@@ -1123,12 +1206,21 @@ void TrocarFeetTelemanipulation::trocarSpace(int r)
   qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r][indexMax]));
 
 
-  Eigen::Vector3f omega;  
+  Eigen::Vector3f axis;  
   float angle;
-  Utils<float>::quaternionToAxisAngle(qe,omega,angle);
+  Utils<float>::quaternionToAxisAngle(qe,axis,angle);
 
   std::cerr << "Angle error to trocar position: " << angle << std::endl;
   // // Compute final quaternion on plane
+  _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
+
+
+  Eigen::Vector4f qinv;
+  qinv = _q[r];
+  qinv.segment(1,3) *=-1.0f;
+  qe = Utils<float>::quaternionProduct(_qd[r],qinv);
+  Utils<float>::quaternionToAxisAngle(qe,axis,angle);
+  qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angle,-0.2f,0.2f));
   _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
 
   float selfRotationCommand;
@@ -1688,24 +1780,24 @@ void TrocarFeetTelemanipulation::computeDesiredFootWrench()
 {
   // temp.setConstant(0.0f);
   _desiredFootWrench[RIGHT].setConstant(0.0f);
-  _desiredFootWrench[RIGHT](1) = _FdFoot[RIGHT](0);
-  _desiredFootWrench[RIGHT](0) = -_FdFoot[RIGHT](1);
-  _desiredFootWrench[RIGHT](2) = _FdFoot[RIGHT](2)*0.2;
-  _desiredFootWrench[RIGHT](0) += -_kxy*_footPose[RIGHT](0)-_dxy*_footTwist[RIGHT](0);
-  _desiredFootWrench[RIGHT](1) += -_kxy*_footPose[RIGHT](1)-_dxy*_footTwist[RIGHT](1);
-  _desiredFootWrench[RIGHT](2) += -_kphi*_footPose[RIGHT](2)-_dphi*_footTwist[RIGHT](2);
-  _desiredFootWrench[RIGHT](3) += -_kphi*_footPose[RIGHT](3)-_dphi*_footTwist[RIGHT](3);
-  _desiredFootWrench[RIGHT](4) += -_kphi*_footPose[RIGHT](4)-_dphi*_footTwist[RIGHT](4);
+  // _desiredFootWrench[RIGHT](1) = _FdFoot[RIGHT](0);
+  // _desiredFootWrench[RIGHT](0) = -_FdFoot[RIGHT](1);
+  // _desiredFootWrench[RIGHT](2) = _FdFoot[RIGHT](2)*0.2;
+  // _desiredFootWrench[RIGHT](0) += -_kxy*_footPose[RIGHT](0)-_dxy*_footTwist[RIGHT](0);
+  // _desiredFootWrench[RIGHT](1) += -_kxy*_footPose[RIGHT](1)-_dxy*_footTwist[RIGHT](1);
+  // _desiredFootWrench[RIGHT](2) += -_kphi*_footPose[RIGHT](2)-_dphi*_footTwist[RIGHT](2);
+  // _desiredFootWrench[RIGHT](3) += -_kphi*_footPose[RIGHT](3)-_dphi*_footTwist[RIGHT](3);
+  // _desiredFootWrench[RIGHT](4) += -_kphi*_footPose[RIGHT](4)-_dphi*_footTwist[RIGHT](4);
 
   _desiredFootWrench[LEFT].setConstant(0.0f);
-  _desiredFootWrench[LEFT](1) = _FdFoot[LEFT](0);
-  _desiredFootWrench[LEFT](0) = -_FdFoot[LEFT](1);
-  _desiredFootWrench[LEFT](2) = _FdFoot[LEFT](2)*0.2;
-  _desiredFootWrench[LEFT](0) += -_kxy*_footPose[LEFT](0)-_dxy*_footTwist[LEFT](0);
-  _desiredFootWrench[LEFT](1) += -_kxy*_footPose[LEFT](1)-_dxy*_footTwist[LEFT](1);
-  _desiredFootWrench[LEFT](2) += -_kphi*_footPose[LEFT](2)-_dphi*_footTwist[LEFT](2);
-  _desiredFootWrench[LEFT](3) += -_kphi*_footPose[LEFT](3)-_dphi*_footTwist[LEFT](3);
-  _desiredFootWrench[LEFT](4) += -_kphi*_footPose[LEFT](4)-_dphi*_footTwist[LEFT](4);
+  // _desiredFootWrench[LEFT](1) = _FdFoot[LEFT](0);
+  // _desiredFootWrench[LEFT](0) = -_FdFoot[LEFT](1);
+  // _desiredFootWrench[LEFT](2) = _FdFoot[LEFT](2)*0.2;
+  // _desiredFootWrench[LEFT](0) += -_kxy*_footPose[LEFT](0)-_dxy*_footTwist[LEFT](0);
+  // _desiredFootWrench[LEFT](1) += -_kxy*_footPose[LEFT](1)-_dxy*_footTwist[LEFT](1);
+  // _desiredFootWrench[LEFT](2) += -_kphi*_footPose[LEFT](2)-_dphi*_footTwist[LEFT](2);
+  // _desiredFootWrench[LEFT](3) += -_kphi*_footPose[LEFT](3)-_dphi*_footTwist[LEFT](3);
+  // _desiredFootWrench[LEFT](4) += -_kphi*_footPose[LEFT](4)-_dphi*_footTwist[LEFT](4);
 }
 
 

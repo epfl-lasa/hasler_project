@@ -18,8 +18,10 @@ SharedFourArmManipulation::SharedFourArmManipulation(ros::NodeHandle &n, double 
 
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.02f;
-  _toolOffsetFromEE[LEFT] = 0.1315f;
-  _toolOffsetFromEE[RIGHT] = 0.1265f;
+  // _toolOffsetFromEE[LEFT] = 0.1315f;
+  // _toolOffsetFromEE[RIGHT] = 0.1265f;
+  _toolOffsetFromEE[LEFT] = 0.1023f+0.015f;
+  _toolOffsetFromEE[RIGHT] = 0.0906f+0.015f;
   _toolMass = 0.2f;
 
   for(int k = 0; k < NB_ROBOTS; k++)
@@ -67,23 +69,33 @@ SharedFourArmManipulation::SharedFourArmManipulation(ros::NodeHandle &n, double 
     _footTipPosition[k].setConstant(0.0f);
     _footTipOrientation[k].setIdentity();
     _xdFootTip[k].setConstant(0.0f);
+    _n[k].setConstant(0.0f);
 
   }
 
   _stop = false;
   // _leftRobotOrigin << 0.066f-0.095, 0.9f, 0.0f;
   _leftRobotOrigin << 0.0f, 0.9f, 0.0f;
-  _x0[LEFT](0) = _leftRobotOrigin(0)-0.50f;
-  _x0[LEFT](1) = _leftRobotOrigin(1)-0.35f;
-  _x0[LEFT](2) = _leftRobotOrigin(2)+0.3f;
-  _x0[RIGHT](0) = -0.434f;
-  _x0[RIGHT](1) = 0.4f;
-  _x0[RIGHT](2) = 0.3f;
+  // _x0[LEFT](0) = _leftRobotOrigin(0)-0.50f;
+  // _x0[LEFT](1) = _leftRobotOrigin(1)-0.35f;
+  // _x0[LEFT](2) = _leftRobotOrigin(2)+0.2f;
+  // _x0[RIGHT](0) = -0.434f;
+  // _x0[RIGHT](1) = 0.4f;
+  // _x0[RIGHT](2) = 0.2f;
 
-  _graspingForceThreshold = 4.0f;  // Grasping force threshold [N]
+
+  _x0[LEFT](0) = _leftRobotOrigin(0)-0.50f;
+  _x0[LEFT](1) = _leftRobotOrigin(1)-0.45f;
+  _x0[LEFT](2) = _leftRobotOrigin(2)+0.2f;
+  _x0[RIGHT](0) = -0.5f;
+  _x0[RIGHT](1) = 0.45f;
+  _x0[RIGHT](2) = 0.2f;
+
+
+  _graspingForceThreshold = 5.0f;  // Grasping force threshold [N]
   _objectGrasped = false;
   _prevObjectGrasped = false;
-  _targetForce = 25.0f;
+  _targetForce = 30.0f;
   
   _velocityLimit = 0.4f;
   _kxy = 0.0f;
@@ -104,9 +116,49 @@ SharedFourArmManipulation::SharedFourArmManipulation(ros::NodeHandle &n, double 
   _coordinationMode = AUTOMATIC;
   _controlStrategy = SINGLE_FOOT_SINGLE_ARM;
   _prevControlStrategy = _controlStrategy;
-  _hapticFeedbackStrategy = MEASURED_ERROR;
-  _autonomousForceGeneration = true;
+  _autonomousForceGeneration = false;
   _dominantFoot = RIGHT;
+  _useIndividualControlModeOnly = false;
+  _hapticGain = 1.0f;
+
+  if(!_autonomousForceGeneration)
+  {
+    _hapticFeedbackStrategy = MEASURED_FORCE;
+  }
+  else
+  {
+    _hapticFeedbackStrategy = MEASURED_ERROR;
+  }
+
+
+  _smax = 10.0f;                
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+
+    _sR[k] = _smax;       
+    _alphaR[k] = 0.0f;   
+    _betar[k] = 0.0f;    
+    _betaF[k] = 0.0f;    
+    _betah[k] = 0.0f;    
+    _betarp[k] = 0.0f;    
+    _betaFp[k] = 0.0f;   
+    _betahp[k] = 0.0f;   
+    _pRr[k] = 0.0f;      
+    _pRF[k] = 0.0f;      
+    _pRh[k] = 0.0f;      
+    _pRd[k] = 0.0f;      
+    _pRin[k] = 0.0f;     
+    _pRout[k] = 0.0f;    
+    _sM[k] = _smax;       
+    _alphaM[k] = 0.0f;   
+    _gammaF[k] = 0.0f;   
+    _gammaFp[k] = 0.0f;  
+    _pMF[k] = 0.0f;      
+    _pMd[k] = 0.0f;      
+    _pMin[k] = 0.0f;     
+    _pMout[k] = 0.0f;    
+    _dW[k] = 0.0f;      
+  }
 }
 
 
@@ -159,6 +211,12 @@ bool SharedFourArmManipulation::init()
   signal(SIGINT,SharedFourArmManipulation::stopNode);
 
   _outputFile.open(ros::package::getPath(std::string("robotic_experiments"))+"/data_foot/"+_filename+".txt");
+
+  if(!_outputFile.is_open())
+  {
+    ROS_ERROR("[SurfacePolishing]: Cannot open output data file, the data_foot directory might be missing");
+    return false;
+  }
 
   if(!_nh.getParamCached("/lwr/joint_controllers/ds_param/damping_eigval0",_d1[RIGHT]) && _useRobot[RIGHT] && !_useSim)
   {
@@ -214,13 +272,13 @@ void SharedFourArmManipulation::run()
       {
         _d1[RIGHT] = 100.0f;
       }
+
+      ros::param::getCached("/lwr2/joint_controllers/ds_param/damping_eigval0",_d1[LEFT]);
+
       if(_d1[LEFT] < FLT_EPSILON)
       {
         _d1[LEFT] = 100.0f;
       }
-
-      ros::param::getCached("/lwr2/joint_controllers/ds_param/damping_eigval0",_d1[LEFT]);
-
 
       // Compute control command
       computeCommand();
@@ -288,6 +346,10 @@ bool SharedFourArmManipulation::allDataReceived()
 
 void SharedFourArmManipulation::computeCommand()
 {
+
+
+  // std::cerr << "robot right x: " << _x[RIGHT].transpose() << std::endl;
+  // std::cerr << "robot left x: " << _x[LEFT].transpose() << std::endl;
   footOutputTransformation();
 
   if(!_useSim)
@@ -347,6 +409,10 @@ void SharedFourArmManipulation::computeCommand()
   {
     computeDesiredFootWrench();
   }
+
+  updateTankScalars();
+  
+  computePassiveCommands();
 }
 
 
@@ -419,7 +485,7 @@ void SharedFourArmManipulation::footOutputTransformation()
   G(0,0) = 2.0f*_xyPositionMapping/FOOT_INTERFACE_X_RANGE;      
   G(1,1) = 2.0f*_xyPositionMapping/FOOT_INTERFACE_Y_RANGE;      
   G(2,2) = 2.0f*_zPositionMapping/FOOT_INTERFACE_PITCH_RANGE;   
-  G(3,3) = 2.0f*1.0f/FOOT_INTERFACE_ROLL_RANGE;                 
+  G(3,3) = 2.0f*1.5f/FOOT_INTERFACE_ROLL_RANGE;                 
   G(4,4) = 2.0f*0.2f/FOOT_INTERFACE_YAW_RANGE;
 
   if(_controlStrategy == SINGLE_FOOT_SINGLE_ARM)
@@ -437,7 +503,7 @@ void SharedFourArmManipulation::footOutputTransformation()
     for(int k = 0; k < NB_ROBOTS; k++)
     {
       psi = _footPose[k];
-      psi(ROLL) = Utils<float>::deadZone(psi(ROLL),-7.0f,7.0f);
+      psi(ROLL) = Utils<float>::deadZone(psi(ROLL),-5.0f,5.0f);
       temp = GammaP*psi;
       _xdFoot[k] = temp.segment(0,3);
       if(_xdFoot[k](2)+_x0[k](2)<SAFETY_Z)
@@ -461,7 +527,7 @@ void SharedFourArmManipulation::footOutputTransformation()
 
     Eigen::Matrix<float,5,1> temp;
     psi = _footPose[_dominantFoot];
-    psi(ROLL) = Utils<float>::deadZone(psi(ROLL),-7.0f,7.0f);
+    psi(ROLL) = Utils<float>::deadZone(psi(ROLL),-5.0f,5.0f);
     psi(YAW) = Utils<float>::deadZone(psi(YAW),-5.0f,5.0f);
 
     temp = OmegaP*psi;
@@ -521,7 +587,7 @@ void SharedFourArmManipulation::updateControlStrategy()
 
   if(_controlStrategy == SINGLE_FOOT_SINGLE_ARM)
   {
-    if(_objectGrasped)
+    if(_objectGrasped && !_useIndividualControlModeOnly)
     {
       _controlStrategy = SINGLE_FOOT_DUAL_ARM;
     }
@@ -543,7 +609,8 @@ void SharedFourArmManipulation::singleFootSingleArmControl()
 {
   for(int k = 0; k < NB_ROBOTS; k++)
   {
-    if(!_useSim && _objectGrasped && _autonomousForceGeneration)
+
+    if(!_useSim && _objectGrasped && _autonomousForceGeneration && std::fabs((_x[RIGHT]-_x[LEFT]).dot(_wRb[LEFT].col(2)))>0.03f)
     {
       _Fd[k] = _targetForce;
     }
@@ -564,14 +631,27 @@ void SharedFourArmManipulation::singleFootSingleArmControl()
         _waitForFoot[k] = false;
       }
 
-      std::cerr << "wait: " << (int) _waitForFoot[k] << " x[k]: " << _x[k].transpose() << " xd[k]: " << (_xdFoot[k]+_x0[k]).transpose() << std::endl;
+      _vr[k].setConstant(0.0f);
+      _vF[k].setConstant(0.0f);
+      _vh[k].setConstant(0.0f);
+
       _vd[k].setConstant(0.0f);
+
+      std::cerr << "wait: " << (int) _waitForFoot[k] << " x[k]: " << _x[k].transpose() << " xd[k]: " << (_xdFoot[k]+_x0[k]).transpose() << std::endl;
 
     }
     else
     {
       _xd[k] = _xdFoot[k]+_x0[k];
-      _vd[k] = 2.0f*(_xd[k]-_x[k])+(_Fd[k]/_d1[k])*_wRb[k].col(2);      
+
+
+      _vr[k] = (2.0f*(_xd[k]-_x[k]));
+      _vF[k] = (_Fd[k]/_d1[k])*_wRb[k].col(2);
+      _vh[k].setConstant(0.0f);
+
+      _vd[k] = 2.0f*(_xd[k]-_x[k])+(_Fd[k]/_d1[k])*_wRb[k].col(2);  
+
+      // std::cerr <<  _vd[k] << std::endl;    
     }
 
     _vd[k] = Utils<float>::bound(_vd[k],0.3f);
@@ -596,16 +676,40 @@ void SharedFourArmManipulation::singleFootDualArmControl()
   }
 
   // The desired center is defined by the right foot  !!!!!!!!!!!!!! (should remove kick)
+  
+  static Eigen::Vector3f offset;
   if(_dominantFoot==RIGHT)
   {
-    _xCd = _xdFoot[RIGHT]+_x0[RIGHT]-_xDd0/2.0f;
-    std::cerr << _xDd0/2.0f << std::endl;
+    if(_objectGrasped && !_prevObjectGrasped)
+    {
+
+      offset = _xdFoot[RIGHT]+_x0[RIGHT]-_x[RIGHT];
+      // _xCd = _x[RIGHT]-_xDd0/2.0f;
+    }
+    // else
+    // {
+      _xCd = _xdFoot[RIGHT]+_x0[RIGHT]-offset-_xDd0/2.0f;
+      // _xCd = _xdFoot[RIGHT]+_x0[RIGHT]-_xDd0/2.0f;
+      // _xCd = offset-_xDd0/2.0f;
+    // }
+    // std::cerr << _xDd0/2.0f << std::endl;
   }
   else
   {
     _xCd = _xdFoot[LEFT]+_x0[LEFT]+_xDd0/2.0f;
   }
 
+
+  // For logging less variables
+  _xd[_dominantFoot] = _xCd;
+  if(_dominantFoot == RIGHT)
+  {
+    _xd[LEFT] = _xDd;
+  }
+  else
+  {
+    _xd[RIGHT] = _xDd;
+  }
   // float d = _xDd.norm();
   // d+=_dt*Utils<float>::deadZone(-_footPose[RIGHT](YAW),-5.0f,5.0f)*M_PI/180.0f;
   // // d+=-_dt*_footPose[RIGHT](YAW)*M_PI/180.0f;
@@ -639,10 +743,14 @@ void SharedFourArmManipulation::singleFootDualArmControl()
   // std::cerr << "xDd0: "<< _xDd0.transpose() << std::endl;
 
 
-  if(!_useSim && _objectGrasped && _autonomousForceGeneration)
+  // if(!_useSim && _objectGrasped && _autonomousForceGeneration)
+  if(!_useSim && _objectGrasped)
   {
-    _Fd[RIGHT] = _targetForce;
-    _Fd[LEFT] = _targetForce;
+    if(_autonomousForceGeneration && std::fabs(_xD.dot(_wRb[LEFT].col(2)))>0.03f)
+    {
+      _Fd[RIGHT] = _targetForce;
+      _Fd[LEFT] = _targetForce;      
+    }
   }
   else
   {
@@ -650,6 +758,7 @@ void SharedFourArmManipulation::singleFootDualArmControl()
     _Fd[LEFT] = 0.0f;
   }
 
+  std::cerr << std::fabs(_xD.dot(_wRb[LEFT].col(2))) << " " << _xD.transpose() << std::endl;
   // _Fdh[RIGHT] = _Fd[RIGHT]*Utils<float>::smoothRise(_footPose[RIGHT](YAW),-20.0f,-1.0f);
   //   std::cerr << "Force human: " <<  _Fdh[RIGHT] << std::endl;
   // _Fdh[LEFT] = _Fd[LEFT]*Utils<float>::smoothRise(_footPose[RIGHT](YAW),-20.0f,-1.0f);
@@ -667,7 +776,7 @@ void SharedFourArmManipulation::singleFootDualArmControl()
   //   _vd[k] = Utils<float>::bound(_vd[k],0.3f);
   // }
 
-  _vCd = 4.0f*(_xCd-_xC);
+  _vCd = 3.0f*(_xCd-_xC);
   
   if(_objectGrasped)
   {
@@ -683,27 +792,26 @@ void SharedFourArmManipulation::singleFootDualArmControl()
   _vDd = 2.0f*(_xDd-_xD);        // Put same gain on both, before the gain on grasp was 1
 
 
-  Eigen::Vector3f n[NB_ROBOTS];
-  n[LEFT] = _xDd.normalized();
-  n[RIGHT] = -_xDd.normalized();
+  _n[LEFT] = _xDd.normalized();
+  _n[RIGHT] = -_xDd.normalized();
 
 
   // vH[RIGHT] = 0.2f*(Utils<float>::deadZone(-_footPose[RIGHT](YAW),-5.0f,5.0f)/20.f)*(Rtemp*_xDd0.normalized());
   // vH[LEFT] = -0.2f*(Utils<float>::deadZone(-_footPose[RIGHT](YAW),-5.0f,5.0f)/20.f)*(Rtemp*_xDd0.normalized());
   if(_dominantFoot==RIGHT)
   {
-    _vH = 0.25f*(Utils<float>::deadZone(_footPose[_dominantFoot](YAW),-5.0f,5.0f)/20.f);
+    _vH = 0.3f*(Utils<float>::deadZone(_footPose[_dominantFoot](YAW),-7.0f,7.0f)/20.f);
   }
   else
   {    
-    _vH = -0.25f*(Utils<float>::deadZone(_footPose[_dominantFoot](YAW),-5.0f,5.0f)/20.f);
+    _vH = -0.3f*(Utils<float>::deadZone(_footPose[_dominantFoot](YAW),-7.0f,7.0f)/20.f);
   }
 
 
-  float FdiffRight = _d1[RIGHT]*_vCd.dot(n[RIGHT])+_Fd[RIGHT];
-  float FdiffLeft = _d1[LEFT]*_vCd.dot(n[LEFT])+_Fd[LEFT];
-  float alphaR = Utils<float>::smoothRise(FdiffRight,0.0f,10.0f);
-  float alphaL = Utils<float>::smoothRise(FdiffLeft,0.0f,10.0f);
+  float FdiffRight = _d1[RIGHT]*_vCd.dot(_n[RIGHT])+_Fd[RIGHT];
+  float FdiffLeft = _d1[LEFT]*_vCd.dot(_n[LEFT])+_Fd[LEFT];
+  float alphaR = Utils<float>::smoothRise(FdiffRight,10.0f,15.0f);
+  float alphaL = Utils<float>::smoothRise(FdiffLeft,10.0f,15.0f);
 
 
   // float FdiffRight = _Fd[RIGHT]-_normalForce[RIGHT];
@@ -712,8 +820,8 @@ void SharedFourArmManipulation::singleFootDualArmControl()
   // float alphaL = Utils<float>::smoothFall(FdiffLeft,0.0f,10.0f);
 
 
-  std::cerr << "Fdiff R: " << FdiffRight << " alphaR: " << alphaR << std::endl;
-  std::cerr << "Fdiff L: " << FdiffLeft << " alphaL: " << alphaL << std::endl;
+  // std::cerr << "Fdiff R: " << FdiffRight << " alphaR: " << alphaR << std::endl;
+  // std::cerr << "Fdiff L: " << FdiffLeft << " alphaL: " << alphaL << std::endl;
   // std::cerr << "gain: " << (4.0f-alphaR-alphaL)/2.0f << std::endl;
   // std::cerr << "gain: " << (3.0f-alphaR-alphaL) << std::endl;
 
@@ -726,21 +834,52 @@ void SharedFourArmManipulation::singleFootDualArmControl()
   // _vd[RIGHT] = vC+vD/2.0f+vH[RIGHT]+(3.0f-alphaR-alphaL)*(_Fd[RIGHT]/_d1[RIGHT])*n[RIGHT];
   // _vd[LEFT] = vC-vD/2.0f+vH[LEFT]+(3.0f-alphaR-alphaL)*(_Fd[LEFT]/_d1[LEFT])*n[LEFT];
 
-  _vd[RIGHT] = _vCd+_vDd/2.0f+(_vH+(-alphaL+2.0f)*(_Fd[RIGHT]/_d1[RIGHT]))*n[RIGHT];  // vH is multiplied by n, to be tested
-  _vd[LEFT] = _vCd-_vDd/2.0f+(_vH+(-alphaR+2.0f)*(_Fd[LEFT]/_d1[LEFT]))*n[LEFT];
+  if(_xD.norm() < 0.03f && _vH >0.0f)
+  {
+    _vH = 0.0f;
+  }
+
+  _vd[RIGHT] = _vCd+_vDd/2.0f+(_vH+(-alphaL+2.0f)*(_Fd[RIGHT]/_d1[RIGHT]))*_n[RIGHT];  // vH is multiplied by n, to be tested
+  _vd[LEFT] = _vCd-_vDd/2.0f+(_vH+(-alphaR+2.0f)*(_Fd[LEFT]/_d1[LEFT]))*_n[LEFT];
+  // _vd[RIGHT] = alphaR*_vCd+_vDd/2.0f+(_vH+(_Fd[RIGHT]/_d1[RIGHT]))*_n[RIGHT];  // vH is multiplied by n, to be tested
+  // _vd[LEFT] = alphaL*_vCd-_vDd/2.0f+(_vH+(_Fd[LEFT]/_d1[LEFT]))*_n[LEFT];
+
+  // if(_objectGrasped)
+  // {
+  //   // _vd[RIGHT] = _vCd+_vDd/2.0f+(_vH+(_Fd[RIGHT]/_d1[RIGHT])-(1-alphaR)*_v[RIGHT].norm())*n[RIGHT];  // vH is multiplied by n, to be tested
+  //   // _vd[LEFT] = _vCd-_vDd/2.0f+(_vH+(_Fd[LEFT]/_d1[LEFT])-(1-alphaL)*_v[LEFT].norm())*n[LEFT];    
+  //   Eigen::Matrix3f P;
+  //   P = _n[RIGHT]*_n[RIGHT].transpose();
+  //   _vd[RIGHT] = _vCd-(1-alphaR)*P*_v[RIGHT]+_vDd/2.0f+(_vH+(_Fd[RIGHT]/_d1[RIGHT]))*_n[RIGHT];  // vH is multiplied by n, to be tested
+  //   P = _n[LEFT]*_n[LEFT].transpose();
+  //   _vd[LEFT] = _vCd-(1-alphaL)*P*_v[LEFT]-_vDd/2.0f+(_vH+(_Fd[LEFT]/_d1[LEFT]))*_n[LEFT];    
+  // }
+  // else
+  // {
+  //   _vd[RIGHT] = _vCd+_vDd/2.0f+(_vH+(_Fd[RIGHT]/_d1[RIGHT]))*_n[RIGHT];  // vH is multiplied by n, to be tested
+  //   _vd[LEFT] = _vCd-_vDd/2.0f+(_vH+(_Fd[LEFT]/_d1[LEFT]))*_n[LEFT];    
+  // }
+
+  _vr[RIGHT] = _vCd+_vDd/2.0f;
+  _vF[RIGHT] = (-alphaL+2.0f)*(_Fd[RIGHT]/_d1[RIGHT])*_n[RIGHT];
+  _vh[RIGHT] = _vH*_n[RIGHT];
+  _vr[LEFT] = _vCd-_vDd/2.0f;
+  _vF[LEFT] = (-alphaR+2.0f)*(_Fd[LEFT]/_d1[LEFT])*_n[LEFT];
+  _vh[LEFT] = _vH*_n[LEFT];
 
 
   std::cerr << "vd R: " << _vd[RIGHT].transpose() << std::endl;
   std::cerr << "vd L: " << _vd[LEFT].transpose() << std::endl;
   for(int k = 0; k <NB_ROBOTS; k++)
   {
-    _vd[k] = Utils<float>::bound(_vd[k],0.3f);
+    _vd[k] = Utils<float>::bound(_vd[k],0.4f);
   }
 }
 
 
 void SharedFourArmManipulation::computeHapticFeedback()
 {
+
   for(int k = 0; k < NB_ROBOTS; k++)
   {
     switch(_hapticFeedbackStrategy)
@@ -759,12 +898,20 @@ void SharedFourArmManipulation::computeHapticFeedback()
       {
         // if(_controlStrategy==SINGLE_FOOT_SINGLE_ARM)
         // {
+        if(_controlStrategy == SINGLE_FOOT_SINGLE_ARM)
+        {
           _FdFoot[k] = _wRb[k]*_filteredWrench[k].segment(0,3)+_Fd[k]*_wRb[k].col(2);
-          if(_waitForFoot[k])
-          {
-            // _FdFoot[k] += 150.0f*(_x[k]-_xdFoot[k]-_x0[k]);
-            _FdFoot[k] += Utils<float>::bound(200.0f*(_x[k]-_xdFoot[k]-_x0[k]),15.0f);
-          }
+        }
+        else
+        {
+          _FdFoot[k] = _wRb[k]*_filteredWrench[k].segment(0,3)+_Fd[k]*_n[k];
+        }
+
+        if(_waitForFoot[k])
+        {
+          // _FdFoot[k] += 150.0f*(_x[k]-_xdFoot[k]-_x0[k]);
+          _FdFoot[k] = Utils<float>::bound(200.0f*(_x[k]-_xdFoot[k]-_x0[k]),15.0f);
+        }
         // }
         // else
         // {
@@ -795,15 +942,15 @@ void SharedFourArmManipulation::computeDesiredFootWrench()
     OmegaF(YAW) = 0.2f;
     if(_dominantFoot==RIGHT)
     {
-      _desiredFootWrench[_dominantFoot] = OmegaF*_FdFoot[RIGHT](1);
+      _desiredFootWrench[_dominantFoot] = _hapticGain*OmegaF*_FdFoot[_dominantFoot](1);
     }
     else
     {
-      _desiredFootWrench[_dominantFoot] = -OmegaF*_FdFoot[RIGHT](1);
+      _desiredFootWrench[_dominantFoot] = -_hapticGain*OmegaF*_FdFoot[_dominantFoot](1);
 
     }
     // _desiredFootWrench[RIGHT](YAW) = _FdFoot[RIGHT](1)*0.2f;
-    std::cerr << "Desired force: " << _FdFoot[RIGHT](1)*0.2f << std::endl;
+    // std::cerr << "Desired force: " << _FdFoot[RIGHT](1)*0.2f << std::endl;
   }
   else
   {
@@ -823,7 +970,14 @@ void SharedFourArmManipulation::computeDesiredFootWrench()
     GammaF = P*G;
     for(int k = 0; k < NB_ROBOTS; k++)
     {
-      _desiredFootWrench[k] = GammaF*_FdFoot[k];
+      if(_waitForFoot[k])
+      {
+        _desiredFootWrench[k] = GammaF*_FdFoot[k];        
+      }
+      else
+      {
+        _desiredFootWrench[k] = _hapticGain*GammaF*_FdFoot[k];
+      }
     }
 
     // _desiredFootWrench[RIGHT](1) = _FdFoot[RIGHT](0);
@@ -895,6 +1049,7 @@ void SharedFourArmManipulation::computeDesiredFootWrench()
 
 void SharedFourArmManipulation::computeDesiredOrientation()
 {
+
   for(int k = 0; k < NB_ROBOTS; k++)
   {
 
@@ -971,7 +1126,7 @@ void SharedFourArmManipulation::computeDesiredOrientation()
       Eigen::Vector3f omega;  
       float angle;
       Utils<float>::quaternionToAxisAngle(qe,omega,angle);
-      std::cerr << "angle: "  << k << ": " << angle << std::endl;
+      // std::cerr << "angle: "  << k << ": " << angle << std::endl;
 
       // // Compute final quaternion on plane
       _qd[k] = Utils<float>::quaternionProduct(qe,_q[k]);
@@ -980,19 +1135,20 @@ void SharedFourArmManipulation::computeDesiredOrientation()
     else
     {
       Eigen::Vector4f qe;
-      if(k== LEFT)
-      {
-        qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[k].col(2),_xDd.normalized()));
-      }
-      else
-      {
-        qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[k].col(2),-_xDd.normalized()));        
-      }
+      qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[k].col(2),_n[k]));
+      // if(k== LEFT)
+      // {
+      //   qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[k].col(2),_xDd.normalized()));
+      // }
+      // else
+      // {
+      //   qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[k].col(2),-_xDd.normalized()));        
+      // }
 
       Eigen::Vector3f omega;  
       float angle;
       Utils<float>::quaternionToAxisAngle(qe,omega,angle);
-      std::cerr << "angle: "  << k << ": " << angle << std::endl;
+      // std::cerr << "angle: "  << k << ": " << angle << std::endl;
 
       // // Compute final quaternion on plane
       _qd[k] = Utils<float>::quaternionProduct(qe,_q[k]);
@@ -1035,15 +1191,16 @@ void SharedFourArmManipulation::computeDesiredOrientation()
       //   _omegad[k] += selfRotationCommand*_xDd.normalized();        
       // }
       // Utils<float>::deadZone(_footPose[RIGHT](ROLL),-7.0f,7.0f)
-      std::cerr << "Self rotation: " << k << " :" << _omegaH[k] << std::endl;
-      if(_dominantFoot==RIGHT)
-      {
-        _omegad[k] += -_omegaH[_dominantFoot]*_xDd.normalized();
-      }
-      else
-      {
-        _omegad[k] += _omegaH[_dominantFoot]*_xDd.normalized();        
-      }
+      // std::cerr << "Self rotation: " << k << " :" << _omegaH[k] << std::endl;
+       _omegad[k] += _omegaH[_dominantFoot]*_n[_dominantFoot].normalized(); 
+      // if(_dominantFoot==RIGHT)
+      // {
+      //   _omegad[k] += -_omegaH[_dominantFoot]*_xDd.normalized();
+      // }
+      // else
+      // {
+      //   _omegad[k] += _omegaH[_dominantFoot]*_xDd.normalized();        
+      // }
 
     }
     else
@@ -1058,36 +1215,53 @@ void SharedFourArmManipulation::computeDesiredOrientation()
 
 void SharedFourArmManipulation::logData()
 {
-  // _outputFile << ros::Time::now() << " "
-  //             << _x[LEFT].transpose() << " "
-  //             << _vd[LEFT].transpose() << " "
-  //             << (_wRb[LEFT]*_filteredWrench[LEFT].segment(0,3)).transpose() << " "
-  //             << (_wRb[LEFT]*_filteredWrench[LEFT].segment(3,3)).transpose() << " "
-  //             << _x[RIGHT].transpose() << " "
-  //             << _vd[RIGHT].transpose() << " "
-  //             << (_wRb[RIGHT]*_filteredWrench[RIGHT].segment(0,3)).transpose() << " "
-  //             << (_wRb[RIGHT]*_filteredWrench[RIGHT].segment(3,3)).transpose() << " "
-  //             << _footPose[LEFT](0) << " "
-  //             << _footPose[LEFT](1) << " "
-  //             << _footPose[LEFT](2) << " "
-  //             << _footWrench[LEFT](0) << " "
-  //             << _footWrench[LEFT](1) << " "
-  //             << _footWrench[LEFT](2) << " "
-  //             << _desiredFootWrench[LEFT](0) << " "
-  //             << _desiredFootWrench[LEFT](1) << " "
-  //             << _desiredFootWrench[LEFT](2) << " "
-  //             << _footState[LEFT] << " "
-  //             << _footPose[RIGHT](0) << " "
-  //             << _footPose[RIGHT](1) << " "
-  //             << _footPose[RIGHT](2) << " "
-  //             << _footWrench[RIGHT](0) << " "
-  //             << _footWrench[RIGHT](1) << " "
-  //             << _footWrench[RIGHT](2) << " "
-  //             << _desiredFootWrench[RIGHT](0) << " "
-  //             << _desiredFootWrench[RIGHT](1) << " "
-  //             << _desiredFootWrench[RIGHT](2) << " "
-  //             << _footState[RIGHT] << std::endl;
-
+  Eigen::Vector3f desiredForce[NB_ROBOTS];
+  if(_useIndividualControlModeOnly)
+  {
+    desiredForce[LEFT] = _Fd[LEFT]*_wRb[LEFT].col(2);
+    desiredForce[RIGHT] = _Fd[RIGHT]*_wRb[RIGHT].col(2);
+  }
+  else
+  {
+    desiredForce[LEFT] = _Fd[LEFT]*_n[LEFT];
+    desiredForce[RIGHT] = _Fd[RIGHT]*_n[RIGHT];
+  }
+  _outputFile << ros::Time::now() << " "
+              << _x[LEFT].transpose() << " "
+              << _q[LEFT].transpose() << " "
+              << _v[LEFT].transpose() << " "
+              << _w[LEFT].transpose() << " "
+              << (_wRb[LEFT]*_filteredWrench[LEFT].segment(0,3)).transpose() << " "
+              << _footPose[LEFT].transpose() << " "
+              << _footWrench[LEFT].transpose() << " "
+              << _vd[LEFT].transpose() << " "
+              << _omegad[LEFT].transpose() << " "
+              << _qd[LEFT].transpose() << " "
+              << desiredForce[LEFT].transpose() << " "
+              << _xd[LEFT].transpose() << " "
+              << _omegaH[LEFT] << " "
+              << _x[RIGHT].transpose() << " "
+              << _q[RIGHT].transpose() << " "
+              << _v[RIGHT].transpose() << " "
+              << _w[RIGHT].transpose() << " "
+              << (_wRb[RIGHT]*_filteredWrench[RIGHT].segment(0,3)).transpose() << " "
+              << _footPose[RIGHT].transpose() << " "
+              << _footWrench[RIGHT].transpose() << " "
+              << _vd[RIGHT].transpose() << " "
+              << _omegad[RIGHT].transpose() << " "
+              << _qd[RIGHT].transpose() << " "
+              << desiredForce[RIGHT].transpose() << " "
+              << _xd[RIGHT].transpose() << " "
+              << _omegaH[RIGHT] << " "
+              << _vH << " "
+              << (int) _objectGrasped << " "
+              << (int) _waitForFoot[LEFT] << " "
+              << (int) _waitForFoot[RIGHT] << " "
+              << (int) _controlStrategy << " "
+              << (int) _dominantFoot << " "
+              << (int) _useIndividualControlModeOnly << " "
+              << (int) _hapticFeedbackStrategy << " "
+              << (int) _autonomousForceGeneration << std::endl;
 
 }
 
@@ -1237,6 +1411,7 @@ void SharedFourArmManipulation::updateFootOutput(const custom_msgs::FootOutputMs
     _footTwist[k](m) = msg->platform_speed[m];
     _footWrench[k](m) = msg->platform_effortD[m];
   }
+  _footTwist[k]*=M_PI/180.0f;
   // _footPose[k] -= _footOffset;
   _footState[k] = msg->platform_machineState;
 
@@ -1262,4 +1437,236 @@ void SharedFourArmManipulation::dynamicReconfigureCallback(robotic_experiments::
   _rollGain = config.rollGain;
   _yawGain = config.yawGain;
   _useSharedControl = config.useSharedControl;
+  _useIndividualControlModeOnly = config.useIndividualControlModeOnly;
+  _autonomousForceGeneration = config.autonomousForceGeneration;
+  _hapticGain = config.hapticGain;
+  if(!_autonomousForceGeneration)
+  {
+    _hapticFeedbackStrategy = MEASURED_FORCE;
+  }
+  else
+  {
+    _hapticFeedbackStrategy = MEASURED_ERROR;
+  }
+}
+
+void SharedFourArmManipulation::updateTankScalars()
+{
+  float dp = 0.2f;
+  float ds = 0.1f*_smax;
+
+  // _betanp = 1-Utils<float>::smoothRise(_pn,-2*dp,-1*dp)*Utils<float>::smoothFall(_s,0.0f,ds);
+
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+
+    _alphaR[k] = Utils<float>::smoothFall(_sR[k],_smax-ds,_smax);
+    _pRr[k] = _d1[k]*_v[k].dot(_vr[k]);
+    _pRF[k] = _d1[k]*_v[k].dot(_vF[k]);
+    _pRh[k] = _d1[k]*_v[k].dot(_vh[k]);
+    _pRd[k] = _v[k].transpose()*_D[k]*_v[k];
+
+    if(_sR[k] < -FLT_EPSILON && _pRr[k] > FLT_EPSILON)
+    {
+      _betar[k] = 0.0f;
+    }
+    else if(_sR[k] > _smax && _pRr[k] < -FLT_EPSILON)
+    {
+      _betar[k] = 0.0f;
+    }
+    else
+    {
+      _betar[k] = 1.0f;
+    }
+
+    if(_sR[k] < -FLT_EPSILON && _pRF[k] > FLT_EPSILON)
+    {
+      _betaF[k] = 0.0f;
+    }
+    else if(_sR[k] > _smax && _pRF[k] < -FLT_EPSILON)
+    {
+      _betaF[k] = 0.0f;
+    }
+    else
+    {
+      _betaF[k] = 1.0f;
+    }
+
+    if(_sR[k] < -FLT_EPSILON && _pRh[k] > FLT_EPSILON)
+    {
+      _betah[k] = 0.0f;
+    }
+    else if(_sR[k] > _smax && _pRh[k] < -FLT_EPSILON)
+    {
+      _betah[k] = 0.0f;
+    }
+    else
+    {
+      _betah[k] = 1.0f;
+    }
+
+    if(_pRr[k]<-FLT_EPSILON)
+    {
+      _betarp[k] = 1.0f;
+    }
+    else
+    {
+      _betarp[k] = _betar[k];
+    }
+
+    if(_pRF[k]<-FLT_EPSILON)
+    {
+      _betaFp[k] = 1.0f;
+    }
+    else
+    {
+      _betaFp[k] = _betaF[k];
+    }
+
+    if(_pRh[k]<-FLT_EPSILON)
+    {
+      _betahp[k] = 1.0f;
+    }
+    else
+    {
+      _betahp[k] = _betah[k];
+    }
+
+    _alphaM[k] = Utils<float>::smoothFall(_sM[k],_smax-ds,_smax);
+    Eigen::Matrix<float,5,5> D;
+    Eigen::Matrix<float,5,1> gains;
+    gains << 5.0f, 5.0f, 20.0f, 20.0f, 20.0f;
+    D = gains.asDiagonal();
+
+    _pMF[k] = _footTwist[k].dot(_desiredFootWrench[k]);
+    _pMd[k] = _footTwist[k].transpose()*D*_footTwist[k];
+
+    if(_sM[k] < -FLT_EPSILON && _pMF[k] > FLT_EPSILON)
+    {
+      _gammaF[k] = 0.0f;
+    }
+    else if(_sM[k] > _smax && _pMF[k] < -FLT_EPSILON)
+    {
+      _gammaF[k] = 0.0f;
+    }
+    else
+    {
+      _gammaF[k] = 1.0f;
+    }
+
+    if(_pMF[k]<-FLT_EPSILON)
+    {
+      _gammaFp[k] = 1.0f;
+    }
+    else
+    {
+      _gammaFp[k] = _gammaF[k];
+    }
+  }
+
+}
+
+void SharedFourArmManipulation::computePassiveCommands()
+{
+
+  if(_controlStrategy== SINGLE_FOOT_SINGLE_ARM)
+  {
+    _pRin[LEFT] = (1-_alphaM[LEFT])*_pMd[LEFT];
+    _pRout[LEFT] = (1-_alphaR[LEFT])*_pRd[LEFT];      
+    _pRin[RIGHT] = (1-_alphaM[RIGHT])*_pMd[RIGHT];
+    _pRout[RIGHT] = (1-_alphaR[RIGHT])*_pRd[RIGHT];       
+    _pMin[RIGHT] = _pRout[RIGHT];
+    _pMout[RIGHT] = _pRin[RIGHT];
+    _pMin[LEFT] = _pRout[LEFT];
+    _pMout[LEFT] = _pRin[LEFT];
+  
+  }
+  else
+  {
+    _pRin[LEFT] = 0.5f*(1-_alphaM[_dominantFoot])*_pMd[_dominantFoot];
+    _pRin[RIGHT] = 0.5f*(1-_alphaM[_dominantFoot])*_pMd[_dominantFoot];
+    _pRout[RIGHT] = (1-_alphaR[RIGHT])*_pRd[RIGHT];
+    _pRout[LEFT] = (1-_alphaR[LEFT])*_pRd[LEFT];
+    _pMin[_dominantFoot] = _pRout[RIGHT]+_pRout[LEFT];
+    _pMout[_dominantFoot] = _pRin[RIGHT]+_pRin[LEFT];
+    if(_dominantFoot==RIGHT)
+    {
+      _pMin[LEFT] = 0.0f;
+      _pMout[LEFT] = 0.0f;
+    }
+    else
+    {
+      _pMin[RIGHT] = 0.0f;
+      _pMout[RIGHT] = 0.0f;
+
+    }
+  }
+  for(int k = 0; k < NB_ROBOTS; k++)
+  {
+    // if(_controlStrategy== SINGLE_FOOT_SINGLE_ARM)
+    // {
+    //   _pRin[k] = (1-_alphaM[k])*_pMd[k];
+    //   _pRout[k] = (1-_alphaR[k])*_pRd[k];      
+    // }
+    // else
+    // {
+    //   _pRin[k] = 0.5f*(1-_alphaM[_dominantFoot])*_pMd[_dominantFoot];
+    //   _pRout[k] = (1-_alphaR[k])*_pRd[k];      
+    //   _pMin[k] = _pRout[k];
+    // _pMout[k] = _pRin[k];
+
+    // }
+    // _pMin[k] = _pRout[k];
+    // _pMout[k] = _pRin[k];
+
+    float dsR = _dt*(_alphaR[k]*_pRd[k]-_betar[k]*_pRr[k]-_betaF[k]*_pRF[k]-_betah[k]*_pRh[k]+_pRin[k]-_pRout[k]);
+
+    if(_sR[k]+dsR>=_smax)
+    {
+      _sR[k] = _smax;
+    }
+    else if(_sR[k]+dsR<-FLT_EPSILON)
+    {
+      _sR[k] = 0.0f;
+    }
+    else
+    {
+      _sR[k]+=dsR;
+    }
+
+    float dsM = _dt*(_alphaM[k]*_pMd[k]-_gammaF[k]*_pMF[k]+_pMin[k]-_pMout[k]);
+
+    if(_sM[k]+dsM>=_smax)
+    {
+      _sM[k] = _smax;
+    }
+    else if(_sM[k]+dsM<-FLT_EPSILON)
+    {
+      _sM[k] = 0.0f;
+    }
+    else
+    {
+      _sM[k]+=dsM;
+    }
+
+
+    // Update robot's power flow
+    _dW[k] = (_betarp[k]-_betar[k])*_pRr[k]+(_betaFp[k]-_betaF[k])*_pRF[k]+(_betahp[k]-_betah[k])*_pRh[k]
+             +(_gammaFp[k]-_gammaF[k])*_pMF[k]-(1-_alphaR[k])*_pRd[k]-(1-_alphaM[k])*_pMd[k];
+
+    // std::cerr << k << " sR: " << _sR[k] << " pRd: " << _pRd[k] << " pRr: " << _pRr[k] << " pRF: " << _pRF[k] << " pRh: " << _pRh[k] << std::endl;
+    // std::cerr << k << " sM: " << _sM[k] << " pMd: " << _pMd[k] << " pMF: " << _pMF[k]  << std::endl;
+    // std::cerr << k << " dW: " << _dW[k] << std::endl;
+
+     // _vd[k] = _betarp[k]*_vr[k]+_betaFp[k]*_vF[k]+_betahp[k]*_vh[k];
+     // _vd[k] = Utils<float>::bound(_vd[k],0.3f);
+
+     // _desiredFootWrench[k] = _gammaFp[k]*_desiredFootWrench[k];
+
+     // _vd[k] = _betarp[k]*_vr[k]+_betaFp[k]*_vF[k]+_betahp[k]*_vh[k];
+     // _vd[k] = Utils<float>::bound(_vd[k],0.3f);
+
+     // _desiredFootWrench[k] = _gammaFp[k]*_desiredFootWrench[k];
+
+  }
 }

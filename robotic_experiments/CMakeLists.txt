@@ -60,6 +60,11 @@ add_executable(publish_spherical_trocar_frames src/publishSphericalTrocarFrames_
 target_link_libraries(publish_spherical_trocar_frames ${catkin_LIBRARIES})
 add_dependencies(publish_spherical_trocar_frames ${PROJECT_NAME}_gencpp)
 
+
+add_executable(kuka_demo src/kukaDemo_node.cpp src/KukaDemo.cpp)
+target_link_libraries(kuka_demo ${catkin_LIBRARIES})
+add_dependencies(kuka_demo ${PROJECT_NAME}_gencpp)
+
 FILE(GLOB SRCS src/CartesianFeetTelemanipulation.cpp)
 FILE(GLOB INCS include/CartesianFeetTelemanipulation.h)
 
