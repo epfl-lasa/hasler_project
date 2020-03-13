@@ -1,5 +1,5 @@
 
-#include "frictionLogger.h"
+#include "dryFrictionLogger.h"
 #include "ros/package.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 #include "geometry_msgs/WrenchStamped.h"
@@ -31,9 +31,9 @@ Eigen::Matrix<float,NB_AXIS,1> tolerance_;
 
 float const LIMITS[NB_AXIS] = {0.08, 0.08,17,17,20};
 
-frictionLogger *frictionLogger::me = NULL;
+dryFrictionLogger *dryFrictionLogger::me = NULL;
 
-frictionLogger::frictionLogger(ros::NodeHandle &n_1, double frequency,frictionLogger::Platform_Name platform_id, Axis axis_, std::string filename_): 
+dryFrictionLogger::dryFrictionLogger(ros::NodeHandle &n_1, double frequency,dryFrictionLogger::Platform_Name platform_id, Axis axis_, std::string filename_): 
 _n(n_1),
 _platform_name(platform_id),
 _frictionAxis(axis_),
@@ -105,23 +105,23 @@ _rawFilename(filename_)
 	}
 
 }
-frictionLogger::~frictionLogger()
+dryFrictionLogger::~dryFrictionLogger()
 {
 	me->_n.shutdown();
 }
 
-bool frictionLogger::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
+bool dryFrictionLogger::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
 {
 
 	if (_platform_name==LEFT){
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&frictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&dryFrictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_pubFriction = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Left/friction_data", 1);
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
 		_clientSetState = _n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController = _n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
 	}
 	if (_platform_name==RIGHT){
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&frictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&dryFrictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_pubFriction = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Right/friction_data", 1);
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
 		_clientSetState = _n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_RIGHT);
@@ -129,7 +129,7 @@ bool frictionLogger::init() //! Initialization of the node. Its datatype (bool) 
 	}
 
 	//Subscriber definitions
-	signal(SIGINT, frictionLogger::stopNode);
+	signal(SIGINT, dryFrictionLogger::stopNode);
 
 	if (_rawFilename != std::string("no_file"))
 	{
@@ -161,12 +161,12 @@ bool frictionLogger::init() //! Initialization of the node. Its datatype (bool) 
 }
 
 
-void frictionLogger::stopNode(int sig)
+void dryFrictionLogger::stopNode(int sig)
 {
     me->_stop= true;
 }
 
-void frictionLogger::logData()
+void dryFrictionLogger::logData()
 {
 	if (_filename != std::string("no_file"))
 	{
@@ -181,7 +181,7 @@ void frictionLogger::logData()
 	}
 }
 
-void frictionLogger::run()
+void dryFrictionLogger::run()
 {
   while (!_stop) 
   {
@@ -327,7 +327,7 @@ void frictionLogger::run()
 			}
 			else
 				{
-					frictionLogger::stopNode;
+					dryFrictionLogger::stopNode;
 				}
 
 		}
@@ -351,7 +351,7 @@ void frictionLogger::run()
 
 
 
-void frictionLogger::publishIDFriction()
+void dryFrictionLogger::publishIDFriction()
 {
 	if (_frictionMotorsEffort(_nAxis)>=0.001f)
 	{
@@ -368,7 +368,7 @@ void frictionLogger::publishIDFriction()
 
 }
 
-void frictionLogger::publishFootEffort()
+void dryFrictionLogger::publishFootEffort()
 {
 
 	if (_platform_machineState == TELEOPERATION)
@@ -382,7 +382,7 @@ void frictionLogger::publishFootEffort()
 	_pubFootInput.publish(_msgFootInput);
 }
 
-void frictionLogger::publishDesiredPosition()
+void dryFrictionLogger::publishDesiredPosition()
 {
 
 	if (_platform_machineState == ROBOT_STATE_CONTROL)
@@ -396,7 +396,7 @@ void frictionLogger::publishDesiredPosition()
 	_pubFootInput.publish(_msgFootInput);
 }
 
-void frictionLogger::fetchFootOutput(
+void dryFrictionLogger::fetchFootOutput(
     const custom_msgs::FootOutputMsg_v2::ConstPtr &msg) {
   _flagOutputMessageReceived = true;
   _platform_id = msg->platform_id;
@@ -406,15 +406,15 @@ void frictionLogger::fetchFootOutput(
     _platform_effortD[k] = msg->platform_effortD[k];
     _platform_effortM[k] = msg->platform_effortM[k];
   }
-  _platform_machineState = (frictionLogger::State)msg->platform_machineState;
+  _platform_machineState = (dryFrictionLogger::State)msg->platform_machineState;
   _platform_controllerType =
-      (frictionLogger::Controller)msg->platform_controllerType;
+      (dryFrictionLogger::Controller)msg->platform_controllerType;
   if (!_flagPlatformOutCommStarted) {
     _flagPlatformOutCommStarted = true;
   }
 }
 
-void frictionLogger::computeStaticFriction()
+void dryFrictionLogger::computeStaticFriction()
 {
 	if (fabs(_platform_speed[_nAxis]) >= SPEED_DEADZONE[_nAxis])
 	{
@@ -478,7 +478,7 @@ void frictionLogger::computeStaticFriction()
 	}
 }
 
-void frictionLogger::requestSetState(State state_, bool* StateRequested_)
+void dryFrictionLogger::requestSetState(State state_, bool* StateRequested_)
 {
 	// _mutex.lock();
 	*StateRequested_ = true;
@@ -498,7 +498,7 @@ void frictionLogger::requestSetState(State state_, bool* StateRequested_)
 	// _mutex.unlock();
 }
 
-void frictionLogger::requestSetController(Controller controller_, bool* controllerRequested_)
+void dryFrictionLogger::requestSetController(Controller controller_, bool* controllerRequested_)
 {
 	// _mutex.lock();
 	*controllerRequested_ = true;
@@ -514,7 +514,7 @@ void frictionLogger::requestSetController(Controller controller_, bool* controll
 	// _mutex.unlock();
 }
 
-float frictionLogger::clamp(float x, float out_min, float out_max)
+float dryFrictionLogger::clamp(float x, float out_min, float out_max)
 {
 	return x < out_min ? out_min : (x > out_max ? out_max : x);
 }

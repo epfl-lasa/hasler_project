@@ -39,11 +39,14 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 add_executable(footVarLogger src/footVarLogger.cpp src/footVarLogger_node.cpp src/FootPlatformModel.cpp)
 target_link_libraries(footVarLogger ${catkin_LIBRARIES})
 
-add_executable(frictionLogger src/frictionLogger.cpp src/frictionLogger_node.cpp)
-target_link_libraries(frictionLogger ${catkin_LIBRARIES})
+add_executable(dryFrictionLogger src/dryFrictionLogger.cpp src/dryFrictionLogger_node.cpp)
+target_link_libraries(dryFrictionLogger ${catkin_LIBRARIES})
+
+# add_executable(viscousFrictionLogger src/viscousFrictionLogger.cpp src/viscousFrictionLogger_node.cpp)
+# target_link_libraries(viscousFrictionLogger ${catkin_LIBRARIES})
 
 add_dependencies(footVarLogger ${PROJECT_NAME}_gencpp)
-add_dependencies(frictionLogger ${PROJECT_NAME}_gencpp)
+add_dependencies(dryFrictionLogger ${PROJECT_NAME}_gencpp)
 
 FILE(GLOB SRCS src/footVarLogger.cpp)
 FILE(GLOB INCS include/footVarLogger.h)

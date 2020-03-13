@@ -29,7 +29,8 @@ _filename(filename_)
 	_stop = false;
 	_flagOutputMessageReceived=false;
 	_flagPlatformOutCommStarted=false;
-	_flagPositionOnlyPublished=false;
+    _flagPlatformInCommStarted = false;
+    _flagPositionOnlyPublished=false;
 	_ftWrenchBiasOK=false;
 
 	_ftWrenchBias.setConstant(0.0f);
@@ -80,6 +81,7 @@ bool footVarLogger::init() //! Initialization of the node. Its datatype (bool) r
 {
 
 	if (_platform_name==LEFT){
+		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT,1, boost::bind(&footVarLogger::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     	_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_filtered", 1);
 		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Left/sensor_pose", 1);
@@ -89,6 +91,7 @@ bool footVarLogger::init() //! Initialization of the node. Its datatype (bool) r
 		_subForceTorqueSensor = _n.subscribe<geometry_msgs::WrenchStamped>("ft_sensor_left/netft_data", 1, boost::bind(&footVarLogger::updateFtSensorWrench, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
 	if (_platform_name==RIGHT){
+		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT,1, boost::bind(&footVarLogger::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_filtered", 1);
 		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Right/sensor_pose", 1);
@@ -104,7 +107,7 @@ bool footVarLogger::init() //! Initialization of the node. Its datatype (bool) r
 
 	if (_filename != std::string("no_file") || _filename != "")
 	{
-		_outputFile.open(ros::package::getPath(std::string("foot_variables_log")) + "/data/" + _filename + ".txt");
+		_outputFile.open(ros::package::getPath(std::string("foot_variables_log")) + "/data/var_log/" + _filename + ".txt");
 	}
 	if (_n.ok()) 
 	{   
@@ -133,6 +136,7 @@ void footVarLogger::logData()
 	{
 		_outputFile << ros::Time::now() << " "
 					<< (int)_platform_id << " "
+					<< _ros_position.transpose()<<" "
 					<< _platform_position.transpose() << " "
 					<< _platform_speed.transpose() << " "
 					<< _platform_effortD.transpose() << " "
@@ -356,5 +360,14 @@ void footVarLogger::footDataTransformation()
 	  {
 		  _flagPlatformOutCommStarted = true;
 	  }
-} 
+}
 
+void footVarLogger::sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr &msg) {
+  for (int k = 0; k < NB_AXIS; k++) {
+      _ros_position[k] = msg->ros_position[k];
+    _ros_speed[k] = msg->ros_speed[k];
+      _ros_effort[k] = msg->ros_effort[k];}
+  if (!_flagPlatformInCommStarted) {
+    _flagPlatformInCommStarted = true;
+  }
+}

@@ -95,7 +95,14 @@ class footVarLogger
         Controller _platform_controllerType;
         State _platform_machineState;
 
-    //! Variables for Logging    
+        //! FootInputMsg_v2 
+        //! within the ros network
+
+        Eigen::Matrix<float, NB_AXIS, 1> _ros_position;
+        Eigen::Matrix<float, NB_AXIS, 1> _ros_speed;
+        Eigen::Matrix<float, NB_AXIS, 1> _ros_effort;
+
+        //! Variables for Logging    
         std::string _filename;
         std::ifstream _inputFile;
 		std::ofstream _outputFile;    
@@ -138,6 +145,7 @@ class footVarLogger
 
 
          bool _flagPlatformOutCommStarted;
+         bool _flagPlatformInCommStarted;
          bool _flagOutputMessageReceived;
          bool _flagPositionOnlyPublished;
 
@@ -165,7 +173,8 @@ class footVarLogger
     void publishData(); 
     
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg); 
+    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);
+    void sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr &msg);
     void logData();
     static void stopNode(int sig);
     
