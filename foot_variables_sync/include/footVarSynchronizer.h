@@ -134,12 +134,14 @@ class footVarSynchronizer
         bool _flagParamsActionsTaken;
         bool _flagPlatformActionsTaken;
 
-        volatile bool _flagPlatformOutCommStarted;
-        volatile bool _flagOutputMessageReceived;
-        volatile bool _flagPlatformInCommStarted;
-        volatile bool _flagPositionOnlyPublished;
+        bool _flagPlatformOutCommStarted;
+        bool _flagOutputMessageReceived;
+        bool _flagPlatformInCommStarted;
+        bool _flagPositionOnlyPublished;
+        bool _flagEffortOnlyPublished;
 
         volatile bool _flagControlThisPosition; //! To make sure you don't send a torque and position in the same message
+        volatile bool _flagControlZeroEffort; 
         volatile bool _flagCapturePlatformPosition;
 
         volatile bool _flagUpdateConfig;
@@ -181,7 +183,7 @@ class footVarSynchronizer
     void changedPlatformCheck();
     void requestDoActionsPlatform();
 
-    void publishPositionOnly();
+    void publishFootInput(bool* flagVariableOnly_);
     void requestSetController();
     void updateConfigAfterParamsChanged();
     void updateConfigAfterPlatformChanged();

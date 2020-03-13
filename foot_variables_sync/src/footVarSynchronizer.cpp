@@ -21,6 +21,7 @@ _dt(1.0f/frequency)
 	me=this;
 	_stop = false;
 	_flagControlThisPosition=false;
+	_flagControlZeroEffort=false;
 	_flagCapturePlatformPosition = false;
 	_flagWasDynReconfCalled= false;
 	_flagOutputMessageReceived=false;
@@ -30,6 +31,7 @@ _dt(1.0f/frequency)
 
 	_flagPlatformInCommStarted=false;
 	_flagPositionOnlyPublished=false;
+	_flagEffortOnlyPublished=false;
 
 	for (int i=0; i<NB_PARAMS_CATEGORIES; i++){
 	_flagIsParamStillSame[i]=true;
@@ -479,7 +481,13 @@ void footVarSynchronizer::updateConfigAfterParamsChanged()
 			_flagUpdateConfig = true;
 		}
 
-		if (_flagUpdateConfig)
+		if (_flagEffortOnlyPublished && _flagControlZeroEffort) {
+			_config.send_zero_effort = false;
+			_flagControlZeroEffort = false;
+			_flagUpdateConfig = true;
+		}
+
+                if (_flagUpdateConfig)
 		{
 			_mutex.lock();
 			_dynRecServer.updateConfig(_config);
@@ -508,12 +516,12 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 		if (_config.machine_state == TELEOPERATION &&
 			_flagCapturePlatformPosition)
 		{
-			_config.desired_Position_X = C_WS_RANGE_X;
-			_config.desired_Position_Y = C_WS_RANGE_Y;
-			_config.desired_Position_PITCH = C_WS_RANGE_PITCH;
-			_config.desired_Position_ROLL = C_WS_RANGE_ROLL;
-			_config.desired_Position_YAW = C_WS_RANGE_YAW;
-			_ros_position << C_WS_RANGE_X, C_WS_RANGE_Y, C_WS_RANGE_PITCH, C_WS_RANGE_ROLL, C_WS_RANGE_YAW;
+			_config.desired_Position_X = C_WS_LIMIT_X;
+			_config.desired_Position_Y = C_WS_LIMIT_Y;
+			_config.desired_Position_PITCH = C_WS_LIMIT_PITCH;
+			_config.desired_Position_ROLL = C_WS_LIMIT_ROLL;
+			_config.desired_Position_YAW = C_WS_LIMIT_YAW;
+			_ros_position << C_WS_LIMIT_X, C_WS_LIMIT_Y, C_WS_LIMIT_PITCH, C_WS_LIMIT_ROLL, C_WS_LIMIT_YAW;
 			_flagParamsActionsTaken = true;
 		}
 
@@ -569,14 +577,23 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 		requestSetController();
 		if (_ros_newState==TELEOPERATION)
 		{_ros_position=_ros_position.cwiseAbs();}
-		publishPositionOnly();
-		ROS_INFO("A new desired position has been published (no acknowledgement)!");
+        publishFootInput(&_flagPositionOnlyPublished);
+        ROS_INFO("A new desired position has been published (no acknowledgement)!");
 		_flagParamsActionsTaken= true;
 	}
 	else if (_flagControlThisPosition && _flagCapturePlatformPosition)
 	{
 		ROS_WARN("You cannot sent a position while capturing the platform position");
 	}
+
+	if (_flagControlZeroEffort) {
+		_flagEffortOnlyPublished = false;
+		requestSetController();
+		publishFootInput(&_flagEffortOnlyPublished);
+		ROS_INFO("Zero torque send (no "
+				"acknowledgement)!");
+		_flagParamsActionsTaken = true;
+	} 
 }
 
 void footVarSynchronizer::requestDoActionsPlatform()
@@ -618,19 +635,18 @@ void footVarSynchronizer::requestDoActionsPlatform()
 
 }
 
-void footVarSynchronizer::publishPositionOnly() 
-{
-	_mutex.lock();
-	for (int k=0; k<NB_AXIS; k++)
-		{
-			_msgFootInput.ros_position[k]=_ros_position[k];
-			//! Keep send the same valuest that the platform is broadcasting
-			_msgFootInput.ros_speed[k]=_ros_speed[k];
-			_msgFootInput.ros_effort[k]=_ros_effort[k];
-		}
-	_pubFootInput.publish(_msgFootInput);
-	_flagPositionOnlyPublished = true;
-	_mutex.unlock();
+void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
+  //! Keep send the same valuest that the platform is broadcasting
+
+  _mutex.lock();
+  for (int k = 0; k < NB_AXIS; k++) {
+    _msgFootInput.ros_position[k] = _ros_position[k];
+    _msgFootInput.ros_speed[k] = _ros_speed[k];
+    _msgFootInput.ros_effort[k] = _ros_effort[k];
+  }
+  _pubFootInput.publish(_msgFootInput);
+  *flagVariableOnly_ = true;
+  _mutex.unlock();
 }
 
 void footVarSynchronizer::sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr& msg)
@@ -641,7 +657,9 @@ void footVarSynchronizer::sniffFootInput(const custom_msgs::FootInputMsg_v2::Con
 				_ros_position[k]=msg->ros_position[k];
 			}
 				_ros_speed[k]=msg->ros_speed[k];
+			if (!_flagControlZeroEffort){
 				_ros_effort[k]=msg->ros_effort[k];
+			}
 		}	
 	if(!_flagPlatformInCommStarted)
 	{_flagPlatformInCommStarted=true;}
@@ -717,15 +735,22 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
 	_ros_defaultControl = (bool) config.use_default_gains;
 
     _flagControlThisPosition = (bool) config.send_this_position;
-	_flagCapturePlatformPosition = (bool)config.capture_platform_position;
-	
-	if (_flagControlThisPosition)
-	{
-		_ros_position << config.desired_Position_X, config.desired_Position_Y, config.desired_Position_PITCH, config.desired_Position_ROLL, config.desired_Position_YAW;
-		ROS_DEBUG("Updating_POSITION");
+    _flagControlZeroEffort = (bool)config.send_zero_effort;
+    _flagCapturePlatformPosition = (bool)config.capture_platform_position;
+
+    if (_flagControlThisPosition) {
+      _ros_position << config.desired_Position_X, config.desired_Position_Y,
+          config.desired_Position_PITCH, config.desired_Position_ROLL,
+          config.desired_Position_YAW;
+      ROS_DEBUG("Updating_POSITION");
 	}
 
-	_ros_effortComp[NORMAL]=(uint8_t) config.effortComp_normal;
+	if (_flagControlZeroEffort) {
+		_ros_effort.setConstant(0.0f);
+        ROS_DEBUG("Sending zero torque to the platform");
+	}
+
+        _ros_effortComp[NORMAL]=(uint8_t) config.effortComp_normal;
 	_ros_effortComp[CONSTRAINS]=(uint8_t) config.effortComp_constrains;
 	_ros_effortComp[COMPENSATION]=(uint8_t) config.effortComp_compensation;
 	_ros_effortComp[FEEDFORWARD]=(uint8_t) config.effortComp_feedforward;
