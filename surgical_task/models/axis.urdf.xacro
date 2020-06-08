@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="axis.urdf.xacro">
+  <xacro:arg name="origin.x" default="0"/>
+  <xacro:arg name="origin.y" default="0"/>
+  <xacro:arg name="origin.z" default="0"/>
+  <xacro:arg name="name" default="target"/>
+
+  <!-- <link name="world"/> -->
+
+  <gazebo reference="world">
+    <!-- <static>true</static> -->
+    <!-- <turnGravityOff>true</turnGravityOff> -->
+  </gazebo>
+
+    <!-- First (shoulder) element of the arm. Fixed to its parent. -->
+<!--     <joint name="$(arg name)_base_joint" type="fixed">
+      <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="0 0 0"/>
+      <parent link="world"/>
+      <child link="$(arg name)/base_link"/>
+    </joint>
+
+ -->
+
+<gazebo reference="$(arg name)/base_link">
+    <static>true</static>
+    <turnGravityOff>true</turnGravityOff>
+</gazebo>
+
+  <link name="$(arg name)/base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1" />
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+<!--     <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://surgical_task/models/axis.dae" scale="2 2 2"/>
+      </geometry>
+    </collision> -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!-- <mesh filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg scale)} ${0.05*$(arg scale)} ${0.05*$(arg scale)}"/> -->
+        <!-- <mesh filename="package://surgical_simulator/models/Torso_Upper_Part.dae" scale="0.001 0.001 0.001"/> -->
+        <mesh filename="package://surgical_task/models/axis.dae" scale="2 2 2"/>
+      </geometry>
+    </visual>
+  </link>
+
+
+    <gazebo>
+    <plugin name="objectPosePublishing" filename="libobjectPosePublishing.so">
+      <actorName>$(arg name)</actorName>
+    </plugin>
+  </gazebo>
+
+</robot>

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="surgical_environment.urdf.xacro">
+  <xacro:arg name="orgin.x" default="0"/>
+  <xacro:arg name="orgin.y" default="0"/>
+  <xacro:arg name="orgin.z" default="0"/>
+  <!-- Surgical frame dimensions after proper rotation --> 
+  <xacro:property name="surgicalFrameXdim" value="0.169996"/>
+  <xacro:property name="surgicalFrameYdim" value="0.279956"/>
+  <xacro:property name="surgicalFrameZdim" value="0.232344"/>
+  <xacro:property name="centerSphereOffset" value="0.1"/>
+  <xacro:property name="sphereRadius" value="0.132"/>
+  <!-- Table dimensions-->
+  <xacro:property name="tableXdim" value="${2*sphereRadius}"/> 
+  <xacro:property name="tableYdim" value="${sphereRadius}"/>
+  <xacro:property name="tableZdim" value="1"/>
+  <!-- Pillars dimensions -->
+  <xacro:property name="pillarsXdim" value="0.12"/>
+  <xacro:property name="pillarsYdim" value="0.12"/>
+  <xacro:property name="pillarsZdim" value="0.032"/>
+
+
+
+  <link name="world"/>
+
+  <gazebo reference="world">
+<!--     <static>true</static>
+    <turnGravityOff>true</turnGravityOff> -->
+  </gazebo>
+
+  <!-- Include all models -->
+  <!-- <xacro:include filename="$(find surgical_simulator)/models/table.urdf.xacro"/> -->
+  <xacro:include filename="$(find surgical_task)/models/surgical_frame.urdf.xacro"/>
+  <xacro:include filename="$(find surgical_task)/models/pillars.urdf.xacro"/>
+
+<!--   <xacro:model_table name="surgical_frame_table" parent="world" length="${tableXdim}" 
+                    width="${tableYdim}" height="${tableZdim}" plate_thickness="0.05"
+                    color="grey">
+    <origin xyz="${$(arg origin.x)-tableXdim/2} ${$(arg origin.y)+tableYdim/2} ${tableZdim}" rpy="0 0 0"/>
+  </xacro:model_table>
+ -->
+
+  <xacro:surgical_frame name="surgical_frame" base_link="world">
+    <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="0 0 0"/>
+  </xacro:surgical_frame>
+
+
+  <xacro:pillars name="pillars" base_link="surgical_frame_base_link">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:pillars>
+
+
+</robot>

@@ -1,0 +1,164 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- LAUNCH INTERFACE -->
+
+  <!-- The robot name is required for gazebo to spawn a model. -->
+  <arg name="rightRobotName" default="right_lwr"/>
+  <arg name="leftRobotName" default="left_lwr"/>
+  <arg name="rightRobotOrigin.x" default="0"/>
+  <arg name="rightRobotOrigin.y" default="-0.5"/>
+  <arg name="rightRobotOrigin.z" default="0"/>
+  <arg name="rightRobotOrigin.ax" default="0"/>
+  <arg name="rightRobotOrigin.ay" default="0"/>
+  <arg name="rightRobotOrigin.az" default="0"/>
+  <arg name="leftRobotOrigin.x" default="0"/>
+  <arg name="leftRobotOrigin.y" default="0.5"/>
+  <arg name="leftRobotOrigin.z" default="0"/>
+  <arg name="leftRobotOrigin.ax" default="0"/>
+  <arg name="leftRobotOrigin.ay" default="0"/>
+  <arg name="leftRobotOrigin.az" default="0"/>
+
+  <arg name="surgicalFrame.x" default="-0.4"/>
+  <arg name="surgicalFrame.y" default="0"/>
+  <arg name="surgicalFrame.z" default="0"/>
+
+  <arg name="target.x" default="1"/>
+  <arg name="target.y" default="0"/>
+  <arg name="target.z" default="0"/>
+  <arg name="target2.x" default="$(arg target.x)"/>
+  <arg name="target2.y" default="$(eval arg('target.y')+0.1)"/>
+  <arg name="target2.z" default="$(arg target.z)"/>
+  <arg name="target3.x" default="$(arg target.x)"/>
+  <arg name="target3.y" default="$(eval arg('target.y')-0.1)"/>
+  <arg name="target3.z" default="$(arg target.z)"/>
+  <arg name="target4.x" default="$(arg target.x)"/>
+  <arg name="target4.y" default="$(eval arg('target.y')-0.2)"/>
+  <arg name="target4.z" default="$(arg target.z)"/>
+
+
+  <arg name="sphereCenter.x" default="$(arg surgicalFrame.x)"/>
+  <arg name="sphereCenter.y" default="$(arg surgicalFrame.y)"/>
+  <arg name="sphereCenter.z" default="$(eval arg('surgicalFrame.z')+0.1)"/>
+  <arg name="showEnvironment" default="true"/>
+  <arg name="showRightRobot" default="true"/>
+  <arg name="showTarget1" default="true"/>
+  <arg name="showTarget2" default="true"/>
+  <arg name="showTarget3" default="false"/>
+  <arg name="showTarget4" default="false"/>
+
+
+  <!-- The recommended way of specifying the URDF file is to pass it in
+       directly. -->
+  <arg name="modelsPath" default="$(find surgical_task)/models"/>
+  <arg name="environmentUrdfFile" default="$(arg modelsPath)/environment.urdf.xacro" />
+  <arg name="axisUrdfFile" default="$(arg modelsPath)/axis.urdf.xacro" />
+  <arg name="lwrUrdfFile" default="$(arg modelsPath)/lwr_with_tool.urdf.xacro" />
+
+  <arg name="controllers" default="joint_controllers"/>
+  <arg name="t1_limits" default="false"/>
+
+  <arg name="rviz_config" default="$(find lwr_launch)/launch/rviz/rviz_config.rviz"/>
+  <arg name="rviz_bringup" default="true"/> <!--If false, do not launch rviz-->
+
+  <arg name="right_hw_interface_file" default="$(find surgical_simulator)/config/right_hw_interface.yaml"/>
+  <arg name="right_controller_config_file" default="$(find surgical_simulator)/config/right_controllers.yaml"/>
+  <arg name="left_hw_interface_file" default="$(find surgical_simulator)/config/left_hw_interface.yaml"/>
+  <arg name="left_controller_config_file" default="$(find surgical_simulator)/config/left_controllers.yaml"/>
+  <arg name="gazebo_world_file" default="$(find surgical_simulator)/worlds/surgical_simulator_world.world"/>
+  <arg name="t1_limits_file" default="$(find surgical_simulator)/config/t1_joint_limits.yaml"/>
+  <arg name="GAZEBO_GUI" default="false"/>
+
+  <!-- Load updated joint limits (override information from single_lwr_moveit) to respect T1 mode limits -->
+  <group if="$(arg t1_limits)" ns="robot_description_planning">
+    <rosparam command="load" file="$(arg t1_limits_file)"/>
+  </group>
+
+  <!-- load robotHW configurations to rosparam server -->
+  <rosparam command="load" file="$(arg right_hw_interface_file)"/>
+  <rosparam command="load" file="$(arg left_hw_interface_file)"/>
+
+  <!-- load all controller configurations to rosparam server -->
+  <rosparam command="load" file="$(arg right_controller_config_file)"/>
+  <rosparam command="load" file="$(arg left_controller_config_file)"/>
+
+    <!-- <node name="worldRightTransform" pkg="foot_control_xy" type="worldActorTransform" args="foot -x 2.0 -y 0.0 -z 0 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/> -->
+
+  <group if="$(arg showEnvironment)" ns="environment">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg environmentUrdfFile) origin.x:=$(arg surgicalFrame.x) origin.y:=$(arg surgicalFrame.y) origin.z:=$(arg surgicalFrame.z)"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="environment_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /environment/robot_description -urdf -model environment" respawn="false" output="screen" />
+  </group>
+
+
+
+  <group ns="left_lwr">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg lwrUrdfFile) robotName:=$(arg leftRobotName) origin.x:=$(arg leftRobotOrigin.x) origin.y:=$(arg leftRobotOrigin.y) origin.z:=$(arg leftRobotOrigin.z) origin.ax:=$(arg leftRobotOrigin.ax) origin.ay:=$(arg leftRobotOrigin.ay) origin.az:=$(arg leftRobotOrigin.az) addCamera:=1 useInstrument:=0"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="kuka_joint_state_controller"/>
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="$(arg controllers)"/>
+    <node name="left_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /left_lwr/robot_description -urdf -model $(arg leftRobotName)" respawn="false" output="screen" />
+  </group>
+
+
+  <group if="$(arg showRightRobot)" ns="right_lwr">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg lwrUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) origin.ax:=$(arg rightRobotOrigin.ax) origin.ay:=$(arg rightRobotOrigin.ay) origin.az:=$(arg rightRobotOrigin.az) addCamera:=1 useInstrument:=0"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="controller_spawner_js" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="kuka_joint_state_controller"/>
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="$(arg controllers)"/>
+    <node name="right_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /right_lwr/robot_description -urdf -model $(arg rightRobotName)" respawn="false" output="screen" />
+  </group>
+
+
+  <group if="$(arg showTarget1)" ns="target1">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target1 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target.x) -y $(arg target.y) -z $(arg target.z) -unpause -param /target1/robot_description -urdf -model target1" respawn="false" output="screen" />
+  </group>
+
+
+
+  <group if="$(arg showTarget2)" ns="target2">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target2 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target2.x) -y $(arg target2.y) -z $(arg target2.z) -unpause -param /target2/robot_description -urdf -model target2" respawn="false" output="screen" />
+  </group>
+
+
+
+  <group if="$(arg showTarget3)" ns="target3">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target3 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target3.x) -y $(arg target3.y) -z $(arg target3.z) -unpause -param /target3/robot_description -urdf -model target3" respawn="false" output="screen" />
+  </group>
+
+
+  <group if="$(arg showTarget4)" ns="target4">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target4 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target4.x) -y $(arg target4.y) -z $(arg target4.z) -unpause -param /target4/robot_description -urdf -model target4" respawn="false" output="screen" />
+  </group>
+
+  <!-- GAZEBO -->
+  <!-- enable/disable gui at will, the rviz listens to the simulation -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg gazebo_world_file)"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="$(arg GAZEBO_GUI)"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <node name="sphericalTrocarFrames" pkg="surgical_task" type="spherical_trocar_frames" args="$(arg sphereCenter.x) $(arg sphereCenter.y) $(arg sphereCenter.z) 1"/>
+
+
+  <node name="pillarFrames" pkg="surgical_task" type="pillar_frames" args="1"/>
+
+  <!-- LAUNCH RVIZ -->
+
+  <node name="lwr_rviz" pkg="rviz" type="rviz" respawn="false" args="-d $(arg rviz_config)"
+        output="screen"
+        if="$(arg rviz_bringup)"/>
+
+
+</launch>

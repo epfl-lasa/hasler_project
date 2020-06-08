@@ -1,0 +1,218 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lwr_with_tool">
+  <xacro:arg name="origin.x" default="0"/>
+  <xacro:arg name="origin.y" default="0"/>
+  <xacro:arg name="origin.z" default="0"/>
+  <xacro:arg name="origin.ax" default="0"/>
+  <xacro:arg name="origin.ay" default="0"/>
+  <xacro:arg name="origin.az" default="0"/>
+  <xacro:arg name="robotName" default="lwr"/>
+  <xacro:arg name="addFrame" default="0"/>
+  <xacro:arg name="addCamera" default="0"/>
+  <xacro:arg name="useInstrument" default="0"/>
+  <xacro:property name="toolMass" value="0.1"/>
+  <xacro:property name="toolLength" value="0.40"/>
+  <xacro:property name="toolRadius" value="0.005"/>
+  <xacro:property name="tableLength" value="0.3"/>
+  <xacro:property name="tableWidth" value="0.3"/>
+  <xacro:property name="tableHeight" value="0.8"/>
+
+  <link name="world"/>
+
+  <gazebo reference="world">
+<!--     <static>true</static>
+    <turnGravityOff>true</turnGravityOff> -->
+  </gazebo>
+
+  <!-- Include all models -->
+  <xacro:include filename="$(find surgical_simulator)/models/kuka_lwr.urdf.xacro"/>
+
+  <xacro:kuka_lwr base_link="world" name="$(arg robotName)">
+    <!-- <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="0 0 0"/> -->
+    <origin xyz="$(arg origin.x) $(arg origin.y) $(arg origin.z)" rpy="$(arg origin.ax) $(arg origin.ay) $(arg origin.az)"/>
+  </xacro:kuka_lwr>
+
+  <xacro:if value="${$(arg useInstrument)==0}">  
+    <link name='$(arg robotName)_tool'>
+
+      <inertial>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0"/>
+        <mass value="${toolMass}"/>
+        <inertia ixx="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" ixy="0" ixz="0" iyy="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" iyz="0" izz="${toolMass*toolRadius*toolRadius/2}"/>
+      </inertial>
+
+      <collision name='collision'>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder length="${toolLength}" radius="${toolRadius}"/>
+        </geometry>
+      </collision>
+
+      <visual name='visual'>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder length="${toolLength}" radius="${toolRadius}"/>
+        </geometry>
+      </visual>
+    </link>
+
+    <joint name="$(arg robotName)_tool_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_7_link"/>
+      <child link="$(arg robotName)_tool"/>
+    </joint>
+  </xacro:if>
+
+
+  <xacro:if value="${$(arg useInstrument)==1}">  
+    <!-- First (shoulder) element of the arm. Fixed to its parent. -->
+    <joint name="instrument_base_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_7_link"/>
+      <child link="$(arg robotName)_instrument"/>
+    </joint>
+
+
+    <link name="$(arg robotName)_instrument">
+      <inertial>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0"/>
+        <mass value="${toolMass}"/>
+        <inertia ixx="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" ixy="0" ixz="0" iyy="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" iyz="0" izz="${toolMass*toolRadius*toolRadius/2}"/>
+      </inertial>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://surgical_task/models/instrument_with_forceps.STL" scale="1 1 1"/>
+        </geometry>
+      </collision>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://surgical_task/models/instrument_with_forceps.STL" scale="1 1 1"/>
+        </geometry>
+      </visual>
+  </link>
+
+  </xacro:if>
+
+
+<xacro:if value="${$(arg addFrame)==1}">
+  <link name='$(arg robotName)_tipframe'>
+      <visual name='visual'>
+        <origin xyz="0 0 ${toolLength}" rpy="0 0 0" />
+          <geometry>
+           <mesh filename="package://surgical_simulator/models/frame.dae" scale="0.035 0.035 0.035"/>
+         </geometry>
+       </visual>   
+  </link>
+  <joint name="$(arg robotName)_frame_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_tool"/>
+      <child link="$(arg robotName)_tipframe"/>
+  </joint>
+ </xacro:if>
+
+<xacro:if value="${$(arg addCamera)==1}">
+
+  <link name="$(arg robotName)_camera_link">
+    <inertial>
+      <mass value="0.001" />
+      <origin xyz="0 0 0" />
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
+    </inertial>
+  </link>
+
+  <joint name="$(arg robotName)_camera_joint" type="fixed">
+        <parent link="$(arg robotName)_tool"/>
+        <child link="$(arg robotName)_camera_link"/>
+        <origin xyz="0 0 ${toolLength}" rpy="0 ${-M_PI/2} ${M_PI}"/>
+  </joint>
+
+  <gazebo reference='$(arg robotName)_camera_link'>
+    <sensor type="camera" name="camera_camera_sensor">
+      <alwaysOn>true</alwaysOn>
+      <update_rate>30.0</update_rate>
+    <camera>
+        <pose>0 0 0 0 0 0</pose>
+        <horizontal_fov>${85 * M_PI/180.0}</horizontal_fov>
+        <image>
+          <format>R8G8B8</format>
+          <width>1020</width>
+          <height>1020</height>
+        </image>
+        <clip>
+          <near>0.01</near>
+          <far>100</far>
+        </clip>
+      </camera>
+      <plugin name="camera_camera_controller" filename="libgazebo_ros_camera.so">
+        <alwaysOn>true</alwaysOn>
+        <updateRate>30.0</updateRate>
+        <cameraName>camera</cameraName>
+        <imageTopicName>image_raw</imageTopicName>
+        <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+        <frameName>camera_link</frameName>
+        <hackBaseline>0.07</hackBaseline>
+        <distortionK1>0.0</distortionK1>
+        <distortionK2>0.0</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>0.0</distortionT2>
+      </plugin>
+    </sensor>
+  </gazebo>
+</xacro:if>
+
+
+<!-- <xacro:if value="${$(arg addCamera)==0}"> -->
+<!--   <link name="ft_sensor_link">
+    <inertial>
+      <mass value="0.001" />
+      <origin xyz="0 0 0" />
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
+    </inertial>
+  </link>
+
+  <joint name="ft_sensor_joint" type="fixed">
+        <parent link="$(arg robotName)_tool"/>
+        <child link="ft_sensor_link"/>
+        <origin xyz="0 0 ${toolLength}" rpy="0 0 0"/>
+        <limit effort="400" velocity="0" lower="0" upper="0" />
+  </joint> -->
+
+<!--   <joint name="ft_sensor_joint" type="prismatic">
+      <origin xyz="0 0 ${toolLength}" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_tool"/>
+      <child link="ft_sensor_link"/>
+      <limit effort="200" velocity="0" lower="0" upper="0"/>
+      <axis xyz="0 0 1"/>
+  </joint> -->
+<!-- 
+  <joint name="ft_sensor_joint" type="revolute">
+      <origin xyz="0 0 ${toolLength}" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_tool"/>
+      <child link="ft_sensor_link"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="0" effort="0.0" velocity="0.0"/>
+</joint> -->
+
+<!--   <gazebo reference="$(arg robotName)_tool_joint">
+    <provideFeedback>true</provideFeedback>
+    <disableFixedJointLumping>true</disableFixedJointLumping>
+  </gazebo> -->
+
+<!--   <gazebo>
+    <plugin name="ft_sensor" filename="libgazebo_ros_ft_sensor.so">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>200</updateRate>
+      <topicName>ft_sensor</topicName>
+      <jointName>$(arg robotName)_tool_joint</jointName>
+      <gaussianNoise>0.0001</gaussianNoise>
+    </plugin>
+  </gazebo> -->
+<!-- </xacro:if> -->
+
+
+
+</robot>

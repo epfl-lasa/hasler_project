@@ -12,18 +12,17 @@ _dt(1.0f/frequency)
 	_stop = false;
 
 
-	// _offset << -0.5f, 0.0f, 0.0f;
-	// _offset << -0.33f-0.13f, -0.316f, -0.015f;
-	// _offset << -0.33f-0.13f, 0.45, -0.015f;
-	  _offset << -0.33f-0.13f, 0.45f, -0.015f;
+	  // _offset << -0.33f-0.13f, 0.45f, -0.015f;
+	  _offset << 0.0f, 0.0f, 0.1f;
 
 
-	float sphereRadius = 0.13f;
-	float medialDivision = 10.0f;
-	float transversalDivision = 12.0f;
+	float sphereRadius = 0.132f;
+	int medialDivision = 4;
+	int transversalDivision = 6;
 
-	float angle1 = M_PI/medialDivision;
-	float angle2  = 2*M_PI/transversalDivision;
+	float angle1 = 75*M_PI/(180.0f*4.0f);
+	float angle1_offset = 15.0f*M_PI/180.0f;
+	float angle2  = M_PI/5.0f;
 
 	// _trocarPosition.resize((medialDivision/2-1)*4+1-2*4,3);
 	// _trocarOrientation.resize((medialDivision/2-1)*4+1-2*4,3);
@@ -48,33 +47,41 @@ _dt(1.0f/frequency)
 
 	Eigen::MatrixXf positions;
 	Eigen::MatrixXf orientations;
-	positions.resize((medialDivision/2-1)*transversalDivision+1,3);
-	orientations.resize((medialDivision/2-1)*transversalDivision+1,3);
+	positions.resize(medialDivision*transversalDivision+1,3);
+	orientations.resize(medialDivision*transversalDivision+1,3);
 
+	std::vector<int> idConserved;
 	int id = 0;
+	idConserved.push_back(id);
 	positions.row(id) << 0.0f,0.0f,sphereRadius;
 	positions.row(id)+=_offset.transpose();
 	orientations.row(id) << 0.0f, 0.0f, 1.0f;
 	id++;
-	for(int k = 1; k <medialDivision/2; k+=1)
+
+	for(int k = 1; k <medialDivision+1; k+=1)
 	{
 		for(int m = 1 ; m < transversalDivision+1; m+=1)
 		{
-			positions.row(id) << sphereRadius*cos(k*angle1)*cos((m-1)*angle2),
-			                           sphereRadius*cos(k*angle1)*sin((m-1)*angle2),
-			                           sphereRadius*sin(k*angle1);
+			// positions.row(id) << sphereRadius*cos(k*angle1)*cos((m-1)*angle2),
+			//                            sphereRadius*cos(k*angle1)*sin((m-1)*angle2),
+			//                            sphereRadius*sin(k*angle1);
+			positions.row(id) << -sphereRadius*cos((k-1)*angle1+angle1_offset)*sin((m-1)*angle2),
+			                     sphereRadius*cos((k-1)*angle1+angle1_offset)*cos((m-1)*angle2),
+			                           sphereRadius*sin((k-1)*angle1+angle1_offset);
            	positions.row(id)+=_offset.transpose();
            	orientations.row(id) = (positions.row(id)-_offset.transpose()).normalized();
+       		idConserved.push_back(id);
            	id++;
+
 		}
 	}
-	std::vector<int> idConserved;
-	idConserved.push_back(0);
-	idConserved.push_back(28);
-	idConserved.push_back(4);
-	idConserved.push_back(25);
-	idConserved.push_back(34);
-	idConserved.push_back(10);
+
+	std::cerr << id << std::endl;
+	// idConserved.push_back(28);
+	// idConserved.push_back(4);
+	// idConserved.push_back(25);
+	// idConserved.push_back(34);
+	// idConserved.push_back(10);
 
 	_trocarPosition.resize(idConserved.size(),3);
 	_trocarOrientation.resize(idConserved.size(),3);

@@ -1,0 +1,43 @@
+# Produced by CVXGEN, 2020-04-23 08:57:30 -0400.
+# CVXGEN is Copyright (C) 2006-2017 Jacob Mattingley, jem@cvxgen.com.
+# The code in this file is Copyright (C) 2006-2017 Jacob Mattingley.
+# CVXGEN, or solvers produced by CVXGEN, cannot be used for commercial
+# applications without prior written permission from Jacob Mattingley.
+
+# Filename: description.cvxgen.
+# Description: A description of the CVXGEN problem.
+
+dimensions
+  N = 7 #Number of joints
+  M = 7 #Task dimension
+end
+
+variables
+  dq (N) # step for joint angles
+  delta (M) # slack variable
+end
+
+
+parameters
+  damping (N) nonnegative
+  slack (M) nonnegative
+  J[i] (N),i=1..M # Jacobian
+  dx (M) # error in end-effector
+  qlow (N) # lower limits joint angles
+  qup (N) # upper limits joint angles
+  dqlow (N) # lower limits joint velocities
+  dqup (N) # upper limits joint velocities
+  slackup (M) # upper limits slack
+  slacklow (M) # lower limits slack
+  q0 (N) # actual angles
+  dt (1)
+end
+
+minimize
+  damping'*square(dq) + slack'*square(delta)
+subject to
+  sum[i=1..N](J[j][i]*dq[i]) == dx[j] + delta[j], j=1..M
+  qlow[i] <= q0[i]+dt*dq[i] <= qup[i], i=1..N
+  dqlow[i] <= dq[i] <= dqup[i], i=1..N
+  slacklow[i] <= delta[i] <= slackup[i], i=1..M
+end
