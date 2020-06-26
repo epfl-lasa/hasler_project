@@ -17,18 +17,20 @@ SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency):
 
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.02f;
-  _toolOffsetFromEE[LEFT] = 0.4f;
+  // _toolOffsetFromEE[LEFT] = 0.441f+0.015f;
+  _toolOffsetFromEE[LEFT] = 0.422f+0.015f;
   _toolOffsetFromEE[RIGHT] = 0.4f;
   _toolMass = 0.2f;
 
   _useRobot[LEFT] = true;
-  _useRobot[RIGHT] = true;
+  _useRobot[RIGHT] = false;
   _mapping[LEFT] = POSITION_VELOCITY;
   _mapping[RIGHT] = POSITION_VELOCITY;
-  _useSim = true;
-  _useJoystick = true;
+  _useSim = false;
+  _useJoystick = false;
   _sphericalTrocarId[LEFT] = 14;
   _sphericalTrocarId[RIGHT] = 23;
+  _usePredefinedTrocars = false;
 
   for(int k= 0; k < NB_ROBOTS; k++)
   {
@@ -67,12 +69,37 @@ SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency):
     _robotMode[k] = TROCAR_SELECTION;
     _ikJoints[k].resize(7);
     _currentJoints[k].resize(7);
+    _trocarsRegistered[k] = false;
+    _trocarPosition[k].setConstant(0.0f);
   }
 
+  if(!_useSim)
+  {
+    _xRobotBaseOrigin[LEFT].setConstant(0.0f);
+     _xRobotBaseOrigin[LEFT] << 0.0f, 1.04f, 0.0f;
+    _xRobotBaseOrigin[RIGHT].setConstant(0.0f);
+  }
 
-  _pillarsId.resize(2);
+  if(_usePredefinedTrocars)
+  {
+    Eigen::Vector3f temp;
+    _trocarPosition[LEFT] << -0.304, -0.432f, 0.696f-_toolOffsetFromEE[LEFT];
+    temp << 0.265f,-0.490f,-0.830f;
+    temp.normalize();
+    _trocarOrientation[LEFT] << temp;
+
+    _trocarPosition[RIGHT] << -0.308f, 0.471f, 0.741f-_toolOffsetFromEE[RIGHT];
+    temp << 0.116f,0.220f,-0.968f;
+    temp.normalize();
+    _trocarOrientation[RIGHT] << temp; 
+  }
+
+  // _pillarsId.resize(2);
   // _pillarsId << 1, 3, 11, 10;
-  _pillarsId << 1, 3;
+  // _pillarsId << 1, 3;
+
+  _pillarsId.resize(3);
+  _pillarsId << 0, 1, 2;
 
   int nbTasks = _pillarsId.size();
 
@@ -97,11 +124,23 @@ SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency):
   _pillarsPosition.resize(_pillarsId.size(),3);
 
   _pillarsPosition.setConstant(0.0f);
+  Eigen::Vector3f p0;
+  p0 << -0.553f, 0.588f, 0.05f;
+
+  if(!_useSim)
+  {
+    _pillarsPosition.row(0) = p0;
+    _pillarsPosition.row(1) << p0(0)-0.032, p0(1)-0.064, p0(2);
+    _pillarsPosition.row(2) << p0(0)-0.064, p0(1), p0(2);    
+  }
   _stop = false;
   
   // _strategy = PRIMARY_TASK;
   _strategy = VIRTUAL_RCM;
   _humanInput = FOOT;
+
+  _footOffset[LEFT].setConstant(0.0f);
+  _footOffset[RIGHT].setConstant(0.0f);
 
 }
 
@@ -201,7 +240,7 @@ void SurgicalTask::run()
 {
   while(!_stop) 
   {
-    if(allSubscribersOK() && allFramesOK())
+    if(allSubscribersOK() && allFramesOK() && _trocarsRegistered[LEFT] && _trocarsRegistered[RIGHT])
     {
       // Check for update of the DS-impedance controller gain
       ros::param::getCached("/left_lwr/joint_controllers/ds_param/damping_eigval0",_d1[LEFT]);
@@ -218,9 +257,19 @@ void SurgicalTask::run()
     }
     else
     {
-      if(!allFramesOK())
+      if(_useSim)
       {
-        receiveFrames();
+        if(!allFramesOK())
+        {
+          receiveFrames();
+        }        
+      }
+      else
+      {
+        if(!_usePredefinedTrocars)
+        {
+          registerTrocars();
+        }
       }
     }
 
@@ -283,30 +332,36 @@ bool SurgicalTask::allSubscribersOK()
 bool SurgicalTask::allFramesOK()
 {
   bool frameStatus[NB_ROBOTS];
+  frameStatus[LEFT] = false;
+  frameStatus[RIGHT] = false;
 
-  for(int k = 0; k < NB_ROBOTS; k++)
+  if(_useSim)
   {
-
-    bool pillarsStatus = true;
-    if(k == 0)
+    for(int k = 0; k < NB_ROBOTS; k++)
     {
-      for(int m = 0; m < _pillarsId.size(); m++)
+
+      bool pillarsStatus = true;
+      if(k == 0)
       {
-        pillarsStatus = pillarsStatus && _firstPillarsFrame[m];
+        for(int m = 0; m < _pillarsId.size(); m++)
+        {
+          pillarsStatus = pillarsStatus && _firstPillarsFrame[m];
+        }
+      }
+
+      frameStatus[k] = !_useRobot[k] || (_firstRobotBaseFrame[k] && _firstSphericalTrocarFrame[k] && pillarsStatus);
+
+      if(!frameStatus[k])
+      {
+        std::cerr << k << ": Status: " << "not use: " << !_useRobot[k] 
+                  << " robot base: " << _firstRobotBaseFrame[k] 
+                  << " trocar : " << _firstSphericalTrocarFrame[k] << " pillars: " << pillarsStatus << std::endl;
       }
     }
 
-    frameStatus[k] = !_useRobot[k] || (_firstRobotBaseFrame[k] && _firstSphericalTrocarFrame[k] && pillarsStatus);
-
-    if(!frameStatus[k])
-    {
-      std::cerr << k << ": Status: " << "not use: " << !_useRobot[k] 
-                << " robot base: " << _firstRobotBaseFrame[k] 
-                << " trocar : " << _firstSphericalTrocarFrame[k] << " pillars: " << pillarsStatus << std::endl;
-    }
   }
 
-  return frameStatus[LEFT] && frameStatus[RIGHT]; 
+  return !_useSim || (frameStatus[LEFT] && frameStatus[RIGHT]); 
 }
 
 void SurgicalTask::receiveFrames()
@@ -353,6 +408,7 @@ void SurgicalTask::receiveFrames()
         temp << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
         _trocarOrientation[k] = -Utils<float>::quaternionToRotationMatrix(temp).col(2);
         _firstSphericalTrocarFrame[k] = true;
+        _trocarsRegistered[k] = true;
         std::cerr << "[SurgicalTask]: Spherical trocar for robot " << k << " origin received: " << _trocarPosition[k].transpose() << std::endl;
         std::cerr << "[SurgicalTask]: Spherical trocar for robot " << k << " orientation received: " << _trocarOrientation[k].transpose() << std::endl;
       } 
@@ -485,6 +541,7 @@ void SurgicalTask::updateTrocarInformation(int r)
   // Linear DS to go to the attractor
   _fxk[r]= 4.0f*(_xdEE[r]-_xEE[r]); 
   std::cerr << "[SurgicalTask]: " << r << ": Distance to attractor: " << (_xdEE[r]-_xEE[r]).norm() << std::endl;
+
 }
 
 
@@ -492,6 +549,8 @@ void SurgicalTask::updateTrocarInformation(int r)
 void SurgicalTask::selectRobotMode(int r)
 {
   _robotMode[r] = TROCAR_SELECTION;
+
+  std::cerr << "[SurgicalTask]: " << r << _x[r].transpose() << std::endl;
 
   if(_alignedWithTrocar[r]==true)
   {
@@ -502,7 +561,7 @@ void SurgicalTask::selectRobotMode(int r)
     {
       _robotMode[r] = TROCAR_SELECTION;
     }
-    else if(distance >= -0.02f && distance < 0.04f)
+    else if(distance >= -0.04f && distance < 0.04f)
     {
       _robotMode[r] = TROCAR_INSERTION;
     }
@@ -569,7 +628,7 @@ void SurgicalTask::trocarSelection(int r)
   // Compute final quaternion on plane
   _qd[r] = Utils<float>::quaternionProduct(qe, _q[r]);
 
-  float angleErrorToTrocarOrientation = std::acos(_trocarOrientation[r].dot(_wRb[r].col(2)));
+  float angleErrorToTrocarOrientation = std::acos(Utils<float>::bound(_trocarOrientation[r].dot(_wRb[r].col(2)),-1.0f,1.0f));
 
   std::cerr << "[SurgicalTask]: " << r << ": angleErrorToTrocarPosition: " << angleErrorToTrocarPosition << std::endl;
   std::cerr << "[SurgicalTask]: " << r << ": angleErrorToTrocarOrientation: " << angleErrorToTrocarOrientation << std::endl;
@@ -604,6 +663,8 @@ void SurgicalTask::trocarInsertion(int r)
   {
 
     _vd[r] += 0.1*Utils<float>::deadZone(_footPosition[r](2),-0.1f,0.1f)*_rEETrocar[r].normalized();
+    std::cerr << r << " vd: " << _vd[r].transpose() << std::endl;
+
   }
   else
   {
@@ -613,6 +674,7 @@ void SurgicalTask::trocarInsertion(int r)
       float vi;
       vi = 0.15f*Utils<float>::deadZone(_footPosition[r](2)/(FOOT_INTERFACE_Y_RANGE/2.0f), -0.1f, 0.1f);
       _vd[r]+= vi*(_rEETrocar[r].normalized());
+      // std::cerr << _footPosition[r](2) << std::endl;
       std::cerr << "vi: " << vi << " vd: " << _vd[r].transpose() << std::endl;
 
     }
@@ -671,16 +733,31 @@ void SurgicalTask::trocarSpace(int r)
 
     if(_mapping[r] == POSITION_VELOCITY)
     {
-      gains << 2.0f*0.03f/FOOT_INTERFACE_PITCH_RANGE,
-               2.0f*0.03f/FOOT_INTERFACE_ROLL_RANGE,
-               2.0f*0.15f/FOOT_INTERFACE_Y_RANGE;
+     float l2 = _toolOffsetFromEE[r]-(_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2));
+      float g = std::min(std::max(l2,0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+      // gains << g*0.05f, g*0.05f, 0.15f;
+      std::cerr << g << std::endl; 
+
+      gains << g*0.05f,
+               g*0.05f,
+               0.15f;
+
+
 
       temp(0) = Utils<float>::deadZone(_footPosition[r](0),-5.0f,5.0f);
       temp(1) = Utils<float>::deadZone(_footPosition[r](1),-5.0f,5.0f);
       temp(2) = Utils<float>::deadZone(_footPosition[r](2),-0.03f,0.03f);
+      // std::cerr << r << ": temp: " << temp.transpose() << std::endl; 
 
+      temp(0) = Utils<float>::bound(2*temp(0)/(FOOT_INTERFACE_PITCH_RANGE-2*5.0f),-1.0f,1.0f);
+      temp(1) = Utils<float>::bound(2*temp(1)/(FOOT_INTERFACE_ROLL_RANGE-2*5.0f),-1.0f,1.0f);
+      temp(2) = Utils<float>::bound(2*temp(2)/(FOOT_INTERFACE_Y_RANGE-2*0.03f),-1.0f,1.0f);
+
+      // std::cerr << r << ": temp: " << temp.transpose() << std::endl; 
 
       vdTool = _wRb[r]*(gains.cwiseProduct(temp));      
+
+      std::cerr << r << ": vd: " << (gains.cwiseProduct(temp)).transpose() << std::endl; 
 
 
       if(r==LEFT)
@@ -722,7 +799,14 @@ void SurgicalTask::trocarSpace(int r)
       else
       {
         xd = _xd0[r]+desiredOffset;
-        vdTool = 2.0f*(xd-_x[r]);        
+        vdTool = 2.0f*(xd-_x[r]);       
+        float l2 = _toolOffsetFromEE[r]-(_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2));
+        float g = std::min(std::max(l2,0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+        Eigen::Matrix3f lambda;
+        lambda.setIdentity();
+        lambda(0,0) = g;
+        lambda(1,1) = g;
+        vdTool = _wRb[r]*lambda*_wRb[r].transpose()*vdTool; 
       }
 
       std::cerr << r << ": Desired offset: " << desiredOffset.transpose() << std::endl; 
@@ -744,7 +828,10 @@ void SurgicalTask::trocarSpace(int r)
 
     if(_mapping[r]==POSITION_VELOCITY)
     {
-      gains << 0.03f, 0.03f, 0.15f;
+      float l2 = _toolOffsetFromEE[r]-(_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2));
+      float g = std::min(std::max(l2,0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+      gains << g*0.05f, g*0.05f, 0.15f;
+      std::cerr << g << std::endl; 
       Eigen::Vector3f temp;
       temp = gains.cwiseProduct(_footPosition[r].segment(0,3));
       // vdTool = _wRb[r]*(gains.cwiseProduct(_footPosition[r].segment(0,3)));
@@ -754,7 +841,8 @@ void SurgicalTask::trocarSpace(int r)
       }
       else
       {
-        vdTool = _wRb[r]*temp;
+        // vdTool = _wRb[r]*temp;
+        vdTool = temp(0)*_wRb[r].col(1)+temp(1)*_wRb[r].col(0)+temp(2)*_wRb[r].col(2);
       }
 
 
@@ -764,15 +852,15 @@ void SurgicalTask::trocarSpace(int r)
         vdTool = temp(2)*_wRb[r].col(2)+_vdC;
       }
 
-      std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+      // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
       // bool res = _qpSolverRCM.step(_ikJoints[r], _currentJoints[r], _trocarPosition[r],
       // _toolOffsetFromEE[r], _x[r], _currentJoints[r](6), 1.0f, _xRobotBaseOrigin[r]);
 
-      _ikJoints[r] = qpSolver(_currentJoints[r], _trocarPosition[r],
-      _toolOffsetFromEE[r], _x[r], _currentJoints[r](6), 1.0f, _xRobotBaseOrigin[r]);
+      // _ikJoints[r] = qpSolver(_currentJoints[r], _trocarPosition[r],
+      // _toolOffsetFromEE[r], _x[r], _currentJoints[r](6), 1.0f, _xRobotBaseOrigin[r]);
 
-      std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+      // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
       // Eigen::VectorXd joints;
       // bool res = _cvxgenSolverRCM.step(joints, _currentJoints[r].cast<double>(), _trocarPosition[r].cast<double>(),
       // (double)_toolOffsetFromEE[r], _x[r].cast<double>(), (double) _currentJoints[r](6), 1.0f, _xRobotBaseOrigin[r].cast<double>());
@@ -783,10 +871,10 @@ void SurgicalTask::trocarSpace(int r)
       // std::cerr << "[SurgicalTask]: " << r <<": Current offset: " << currentOffset.transpose() << std::endl; 
       // std::cerr << "[SurgicalTask]: " << r <<": error tool : " << (_x[r]-_xdTool[r]).norm() << std::endl; 
       // std::cerr << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
-      std::cerr << r << ": Desired joints: " << _ikJoints[r].transpose() << std::endl;
-      std::cerr << r << ": Error joints: " << (_ikJoints[r]-_currentJoints[r]).norm() << std::endl;
+      // std::cerr << r << ": Desired joints: " << _ikJoints[r].transpose() << std::endl;
+      // std::cerr << r << ": Error joints: " << (_ikJoints[r]-_currentJoints[r]).norm() << std::endl;
       // std::cerr << (int) res <<  " Elasped time in [micro s]: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << std::endl;
-      std::cerr <<  " Elasped time in [micro s]: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << std::endl;
+      // std::cerr <<  " Elasped time in [micro s]: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << std::endl;
       // std::cerr << (int) res <<  " Tocar position: " << _trocarPosition[r].transpose() << std::endl;
       // // std::cerr << (int) res <<  "Tocar position: " << _trocarPosition[r].transpose() << std::endl;
       // std::cerr <<  "xd: " << _xdTool[r].transpose() <<  "x: " << _x[r].transpose() << std::endl;
@@ -800,8 +888,6 @@ void SurgicalTask::trocarSpace(int r)
       desiredOffset(1) = desiredOffset(2)*std::tan(_footPosition[r](1)*45.0f*M_PI/180.0f);
       desiredOffset(0) = desiredOffset(2)*std::tan(_footPosition[r](0)*45.0f*M_PI/180.0f);
 
-      currentOffset = _x[r]-_xd0[r];
-
       // if((desiredOffset-currentOffset).norm()<0.02f && _inputAlignedWithOrigin[r]==false)
       // {
       //   std::cerr << "Bring input to current robot position" << std::endl;
@@ -809,26 +895,55 @@ void SurgicalTask::trocarSpace(int r)
       //   vdTool.setConstant(0.0f);
       // }
       // else
-      {
-        // if(currentOffset.norm()<0.01f && desiredOffset.norm()<0.01f)
-        // {
-        //   vdTool.setConstant(0.0f);
-        // }
-        // else
-        {
-          xd = _xd0[r]+desiredOffset;
-          // std::cerr << desiredOffset.transpose() << std::endl;
-          // std::cerr << _xd0[r] << std::endl;
-          // xd(2) -= 0.01f;
-          vdTool = 2.0f*(xd-_x[r])+0.15f*std::min(_footPosition[r](2),0.0f)*_wRb[r].col(2);          
-          // _xdTool[r] += vdTool*_dt; 
-          // _xdTool[r][0] =  Utils<float>::bound(_xdTool[r](0),_xd0[r](0)-0.1,_xd0[r](0)+0.1f);
-          // _xdTool[r][1] =  Utils<float>::bound(_xdTool[r](1),_xd0[r](1)-0.1,_xd0[r](1)+0.1f);
-          // _xdTool[r][2] =  Utils<float>::bound(_xdTool[r](2),_xd0[r](2)-0.2,_xd0[r](2)+0.2f);
-          // _xdTool[r] = xd; 
+      // {
+      //   // if(currentOffset.norm()<0.01f && desiredOffset.norm()<0.01f)
+      //   // {
+      //   //   vdTool.setConstant(0.0f);
+      //   // }
+      //   // else
+      //   {
+      //     xd = _xd0[r]+desiredOffset;
+      //     // std::cerr << desiredOffset.transpose() << std::endl;
+      //     // std::cerr << _xd0[r] << std::endl;
+      //     // xd(2) -= 0.01f;
+      //     vdTool = 2.0f*(xd-_x[r])+0.15f*std::min(_footPosition[r](2),0.0f)*_wRb[r].col(2);          
+      //     // _xdTool[r] += vdTool*_dt; 
+      //     // _xdTool[r][0] =  Utils<float>::bound(_xdTool[r](0),_xd0[r](0)-0.1,_xd0[r](0)+0.1f);
+      //     // _xdTool[r][1] =  Utils<float>::bound(_xdTool[r](1),_xd0[r](1)-0.1,_xd0[r](1)+0.1f);
+      //     // _xdTool[r][2] =  Utils<float>::bound(_xdTool[r](2),_xd0[r](2)-0.2,_xd0[r](2)+0.2f);
+      //     // _xdTool[r] = xd; 
 
-        }
+      //   }
+
+      currentOffset = _x[r]-_xd0[r];
+
+      if((desiredOffset-currentOffset).norm()<0.07f)
+      {
+        _inputAlignedWithOrigin[r]=true;
       }
+
+      if(_inputAlignedWithOrigin[r]==false)
+      {
+        vdTool.setConstant(0.0f);
+      }
+      else
+      {
+        xd = _xd0[r]+desiredOffset;
+        vdTool = 2.0f*(xd-_x[r]);        
+        float l2 = _toolOffsetFromEE[r]-(_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2));
+        float g = std::min(std::max(l2,0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+        Eigen::Matrix3f lambda;
+        lambda.setIdentity();
+        lambda(0,0) = g;
+        lambda(1,1) = g;
+        vdTool = _wRb[r]*lambda*_wRb[r].transpose()*vdTool;
+        std::cerr << g << std::endl;
+      }
+
+      std::cerr << r << ": Desired offset: " << desiredOffset.transpose() << std::endl; 
+      std::cerr << r << ": Current offset: " << currentOffset.transpose() << std::endl; 
+      std::cerr << r << ": vd: " << vdTool.transpose() << std::endl; 
+
       // Eigen::Matrix<float, 7, 1> joints;
 
       std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -858,7 +973,9 @@ void SurgicalTask::trocarSpace(int r)
     {
       std::cerr << r << ": Foot mode unknown !" << std::endl;
       vdTool.setConstant(0.0f);
-    }   
+    }
+
+    std::cerr << r << ": vd: " << vdTool.transpose() << std::endl; 
 
 
     vdTool = Utils<float>::bound(vdTool,0.1f);
@@ -875,19 +992,34 @@ void SurgicalTask::trocarSpace(int r)
   b.segment(3,3) = vdTool;
 
   x = A.fullPivHouseholderQr().solve(b);
-  _vd[r] = x.segment(0,3);
+  // _vd[r] = x.segment(0,3);
+  // if(_useSim)
 
-  if(_useSim)
+  _omegad[r] = (_x[r]-_xEE[r]-_rEERCM[r]).cross(Utils<float>::orthogonalProjector(_wRb[r].col(2))*vdTool)/(_x[r]-_xEE[r]-_rEERCM[r]).squaredNorm();
+ 
+  // if(_omegad[r].norm()>1.0f)
+  // {
+  //   _omegad[r]*=1.0f/_omegad[r].norm();
+  // }
+  // _vd[r] = -_omegad[r].cross(rEETool)+2.0f*(_trocarPosition[r][indexMax]-_xRCM[r][indexMax]);
+  // _vd[r] = vdTool;
+  _vd[r] = vdTool-_omegad[r].cross(_x[r]-_xEE[r]);
+  x.segment(0,3) = _vd[r];
+
   {
     // bou = 0.9*bou+0.1*1000.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
     // _vd[r]+=bou;
 
-    _vd[r]+=20.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+    // _vd[r]+=10.0f*(_trocarPosition[r]-_xRCM[r]);
+    _vd[r]+=1.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
   }
+  std::cerr << "[SurgicalTask]: " << r << ": vd init: " << x.segment(0,3).norm() << " " << _vd[r].norm() << std::endl;
   _vd[r] = Utils<float>::bound(_vd[r],0.3f);
 
   _omegad[r] = x.segment(3,3);
-  _omegad[r] = Utils<float>::bound(_omegad[r],1.0f);
+
+  _omegad[r] = Utils<float>::bound(_omegad[r],2.0f);
+  std::cerr << "[SurgicalTask]: " << r << ": Omega init: " << x.segment(3,3).norm() << " " << _omegad[r].norm() << std::endl;
 
   _nullspaceWrench[r].setConstant(0.0f);
   // _nullspaceWrench[r].segment(0,3) = 50.0f*(_trocarPosition[r][indexMax]-_xRCM[r][indexMax]);
@@ -925,7 +1057,8 @@ void SurgicalTask::trocarSpace(int r)
     selfRotationCommand = 1.0f*_footPose[r](YAW);
   }
 
-  _omegad[r] += Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r])+selfRotationCommand*_wRb[r].col(2);
+  // _omegad[r] += Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r])+selfRotationCommand*_wRb[r].col(2);
+  _omegad[r] += selfRotationCommand*_wRb[r].col(2);
   
   // std::cerr << "omega: " <<_omegad[r].transpose() << std::endl;
 }
@@ -1023,9 +1156,7 @@ void SurgicalTask::pillarsAdaptation(int r)
   }
   else
   {    
-    gains << 2.0f*0.03f/FOOT_INTERFACE_PITCH_RANGE,
-             2.0f*0.03f/FOOT_INTERFACE_ROLL_RANGE,
-             2.0f*0.15f/FOOT_INTERFACE_Y_RANGE;
+    gains.setConstant(1.0f);  
   }
 
   Eigen::Vector3f vH, temp2;
@@ -1036,6 +1167,13 @@ void SurgicalTask::pillarsAdaptation(int r)
     temp2(0) = Utils<float>::deadZone(_footPosition[r](0),-5.0f,5.0f);
     temp2(1) = Utils<float>::deadZone(_footPosition[r](1),-5.0f,5.0f);
     temp2(2) = Utils<float>::deadZone(_footPosition[r](2),-0.03f,0.03f);
+      // std::cerr << r << ": temp2: " << temp2.transpose() << std::endl; 
+
+    temp2(0) = Utils<float>::bound(2*temp2(0)/(FOOT_INTERFACE_PITCH_RANGE-2*5.0f),-1.0f,1.0f);
+    temp2(1) = Utils<float>::bound(2*temp2(1)/(FOOT_INTERFACE_ROLL_RANGE-2*5.0f),-1.0f,1.0f);
+    temp2(2) = Utils<float>::bound(2*temp2(2)/(FOOT_INTERFACE_Y_RANGE-2*0.03f),-1.0f,1.0f);
+
+
     temp2 = temp2.cwiseProduct(gains);
     vH = temp2(1)*_wRb[r].col(1)+temp2(0)*_wRb[r].col(0);
   }
@@ -1065,17 +1203,21 @@ void SurgicalTask::pillarsAdaptation(int r)
   Eigen::MatrixXf vdP;
   vdP.resize(nbTasks,3);
 
+  float l2 = _toolOffsetFromEE[r]-(_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2));
+  float g = std::min(std::max(l2,0.0f)*2.0f/_toolOffsetFromEE[r],1.0f);
+
   for(int k = 0; k < nbTasks; k++)
   {
 
     if(_useRobot[RIGHT] && k == nbTasks-1)
     {
-      vdP.row(k) =  2.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_x[RIGHT]-_x[r]); 
+      vdP.row(k) =  2.0f*g*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_x[RIGHT]-_x[r]); 
     }
     else
     {
-      vdP.row(k) = 2.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_pillarsPosition.row(k).transpose()-_x[r]);
+      vdP.row(k) = 2.0f*g*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_pillarsPosition.row(k).transpose()-_x[r]);
     }
+    // vdP.row(k) = Utils<float>::bound(vdP.row(k),0.05f);
     // vdP(k,2) = 0.0f;
     _vdC+=_beliefsC(k)*vdP.row(k);
     // _vdC+=_beliefsC(k)*vdP.row(k).normalized();
@@ -1285,7 +1427,10 @@ void SurgicalTask::humanInputTransformation()
          1.0f, 0.0f, 0.0f;
 
   // _footPosition[RIGHT] = R*_footPose[RIGHT].segment(1,3);
+  // std::cerr << _footPose[LEFT].transpose() << std::endl;
   _footPosition[LEFT] = R*_footPose[LEFT].segment(1,3);
+  // std::cerr << _footPosition[LEFT].transpose() << std::endl;
+
 
   }
   else
@@ -1422,7 +1567,7 @@ void SurgicalTask::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg, int
   //   _x[k] += _leftRobotOrigin;
   // }
 
-  if(_firstRobotBaseFrame[k])
+  if(!_useSim ||_firstRobotBaseFrame[k])
   {
     _xEE[k] += _xRobotBaseOrigin[k];
     _x[k] += _xRobotBaseOrigin[k];
@@ -1430,7 +1575,7 @@ void SurgicalTask::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg, int
 
   if(!_firstRobotPose[k])
   {
-    if(_firstRobotBaseFrame[k])
+    if(!_useSim || _firstRobotBaseFrame[k])
     {
       _firstRobotPose[k] = true;
       _xd[k] = _x[k];
@@ -1458,9 +1603,11 @@ void SurgicalTask::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int k)
   _footPose[k].setConstant(0.0f);
   _footPose[k](X) = msg->axes[0];
   _footPose[k](Y) = msg->axes[1];
-  _footPose[k](PITCH) = msg->axes[4];
-  _footPose[k](YAW) = (-msg->axes[5]+1.0f)/2.0f-(-msg->axes[2]+1.0f)/2.0f;
-  
+  // _footPose[k](PITCH) = msg->axes[4];
+  // _footPose[k](YAW) = (-msg->axes[5]+1.0f)/2.0f-(-msg->axes[2]+1.0f)/2.0f;
+  _footPose[k](PITCH) = msg->axes[3];
+  _footPose[k](YAW) = (-msg->axes[12]+1.0f)/2.0f-(-msg->axes[13]+1.0f)/2.0f;
+
   if(!_firstJoystick[k])
   {
     _firstJoystick[k]= true;
@@ -1540,5 +1687,57 @@ void SurgicalTask::updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& 
   if(!_firstJointsUpdate[k])
   {
     _firstJointsUpdate[k] = true;
+  }
+}
+
+
+void SurgicalTask::registerTrocars()
+{
+  if(!_trocarsRegistered[LEFT] || !_trocarsRegistered[RIGHT])
+  {
+    static struct termios oldSettings, newSettings;
+    tcgetattr( STDIN_FILENO, &oldSettings);           // save old settings
+    newSettings = oldSettings;
+    newSettings.c_lflag &= ~(ICANON);                 // disable buffering     
+    newSettings.c_cc[VMIN] = 0; 
+    newSettings.c_cc[VTIME] = 0; 
+    tcsetattr( STDIN_FILENO, TCSANOW, &newSettings);  // apply new settings
+
+    int c = getchar();  // read character (non-blocking)
+    int add[NB_ROBOTS];
+    add[LEFT] = 'a';
+    add[RIGHT] = 'b';
+    int finish[NB_ROBOTS];
+    finish[LEFT] = 'l';
+    finish[RIGHT] = 'r';
+
+    Eigen::VectorXf temp;
+    for(int r = 0; r < NB_ROBOTS; r++)
+    { 
+      if(_useRobot[r])
+      {        
+        if(c==add[r])
+        {
+          _trocarPosition[r] = _x[r];
+          _trocarOrientation[r] = _wRb[r].col(2);
+          std::cerr << r << ": Adding trocar: " << _x[r].transpose() << std::endl;         
+        }
+        else if(c==finish[r])
+        {
+
+          if(_trocarPosition[r].norm()>FLT_EPSILON)
+          {
+            _trocarsRegistered[r] = true;
+            std::cerr << r << ": Finished registering" << std::endl;
+          }
+        }
+      }
+      else
+      {
+        _trocarsRegistered[r] = true;
+      }    
+    }
+    tcsetattr( STDIN_FILENO, TCSANOW, &oldSettings);  // restore old settings
+  
   }
 }

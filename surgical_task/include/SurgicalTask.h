@@ -6,6 +6,7 @@
 #include <fstream>
 #include <pthread.h>
 #include <vector>
+#include <termios.h>
 #include "ros/ros.h"
 #include <ros/package.h>
 #include "geometry_msgs/Pose.h"
@@ -39,8 +40,8 @@
 #define NB_ROBOTS 2
 #define FOOT_INTERFACE_X_RANGE 0.195
 #define FOOT_INTERFACE_Y_RANGE 0.180
-#define FOOT_INTERFACE_PITCH_RANGE 48.0
-#define FOOT_INTERFACE_ROLL_RANGE 40.0
+#define FOOT_INTERFACE_PITCH_RANGE 30.0
+#define FOOT_INTERFACE_ROLL_RANGE 30.0
 #define FOOT_INTERFACE_YAW_RANGE 40.0
 #define NB_AXES_JOYSTICK 8
 #define MAX_ORIENTATION_ERROR 0.2
@@ -177,6 +178,7 @@ class SurgicalTask
     bool _inputAlignedWithOrigin[NB_ROBOTS];
     bool _firstSphericalTrocarFrame[NB_ROBOTS];
     bool _firstPillarsFrame[4];
+    bool _usePredefinedTrocars;
 
 
     // Foot interface variables
@@ -310,6 +312,9 @@ class SurgicalTask
 
     static void* startIkLoop(void* ptr);
     void ikLoop();
+
+    void registerTrocars();
+
 
     // void footDataTransformation();
     // void positionPositionMapping();

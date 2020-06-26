@@ -90,7 +90,7 @@ Eigen::Matrix<float,NB_JOINTS1,1> qpSolver(Eigen::Matrix<float,NB_JOINTS1,1> joi
 	  error << xTrocar-xRCM,xdTool-xTool,phid-joints(NB_JOINTS1-1);
 	  // error /= dt;
 	  // std::cerr <<"error:" << error.transpose() << std::endl;
-	  if(rcmGain*error.segment(0,3).norm()< 1e-4f && toolGain*error.segment(3,3).norm()< 1e-3f && std::fabs(error(6)) <1e-3f)
+	  if(rcmGain*error.segment(0,3).norm()< 1e-3f && toolGain*error.segment(3,3).norm()< 1e-3f && std::fabs(error(6)) <1e-3f)
 	  {
 	  	break;
 	  }
