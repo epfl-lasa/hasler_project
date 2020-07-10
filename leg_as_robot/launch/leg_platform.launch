@@ -1,5 +1,6 @@
 <launch>
   <arg name="leg_model" default="$(find leg_as_robot)/urdf/leg.create.xacro"/>
+  <arg name="leg_urdf" default="$(find leg_as_robot)/urdf/leg.urdf"/>
   <arg name="id" default="right" />
   <arg name="virtual_platform" default="true" />
   <arg name="virtual_leg" default="true" />
@@ -17,6 +18,20 @@
         <remap from="joint_states" to="platform_joint_publisher/joint_states" />
       </node>	
     </group>
+
+   <node name="platform_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <param name="tf_prefix" value="$(arg id)"/>
+      <remap from="robot_description" to="platform_description" />
+      <remap from="joint_states" to="platform_joint_publisher/joint_states" />
+    </node>
+
+    <group unless="$(arg virtual_platform)">
+      <node name="platform_joint_publisher" pkg="foot_platform_ros" type="footStatePublisher" output="screen">
+        <param name="platformID" value="$(arg id)"/>
+        <remap from="joint_states" to="platform_joint_publisher/joint_states" />  
+      </node>
+    </group>
+
     <group if="$(arg virtual_leg)">
       <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
         <remap from="robot_description" to="leg_description" />
@@ -24,17 +39,14 @@
       </node>
     </group>	  
 
-    <group unless="$(arg virtual_platform)">
-      <node name="platform_joint_publisher" pkg="foot_platform_ros" type="footStatePublisher" output="screen">
-        <param name="platformID" value="$(arg id)"/>  
+    <group unless="$(arg virtual_leg)">
+      <node name="leg_joint_publisher" pkg="leg_as_robot" type="legRobot" output="screen">
+        <param name="legID" value="$(arg id)"/>
+	<param name="urdfID" value="$(arg leg_urdf)"/>    
+        <remap from="robot_description" to="leg_description" />
+        <remap from="joint_states" to="leg_joint_publisher/joint_states" />
       </node>
     </group>
-
-    <node name="platform_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <param name="tf_prefix" value="$(arg id)"/>
-      <remap from="robot_description" to="platform_description" />
-      <remap from="joint_states" to="platform_joint_publisher/joint_states" />
-    </node>
 
     <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
       <param name="tf_prefix" value="$(arg id)"/>

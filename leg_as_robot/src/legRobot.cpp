@@ -15,16 +15,25 @@ char const *Leg_Names[]{"none", "right", "left"};
 
 legRobot *legRobot::me = NULL;
 
-legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name leg_id)
+legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name leg_id, urdf::Model model_)
     : _n(n_1), _leg_id(leg_id), _loopRate(frequency),
-      _dt(1.0f / frequency) {
+      _dt(1.0f / frequency), _myModel(model_) {
    me = this;
   _stop = false;
   _flagFootPoseConnected = false;
   _leg_joints.setZero();
   _footPosition.setZero();
+  _footEuler.setZero();
   _footQuaternion.setIdentity();
   _footRotationMatrix.setIdentity();
+  _leg_limits.setZero();
+  
+  for (int joint_=0; joint_<NB_LEG_AXIS; joint_++ )
+  {
+    _leg_limits(joint_,L_MIN) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->lower;
+    _leg_limits(joint_,L_MAX) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->upper;
+  }
+  
 }
 
 legRobot::~legRobot() { me->_n.shutdown(); }
@@ -35,7 +44,7 @@ bool legRobot::init() //! Initialization of the node. Its datatype
 {
   
   _pubLegJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
- 
+  
 
   // Subscriber definitions
   signal(SIGINT, legRobot::stopNode);
@@ -101,11 +110,11 @@ void legRobot::readFootPose()
   if (_leg_id==Leg_Name::LEFT)
   {
     destination_frame = "/left/foot_rest";
-    original_frame = "/left/platform_base_link";
+    original_frame = "/left/hip_base_link";
   }
   else {
     destination_frame = "/right/foot_rest";
-    original_frame = "/right/platform_base_link";
+    original_frame = "/right/hip_base_link";
   }
 
   tf::StampedTransform footPoseTransform_;
@@ -117,7 +126,8 @@ void legRobot::readFootPose()
     tf::vectorTFToEigen (footPoseTransform_.getOrigin(),_footPosition);
     tf::quaternionTFToEigen (footPoseTransform_.getRotation(),_footQuaternion);
     tf::matrixTFToEigen(footPoseTransform_.getBasis(), _footRotationMatrix);
-    
+    _footEuler=_footQuaternion.toRotationMatrix().eulerAngles(0,1,2);
+    _footEuler(2) += 90*DEG_TO_RAD;
     _flagFootPoseConnected = true;
     
   } catch (tf::TransformException ex) {
@@ -131,7 +141,7 @@ void legRobot::performInverseKinematics() {
   // Usage: ./ik r00 r01 r02 t0 r10 r11 r12 t1 r20 r21 r22 t2 free0
   IkSolutionList<IkReal> solutions;
   IkReal eerot[9], eetrans[3];
-  std::vector<IkReal> vfree(1);
+  std::vector<IkReal> vfree(GetNumFreeParameters());
 
   eerot[0] = _footRotationMatrix(0,0);
   eerot[1] = _footRotationMatrix(0,1);
@@ -145,9 +155,9 @@ void legRobot::performInverseKinematics() {
   eerot[7] =  _footRotationMatrix(2,1);
   eerot[8] =  _footRotationMatrix(2,2);
   eetrans[2] = _footPosition(2);
-
-  vfree[0] = 4;
   
+  vfree[0] = _footEuler(2);
+
   bool bSuccess = ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions);
 
   if (!bSuccess) {
@@ -156,13 +166,37 @@ void legRobot::performInverseKinematics() {
 
   printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
   std::vector<double> solvalues(GetNumJoints());
+  Eigen::MatrixXd ikSolutions_((int) NB_LEG_AXIS,static_cast<int>(solutions.GetNumSolutions()));
+
   for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i) {
     const IkSolutionBase<double> &sol = solutions.GetSolution(i);
     printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
     std::vector<double> vsolfree(sol.GetFree().size());
     sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
-    for (std::size_t j = 0; j < solvalues.size(); ++j)
-      printf("%.15f, ", solvalues[j]);
-    printf("\n");
+    ikSolutions_.col(i) = Eigen::MatrixXd::Map(&solvalues[0],(int)solvalues.size(),1);
+    cout<<ikSolutions_.col(i).transpose()*RAD_TO_DEG<<endl; 
   }
+  processAngles(ikSolutions_);
+  
+}
+
+void legRobot::processAngles(Eigen::MatrixXd ikSolutions_){
+  
+  Eigen::MatrixXd::Index maxIndex[2];
+  Eigen::VectorXd leg_joints_temp((int) NB_LEG_AXIS,1);
+  
+  int NB_JOINTS_TO_PROCESS = (int)NB_LEG_AXIS-3;
+
+  for (int i=0; i<2; i++)
+  {
+    ikSolutions_.row(hip_extension).maxCoeff(&maxIndex[i]);
+    leg_joints_temp = ikSolutions_.col(maxIndex[i]);
+
+    if ((leg_joints_temp.segment(0,NB_JOINTS_TO_PROCESS).array().abs() > 150.0 * DEG_TO_RAD).any()==0)
+    {
+      _leg_joints = leg_joints_temp;
+    }
+  }
+  //cout<<_leg_joints.transpose()*RAD_TO_DEG<<endl;
+  //_leg_joints.segment(0,NB_JOINTS_TO_PROCESS) = _leg_joints.segment(0,NB_JOINTS_TO_PROCESS).cwiseMin(_leg_limits.block(0,L_MAX,NB_JOINTS_TO_PROCESS,L_MAX)).cwiseMax(_leg_limits.block(0,L_MIN,NB_JOINTS_TO_PROCESS,L_MIN));
 }

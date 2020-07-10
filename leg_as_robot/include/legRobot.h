@@ -1,10 +1,11 @@
 #ifndef __leg_robot_H__
 #define __leg_robot_H__
 
-
+#include <urdf/model.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
+
 
 #include "Eigen/Eigen"
 #include <signal.h>
@@ -52,11 +53,13 @@ private:
   Leg_Name _leg_id;
 
   // internal variables
-
+  
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _leg_joints;
-
+  Eigen::Matrix<double, NB_LEG_AXIS, NB_LIMS> _leg_limits;
 
   // ros variables
+  urdf::Model _myModel;
+
   sensor_msgs::JointState _msgJointStates;
 
   ros::NodeHandle _n;
@@ -67,6 +70,7 @@ private:
   // Subscribers declarations
   tf::TransformListener _footPoseListener;
   Eigen::Vector3d _footPosition;
+  Eigen::Vector3d _footEuler;
   Eigen::Quaterniond _footQuaternion;
   Eigen::Matrix3d _footRotationMatrix;
 
@@ -86,7 +90,7 @@ private:
   // METHODS
 public:
   legRobot(ros::NodeHandle &n_1, double frequency,
-                      legRobot::Leg_Name leg_id_);
+                      legRobot::Leg_Name leg_id_, urdf::Model model_);
 
   ~legRobot();
 
@@ -100,6 +104,7 @@ private:
   void publishFootJointStates();
   void readFootPose();
   void performInverseKinematics();
+  void processAngles(Eigen::MatrixXd ikSolutions);
 
   //! OTHER METHODS
   static void stopNode(int sig);
