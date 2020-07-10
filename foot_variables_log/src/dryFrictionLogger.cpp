@@ -1,9 +1,7 @@
 
 #include "dryFrictionLogger.h"
-#include "ros/package.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 #include "geometry_msgs/WrenchStamped.h"
-
+#include "ros/package.h"
 
 #define NB_RUNS 5
 #define NB_DATA_POINTS 1
@@ -13,6 +11,7 @@
 
 int total_points; 
 int nPoint_;
+
 // // #define NB_POSITIONS 3
 // #define NB_POSITIONS 2
 
@@ -433,7 +432,7 @@ void dryFrictionLogger::run()
 				if (fabs(_platform_speed[_nAxis]) <= MIN_SPEED[_nAxis])
 				{
 					_desiredMotorsEffort(_nAxis) += _motionSign * RESOLUTION_EFFORT[_nAxis];
-					if (fabs(_desiredMotorsEffort(_nAxis)>=USER_MAX_EFFORTS[_nAxis]))
+					if (fabs(_desiredMotorsEffort(_nAxis)>=SAFETY_MAX_EFFORTS[_nAxis]))
 					{
 						_decisionState=REQ_ROBOT_STATE;
 						ROS_ERROR("Limit of the motor %s reached, setting position again",
@@ -680,7 +679,7 @@ void dryFrictionLogger::publishFootEffort()
 
 		for (int k = 0; k < NB_AXIS; k++)
 		{
-			_msgFootInput.ros_effort[k] = clamp(_desiredMotorsEffort(k), -USER_MAX_EFFORTS[k], USER_MAX_EFFORTS[k]);
+			_msgFootInput.ros_effort[k] = clamp(_desiredMotorsEffort(k), -SAFETY_MAX_EFFORTS[k], SAFETY_MAX_EFFORTS[k]);
 		}
 	}
 	_pubFootInput.publish(_msgFootInput);

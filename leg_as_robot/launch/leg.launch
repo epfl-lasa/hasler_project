@@ -1,0 +1,31 @@
+  <launch>
+
+  <arg name="leg_model" default="$(find leg_as_robot)/urdf/leg.create.xacro"/>
+  <arg name="id" default="right" />
+  <arg name="virtual_leg" default="true" />
+  <arg name="rvizconfig" default="$(find leg_as_robot)/rviz/leg_alone.rviz" />
+    
+  <group ns="$(arg id)">
+      
+    <param name="leg_description" command="$(find xacro)/xacro.py $(arg leg_model)"/>
+    
+    <group if="$(arg virtual_leg)">
+      <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+        <remap from="robot_description" to="leg_description" />
+        <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+      </node>
+    </group>	  
+
+    <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <param name="tf_prefix" value="$(arg id)"/>
+      <remap from="robot_description" to="leg_description" />
+      <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+    </node>
+
+  </group>
+  
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+
+  <node pkg="tf" type="static_transform_publisher" name="world_to_leg" args="0 0 0 0 0 0 1 world $(arg id)/virtual_platform_base_link 100" />
+
+  </launch>

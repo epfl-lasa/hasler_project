@@ -1,0 +1,51 @@
+<launch>
+  <arg name="leg_model" default="$(find leg_as_robot)/urdf/leg.create.xacro"/>
+  <arg name="id" default="right" />
+  <arg name="virtual_platform" default="true" />
+  <arg name="virtual_leg" default="true" />
+  <arg name="platform_model" default="$(find foot_platform_ros)/urdf/foot_platform.create.xacro" />
+  <arg name="rvizconfig" default="$(find leg_as_robot)/rviz/leg_platform.rviz" />
+    
+  <group ns="$(arg id)">
+      
+    <param name="platform_description" command="$(find xacro)/xacro.py $(arg platform_model)"/>  
+    <param name="leg_description" command="$(find xacro)/xacro.py $(arg leg_model)"/>
+    
+    <group if="$(arg virtual_platform)">
+      <node name="virtual_platform_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+        <remap from="robot_description" to="platform_description" />
+        <remap from="joint_states" to="platform_joint_publisher/joint_states" />
+      </node>	
+    </group>
+    <group if="$(arg virtual_leg)">
+      <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+        <remap from="robot_description" to="leg_description" />
+        <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+      </node>
+    </group>	  
+
+    <group unless="$(arg virtual_platform)">
+      <node name="platform_joint_publisher" pkg="foot_platform_ros" type="footStatePublisher" output="screen">
+        <param name="platformID" value="$(arg id)"/>  
+      </node>
+    </group>
+
+    <node name="platform_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <param name="tf_prefix" value="$(arg id)"/>
+      <remap from="robot_description" to="platform_description" />
+      <remap from="joint_states" to="platform_joint_publisher/joint_states" />
+    </node>
+
+    <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <param name="tf_prefix" value="$(arg id)"/>
+      <remap from="robot_description" to="leg_description" />
+      <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+    </node>
+
+  </group>
+  
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+
+  <node pkg="tf" type="static_transform_publisher" name="world_to_leg" args="0 0 0 0 0 0 1 world $(arg id)/virtual_platform_base_link 100" />
+  <node pkg="tf" type="static_transform_publisher" name="world_to_platform" args="0 0 0 0 0 0 1 world $(arg id)/platform_base_link 100" />
+</launch>

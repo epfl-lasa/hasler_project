@@ -1,7 +1,6 @@
 
 #include "viscousFrictionLogger.h"
 #include "ros/package.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 #include "geometry_msgs/WrenchStamped.h"
 
 
@@ -663,9 +662,9 @@ void viscousFrictionLogger::publishIDFriction()
 		_msgStaticFriction.platform_id = (int)_platform_id;
 		for (int k = 0; k < NB_AXIS; k++)
 		{
-			_msgStaticFriction.platform_effortM[k] = _frictionMotorsEffort[k];
-			_msgStaticFriction.platform_position[k] = _platform_position_last[k];
-			_msgStaticFriction.platform_speed[k] = _platform_speed[k];
+			_msgStaticFriction.platform_effortM[rosAxis[k]] = _frictionMotorsEffort[k];
+			_msgStaticFriction.platform_position[rosAxis[k]] = _platform_position_last[k];
+			_msgStaticFriction.platform_speed[rosAxis[k]] = _platform_speed[k];
 		}
 		_pubFriction.publish(_msgStaticFriction);
 	}
@@ -679,7 +678,7 @@ void viscousFrictionLogger::publishFootEffort()
 
 		for (int k = 0; k < NB_AXIS; k++)
 		{
-			_msgFootInput.ros_effort[k] = clamp(_desiredMotorsEffort(k), -USER_MAX_EFFORTS[k], USER_MAX_EFFORTS[k]);
+			_msgFootInput.ros_effort[rosAxis[k]] = clamp(_desiredMotorsEffort(k), -USER_MAX_EFFORTS[k], USER_MAX_EFFORTS[k]);
 		}
 	}
 	_pubFootInput.publish(_msgFootInput);
@@ -689,7 +688,7 @@ void viscousFrictionLogger::publishDesiredPosition()
 {
 	for (int k = 0; k < NB_AXIS; k++)
 	{
-		_msgFootInput.ros_position[k] = _desiredMotorsPosition(k);
+		_msgFootInput.ros_position[rosAxis[k]] = _desiredMotorsPosition(k);
 	}
 	_pubFootInput.publish(_msgFootInput);
 }
@@ -702,10 +701,10 @@ void viscousFrictionLogger::fetchFootOutput(
 	_platform_id = msg->platform_id;
 	for (int k = 0; k < NB_AXIS; k++)
 	{
-		_platform_position[k] = msg->platform_position[k];
-		_platform_speed[k] = msg->platform_speed[k];
-		_platform_effortD[k] = msg->platform_effortD[k];
-		_platform_effortM[k] = msg->platform_effortM[k];
+		_platform_position[k] = msg->platform_position[rosAxis[k]];
+		_platform_speed[k] = msg->platform_speed[rosAxis[k]];
+		_platform_effortD[k] = msg->platform_effortD[rosAxis[k]];
+		_platform_effortM[k] = msg->platform_effortM[rosAxis[k]];
 	}
 	_platform_machineState = (viscousFrictionLogger::State)msg->platform_machineState;
 	_platform_controllerType =

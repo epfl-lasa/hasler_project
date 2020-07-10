@@ -1,0 +1,8 @@
+1592598163422	Move 54 resources to 'inc'
+1592598227588	Move 'STM32L476RGTx_FLASH.ld' to 'ros_stm32_2'
+1592598381557	Rename resource 'mainpp.cpp'
+1592598389449	Rename resource 'stm32l4xx_hal_msp.cpp'
+1592598395387	Rename resource 'stm32l4xx_it.cpp'
+1592598411654	Rename resource 'stm32l4xx_it.'
+1592598448718	Rename resource 'mainpp.h'
+1592598511554	Rename resource 'mainpp.cpp.org'

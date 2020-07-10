@@ -1,6 +1,5 @@
 #include "footVarSynchronizer.h"
-#include "../../5_axis_platform/lib/platform/src/definitions.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
+
 
 #define ListofAxes(enumeration, names) names,
 char const *Axis_names[]{
@@ -9,7 +8,9 @@ char const *Axis_names[]{
 
 char const *Platform_Names[]{"none", "right", "left"};
 
-footVarSynchronizer* footVarSynchronizer::me = NULL;
+float const FORCE_ALPHA = 0.5f;
+
+footVarSynchronizer *footVarSynchronizer::me = NULL;
 
 footVarSynchronizer::footVarSynchronizer(ros::NodeHandle &n_1, double frequency,footVarSynchronizer::Platform_Name platform_id): 
 _n(n_1),
@@ -21,6 +22,7 @@ _dt(1.0f/frequency)
 	me=this;
 	_stop = false;
 	_flagControlThisPosition=false;
+	_flagForceMeasured=false;
 	_flagControlZeroEffort=false;
 	_flagCapturePlatformPosition = false;
 	_flagWasDynReconfCalled= false;
@@ -83,11 +85,15 @@ _dt(1.0f/frequency)
 		_ros_effortComp[j];
 	}
 		
-	_ros_newState=(uint8_t)_platform_machineState;
-	_ros_controllerType=(uint8_t)_platform_controllerType;
-	_ros_defaultControl=true;
-	
-	_ros_controlledAxis= (int8_t) -1;
+
+    _ros_forceSensor.setConstant(0.0f);
+    _ros_forceSensor_prev.setConstant(0.0f);
+	_ros_forceSensor_filt.setConstant(0.0f);
+    _ros_newState = (uint8_t)_platform_machineState;
+    _ros_controllerType = (uint8_t)_platform_controllerType;
+    _ros_defaultControl = true;
+
+    _ros_controlledAxis = (int8_t)-1;
 
 }
 footVarSynchronizer::~footVarSynchronizer()
@@ -99,18 +105,22 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 {
 
 	if (_platform_name==LEFT){
-		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
+		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subForceSensor = _n.subscribe<geometry_msgs::WrenchStamped>(FORCE_SUBSCRIBER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::updateForceMeas, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		//_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_LEFT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	
-		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_LEFT);
+		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
 	}
 	if (_platform_name==RIGHT){
-		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
+		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_RIGHT);
+		_subForceSensor = _n.subscribe<geometry_msgs::WrenchStamped>(FORCE_SUBSCRIBER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::updateForceMeas, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
+		//_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_RIGHT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		
+		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
 	}
 
@@ -223,7 +233,15 @@ void footVarSynchronizer::run()
 			}
 		}
 	}
-	ros::spinOnce();
+
+        if (_flagForceMeasured)
+			{
+				_ros_forceSensor_filt = _ros_forceSensor_prev*FORCE_ALPHA + _ros_forceSensor*(1.0f-FORCE_ALPHA);
+				_ros_forceSensor_prev = _ros_forceSensor_filt;
+				_flagForceMeasured=false;
+			}
+          publishFootInput(&_flagPositionOnlyPublished);
+        ros::spinOnce();
 	_loopRate.sleep();
   }
   ROS_INFO("Parameters setting and variables synchronization stoped");
@@ -253,10 +271,11 @@ void footVarSynchronizer::changeParamCheck()
 
 	// Check Effort Components
 
-	if ( (_config.effortComp_compensation == _configPrev.effortComp_compensation) &&
+	if ( (_config.effortComp_rcmMotion == _configPrev.effortComp_rcmMotion) &&
+		 (_config.effortComp_compensation == _configPrev.effortComp_compensation) &&
 		 (_config.effortComp_constrains == _configPrev.effortComp_constrains) &&
 		 (_config.effortComp_feedforward == _configPrev.effortComp_feedforward) &&
-		 (_config.effortComp_normal == _configPrev.effortComp_normal) )
+		 (_config.effortComp_normal == _configPrev.effortComp_normal)  )
 	{
 		_flagIsParamStillSame[Params_Category::EFF_COMP] = true;
 	}
@@ -489,9 +508,9 @@ void footVarSynchronizer::updateConfigAfterParamsChanged()
 
                 if (_flagUpdateConfig)
 		{
-			_mutex.lock();
+			//_mutex.lock();
 			_dynRecServer.updateConfig(_config);
-			_mutex.unlock();
+			//_mutex.unlock();
 			_flagUpdateConfig = false;
 		}
 
@@ -503,9 +522,9 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 
 		if (_flagUpdateConfig)
 		{
-			_mutex.lock();
+			//_mutex.lock();
 			_dynRecServer.updateConfig(_config);
-			_mutex.unlock();
+			//_mutex.unlock();
 			_flagUpdateConfig = false;
 		}
 	}
@@ -571,13 +590,13 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 				}
 			}
 
+        
 	if(_flagControlThisPosition && !_flagCapturePlatformPosition)
 	{
 		_flagPositionOnlyPublished = false;
 		requestSetController();
 		if (_ros_newState==TELEOPERATION)
 		{_ros_position=_ros_position.cwiseAbs();}
-        publishFootInput(&_flagPositionOnlyPublished);
         ROS_INFO("A new desired position has been published (no acknowledgement)!");
 		_flagParamsActionsTaken= true;
 	}
@@ -637,32 +656,46 @@ void footVarSynchronizer::requestDoActionsPlatform()
 
 void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
   //! Keep send the same valuest that the platform is broadcasting
-
-  _mutex.lock();
+	
+ // _mutex.lock();
   for (int k = 0; k < NB_AXIS; k++) {
-    _msgFootInput.ros_position[k] = _ros_position[k];
-    _msgFootInput.ros_speed[k] = _ros_speed[k];
-    _msgFootInput.ros_effort[k] = _ros_effort[k];
+    _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k];
+    _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k];
+    _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k];
+  }
+  for (int k = 0; k < NB_AXIS_WRENCH; k++) {
+  	_msgFootInput.ros_forceSensor[k] = _ros_forceSensor_filt[k]; // rosAxis not applied
   }
   _pubFootInput.publish(_msgFootInput);
   *flagVariableOnly_ = true;
-  _mutex.unlock();
+  //_mutex.unlock();
 }
 
-void footVarSynchronizer::sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr& msg)
-{
-	for (int k=0; k<NB_AXIS; k++)
-		{
-			if (!_flagControlThisPosition){
-				_ros_position[k]=msg->ros_position[k];
-			}
-				_ros_speed[k]=msg->ros_speed[k];
-			if (!_flagControlZeroEffort){
-				_ros_effort[k]=msg->ros_effort[k];
-			}
-		}	
-	if(!_flagPlatformInCommStarted)
-	{_flagPlatformInCommStarted=true;}
+// void footVarSynchronizer::sniffFootInput(const custom_msgs::FootInputMsg_v3::ConstPtr& msg)
+// {
+// 	for (int k=0; k<NB_AXIS; k++)
+// 		{
+// 			if (!_flagControlThisPosition){
+// 				_ros_position[k]=msg->ros_position[rosAxis[k]];
+// 			}
+// 				_ros_speed[k]=msg->ros_speed[rosAxis[k]];
+// 			if (!_flagControlZeroEffort){
+// 				_ros_effort[k]=msg->ros_effort[rosAxis[k]];
+// 			}
+// 		}	
+// 	if(!_flagPlatformInCommStarted)
+// 	{_flagPlatformInCommStarted=true;}
+// } 
+
+void footVarSynchronizer::updateForceMeas(const geometry_msgs::WrenchStamped::ConstPtr& msg)
+{	
+	_flagForceMeasured=true;
+    _ros_forceSensor[0] = msg->wrench.force.x;
+    _ros_forceSensor[1] = msg->wrench.force.y;
+    _ros_forceSensor[2] = msg->wrench.force.z;
+    _ros_forceSensor[3] = msg->wrench.torque.x;
+    _ros_forceSensor[4] = msg->wrench.torque.y;
+    _ros_forceSensor[5] = msg->wrench.torque.z;
 } 
 
 void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg)
@@ -672,10 +705,10 @@ void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::C
 	_platform_id = msg->platform_id; 
 	for (int k=0; k<NB_AXIS; k++)
 		{
-			_platform_position[k]=msg->platform_position[k];
-			_platform_speed[k]=msg->platform_speed[k];
-			_platform_effortD[k]=msg->platform_effortD[k];
-			_platform_effortM[k]=msg->platform_effortM[k];
+			_platform_position[k]=msg->platform_position[rosAxis[k]];
+			_platform_speed[k]=msg->platform_speed[rosAxis[k]];
+			_platform_effortD[k]=msg->platform_effortD[rosAxis[k]];
+			_platform_effortM[k]=msg->platform_effortM[rosAxis[k]];
 		}	
 	_platform_machineState= (footVarSynchronizer::State) msg->platform_machineState;
 	_platform_controllerType= (footVarSynchronizer::Controller) msg->platform_controllerType;
@@ -685,7 +718,7 @@ void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::C
 
 
 void footVarSynchronizer::requestSetState(){
-	_mutex.lock();
+	//_mutex.lock();
 	_flagSetStateRequested=true;
 	_srvSetState.request.ros_machineState=_ros_newState;
 	for (int j=0; j<NB_EFFORT_COMPONENTS; j++)
@@ -696,11 +729,11 @@ void footVarSynchronizer::requestSetState(){
 	_clientSetState.call(_srvSetState);
 
 	_flagResponseSetState = _srvSetState.response.platform_newState;
-	_mutex.unlock();
+	//_mutex.unlock();
 }
 
 void footVarSynchronizer::requestSetController(){
-	_mutex.lock();
+	//_mutex.lock();
 	_flagSetControllerRequested=true;
 	_srvSetController.request.ros_controllerType=_ros_controllerType;
 	_srvSetController.request.ros_defaultControl=_ros_defaultControl;
@@ -708,19 +741,19 @@ void footVarSynchronizer::requestSetController(){
 
 		for (int k=0; k<NB_AXIS; k++)
 		{
-			_srvSetController.request.ros_posP[k]=_ros_posP[k];
-			_srvSetController.request.ros_posI[k]=_ros_posI[k];
-			_srvSetController.request.ros_posD[k]=_ros_posD[k];
+			_srvSetController.request.ros_posP[rosAxis[k]]=_ros_posP[k];
+			_srvSetController.request.ros_posI[rosAxis[k]]=_ros_posI[k];
+			_srvSetController.request.ros_posD[rosAxis[k]]=_ros_posD[k];
 
-			_srvSetController.request.ros_speedP[k]=_ros_speedP[k];
-			_srvSetController.request.ros_speedI[k]=_ros_speedI[k];
-			_srvSetController.request.ros_speedD[k]=_ros_speedD[k];
+			_srvSetController.request.ros_speedP[rosAxis[k]]=_ros_speedP[k];
+			_srvSetController.request.ros_speedI[rosAxis[k]]=_ros_speedI[k];
+			_srvSetController.request.ros_speedD[rosAxis[k]]=_ros_speedD[k];
 		}
 
 	_clientSetController.call(_srvSetController);
 	
 	_flagResponseSetController = _srvSetController.response.platform_controlOk;
-	_mutex.unlock();
+	//_mutex.unlock();
 }
 
 
@@ -739,9 +772,9 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
     _flagCapturePlatformPosition = (bool)config.capture_platform_position;
 
     if (_flagControlThisPosition) {
-      _ros_position << config.desired_Position_X, config.desired_Position_Y,
-          config.desired_Position_PITCH, config.desired_Position_ROLL,
-          config.desired_Position_YAW;
+      _ros_position << config.desired_Position_Y,
+          config.desired_Position_X, config.desired_Position_PITCH,
+          config.desired_Position_ROLL, config.desired_Position_YAW;
       ROS_DEBUG("Updating_POSITION");
 	}
 
@@ -750,9 +783,10 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
         ROS_DEBUG("Sending zero torque to the platform");
 	}
 
-        _ros_effortComp[NORMAL]=(uint8_t) config.effortComp_normal;
+    _ros_effortComp[NORMAL]=(uint8_t) config.effortComp_normal;
 	_ros_effortComp[CONSTRAINS]=(uint8_t) config.effortComp_constrains;
 	_ros_effortComp[COMPENSATION]=(uint8_t) config.effortComp_compensation;
+	_ros_effortComp[RCM_MOTION]=(uint8_t) config.effortComp_rcmMotion;
 	_ros_effortComp[FEEDFORWARD]=(uint8_t) config.effortComp_feedforward;
 
 	

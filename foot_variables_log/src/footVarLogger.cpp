@@ -1,7 +1,5 @@
 #include "footVarLogger.h"
 #include "ros/package.h"
-#include "../../5_axis_platform/lib/platform/src/definitions.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 #include "FootPlatformModel.h"
 #include "Pseudoinverse.h"
 #include "geometry_msgs/WrenchStamped.h"
@@ -242,8 +240,8 @@ void footVarLogger::publishData()
 {
     _msgFilteredWrench.header.frame_id = "world";
     _msgFilteredWrench.header.stamp = ros::Time::now();
-    _msgFilteredWrench.wrench.force.x = _ftFilteredWorldWrench(0);
-    _msgFilteredWrench.wrench.force.y = _ftFilteredWorldWrench(1);
+    _msgFilteredWrench.wrench.force.x = _ftFilteredWorldWrench(1);
+    _msgFilteredWrench.wrench.force.y = _ftFilteredWorldWrench(0);
     _msgFilteredWrench.wrench.force.z = _ftFilteredWorldWrench(2);
     _msgFilteredWrench.wrench.torque.x = _ftFilteredWorldWrench(3);
     _msgFilteredWrench.wrench.torque.y = _ftFilteredWorldWrench(4);
@@ -262,8 +260,8 @@ void footVarLogger::publishData()
 	_pubFootPose.publish(_msgFootPoseStamped);
 
 	_msgFootOutput.platform_stamp=ros::Time::now();
-	_msgFootOutput.platform_effortM[0]=_desiredMotorsEffort(0);
-	_msgFootOutput.platform_effortM[1] = _desiredMotorsEffort(1);
+	_msgFootOutput.platform_effortM[1]=_desiredMotorsEffort(0);
+	_msgFootOutput.platform_effortM[0] = _desiredMotorsEffort(1);
 	_msgFootOutput.platform_effortM[2] = _desiredMotorsEffort(2);
 	_msgFootOutput.platform_effortM[3] = _desiredMotorsEffort(3);
 	_msgFootOutput.platform_effortM[4] = _desiredMotorsEffort(4);
@@ -271,8 +269,8 @@ void footVarLogger::publishData()
 
 	_msgDesiredWrench.header.frame_id = "world";
 	_msgDesiredWrench.header.stamp = ros::Time::now();
-	_msgDesiredWrench.wrench.force.x = _desiredFootWrench(0);
-	_msgDesiredWrench.wrench.force.y = _desiredFootWrench(1);
+	_msgDesiredWrench.wrench.force.x = _desiredFootWrench(1);
+	_msgDesiredWrench.wrench.force.y = _desiredFootWrench(0);
 	_msgDesiredWrench.wrench.force.z = _desiredFootWrench(2);
 	_msgDesiredWrench.wrench.torque.x = _desiredFootWrench(3);
 	_msgDesiredWrench.wrench.torque.y = _desiredFootWrench(4);
@@ -281,8 +279,8 @@ void footVarLogger::publishData()
 
 	_msgMeasuredWrench.header.frame_id = "world";
 	_msgMeasuredWrench.header.stamp = ros::Time::now();
-	_msgMeasuredWrench.wrench.force.x = _measuredFootWrench(0);
-	_msgMeasuredWrench.wrench.force.y = _measuredFootWrench(1);
+	_msgMeasuredWrench.wrench.force.x = _measuredFootWrench(1);
+	_msgMeasuredWrench.wrench.force.y = _measuredFootWrench(0);
 	_msgMeasuredWrench.wrench.force.z = _measuredFootWrench(2);
 	_msgMeasuredWrench.wrench.torque.x = _measuredFootWrench(3);
 	_msgMeasuredWrench.wrench.torque.y = _measuredFootWrench(4);
@@ -349,10 +347,10 @@ void footVarLogger::footDataTransformation()
 	  _platform_id = msg->platform_id;
 	  for (int k = 0; k < NB_AXIS; k++)
 	  {
-		  _platform_position[k] = msg->platform_position[k];
-		  _platform_speed[k] = msg->platform_speed[k];
-		  _platform_effortD[k] = msg->platform_effortD[k];
-		  _platform_effortM[k] = msg->platform_effortM[k];
+		  _platform_position[k] = msg->platform_position[rosAxis[k]];
+		  _platform_speed[k] = msg->platform_speed[rosAxis[k]];
+		  _platform_effortD[k] = msg->platform_effortD[rosAxis[k]];
+		  _platform_effortM[k] = msg->platform_effortM[rosAxis[k]];
 	  }
 	  _platform_machineState = (footVarLogger::State)msg->platform_machineState;
 	  _platform_controllerType = (footVarLogger::Controller)msg->platform_controllerType;
@@ -364,9 +362,9 @@ void footVarLogger::footDataTransformation()
 
 void footVarLogger::sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr &msg) {
   for (int k = 0; k < NB_AXIS; k++) {
-      _ros_position[k] = msg->ros_position[k];
-    _ros_speed[k] = msg->ros_speed[k];
-      _ros_effort[k] = msg->ros_effort[k];}
+      _ros_position[k] = msg->ros_position[rosAxis[k]];
+    _ros_speed[k] = msg->ros_speed[rosAxis[k]];
+      _ros_effort[k] = msg->ros_effort[rosAxis[k]];}
   if (!_flagPlatformInCommStarted) {
     _flagPlatformInCommStarted = true;
   }

@@ -1,0 +1,6 @@
+#These you can measure in the subject and update
+thigh_length: 0.43
+shin_length:  0.38
+ankle_to_foot_base_z: 0.08
+ankle_to_foot_base_x: 0.04046
+foot_base_to_foot_tip: 0.15621

@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Move &apos;ros_lib&apos; to &apos;ros_stm_v2&apos;" description="Move &apos;ros_lib&apos; to &apos;ros_stm_v2&apos;" destination="/ros_stm_v2" element1="/ros_stm32/ros_lib" flags="7" id="org.eclipse.ltk.core.refactoring.move.resources" resources="1" stamp="1592640497057" updateReferences="true"/>&#x0A;<refactoring comment="Move &apos;dwt_stm32_delay.h, mainpp.h&apos; to &apos;Inc&apos;" description="Move 2 resources to &apos;Inc&apos;" destination="Inc" element1="/ros_stm32/Inc/dwt_stm32_delay.h" element2="/ros_stm32/Inc/mainpp.h" flags="7" id="org.eclipse.ltk.core.refactoring.move.resources" resources="2" stamp="1592640593301" updateReferences="true"/>
+</session>

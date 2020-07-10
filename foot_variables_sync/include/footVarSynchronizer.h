@@ -11,12 +11,16 @@
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
 #include <dynamic_reconfigure/server.h>
+#include "../../5_axis_platform/lib/platform/src/definitions_main.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_security.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include <foot_variables_sync/machineStateParamsConfig.h>
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 #include <custom_msgs/FootOutputMsg_v2.h>
-#include <custom_msgs/FootInputMsg_v2.h>
-#include <custom_msgs/setStateSrv.h>
+#include <custom_msgs/FootInputMsg_v3.h>
+#include <custom_msgs/setStateSrv_v2.h>
 #include <custom_msgs/setControllerSrv.h>
+#include <geometry_msgs/WrenchStamped.h>
 
 #define NB_PARAMS_CATEGORIES 10
 #define NB_FO_CATEGORIES 6
@@ -51,6 +55,7 @@ class footVarSynchronizer
     
     // Subscribers declarations
     ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
+    ros::Subscriber _subForceSensor;            // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subFootInput;            // FootInputMsg_v2
     
     // Publisher declaration
@@ -60,10 +65,10 @@ class footVarSynchronizer
     ros::ServiceClient _clientSetController;
 
     // Subsciber and publisher messages declaration
-    custom_msgs::FootInputMsg_v2 _msgFootInput;
+    custom_msgs::FootInputMsg_v3 _msgFootInput;
     custom_msgs::FootOutputMsg_v2 _msgFootOutput;
     custom_msgs::FootOutputMsg_v2 _msgFootOutputPrev;
-    custom_msgs::setStateSrv _srvSetState;
+    custom_msgs::setStateSrv_v2 _srvSetState;
     custom_msgs::setControllerSrv _srvSetController;
     
     //foot_variables_sync::FootOutputMsg_v2 _msgFootOutput;
@@ -101,6 +106,10 @@ class footVarSynchronizer
             Eigen::Matrix<double,NB_AXIS,1> _ros_position;
             Eigen::Matrix<double,NB_AXIS,1> _ros_speed;
             Eigen::Matrix<double,NB_AXIS,1> _ros_effort;
+            Eigen::Matrix<double,2*NB_CART_AXIS, 1> _ros_forceSensor;
+            Eigen::Matrix<double, 2 * NB_CART_AXIS, 1> _ros_forceSensor_prev;
+            Eigen::Matrix<double, 2 * NB_CART_AXIS, 1> _ros_forceSensor_filt;
+            //std::array<std::list<float>,NB_AXIS> _ros_forceSensorList;
 
             bool _ros_defaultControl;
 
@@ -130,6 +139,7 @@ class footVarSynchronizer
 
 
         volatile bool _flagWasDynReconfCalled;
+        volatile bool _flagForceMeasured;
         bool _flagInitialConfig;
         bool _flagParamsActionsTaken;
         bool _flagPlatformActionsTaken;
@@ -174,8 +184,9 @@ class footVarSynchronizer
     //! ROS METHODS
 
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg); 
-    void sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr& msg); 
+    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);
+    void updateForceMeas(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void sniffFootInput(const custom_msgs::FootInputMsg_v3::ConstPtr& msg); 
     
     void dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level);
     void changeParamCheck();

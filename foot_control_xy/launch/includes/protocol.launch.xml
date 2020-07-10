@@ -1,8 +1,0 @@
-<launch>
-	<arg name="subjectName" default="walid"/>
-	<arg name="strategy" default="d"/>
-	<arg name="initialPose" default="-x 2.0 -y 2.0 -z 0.0"/>
-	<node pkg="foot_control_xy"
-		type="protocol" name="protocol_trial" args="$(arg subjectName) -s $(arg strategy) $(arg initialPose)">
-	</node>
-</launch>

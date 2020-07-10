@@ -1,6 +1,4 @@
 #include "multiAxisFrictionID.h"
-#include "../../5_axis_platform/lib/platform/src/definitions.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
 
 
 #define ListofAxes(enumeration, names) names,
@@ -529,9 +527,9 @@ void multiAxisFrictionID::publishPositionOnly()
 	_mutex.lock();
 	for (int k=0; k<NB_AXIS; k++)
 		{
-			_msgFootInput.ros_position[k]=_ros_position[k];
-			_msgFootInput.ros_speed[k]=_ros_speed[k];
-			_msgFootInput.ros_effort[k]=_ros_effort[k];
+			_msgFootInput.ros_position[rosAxis[k]]=_ros_position[k];
+			_msgFootInput.ros_speed[rosAxis[k]]=_ros_speed[k];
+			_msgFootInput.ros_effort[rosAxis[k]]=_ros_effort[k];
 		}
 	_pubFootInput.publish(_msgFootInput);
 	_flagPositionOnlyPublished = true;
@@ -544,10 +542,10 @@ void multiAxisFrictionID::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::C
 	_platform_id = msg->platform_id; 
 	for (int k=0; k<NB_AXIS; k++)
 		{
-			_platform_position[k]=msg->platform_position[k];
-			_platform_speed[k]=msg->platform_speed[k];
-			_platform_effortD[k]=msg->platform_effortD[k];
-			_platform_effortM[k]=msg->platform_effortM[k];
+			_platform_position[k]=msg->platform_position[rosAxis[k]];
+			_platform_speed[k]=msg->platform_speed[rosAxis[k]];
+			_platform_effortD[k]=msg->platform_effortD[rosAxis[k]];
+			_platform_effortM[k]=msg->platform_effortM[rosAxis[k]];
 		}	
 	_platform_machineState= (multiAxisFrictionID::State) msg->platform_machineState;
 	_platform_controllerType= (multiAxisFrictionID::Controller) msg->platform_controllerType;

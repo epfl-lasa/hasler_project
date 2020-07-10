@@ -1,0 +1,26 @@
+22:29:13 **** Incremental Build of configuration Debug for project ros_stm32_2 ****
+make -j8 all 
+Building file: ../src/stm32l4xx_hal_msp.c
+Building file: ../src/stm32l4xx_it.c
+Invoking: MCU GCC Compiler
+Invoking: MCU GCC Compiler
+/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/Debug
+arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32L4 -DSTM32L476RGTx -DDEBUG -DSTM32L476xx -DUSE_HAL_DRIVER -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/HAL_Driver/Inc/Legacy" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/inc" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/CMSIS/device" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/CMSIS/core" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/HAL_Driver/Inc" -O0 -g3 -Wall -fmessage-length=0 -ffunction-sections -c -MMD -MP -MF"src/stm32l4xx_hal_msp.d" -MT"src/stm32l4xx_hal_msp.o" -o "src/stm32l4xx_hal_msp.o" "../src/stm32l4xx_hal_msp.c"
+/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/Debug
+arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32 -DSTM32L4 -DSTM32L476RGTx -DDEBUG -DSTM32L476xx -DUSE_HAL_DRIVER -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/HAL_Driver/Inc/Legacy" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/inc" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/CMSIS/device" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/CMSIS/core" -I"/home/lsrob107772/catkin_hasler/src/hasler_project/experimental/ros_stm32_2/HAL_Driver/Inc" -O0 -g3 -Wall -fmessage-length=0 -ffunction-sections -c -MMD -MP -MF"src/stm32l4xx_it.d" -MT"src/stm32l4xx_it.o" -o "src/stm32l4xx_it.o" "../src/stm32l4xx_it.c"
+../src/stm32l4xx_hal_msp.c:23:10: fatal error: ../../catkin_hasler/src/hasler_project/experimental/ros_stm32_2/inc/main.h: No such file or directory
+ #include "../../catkin_hasler/src/hasler_project/experimental/ros_stm32_2/inc/main.h"
+          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+../src/stm32l4xx_it.c:22:10: fatal error: ../../catkin_hasler/src/hasler_project/experimental/ros_stm32_2/inc/stm32l4xx_it.h: No such file or directory
+ #include "../../catkin_hasler/src/hasler_project/experimental/ros_stm32_2/inc/stm32l4xx_it.h"
+          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/subdir.mk:30: recipe for target 'src/stm32l4xx_hal_msp.o' failed
+compilation terminated.
+src/subdir.mk:30: recipe for target 'src/stm32l4xx_it.o' failed
+make: *** [src/stm32l4xx_hal_msp.o] Error 1
+make: *** Waiting for unfinished jobs....
+make: *** [src/stm32l4xx_it.o] Error 1
+
+22:29:14 Build Finished (took 615ms)
+

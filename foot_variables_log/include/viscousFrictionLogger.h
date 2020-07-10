@@ -20,8 +20,10 @@
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
 #include <dynamic_reconfigure/server.h>
-#include "../../5_axis_platform/lib/platform/src/definitions.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_main.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_security.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include <custom_msgs/FootOutputMsg_v2.h>
 #include <custom_msgs/FootInputMsg_v2.h>
 #include <custom_msgs/setControllerSrv.h>

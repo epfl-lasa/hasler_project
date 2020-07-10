@@ -1,0 +1,107 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:property name="leg_geom_data_yaml" value="$(find leg_as_robot)/config/leg_geom_data.yaml"/>
+  <xacro:property name="platform_geom_data_yaml" value="$(find foot_platform_ros)/config/right_platform_geom_data.yaml"/>
+  <xacro:property name="leg_geom_data" value="${load_yaml(leg_geom_data_yaml)}"/>
+  <xacro:property name="platform_geom_data" value="${load_yaml(platform_geom_data_yaml)}"/>
+  
+  <xacro:property name="d3_leg" value="${leg_geom_data['thigh_length']}"/> <!-- d3_leg [m]-->
+  <xacro:property name="r4_leg" value="${leg_geom_data['shin_length']}"/> <!-- r4_leg [m]-->
+  <xacro:property name="d7_leg" value="${leg_geom_data['ankle_to_foot_base_z']}"/> <!-- d7_leg [m]-->
+  <xacro:property name="r7_leg" value="${leg_geom_data['ankle_to_foot_base_x']}"/> <!-- r7_leg [m]-->
+  <xacro:property name="r8_leg" value="${leg_geom_data['foot_base_to_foot_tip']}"/> <!-- r8_leg_foot_tip [m]-->
+  
+
+  <xacro:property name="r3_platform" value="${platform_geom_data['r3']}"/> <!-- [m]-->
+  <xacro:property name="d6_platform" value="${platform_geom_data['d6']}"/> <!-- [m]-->
+  <xacro:property name="d7_platform" value="${platform_geom_data['d7']}"/> <!-- [m]-->
+  <xacro:property name="r8_platform" value="${platform_geom_data['r8']}"/> <!-- [m]-->
+
+  <xacro:property name="r8_leg_extra" value="${r8_platform-r8_leg}"/> <!-- [m]-->
+
+  <xacro:property name="base_to_hip_offset">
+    <origin xyz="0 ${- r7_leg - d3_leg} ${r3_platform + d6_platform + d7_platform +  d7_leg + r4_leg}" rpy="0 0 0"/> <!-- <origin xyz="0 -0.5100 0.9246" rpy="0 0 0"/> -->
+  </xacro:property>
+
+  <xacro:macro name="define_leg_joints">
+    <joint name="hip_fixed" type="fixed">
+      <xacro:insert_block name="base_to_hip_offset"/>
+      <parent link="virtual_platform_base_link"/>
+      <child link="hip_base_link"/>
+    </joint>
+    <joint name="hip_adduction" type="revolute">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="hip_base_link"/>
+      <child link="hip_adduction_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-44)}" upper="${radians(0)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="hip_extension" type="revolute">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <parent link="hip_adduction_link"/>
+      <child link="hip_extension_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-5)}" upper="${radians(32)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="hip_roll" type="revolute">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <parent link="hip_extension_link"/>
+      <child link="hip_roll_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-33)}" upper="${radians(33)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="knee_extension" type="revolute">
+      <origin xyz="0 0 ${d3_leg}" rpy="-${pi/2} 0 ${pi}"/> 
+      <parent link="hip_roll_link"/>
+      <child link="knee_extension_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-90)}" upper="${radians(30)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+
+    <joint name="ankle_pitch" type="revolute">
+      <origin xyz="${r4_leg} 0 0" rpy="${pi} 0 ${pi}"/>
+      <parent link="knee_extension_link"/>
+      <child link="ankle_pitch_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-45.8)}" upper="${radians(29.8)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="ankle_roll" type="revolute">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/> 
+      <parent link="ankle_pitch_link"/>
+      <child link="ankle_roll_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-17)}" upper="${radians(22)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="ankle_yaw" type="revolute">
+      <origin xyz="0 0 0" rpy="-${pi/2} 0 -${pi/2}"/> 
+      <parent link="ankle_roll_link"/>
+      <child link="ankle_yaw_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-25.9)}" upper="${radians(36)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+      <joint name="fixed_foot_base" type="fixed">
+          <origin xyz="0 -${r7_leg} -${d7_leg}" rpy="0 0 -${pi/2}"/> 
+          <parent link="ankle_yaw_link"/>
+          <child link="foot_base"/>
+      </joint>
+
+      <joint name="fixed_foot_tip" type="fixed">
+          <origin xyz="${r8_leg} 0 0" rpy="0 0 0"/> 
+          <parent link="foot_base"/>
+          <child link="foot_tip"/>
+      </joint>
+      
+      <joint name="fixed_pedal_tip" type="fixed">
+          <origin xyz="${r8_leg_extra} 0 0" rpy="0 0 0"/> 
+          <parent link="foot_tip"/>
+          <child link="virtual_pedal_tip"/>
+      </joint>
+  </xacro:macro>
+</robot>
