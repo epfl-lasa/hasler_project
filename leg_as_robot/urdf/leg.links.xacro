@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:property name="body_weight" value="83"/>  <!-- [kg] -->
+  <xacro:property name="body_weight" value="${83}"/>  <!-- [kg] -->
   <xacro:property name="thigh_mass" value="${14.47 * body_weight / 100}"/> <!-- [kg] -->
   <xacro:property name="shin_mass" value="${4.57 * body_weight / 100}"/> <!-- [kg] -->
   <xacro:property name="foot_mass" value="${1.33 * body_weight / 100}"/> <!--[kg] -->

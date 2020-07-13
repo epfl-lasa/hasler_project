@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf
   tf_conversions
+  eigen_conversions
   rospy
   std_msgs
   message_generation
@@ -16,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   custom_msgs
   utils
   urdf
+  kdl_parser
 )
 
 find_package(PkgConfig)
@@ -27,7 +29,7 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs tf tf_conversions custom_msgs dynamic_reconfigure  utils custom_msgs urdf
+  CATKIN_DEPENDS roscpp rospy std_msgs tf tf_conversions custom_msgs dynamic_reconfigure  utils custom_msgs urdf kdl_parser eigen_conversions
  )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})

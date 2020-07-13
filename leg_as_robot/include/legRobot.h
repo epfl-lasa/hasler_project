@@ -2,6 +2,21 @@
 #define __leg_robot_H__
 
 #include <urdf/model.h>
+#include <kdl_parser/kdl_parser.hpp>
+#include <kdl/chainjnttojacsolver.hpp>
+#include <kdl/rigidbodyinertia.hpp>
+#include <kdl/articulatedbodyinertia.hpp>
+#include <kdl/jntspaceinertiamatrix.hpp>
+#include <kdl/jacobian.hpp>
+#include <kdl/joint.hpp>
+#include <kdl/chain.hpp>
+#include <kdl/frames.hpp>
+#include <kdl/chaindynparam.hpp>
+#include <kdl/chainfksolver.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/kdl.hpp>
+#include <eigen_conversions/eigen_kdl.h>
+//#include <tf2_kdl/tf2_kdl.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
@@ -10,6 +25,7 @@
 #include "Eigen/Eigen"
 #include <signal.h>
 #include "nav_msgs/Path.h"
+#include "geometry_msgs/PointStamped.h"
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 #include <custom_msgs/FootInputMsg_v3.h>
@@ -54,13 +70,20 @@ private:
 
   // internal variables
   
-  Eigen::Matrix<double, NB_LEG_AXIS, 1> _leg_joints;
+  KDL::JntArray* _legJoints;
+  KDL::JntArray* _gravityTorques;
+  KDL::Wrench _footBaseGravityWrench;
   Eigen::Matrix<double, NB_LEG_AXIS, NB_LIMS> _leg_limits;
 
   // ros variables
   urdf::Model _myModel;
+  KDL::Tree _myTree;
+  KDL::Chain _myFootBaseChain;
+  KDL::Vector _cogLeg;
+  KDL::ChainFkSolverPos_recursive* _myFKSolver;
 
   sensor_msgs::JointState _msgJointStates;
+  geometry_msgs::PointStamped _msgNetCoG;
 
   ros::NodeHandle _n;
   ros::Rate _loopRate;
@@ -68,14 +91,16 @@ private:
 
   //! subscribers and publishers declaration
   // Subscribers declarations
-  tf::TransformListener _footPoseListener;
+  tf::TransformListener _tfListener;
   Eigen::Vector3d _footPosition;
   Eigen::Vector3d _footEuler;
   Eigen::Quaterniond _footQuaternion;
   Eigen::Matrix3d _footRotationMatrix;
+  Eigen::Vector3d _netCoG;
 
   // Publisher declaration
   ros::Publisher _pubLegJointStates;
+  ros::Publisher _pubNetCoG;
 
   //! boolean variables
 
@@ -101,10 +126,13 @@ private:
   //! ROS METHODS
 
   // bool allSubscribersOK();
-  void publishFootJointStates();
-  void readFootPose();
+  void publishLegJointStates();
+  void readFootBasePose();
   void performInverseKinematics();
   void processAngles(Eigen::MatrixXd ikSolutions);
+  void computeGravityTorque(); //! effort in each leg joint
+  void computeFootBaseGravityWrench();
+  void publishNetCoG();
 
   //! OTHER METHODS
   static void stopNode(int sig);

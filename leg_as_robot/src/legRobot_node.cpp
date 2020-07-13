@@ -7,11 +7,10 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "legStatePublisher");
 
   std::string leg_name;
-  std::string urdf_file;
 
   ros::NodeHandle nh_("~");
   nh_.getParam("legID", leg_name);
-  nh_.getParam("urdfID", urdf_file);
+
   if (leg_name.compare("right") == 0) {
     leg_id_ = legRobot::RIGHT;
   } else if (leg_name.compare("left") == 0) {
@@ -22,7 +21,7 @@ int main(int argc, char **argv) {
   }
 
   urdf::Model modelLoad;
-  if (!modelLoad.initFile(urdf_file)) {
+  if (!modelLoad.initParam("robot_description")) {
     ROS_ERROR("Failed to parse urdf file");
     return -1;
   }

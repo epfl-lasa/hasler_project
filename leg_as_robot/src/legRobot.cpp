@@ -5,6 +5,7 @@
 #define IK_VERSION 61
 #include "ikfast61Solver.cpp"
 
+
 using namespace ikfast;
 
 #define ListofLegAxes(enumeration, names) names,
@@ -21,19 +22,30 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name le
    me = this;
   _stop = false;
   _flagFootPoseConnected = false;
-  _leg_joints.setZero();
+  _legJoints = new KDL::JntArray(NB_LEG_AXIS);
+  _gravityTorques = new KDL::JntArray(NB_LEG_AXIS);
+  _legJoints->data.setZero();
+  _gravityTorques->data.setZero();
+  //_footBaseGravityWrench.Zero();
   _footPosition.setZero();
   _footEuler.setZero();
   _footQuaternion.setIdentity();
   _footRotationMatrix.setIdentity();
   _leg_limits.setZero();
-  
+  _netCoG.setZero();
+  _myFKSolver = new KDL::ChainFkSolverPos_recursive(_myFootBaseChain);
+
+  if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
+    ROS_ERROR("Failed to construct kdl tree");
+    _stop=true;
+  }
+
   for (int joint_=0; joint_<NB_LEG_AXIS; joint_++ )
   {
     _leg_limits(joint_,L_MIN) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->lower;
     _leg_limits(joint_,L_MAX) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->upper;
   }
-  
+  //_leg_limits.row(ankle_yaw) = (_leg_limits.row(ankle_yaw).array() - 180 * DEG_TO_RAD).matrix();
 }
 
 legRobot::~legRobot() { me->_n.shutdown(); }
@@ -44,7 +56,7 @@ bool legRobot::init() //! Initialization of the node. Its datatype
 {
   
   _pubLegJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
-  
+  _pubNetCoG = _n.advertise<geometry_msgs::PointStamped>("leg_cog",1);
 
   // Subscriber definitions
   signal(SIGINT, legRobot::stopNode);
@@ -65,11 +77,14 @@ void legRobot::stopNode(int sig) { me->_stop = true; }
 void legRobot::run() {
   
   while (!_stop) {
-    readFootPose();
+    readFootBasePose();
     if (_flagFootPoseConnected) {
-      // cout<<_footPosition<<endl;
-      publishFootJointStates();
+      // cout<<_footPosition<<endl;s
+      publishLegJointStates();
       performInverseKinematics();
+      computeGravityTorque();
+      computeFootBaseGravityWrench();
+      publishNetCoG();
     }
     ros::spinOnce();
     _loopRate.sleep();
@@ -81,7 +96,7 @@ void legRobot::run() {
   ros::shutdown();
 }
 
-void legRobot::publishFootJointStates() {
+void legRobot::publishLegJointStates() {
   //! Keep send the same valuest that the leg is broadcasting
   // _mutex.lock();
 
@@ -94,7 +109,7 @@ void legRobot::publishFootJointStates() {
 
   for (int k = 0; k < NB_LEG_AXIS; k++) {
     _msgJointStates.name[k] = Leg_Axis_Names[k];
-    _msgJointStates.position[k] = _leg_joints[k];
+    _msgJointStates.position[k] = me->_legJoints->data[k];
     _msgJointStates.velocity[k] = 0.0f;
     _msgJointStates.effort[k] = 0.0f;
   }
@@ -102,7 +117,7 @@ void legRobot::publishFootJointStates() {
   // _mutex.unlock();
 }
 
-void legRobot::readFootPose()
+void legRobot::readFootBasePose()
 {
   std::string original_frame;
   std::string destination_frame;
@@ -120,7 +135,7 @@ void legRobot::readFootPose()
   tf::StampedTransform footPoseTransform_;
 
   try {
-    _footPoseListener.lookupTransform(original_frame.c_str(), destination_frame.c_str(),
+    _tfListener.lookupTransform(original_frame.c_str(), destination_frame.c_str(),
                                       ros::Time(0), footPoseTransform_);
 
     tf::vectorTFToEigen (footPoseTransform_.getOrigin(),_footPosition);
@@ -128,6 +143,7 @@ void legRobot::readFootPose()
     tf::matrixTFToEigen(footPoseTransform_.getBasis(), _footRotationMatrix);
     _footEuler=_footQuaternion.toRotationMatrix().eulerAngles(0,1,2);
     _footEuler(2) += 90*DEG_TO_RAD;
+    //cout<<_footEuler.transpose()*RAD_TO_DEG<<endl;
     _flagFootPoseConnected = true;
     
   } catch (tf::TransformException ex) {
@@ -163,21 +179,22 @@ void legRobot::performInverseKinematics() {
   if (!bSuccess) {
     cerr<<"Failed to get ik solution"<<endl;
   }
+  else{
+    //printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
+    std::vector<double> solvalues(GetNumJoints());
+    Eigen::MatrixXd ikSolutions_((int) NB_LEG_AXIS,static_cast<int>(solutions.GetNumSolutions()));
 
-  printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
-  std::vector<double> solvalues(GetNumJoints());
-  Eigen::MatrixXd ikSolutions_((int) NB_LEG_AXIS,static_cast<int>(solutions.GetNumSolutions()));
-
-  for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i) {
-    const IkSolutionBase<double> &sol = solutions.GetSolution(i);
-    printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
-    std::vector<double> vsolfree(sol.GetFree().size());
-    sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
-    ikSolutions_.col(i) = Eigen::MatrixXd::Map(&solvalues[0],(int)solvalues.size(),1);
-    cout<<ikSolutions_.col(i).transpose()*RAD_TO_DEG<<endl; 
+    for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i) {
+      const IkSolutionBase<double> &sol = solutions.GetSolution(i);
+      //printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
+      std::vector<double> vsolfree(sol.GetFree().size());
+      //sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
+      sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
+      ikSolutions_.col(i) = Eigen::MatrixXd::Map(&solvalues[0],(int)solvalues.size(),1);
+      //cout<<ikSolutions_.col(i).transpose()*RAD_TO_DEG<<endl; 
+    }
+    processAngles(ikSolutions_);
   }
-  processAngles(ikSolutions_);
-  
 }
 
 void legRobot::processAngles(Eigen::MatrixXd ikSolutions_){
@@ -185,18 +202,89 @@ void legRobot::processAngles(Eigen::MatrixXd ikSolutions_){
   Eigen::MatrixXd::Index maxIndex[2];
   Eigen::VectorXd leg_joints_temp((int) NB_LEG_AXIS,1);
   
-  int NB_JOINTS_TO_PROCESS = (int)NB_LEG_AXIS-3;
+  int NB_JOINTS_TO_PROCESS = (int)NB_LEG_AXIS-3; // All except the last three
 
   for (int i=0; i<2; i++)
   {
-    ikSolutions_.row(hip_extension).maxCoeff(&maxIndex[i]);
+    ikSolutions_.row(hip_extension).maxCoeff(&maxIndex[i]); //! Takes the solution that involves the thigh not colliding with the chain
     leg_joints_temp = ikSolutions_.col(maxIndex[i]);
 
     if ((leg_joints_temp.segment(0,NB_JOINTS_TO_PROCESS).array().abs() > 150.0 * DEG_TO_RAD).any()==0)
     {
-      _leg_joints = leg_joints_temp;
-    }
+      _legJoints->data = leg_joints_temp;
+    } 
+    
+   }
+   leg_joints_temp = _legJoints->data;
+  //cout<<_legJoints.transpose()*RAD_TO_DEG<<endl;
+  bool constrained = true;
+  _n.getParam("legLim", constrained);
+  if (constrained)
+  { 
+    leg_joints_temp= leg_joints_temp.cwiseMin(_leg_limits.col(L_MAX)).cwiseMax(_leg_limits.col(L_MIN));
   }
-  //cout<<_leg_joints.transpose()*RAD_TO_DEG<<endl;
-  //_leg_joints.segment(0,NB_JOINTS_TO_PROCESS) = _leg_joints.segment(0,NB_JOINTS_TO_PROCESS).cwiseMin(_leg_limits.block(0,L_MAX,NB_JOINTS_TO_PROCESS,L_MAX)).cwiseMax(_leg_limits.block(0,L_MIN,NB_JOINTS_TO_PROCESS,L_MIN));
+  me->_legJoints->data.segment(0, NB_JOINTS_TO_PROCESS) = leg_joints_temp.segment(0,NB_JOINTS_TO_PROCESS);
+}
+
+void legRobot::computeGravityTorque() {
+  KDL::Vector grav_vector(0.0, 0.0, (double) GRAVITY);
+
+  _myTree.getChain("virtual_platform_base_link", "foot_base",
+                                           _myFootBaseChain);
+
+  KDL::ChainDynParam myChainDyn_(_myFootBaseChain, grav_vector);
+  //_legJoints->data.setZero();
+  myChainDyn_.JntToGravity(*_legJoints,*_gravityTorques);
+  //cout<<_gravityTorques->data.transpose()<<endl;
+  
+}
+
+void legRobot::computeFootBaseGravityWrench(){
+
+  //! Calculate the net center of gravity of the leg
+  //! Make a system of two equations to know the
+  std::vector<KDL::Segment> mySegments_ =  _myFootBaseChain.segments;
+  int numLink = _myFootBaseChain.getNrOfSegments();
+  _netCoG.setZero();
+
+
+  for (unsigned int i=0; i<mySegments_.size();i++)
+  {
+    Eigen::Vector3d positionLink;
+    Eigen::Matrix3d rotationLink;
+    Eigen::Vector3d cogLink;
+    // positionLink.setZero();
+    // rotationLink.setZero();
+    
+    KDL::Frame frameLink;
+    
+    _myFKSolver->JntToCart(*_legJoints,frameLink,i);
+    tf::vectorKDLToEigen(frameLink * mySegments_[i].getInertia().getCOG(),
+                             cogLink);
+
+    //cout<<frameLink.data[0]<<","<<frameLink.p.data[1]<< "," << frameLink.p.data[2]<<endl;
+    cout<<cogLink.transpose()<<endl;
+
+    _netCoG += cogLink * mySegments_[i].getInertia().getMass();
+
+  }
+    _netCoG/=numLink;
+
+  //cout<<_netCoG.transpose()<<endl;
+  
+}
+
+void legRobot::publishNetCoG() {
+  //! Keep send the same valuest that the leg is broadcasting
+  // _mutex.lock();
+  std::string frame_name;
+  frame_name = _leg_id==RIGHT ? "/right/virtual_platform_base_link" : "/left/virtual_platform_base_link"; 
+  _msgNetCoG.header.stamp = ros::Time::now();
+  _msgNetCoG.header.frame_id = frame_name; 
+  _msgNetCoG.point.x = _netCoG(0);
+  _msgNetCoG.point.y = _netCoG(1);
+  _msgNetCoG.point.z = _netCoG(2);
+
+  _pubNetCoG.publish(_msgNetCoG);
+  // _mutex.unlock();
 }

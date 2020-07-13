@@ -41,7 +41,7 @@
       <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
       <parent link="hip_adduction_link"/>
       <child link="hip_extension_link"/>
-      <limit effort="30" velocity="10.0" lower="${radians(-5)}" upper="${radians(32)}"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-30)}" upper="${radians(32)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
