@@ -33,12 +33,21 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name le
   _footRotationMatrix.setIdentity();
   _leg_limits.setZero();
   _netCoG.setZero();
-  _myFKSolver = new KDL::ChainFkSolverPos_recursive(_myFootBaseChain);
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
     ROS_ERROR("Failed to construct kdl tree");
     _stop=true;
   }
+
+  KDL::Vector grav_vector(0.0, 0.0, (double)GRAVITY);
+
+  _myTree.getChain("virtual_platform_base_link", "foot_base", _myFootBaseChain);
+
+  _myChainDyn = new KDL::ChainDynParam(_myFootBaseChain, grav_vector);
+
+  _myFKSolver = new KDL::ChainFkSolverPos_recursive(_myFootBaseChain);
+
+  _mySegments = _myFootBaseChain.segments;
 
   for (int joint_=0; joint_<NB_LEG_AXIS; joint_++ )
   {
@@ -84,7 +93,6 @@ void legRobot::run() {
       performInverseKinematics();
       computeGravityTorque();
       computeFootBaseGravityWrench();
-      publishNetCoG();
     }
     ros::spinOnce();
     _loopRate.sleep();
@@ -227,50 +235,30 @@ void legRobot::processAngles(Eigen::MatrixXd ikSolutions_){
 }
 
 void legRobot::computeGravityTorque() {
-  KDL::Vector grav_vector(0.0, 0.0, (double) GRAVITY);
-
-  _myTree.getChain("virtual_platform_base_link", "foot_base",
-                                           _myFootBaseChain);
-
-  KDL::ChainDynParam myChainDyn_(_myFootBaseChain, grav_vector);
-  //_legJoints->data.setZero();
-  myChainDyn_.JntToGravity(*_legJoints,*_gravityTorques);
+  _myChainDyn->JntToGravity(*_legJoints,*_gravityTorques);
   //cout<<_gravityTorques->data.transpose()<<endl;
-  
 }
 
 void legRobot::computeFootBaseGravityWrench(){
 
   //! Calculate the net center of gravity of the leg
   //! Make a system of two equations to know the
-  std::vector<KDL::Segment> mySegments_ =  _myFootBaseChain.segments;
-  int numLink = _myFootBaseChain.getNrOfSegments();
+  Eigen::Vector3d cogLink = Eigen::Vector3d::Zero();
+  KDL::Frame framei;
   _netCoG.setZero();
+  double totalmass = 0.0;
+  double linkmass = 0.0;
 
-
-  for (unsigned int i=0; i<mySegments_.size();i++)
-  {
-    Eigen::Vector3d positionLink;
-    Eigen::Matrix3d rotationLink;
-    Eigen::Vector3d cogLink;
-    // positionLink.setZero();
-    // rotationLink.setZero();
-    
-    KDL::Frame frameLink;
-    
-    _myFKSolver->JntToCart(*_legJoints,frameLink,i);
-    tf::vectorKDLToEigen(frameLink * mySegments_[i].getInertia().getCOG(),
-                             cogLink);
-
-    //cout<<frameLink.data[0]<<","<<frameLink.p.data[1]<< "," << frameLink.p.data[2]<<endl;
-    cout<<cogLink.transpose()<<endl;
-
-    _netCoG += cogLink * mySegments_[i].getInertia().getMass();
-
+  for (unsigned int i = 0; i < _mySegments.size(); i++) {
+    _myFKSolver->JntToCart(*me->_legJoints, framei, i);
+    tf::vectorKDLToEigen(framei * _mySegments[i].getInertia().getCOG(), cogLink);
+    linkmass = _mySegments[i].getInertia().getMass();
+    _netCoG += cogLink * linkmass;
+    _myFrames.push_back(framei);
+    totalmass += linkmass;
   }
-    _netCoG/=numLink;
-
-  //cout<<_netCoG.transpose()<<endl;
+  _netCoG /= totalmass;
+  publishNetCoG();
   
 }
 

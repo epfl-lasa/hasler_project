@@ -78,6 +78,9 @@ private:
   // ros variables
   urdf::Model _myModel;
   KDL::Tree _myTree;
+  std::vector<KDL::Segment> _mySegments;
+  std::vector<KDL::Frame> _myFrames;
+  KDL::ChainDynParam*  _myChainDyn;
   KDL::Chain _myFootBaseChain;
   KDL::Vector _cogLeg;
   KDL::ChainFkSolverPos_recursive* _myFKSolver;
