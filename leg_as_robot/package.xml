@@ -13,8 +13,9 @@
   <build_depend>custom_msgs</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>utils</build_depend>
-  <build_depend>tf</build_depend>
-  <build_depend>tf_conversions</build_depend>
+  <build_depend>tf2</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>tf2_kdl</build_depend>
   <build_depend>eigen_conversions</build_depend>
   <build_depend>urdf</build_depend>
   <build_depend>kdl_parser</build_depend>
@@ -25,8 +26,9 @@
   <run_depend>custom_msgs</run_depend>  
   <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>utils</run_depend>
-  <run_depend>tf</run_depend>
-  <run_depend>tf_conversions</run_depend>
+  <run_depend>tf2_ros</run_depend>
+  <run_depend>tf2</run_depend>
+  <run_depend>tf2_kdl</run_depend>
   <run_depend>eigen_conversions</run_depend>
   <run_depend>urdf</run_depend>
   <run_depend>kdl_parser</run_depend>

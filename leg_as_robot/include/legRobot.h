@@ -12,14 +12,15 @@
 #include <kdl/chain.hpp>
 #include <kdl/frames.hpp>
 #include <kdl/chaindynparam.hpp>
+#include <kdl/chainiksolvervel_wdls.hpp>
+#include <kdl/chainiksolverpos_nr_jl.hpp>
 #include <kdl/chainfksolver.hpp>
+#include <kdl/chainiksolvervel_pinv.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/kdl.hpp>
 #include <eigen_conversions/eigen_kdl.h>
-//#include <tf2_kdl/tf2_kdl.h>
-#include <tf/tf.h>
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
+#include <tf2_kdl/tf2_kdl.h>
+#include <tf2_ros/transform_listener.h>
 
 
 #include "Eigen/Eigen"
@@ -72,8 +73,9 @@ private:
   // internal variables
   
   KDL::JntArray* _legJoints;
+  KDL::JntArray*_legJointsInit;
+  KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _gravityTorques;
-  Eigen::Matrix<double, NB_LEG_AXIS, NB_LIMS> _leg_limits;
 
   // ros variables
   urdf::Model _myModel;
@@ -84,6 +86,9 @@ private:
   KDL::Chain _myFootBaseChain;
   KDL::Vector _cogLeg;
   KDL::ChainFkSolverPos_recursive* _myFKSolver;
+  KDL::ChainIkSolverVel_pinv* _myVelIKSolver;
+  KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver;
+
 
 
   ros::NodeHandle _n;
@@ -92,7 +97,10 @@ private:
 
   //! subscribers and publishers declaration
   // Subscribers declarations
-  tf::TransformListener _tfListener;
+  tf2_ros::Buffer _tfBuffer;
+  tf2_ros::TransformListener* _tfListener;
+  KDL::Frame _footPosFrame;
+  KDL::FrameVel _footVelFrame;
   Eigen::Vector3d _footPosition;
   Eigen::Vector3d _footEuler;
   Eigen::Quaterniond _footQuaternion;

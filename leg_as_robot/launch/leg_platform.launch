@@ -58,6 +58,6 @@
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
-  <node pkg="tf" type="static_transform_publisher" name="world_to_leg" args="0 0 0 0 0 0 1 world $(arg id)/virtual_platform_base_link 100" />
-  <node pkg="tf" type="static_transform_publisher" name="world_to_platform" args="0 0 0 0 0 0 1 world $(arg id)/platform_base_link 100" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_leg" args="0 0 0 0 0 0 1 world $(arg id)/virtual_platform_base_link" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_platform" args="0 0 0 0 0 0 1 world $(arg id)/platform_base_link" />
 </launch>

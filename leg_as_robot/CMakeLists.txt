@@ -7,8 +7,9 @@ add_definitions(-std=c++11 -O3)
 # Find required packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  tf
-  tf_conversions
+  tf2
+  tf2_ros
+  tf2_kdl
   eigen_conversions
   rospy
   std_msgs
@@ -29,7 +30,7 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs tf tf_conversions custom_msgs dynamic_reconfigure  utils custom_msgs urdf kdl_parser eigen_conversions
+  CATKIN_DEPENDS roscpp rospy std_msgs tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils custom_msgs urdf kdl_parser eigen_conversions
  )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
@@ -41,9 +42,9 @@ target_link_libraries(legSolver ${catkin_LIBRARIES})
 target_link_libraries(legRobot ${catkin_LIBRARIES})
 
 
-add_dependencies(legSolver ${PROJECT_NAME}_gencpp)
-add_dependencies(legSolver ${PROJECT_NAME}_gencfg)
-add_dependencies(legRobot ${PROJECT_NAME}_gencpp)
-add_dependencies(legRobot ${PROJECT_NAME}_gencfg)
+# add_dependencies(legSolver ${PROJECT_NAME}_gencpp)
+# add_dependencies(legSolver ${PROJECT_NAME}_gencfg)
+# add_dependencies(legRobot ${PROJECT_NAME}_gencpp)
+# add_dependencies(legRobot ${PROJECT_NAME}_gencfg)
 
 

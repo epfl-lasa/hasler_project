@@ -1,27 +1,16 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:property name="leg_geom_data_yaml" value="$(find leg_as_robot)/config/leg_geom_data.yaml"/>
-  <xacro:property name="platform_geom_data_yaml" value="$(find foot_platform_ros)/config/right_platform_geom_data.yaml"/>
-  <xacro:property name="leg_geom_data" value="${load_yaml(leg_geom_data_yaml)}"/>
-  <xacro:property name="platform_geom_data" value="${load_yaml(platform_geom_data_yaml)}"/>
-  
-  <xacro:property name="d3_leg" value="${leg_geom_data['thigh_length']}"/> <!-- d3_leg [m]-->
-  <xacro:property name="r4_leg" value="${leg_geom_data['shin_length']}"/> <!-- r4_leg [m]-->
-  <xacro:property name="d7_leg" value="${leg_geom_data['ankle_to_foot_base_z']}"/> <!-- d7_leg [m]-->
-  <xacro:property name="r7_leg" value="${leg_geom_data['ankle_to_foot_base_x']}"/> <!-- r7_leg [m]-->
-  <xacro:property name="r8_leg" value="${leg_geom_data['foot_base_to_foot_tip']}"/> <!-- r8_leg_foot_tip [m]-->
-  
 
-  <xacro:property name="r3_platform" value="${platform_geom_data['r3']}"/> <!-- [m]-->
-  <xacro:property name="d6_platform" value="${platform_geom_data['d6']}"/> <!-- [m]-->
-  <xacro:property name="d7_platform" value="${platform_geom_data['d7']}"/> <!-- [m]-->
-  <xacro:property name="r8_platform" value="${platform_geom_data['r8']}"/> <!-- [m]-->
+  <xacro:property name="base_to_hip_offset_x" value="0"/>
+  <xacro:property name="base_to_hip_offset_y" value="${- r7_leg - d3_leg}"/>
+  <xacro:property name="base_to_hip_offset_z" value="${r3_platform + d6_platform + d7_platform +  d7_leg + r4_leg}"/>
+  <xacro:property name="base_to_hip_offset_baseline_y" value="${- r7Baseline_leg - d3Baseline_leg}"/>
+  <xacro:property name="base_to_hip_offset_baseline_z" value="${r3_platform + d6_platform + d7_platform +  d7Baseline_leg + r4Baseline_leg}"/>
 
-  <xacro:property name="r8_leg_extra" value="${r8_platform-r8_leg}"/> <!-- [m]-->
-
-  <xacro:property name="base_to_hip_offset">
-    <origin xyz="0 ${- r7_leg - d3_leg} ${r3_platform + d6_platform + d7_platform +  d7_leg + r4_leg}" rpy="0 0 0"/> <!-- <origin xyz="0 -0.5100 0.9246" rpy="0 0 0"/> -->
+   <xacro:property name="base_to_hip_offset">
+      <origin xyz="${base_to_hip_offset_x} ${base_to_hip_offset_y} ${base_to_hip_offset_z}" rpy="0 0 0"/> <!-- <origin xyz="0 -0.5100 0.9246" rpy="0 0 0"/> -->
   </xacro:property>
+
 
   <xacro:macro name="define_leg_joints">
     <joint name="hip_fixed" type="fixed">
