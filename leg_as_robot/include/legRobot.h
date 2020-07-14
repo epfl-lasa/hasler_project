@@ -26,6 +26,7 @@
 #include <signal.h>
 #include "nav_msgs/Path.h"
 #include "geometry_msgs/PointStamped.h"
+#include "geometry_msgs/WrenchStamped.h"
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 #include <custom_msgs/FootInputMsg_v3.h>
@@ -72,7 +73,6 @@ private:
   
   KDL::JntArray* _legJoints;
   KDL::JntArray* _gravityTorques;
-  KDL::Wrench _footBaseGravityWrench;
   Eigen::Matrix<double, NB_LEG_AXIS, NB_LIMS> _leg_limits;
 
   // ros variables
@@ -85,8 +85,6 @@ private:
   KDL::Vector _cogLeg;
   KDL::ChainFkSolverPos_recursive* _myFKSolver;
 
-  sensor_msgs::JointState _msgJointStates;
-  geometry_msgs::PointStamped _msgNetCoG;
 
   ros::NodeHandle _n;
   ros::Rate _loopRate;
@@ -100,10 +98,20 @@ private:
   Eigen::Quaterniond _footQuaternion;
   Eigen::Matrix3d _footRotationMatrix;
   Eigen::Vector3d _netCoG;
-
+  Eigen::Matrix<double, NB_AXIS_WRENCH,1> _wrenchGravityFootBase;
+  Eigen::Vector3d _gravityVector;
+  
   // Publisher declaration
   ros::Publisher _pubLegJointStates;
   ros::Publisher _pubNetCoG;
+  ros::Publisher _pubFootBaseWrench; //! To the foot variable synchornizer
+
+
+  // Messages
+
+  sensor_msgs::JointState _msgJointStates;
+  geometry_msgs::PointStamped _msgNetCoG;
+  geometry_msgs::WrenchStamped _msgFootBaseWrench;
 
   //! boolean variables
 
@@ -136,6 +144,7 @@ private:
   void computeGravityTorque(); //! effort in each leg joint
   void computeFootBaseGravityWrench();
   void publishNetCoG();
+  void publishFootBaseGravityWrench();
 
   //! OTHER METHODS
   static void stopNode(int sig);

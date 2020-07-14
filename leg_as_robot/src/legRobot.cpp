@@ -26,7 +26,8 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name le
   _gravityTorques = new KDL::JntArray(NB_LEG_AXIS);
   _legJoints->data.setZero();
   _gravityTorques->data.setZero();
-  //_footBaseGravityWrench.Zero();
+  _wrenchGravityFootBase.setZero();
+  _gravityVector << 0.0, 0.0, (double)GRAVITY;
   _footPosition.setZero();
   _footEuler.setZero();
   _footQuaternion.setIdentity();
@@ -65,6 +66,7 @@ bool legRobot::init() //! Initialization of the node. Its datatype
 {
   
   _pubLegJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
+  _pubFootBaseWrench = _n.advertise<geometry_msgs::WrenchStamped>("foot_base_wrench", 1);
   _pubNetCoG = _n.advertise<geometry_msgs::PointStamped>("leg_cog",1);
 
   // Subscriber definitions
@@ -194,12 +196,11 @@ void legRobot::performInverseKinematics() {
 
     for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i) {
       const IkSolutionBase<double> &sol = solutions.GetSolution(i);
-      //printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
+      printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
       std::vector<double> vsolfree(sol.GetFree().size());
-      //sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
       sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
       ikSolutions_.col(i) = Eigen::MatrixXd::Map(&solvalues[0],(int)solvalues.size(),1);
-      //cout<<ikSolutions_.col(i).transpose()*RAD_TO_DEG<<endl; 
+      cout<<ikSolutions_.col(i).transpose()*RAD_TO_DEG<<endl; 
     }
     processAngles(ikSolutions_);
   }
@@ -232,6 +233,8 @@ void legRobot::processAngles(Eigen::MatrixXd ikSolutions_){
     leg_joints_temp= leg_joints_temp.cwiseMin(_leg_limits.col(L_MAX)).cwiseMax(_leg_limits.col(L_MIN));
   }
   me->_legJoints->data.segment(0, NB_JOINTS_TO_PROCESS) = leg_joints_temp.segment(0,NB_JOINTS_TO_PROCESS);
+  /// Just to debug:
+  //me->_legJoints->data.setZero();
 }
 
 void legRobot::computeGravityTorque() {
@@ -244,22 +247,26 @@ void legRobot::computeFootBaseGravityWrench(){
   //! Calculate the net center of gravity of the leg
   //! Make a system of two equations to know the
   Eigen::Vector3d cogLink = Eigen::Vector3d::Zero();
-  KDL::Frame framei;
+  KDL::Frame frame_;
   _netCoG.setZero();
   double totalmass = 0.0;
   double linkmass = 0.0;
 
   for (unsigned int i = 0; i < _mySegments.size(); i++) {
-    _myFKSolver->JntToCart(*me->_legJoints, framei, i);
-    tf::vectorKDLToEigen(framei * _mySegments[i].getInertia().getCOG(), cogLink);
+    _myFKSolver->JntToCart(*me->_legJoints, frame_, i+1);
+    tf::vectorKDLToEigen(frame_ * _mySegments[i].getInertia().getCOG(), cogLink);
     linkmass = _mySegments[i].getInertia().getMass();
     _netCoG += cogLink * linkmass;
-    _myFrames.push_back(framei);
+    _myFrames.push_back(frame_);
     totalmass += linkmass;
+    //cout << _mySegments[i].getName()<<":"<< cogLink.transpose() <<" mass:"<< linkmass <<  endl;
   }
   _netCoG /= totalmass;
   publishNetCoG();
-  
+  Eigen::Vector3d totalWeight = totalmass * _gravityVector;
+  _wrenchGravityFootBase.segment(0,3) = totalWeight;
+  _wrenchGravityFootBase.segment(3,3) = _netCoG.cross(totalWeight);
+  publishFootBaseGravityWrench();
 }
 
 void legRobot::publishNetCoG() {
@@ -274,5 +281,23 @@ void legRobot::publishNetCoG() {
   _msgNetCoG.point.z = _netCoG(2);
 
   _pubNetCoG.publish(_msgNetCoG);
+  // _mutex.unlock();
+}
+
+void legRobot::publishFootBaseGravityWrench() {
+  //! Keep send the same valuest that the leg is broadcasting
+  // _mutex.lock();
+  std::string frame_name;
+  frame_name = _leg_id == RIGHT ? "/right/virtual_platform_base_link"
+                                : "/left/virtual_platform_base_link";
+  _msgFootBaseWrench.header.stamp = ros::Time::now();
+  _msgFootBaseWrench.header.frame_id = frame_name;
+  _msgFootBaseWrench.wrench.force.x = _wrenchGravityFootBase(0);
+  _msgFootBaseWrench.wrench.force.y = _wrenchGravityFootBase(1);
+  _msgFootBaseWrench.wrench.force.z = _wrenchGravityFootBase(2);
+  _msgFootBaseWrench.wrench.torque.x = _wrenchGravityFootBase(3);
+  _msgFootBaseWrench.wrench.torque.y = _wrenchGravityFootBase(4);
+  _msgFootBaseWrench.wrench.torque.z = _wrenchGravityFootBase(5);
+  _pubFootBaseWrench.publish(_msgFootBaseWrench);
   // _mutex.unlock();
 }

@@ -12,7 +12,6 @@ Panels:
         - /TF1/Tree1
         - /RobotModel2
         - /PointStamped1
-        - /PointStamped1/Status1
       Splitter Ratio: 0.438858688
     Tree Height: 753
   - Class: rviz/Selection
@@ -284,11 +283,11 @@ Visualization Manager:
       Visual Enabled: true
     - Alpha: 1
       Class: rviz/PointStamped
-      Color: 204; 41; 204
+      Color: 0; 170; 255
       Enabled: true
       History Length: 1
       Name: PointStamped
-      Radius: 0.200000003
+      Radius: 0.100000001
       Topic: /right/leg_joint_publisher/leg_cog
       Unreliable: false
       Value: true
@@ -316,7 +315,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 3.42338991
+      Distance: 2.2662394
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -331,10 +330,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.349797308
+      Pitch: 0.479797214
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz)
-      Yaw: 2.37039328
+      Yaw: 3.02539587
     Saved:
       - Class: rviz/Orbit
         Distance: 1.77162838
