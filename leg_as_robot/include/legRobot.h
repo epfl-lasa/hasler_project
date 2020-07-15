@@ -89,7 +89,7 @@ private:
   KDL::ChainIkSolverVel_pinv* _myVelIKSolver;
   KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver;
 
-
+  bool _mySolutionFound;
 
   ros::NodeHandle _n;
   ros::Rate _loopRate;

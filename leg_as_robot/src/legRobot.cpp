@@ -32,6 +32,7 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name le
   _gravityTorques->data.setZero();
   _wrenchGravityFootBase.setZero();
   _gravityVector << 0.0, 0.0, (double)GRAVITY;
+  _mySolutionFound=true;
   _netCoG.setZero();
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
@@ -171,7 +172,20 @@ void legRobot::performInverseKinematics(){
   int ret = _myPosIkSolver->CartToJnt(*me->_legJointsInit,_footPosFrame,*me->_legJoints);
   *_legJointsInit = *_legJoints;
   if (ret<0)
-      {ROS_ERROR("No solution found");}
+  {
+    if (_mySolutionFound) 
+    {
+      ROS_ERROR("No leg IK solutions found yet... move around to find one");
+      _mySolutionFound=false;
+    }
+  }
+  else{
+    if(!_mySolutionFound)
+    {
+      ROS_INFO("Solutions of leg IK found again!");
+      _mySolutionFound=true;
+    }
+  }
 }
 
 

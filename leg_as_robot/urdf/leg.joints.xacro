@@ -3,7 +3,7 @@
 
   <xacro:property name="base_to_hip_offset_x" value="0"/>
   <xacro:property name="base_to_hip_offset_y" value="${- r7_leg - d3_leg}"/>
-  <xacro:property name="base_to_hip_offset_z" value="${r3_platform + d6_platform + d7_platform +  d7_leg + r4_leg}"/>
+  <xacro:property name="base_to_hip_offset_z" value="${r3_platform + d6_platform + d7_platform + d7_leg + r4_leg}"/>
   <xacro:property name="base_to_hip_offset_baseline_y" value="${- r7Baseline_leg - d3Baseline_leg}"/>
   <xacro:property name="base_to_hip_offset_baseline_z" value="${r3_platform + d6_platform + d7_platform +  d7Baseline_leg + r4Baseline_leg}"/>
 
@@ -43,7 +43,7 @@
     </joint>
 
     <joint name="knee_extension" type="revolute">
-      <origin xyz="0 0 ${d3_leg}" rpy="-${pi/2} 0 ${pi}"/> 
+      <origin xyz="0 0 ${d3_leg}" rpy="${-pi/2} 0 ${pi}"/> 
       <parent link="hip_roll_link"/>
       <child link="knee_extension_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-90)}" upper="${radians(30)}"/>
@@ -68,7 +68,7 @@
     </joint>
 
     <joint name="ankle_yaw" type="revolute">
-      <origin xyz="0 0 0" rpy="-${pi/2} 0 -${pi/2}"/> 
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/> 
       <parent link="ankle_roll_link"/>
       <child link="ankle_yaw_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-25.9)}" upper="${radians(36)}"/>
@@ -76,7 +76,7 @@
     </joint>
 
       <joint name="fixed_foot_base" type="fixed">
-          <origin xyz="0 -${r7_leg} -${d7_leg}" rpy="0 0 -${pi/2}"/> 
+          <origin xyz="0 ${-r7_leg} ${-d7_leg}" rpy="0 0 ${-pi/2}"/> 
           <parent link="ankle_yaw_link"/>
           <child link="foot_base"/>
       </joint>

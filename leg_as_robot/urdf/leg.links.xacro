@@ -7,22 +7,21 @@
 
   <xacro:property name="scale_mass" value="${body_weight / body_weight_baseline}"/>
 
-  
   <xacro:property name="base_scale_x" value="${1.0}"/>
   <xacro:property name="base_scale_y" value="${base_to_hip_offset_y/base_to_hip_offset_baseline_y}"/>
   <xacro:property name="base_scale_z" value="${base_to_hip_offset_z/base_to_hip_offset_baseline_z}"/>
 
-  <xacro:property name="thigh_scale_x" value="${1.0}"/> 
-  <xacro:property name="thigh_scale_y" value="${1.0}"/> 
-  <xacro:property name="thigh_scale_z" value="${d3_leg / d3Baseline_leg}"/> 
+  <xacro:property name="thigh_scale_x" value="${thigh_d/thighBaseline_d}"/> 
+  <xacro:property name="thigh_scale_y" value="${thigh_w/thighBaseline_w}"/> 
+  <xacro:property name="thigh_scale_z" value="${d3_leg/d3Baseline_leg}"/> 
   
-  <xacro:property name="shin_scale_x" value="${r4_leg / r4Baseline_leg}"/> 
-  <xacro:property name="shin_scale_y" value="${1.0}"/> 
-  <xacro:property name="shin_scale_z" value="${1.0}"/> 
+  <xacro:property name="shin_scale_x" value="${r4_leg/r4Baseline_leg}"/> 
+  <xacro:property name="shin_scale_y" value="${shin_d/shinBaseline_d}"/> 
+  <xacro:property name="shin_scale_z" value="${shin_w/shinBaseline_w}"/> 
 
-  <xacro:property name="foot_scale_x" value="${1.0}"/> 
-  <xacro:property name="foot_scale_y" value="${r7_leg / r7Baseline_leg}"/> 
-  <xacro:property name="foot_scale_z" value="${d7_leg / d7Baseline_leg}"/> 
+  <xacro:property name="foot_scale_x" value="${foot_l/footBaseline_l}"/> 
+  <xacro:property name="foot_scale_y" value="${r7_leg/r7Baseline_leg}"/> 
+  <xacro:property name="foot_scale_z" value="${d7_leg/d7Baseline_leg}"/> 
 
   <xacro:macro name="define_leg_links">
     <link name="virtual_platform_base_link"/>
@@ -92,13 +91,13 @@
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
           <mesh filename="package://leg_as_robot/model/meshes/dae/foot_visual.dae" scale ="${foot_scale_x} ${foot_scale_y} ${foot_scale_z}"/>}
-${        </geometry>
+        </geometry>
       </visual>
       <collision>
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
           <mesh filename="package://leg_as_robot/model/meshes/stl/foot_collision.stl" scale ="${foot_scale_x} ${foot_scale_y} ${foot_scale_z}"/>}
-${        </geometry>      
+        </geometry>      
       </collision>
     </link>
     <link name="foot_base"/>
