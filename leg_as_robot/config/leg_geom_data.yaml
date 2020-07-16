@@ -4,9 +4,10 @@ thigh_depth: 0.200
 shin_width: 0.135 
 shin_depth: 0.135 
 foot_length: 0.270 
-thigh_length: 0.430
-shin_length:  0.380
-ankle_to_foot_base_z: 0.100
+thigh_length: 0.420
+shin_length:  0.410
+ankle_to_foot_base_z: 0.080
 ankle_to_foot_base_x: 0.04046
 foot_base_to_foot_tip: 0.15621
 body_weight: 83
+offset_chair_x: 0.0

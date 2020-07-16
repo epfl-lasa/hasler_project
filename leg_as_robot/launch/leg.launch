@@ -12,14 +12,16 @@
     <group if="$(arg virtual_leg)">
       <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
         <remap from="robot_description" to="leg_description" />
-        <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+        <remap from="joint_states" to="leg_joint_states" />
+        <remap from="foot_base_wrench" to="leg_joint_publisher/foot_base_wrench" />
       </node>
     </group>	  
 
     <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
       <param name="tf_prefix" value="$(arg id)"/>
       <remap from="robot_description" to="leg_description" />
-      <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+      <remap from="joint_states" to="leg_joint_states" />
+      
     </node>
 
   </group>

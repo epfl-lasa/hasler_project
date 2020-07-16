@@ -24,7 +24,7 @@
 
 #define NB_PARAMS_CATEGORIES 10
 #define NB_FO_CATEGORIES 6
-
+#define NB_FI_PUBLISHERS 2
 
 using namespace std;
 
@@ -51,12 +51,17 @@ class footVarSynchronizer
     ros::Rate _loopRate;
     float _dt;
 
+    
+
 	//!subscribers and publishers declaration    
     
     // Subscribers declarations
     ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
     ros::Subscriber _subForceSensor;            // geometry_msgs/WrenchStamped.h
-    ros::Subscriber _subFootInput;            // FootInputMsg_v2
+    ros::Subscriber _subForceModified;            // geometry_msgs/WrenchStamped.h
+    ros::Subscriber _subLegGravCompTorques;           //custom_msgs/FootInputMsg_v3
+    ros::Subscriber _subLegGravCompWrench;    // geometry_msgs/WrenchStamped.h
+    ros::Subscriber _subFootInput;            // FootInputMsg_v3
     
     // Publisher declaration
     ros::Publisher _pubFootInput;               // FootInputMsg_v2
@@ -106,10 +111,23 @@ class footVarSynchronizer
             Eigen::Matrix<double,NB_AXIS,1> _ros_position;
             Eigen::Matrix<double,NB_AXIS,1> _ros_speed;
             Eigen::Matrix<double,NB_AXIS,1> _ros_effort;
-            Eigen::Matrix<double,2*NB_CART_AXIS, 1> _ros_forceSensor;
-            Eigen::Matrix<double, 2 * NB_CART_AXIS, 1> _ros_forceSensor_prev;
-            Eigen::Matrix<double, 2 * NB_CART_AXIS, 1> _ros_forceSensor_filt;
-            //std::array<std::list<float>,NB_AXIS> _ros_forceSensorList;
+
+            Eigen::Matrix<double, NB_AXIS, 1> _leg_grav_comp_effort;
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_prev;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_filt;
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _legWrenchGravityComp;
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceBias; //! Comes from force modifier node
+
+            int _calibrationCount;
+            #define NB_CALIBRATION_COUNT 50
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _undesiredForceBias;
+
+            double _force_filt_alpha;
 
             bool _ros_defaultControl;
 
@@ -139,7 +157,14 @@ class footVarSynchronizer
 
 
         volatile bool _flagWasDynReconfCalled;
-        volatile bool _flagForceMeasured;
+        bool _flagForceMeasured, _flagForceBiasMeasured;
+        #define HUMAN_ON_PLATFORM_THRESHOLD 50
+        bool _flagHumanOnPlatform, _flagCompensateLeg;
+        bool _flagForceCalibrated;
+
+        bool _flagLegCompTorquesRead;
+        bool _flagLegCompWrenchRead;
+
         bool _flagInitialConfig;
         bool _flagParamsActionsTaken;
         bool _flagPlatformActionsTaken;
@@ -168,9 +193,8 @@ class footVarSynchronizer
 
         
 
-
-// METHODS
-	public:
+        // METHODS
+      public:
 	// footVarSynchronizer(ros::NodeHandle &n_1, ros::NodeHandle &n_2, ros::NodeHandle &n_3, double frequency, footVarSynchronizer::Platform_Name platform_id_);
 	footVarSynchronizer(ros::NodeHandle &n_1, double frequency, footVarSynchronizer::Platform_Name platform_id_);
 	
@@ -185,7 +209,6 @@ class footVarSynchronizer
 
     //bool allSubscribersOK();
     void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);
-    void updateForceMeas(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void sniffFootInput(const custom_msgs::FootInputMsg_v3::ConstPtr& msg); 
     
     void dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level);
@@ -202,7 +225,18 @@ class footVarSynchronizer
 
     //! OTHER METHODS
     void controlGainsDefault(int axis_);
-    void resetDesiredPositionToCurrent(int axis_); 
+    void resetDesiredPositionToCurrent(int axis_);
+
+    void calibrateForce();
+
+    void updateForceMeas(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void readLegGravCompFI(const custom_msgs::FootInputMsg_v3::ConstPtr &msg);
+    void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void filterForceMeas();
+
+
+
     static void stopNode(int sig);
 };
 #endif  // __footVarSynchronizer_H__

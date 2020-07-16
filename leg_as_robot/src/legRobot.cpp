@@ -56,8 +56,8 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency, legRobot::Leg_Name le
     _legJointLims[L_MIN]->data(joint_) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->lower;
     _legJointLims[L_MAX]->data(joint_) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->upper;
   }
-  _myVelIKSolver = new KDL::ChainIkSolverVel_pinv(_myFootBaseChain);
-  
+  _myVelIKSolver = new KDL::ChainIkSolverVel_wdls(_myFootBaseChain);
+
   _myPosIkSolver = new KDL::ChainIkSolverPos_NR_JL(_myFootBaseChain,*me->_legJointLims[L_MIN], *me->_legJointLims[L_MAX], *_myFKSolver,*_myVelIKSolver);
 
   _tfListener = new tf2_ros::TransformListener(_tfBuffer);
@@ -71,7 +71,7 @@ bool legRobot::init() //! Initialization of the node. Its datatype
 {
   
   _pubLegJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
-  _pubFootBaseWrench = _n.advertise<geometry_msgs::WrenchStamped>("foot_base_wrench", 1);
+  _pubFootBaseWrench = _n.advertise<geometry_msgs::WrenchStamped>("leg_foot_base_wrench", 1);
   _pubNetCoG = _n.advertise<geometry_msgs::PointStamped>("leg_cog",1);
 
   // Subscriber definitions

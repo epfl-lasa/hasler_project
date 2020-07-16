@@ -77,7 +77,7 @@ private:
   KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _gravityTorques;
 
-  // ros variables
+
   urdf::Model _myModel;
   KDL::Tree _myTree;
   std::vector<KDL::Segment> _mySegments;
@@ -86,11 +86,13 @@ private:
   KDL::Chain _myFootBaseChain;
   KDL::Vector _cogLeg;
   KDL::ChainFkSolverPos_recursive* _myFKSolver;
-  KDL::ChainIkSolverVel_pinv* _myVelIKSolver;
+  //KDL::ChainIkSolverVel_pinv* _myVelIKSolver;
+  KDL::ChainIkSolverVel_wdls* _myVelIKSolver;
   KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver;
 
   bool _mySolutionFound;
-
+  
+  // ros variables
   ros::NodeHandle _n;
   ros::Rate _loopRate;
   float _dt;

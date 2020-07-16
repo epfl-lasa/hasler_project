@@ -8,8 +8,6 @@ char const *Axis_names[]{
 
 char const *Platform_Names[]{"none", "right", "left"};
 
-float const FORCE_ALPHA = 0.5f;
-
 footVarSynchronizer *footVarSynchronizer::me = NULL;
 
 footVarSynchronizer::footVarSynchronizer(ros::NodeHandle &n_1, double frequency,footVarSynchronizer::Platform_Name platform_id): 
@@ -22,7 +20,8 @@ _dt(1.0f/frequency)
 	me=this;
 	_stop = false;
 	_flagControlThisPosition=false;
-	_flagForceMeasured=false;
+
+
 	_flagControlZeroEffort=false;
 	_flagCapturePlatformPosition = false;
 	_flagWasDynReconfCalled= false;
@@ -34,6 +33,20 @@ _dt(1.0f/frequency)
 	_flagPlatformInCommStarted=false;
 	_flagPositionOnlyPublished=false;
 	_flagEffortOnlyPublished=false;
+
+	_flagForceMeasured=false;
+	_flagForceBiasMeasured=false;
+
+
+
+
+
+
+	_flagForceCalibrated=false;
+	_flagLegCompTorquesRead=false;
+	_flagLegCompWrenchRead = false;
+
+	_calibrationCount=0;
 
 	for (int i=0; i<NB_PARAMS_CATEGORIES; i++){
 	_flagIsParamStillSame[i]=true;
@@ -51,6 +64,10 @@ _dt(1.0f/frequency)
 
 	_flagResponseSetController=false;
     _flagResponseSetState=false;
+
+	_flagHumanOnPlatform=false;
+	_flagCompensateLeg=false;
+
     
 	for (int k=0; k<NB_AXIS; k++)
 	{       
@@ -87,13 +104,20 @@ _dt(1.0f/frequency)
 		
 
     _ros_forceSensor.setConstant(0.0f);
+    _ros_forceSensor_filt.setConstant(0.0f);
     _ros_forceSensor_prev.setConstant(0.0f);
-	_ros_forceSensor_filt.setConstant(0.0f);
+    _ros_forceBias.setConstant(0.0f);
+	_undesiredForceBias.setZero();
+
     _ros_newState = (uint8_t)_platform_machineState;
     _ros_controllerType = (uint8_t)_platform_controllerType;
     _ros_defaultControl = true;
 
     _ros_controlledAxis = (int8_t)-1;
+
+    _force_filt_alpha = 0.5f;
+    _leg_grav_comp_effort.setZero();
+    _legWrenchGravityComp.setZero();
 
 }
 footVarSynchronizer::~footVarSynchronizer()
@@ -107,18 +131,34 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 	if (_platform_name==LEFT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_subForceSensor = _n.subscribe<geometry_msgs::WrenchStamped>(FORCE_SUBSCRIBER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::updateForceMeas, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		//_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_LEFT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-	
+		_subForceSensor = _n.subscribe<geometry_msgs::WrenchStamped>(
+					    	FORCE_SUBSCRIBER_NAME_LEFT, 1,boost::bind(&footVarSynchronizer::updateForceMeas, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		
+		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/left/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceBias, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
+		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v3>("/left/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());							
+    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("left/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
 	}
 	if (_platform_name==RIGHT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_subForceSensor = _n.subscribe<geometry_msgs::WrenchStamped>(FORCE_SUBSCRIBER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::updateForceMeas, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subForceSensor = _n.subscribe<geometry_msgs::WrenchStamped>(
+			    	FORCE_SUBSCRIBER_NAME_RIGHT, 1,boost::bind(&footVarSynchronizer::updateForceMeas, this, _1),
+			    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		
+		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/right/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceBias, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-		//_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_RIGHT,1, boost::bind(&footVarSynchronizer::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v3>("/right/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());	
+
+		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("right/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
@@ -127,6 +167,9 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
   	_dynRecCallback = boost::bind(&footVarSynchronizer::dynamicReconfigureCallback, this, _1, _2);
   	_dynRecServer.setCallback(_dynRecCallback);
 
+	if (!_n.getParam("force_alpha", _force_filt_alpha))
+		{ ROS_ERROR("No force filter gain found"); }
+	
 
 	//Subscriber definitions	
 	signal(SIGINT,footVarSynchronizer::stopNode);
@@ -230,17 +273,56 @@ void footVarSynchronizer::run()
 					_msgFootOutputPrev = _msgFootOutput;
 					_flagPlatformActionsTaken= false;
 				}
+
+
+
+
+				if (_flagForceMeasured)
+				{ 
+					filterForceMeas();
+					if (!_flagForceCalibrated)
+					{
+						calibrateForce();
+					}
+				}
+
+				if (_ros_forceSensor_filt(2) < -HUMAN_ON_PLATFORM_THRESHOLD) {
+					if(!_flagHumanOnPlatform)
+					{ 
+						ROS_INFO("Probably there is a human on the platform"); 
+						_flagHumanOnPlatform=true;
+					}
+				}
+				else
+				{
+					if(_flagHumanOnPlatform)
+					{ 
+						ROS_INFO("Probably there is NOT a human on the platform"); 
+						_flagHumanOnPlatform=false;
+					}
+				}
+				
+				if (_flagHumanOnPlatform && _flagCompensateLeg)
+				{	
+					_ros_effort = _leg_grav_comp_effort;
+					//cout<<_ros_effort.transpose()<<endl;
+				}
+				else
+				{
+					_ros_effort.setZero();
+				}
+				
+
+
+
 			}
+
+
 		}
 	}
-
-        if (_flagForceMeasured)
-			{
-				_ros_forceSensor_filt = _ros_forceSensor_prev*FORCE_ALPHA + _ros_forceSensor*(1.0f-FORCE_ALPHA);
-				_ros_forceSensor_prev = _ros_forceSensor_filt;
-				_flagForceMeasured=false;
-			}
           publishFootInput(&_flagPositionOnlyPublished);
+          
+		  
         ros::spinOnce();
 	_loopRate.sleep();
   }
@@ -663,40 +745,17 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
     _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k];
     _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k];
   }
-  for (int k = 0; k < NB_AXIS_WRENCH; k++) {
-  	_msgFootInput.ros_forceSensor[k] = _ros_forceSensor_filt[k]; // rosAxis not applied
+  if (_flagForceCalibrated && _flagForceBiasMeasured)
+  {
+	for (int k = 0; k < NB_AXIS_WRENCH; k++) {
+		_msgFootInput.ros_forceSensor[k] = _ros_forceSensor_filt[k]; // rosAxis not applied
+  	}
   }
   _pubFootInput.publish(_msgFootInput);
   *flagVariableOnly_ = true;
   //_mutex.unlock();
 }
 
-// void footVarSynchronizer::sniffFootInput(const custom_msgs::FootInputMsg_v3::ConstPtr& msg)
-// {
-// 	for (int k=0; k<NB_AXIS; k++)
-// 		{
-// 			if (!_flagControlThisPosition){
-// 				_ros_position[k]=msg->ros_position[rosAxis[k]];
-// 			}
-// 				_ros_speed[k]=msg->ros_speed[rosAxis[k]];
-// 			if (!_flagControlZeroEffort){
-// 				_ros_effort[k]=msg->ros_effort[rosAxis[k]];
-// 			}
-// 		}	
-// 	if(!_flagPlatformInCommStarted)
-// 	{_flagPlatformInCommStarted=true;}
-// } 
-
-void footVarSynchronizer::updateForceMeas(const geometry_msgs::WrenchStamped::ConstPtr& msg)
-{	
-	_flagForceMeasured=true;
-    _ros_forceSensor[0] = msg->wrench.force.x;
-    _ros_forceSensor[1] = msg->wrench.force.y;
-    _ros_forceSensor[2] = msg->wrench.force.z;
-    _ros_forceSensor[3] = msg->wrench.torque.x;
-    _ros_forceSensor[4] = msg->wrench.torque.y;
-    _ros_forceSensor[5] = msg->wrench.torque.z;
-} 
 
 void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg)
 {
@@ -789,7 +848,20 @@ void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machin
 	_ros_effortComp[RCM_MOTION]=(uint8_t) config.effortComp_rcmMotion;
 	_ros_effortComp[FEEDFORWARD]=(uint8_t) config.effortComp_feedforward;
 
-	
+		if (config.compensate_leg)
+		{
+			ROS_INFO("Compensating the Leg");
+			_flagCompensateLeg=true;
+		}
+		else
+		{
+			if (_flagCompensateLeg)
+			{
+			 ROS_INFO("Not Compensating the Leg Anymore");
+			_flagCompensateLeg=false;
+			}
+		}
+		
 		_ros_posP[X]=config.kp_Position_X; 
 		_ros_posP[Y]=config.kp_Position_Y;
 		_ros_posP[PITCH]=config.kp_Position_PITCH;
@@ -922,4 +994,92 @@ void footVarSynchronizer::resetDesiredPositionToCurrent(int axis_)
         case(YAW): {_config.desired_Position_YAW=_platform_position[YAW];}
       }
   }
+}
+
+void footVarSynchronizer::updateForceMeas(
+    const geometry_msgs::WrenchStamped::ConstPtr &msg) {
+	_ros_forceSensor[0] = msg->wrench.force.x;
+	_ros_forceSensor[1] = msg->wrench.force.y;
+	_ros_forceSensor[2] = msg->wrench.force.z;
+	_ros_forceSensor[3] = msg->wrench.torque.x;
+	_ros_forceSensor[4] = msg->wrench.torque.y;
+	_ros_forceSensor[5] = msg->wrench.torque.z;
+    if (!_flagForceMeasured)
+	 {
+		ROS_INFO("Force Sensor Connected");
+	 }
+        _flagForceMeasured = true;
+}
+
+void footVarSynchronizer::filterForceMeas() {
+    
+    _ros_forceSensor_filt = _ros_forceSensor_prev * _force_filt_alpha +
+                            _ros_forceSensor * (1.0f - _force_filt_alpha);
+    if (_flagForceCalibrated && _flagForceBiasMeasured) {
+      _ros_forceSensor_filt += _ros_forceBias - _undesiredForceBias;
+    }
+    if (_flagHumanOnPlatform && _flagCompensateLeg && _flagLegCompWrenchRead)
+	{
+      _ros_forceSensor_filt += _legWrenchGravityComp;
+	}
+      _ros_forceSensor_prev = _ros_forceSensor_filt;
+}
+
+void footVarSynchronizer::readForceBias(
+   const geometry_msgs::WrenchStamped::ConstPtr &msg) {
+  if (!_flagForceBiasMeasured) {
+    _ros_forceBias[0] = msg->wrench.force.x;
+    _ros_forceBias[1] = msg->wrench.force.y;
+    _ros_forceBias[2] = msg->wrench.force.z;
+    _ros_forceBias[3] = msg->wrench.torque.x;
+    _ros_forceBias[4] = msg->wrench.torque.y;
+    _ros_forceBias[5] = msg->wrench.torque.z;
+    ROS_INFO("Force Bias Read!");
+  }
+  _flagForceBiasMeasured = true;
+}
+
+void footVarSynchronizer::readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg) {
+  _legWrenchGravityComp(0) = msg->wrench.force.x;
+  _legWrenchGravityComp(1) = msg->wrench.force.y;
+  _legWrenchGravityComp(2) = msg->wrench.force.z;
+  _legWrenchGravityComp(3) = msg->wrench.torque.x;
+  _legWrenchGravityComp(4) = msg->wrench.torque.y;
+  _legWrenchGravityComp(5) = msg->wrench.torque.z;
+  if (!_flagLegCompWrenchRead) {
+   // ROS_INFO("Receiving Leg Compensation Torques");
+  }
+  _flagLegCompWrenchRead = true;
+}
+
+
+
+void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg_v3::ConstPtr &msg) {
+    
+	for (unsigned int i = 0; i<NB_AXIS; i++)
+	{
+		_leg_grav_comp_effort(i) = msg->ros_effort[i];
+	}
+
+  if (!_flagLegCompTorquesRead) {
+    ROS_INFO("Receiving Leg Compensation Torques");
+  }
+  _flagLegCompTorquesRead = true;
+}
+
+void footVarSynchronizer::calibrateForce()
+{
+	if (!_flagForceCalibrated)
+	{
+		_undesiredForceBias+=_ros_forceSensor_filt;
+		_calibrationCount++;
+	}
+	if (_calibrationCount==NB_CALIBRATION_COUNT)
+	{
+          _undesiredForceBias = (_undesiredForceBias.array()/NB_CALIBRATION_COUNT).matrix();
+		  ROS_INFO("Sensor Calibrated!");
+		  cout<<"Undesired force bias: "<<_undesiredForceBias.transpose()<<endl;
+          _flagForceCalibrated = true;
+          _calibrationCount = 0;
+	};
 }

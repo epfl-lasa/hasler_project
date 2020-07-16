@@ -18,6 +18,8 @@
     <xacro:property name="shin_d" value="${leg_geom_data['shin_depth']}"/>
     <xacro:property name="foot_l" value="${leg_geom_data['foot_length']}"/>
 
+    <xacro:property name="chair_x_offset" value="${leg_geom_data['offset_chair_x']}"/>
+
     <xacro:property name="body_weight" value="${leg_geom_data['body_weight']}"/> 
     <xacro:property name="body_weight_baseline" value="${leg_geom_data['body_weight']}"/> 
 
