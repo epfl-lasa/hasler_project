@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     <xacro:property name="leg_geom_data_yaml" value="$(find leg_as_robot)/config/leg_geom_data.yaml"/>
     <xacro:property name="leg_geom_data_baseline_yaml" value="$(find leg_as_robot)/config/leg_geom_data.baseline.yaml"/>
-    <xacro:property name="platform_geom_data_yaml" value="$(find foot_platform_ros)/config/right_platform_geom_data.yaml"/>
+    <xacro:property name="platform_geom_data_yaml" value="$(find foot_platform_ros)/config/platform_geom_data.yaml"/>
     <xacro:property name="leg_geom_data" value="${load_yaml(leg_geom_data_yaml)}"/>
     <xacro:property name="leg_geom_data_baseline" value="${load_yaml(leg_geom_data_baseline_yaml)}"/>
     <xacro:property name="platform_geom_data" value="${load_yaml(platform_geom_data_yaml)}"/>
@@ -17,12 +17,11 @@
     <xacro:property name="shin_w" value="${leg_geom_data['shin_width']}"/>
     <xacro:property name="shin_d" value="${leg_geom_data['shin_depth']}"/>
     <xacro:property name="foot_l" value="${leg_geom_data['foot_length']}"/>
-
-    <xacro:property name="chair_x_offset" value="${leg_geom_data['offset_chair_x']}"/>
-
     <xacro:property name="body_weight" value="${leg_geom_data['body_weight']}"/> 
     <xacro:property name="body_weight_baseline" value="${leg_geom_data['body_weight']}"/> 
 
+   
+   
     <xacro:property name="d3Baseline_leg" value="${leg_geom_data_baseline['thigh_length']}"/> 
     <xacro:property name="r4Baseline_leg" value="${leg_geom_data_baseline['shin_length']}"/> 
     <xacro:property name="d7Baseline_leg" value="${leg_geom_data_baseline['ankle_to_foot_base_z']}"/> 

@@ -1,0 +1,29 @@
+<launch>
+  <arg name="id"          default="right" />
+  <arg name="virtual_leg" default="true"/>
+  <arg name="offset_x"    default="$(eval 0.24/2.0)"  if="$(eval arg('id')=='right')" />
+  <arg name="offset_x"    default="$(eval -0.24/2.0)" if="$(eval arg('id')=='left')" />
+  <arg name="offset_y"    default="0.0"/>
+  <arg name="offset_z"    default="0.0"/>
+  <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" />
+  <arg name="inc_chair"   default="true"/>
+  <arg name="rviz"        default="true"/>
+  
+  <group if="$(arg inc_chair)">
+    <include file="$(find leg_as_robot)/launch/chair.launch" >
+      <arg name="rviz"        value="false"/>
+    </include>
+  </group>
+
+  <include file="$(find leg_as_robot)/launch/leg.launch" >
+    <arg name="rviz"        value="$(arg rviz)"/>
+    <arg name="id"          value="$(arg id)" />
+    <arg name="virtual_leg" value="$(arg virtual_leg)"/>
+    <arg name="offset_x"    value="$(arg offset_x)"/>
+    <arg name="offset_y"    value="$(arg offset_y)"/>
+    <arg name="offset_z"    value="$(arg offset_z)"/>
+    <arg name="rvizconfig"  value="$(arg rvizconfig)" />
+  </include>
+
+
+</launch>

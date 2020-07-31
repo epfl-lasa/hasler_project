@@ -1,0 +1,36 @@
+<?xml version="2.0"?>
+<launch>
+  <arg name="id"                 default="right" />
+  <arg name="virtual_leg"        default="false"/>
+  <arg name="rvizconfig"         default="$(find leg_as_robot)/rviz/$(arg id)/leg_platform.rviz" />
+  <arg name="port"               default="/dev/ttyACM0" />
+  <arg name="fsensor"            default="false"/>
+  <arg name="virtual_platform"   default="true" />
+  <arg name="inc_chair"          default="true"/>
+  <arg name="rviz"               default="true"/>
+  
+	<include file="$(find foot_platform_ros)/launch/platform_ros.launch">
+      <arg name="id"                 value="$(arg id)" />
+      <arg name="port"               value="$(arg port)" />
+      <arg name="fsensor"            value="$(arg fsensor)"/>
+      <arg name="virtual_platform"   value="$(arg virtual_platform)" />
+      <arg name="rviz"               value="false"/>
+      <arg name="offset_x"           default="0.25" if="$(eval arg('id')=='right')"/>
+      <arg name="offset_x"           default="-0.25" if="$(eval arg('id')=='left')"/>
+      <arg name="offset_y"           default="0.47046"/>
+      <arg name="offset_z"           default="0.0"/>
+    </include>
+  <include file="$(find leg_as_robot)/launch/single_leg.launch" > 
+      <arg name="id"          value="$(arg id)"/>
+      <arg name="virtual_leg" value="$(arg virtual_leg)"/>
+      <arg name="offset_x"    value="$(eval 0.24/2.0)" if="$(eval arg('id')=='right')"/>
+      <arg name="offset_x"    value="$(eval -0.24/2.0)" if="$(eval arg('id')=='left')"/>
+      <arg name="offset_z"    value="0.0"/>
+      <arg name="rvizconfig"  value="$(arg rvizconfig)"/>
+      <arg name="inc_chair"   value="$(arg inc_chair)"/>
+      <arg name="rviz"        value="$(arg rviz)"/>
+      
+  </include>
+  
+
+</launch>

@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:property name="leg_geom_data_yaml" value="$(find leg_as_robot)/config/leg_geom_data.yaml"/>
+    <xacro:property name="leg_geom_data_baseline_yaml" value="$(find leg_as_robot)/config/leg_geom_data.baseline.yaml"/>
+    <xacro:property name="platform_geom_data_yaml" value="$(find foot_platform_ros)/config/platform_geom_data.yaml"/>
+    <xacro:property name="leg_geom_data" value="${load_yaml(leg_geom_data_yaml)}"/>
+    <xacro:property name="leg_geom_data_baseline" value="${load_yaml(leg_geom_data_baseline_yaml)}"/>
+    <xacro:property name="platform_geom_data" value="${load_yaml(platform_geom_data_yaml)}"/>
+
+    <xacro:property name="d3_leg" value="${leg_geom_data['thigh_length']}"/> <!-- d3_leg [m]-->
+    <xacro:property name="r4_leg" value="${leg_geom_data['shin_length']}"/> <!-- r4_leg [m]-->
+    <xacro:property name="d7_leg" value="${leg_geom_data['ankle_to_foot_base_z']}"/> <!-- d7_leg [m]-->
+    <xacro:property name="r7_leg" value="${leg_geom_data['ankle_to_foot_base_x']}"/> <!-- r7_leg [m]-->
+    <xacro:property name="r8_leg" value="${leg_geom_data['foot_base_to_foot_tip']}"/> <!-- r8_leg_foot_tip [m]-->
+    <xacro:property name="thigh_w" value="${leg_geom_data['thigh_width']}"/> 
+    <xacro:property name="thigh_d" value="${leg_geom_data['thigh_depth']}"/> 
+    <xacro:property name="shin_w" value="${leg_geom_data['shin_width']}"/>
+    <xacro:property name="shin_d" value="${leg_geom_data['shin_depth']}"/>
+    <xacro:property name="foot_l" value="${leg_geom_data['foot_length']}"/>
+
+    
+    <xacro:property name="body_weight" value="${leg_geom_data['body_weight']}"/> 
+    <xacro:property name="body_weight_baseline" value="${leg_geom_data['body_weight']}"/> 
+
+    <xacro:property name="d3Baseline_leg" value="${leg_geom_data_baseline['thigh_length']}"/> 
+    <xacro:property name="r4Baseline_leg" value="${leg_geom_data_baseline['shin_length']}"/> 
+    <xacro:property name="d7Baseline_leg" value="${leg_geom_data_baseline['ankle_to_foot_base_z']}"/> 
+    <xacro:property name="r7Baseline_leg" value="${leg_geom_data_baseline['ankle_to_foot_base_x']}"/> 
+    <xacro:property name="r8Baseline_leg" value="${leg_geom_data_baseline['foot_base_to_foot_tip']}"/> 
+    <xacro:property name="thighBaseline_w" value="${leg_geom_data_baseline['thigh_width']}"/> 
+    <xacro:property name="thighBaseline_d" value="${leg_geom_data_baseline['thigh_depth']}"/> 
+    <xacro:property name="shinBaseline_w" value="${leg_geom_data_baseline['shin_width']}"/>
+    <xacro:property name="shinBaseline_d" value="${leg_geom_data_baseline['shin_depth']}"/>
+    <xacro:property name="footBaseline_l" value="${leg_geom_data_baseline['foot_length']}"/>
+
+    <xacro:property name="r3_platform" value="${platform_geom_data['r3']}"/> <!-- [m]-->
+    <xacro:property name="d6_platform" value="${platform_geom_data['d6']}"/> <!-- [m]-->
+    <xacro:property name="d7_platform" value="${platform_geom_data['d7']}"/> <!-- [m]-->
+    <xacro:property name="r8_platform" value="${platform_geom_data['r8']}"/> <!-- [m]-->
+    
+    <xacro:property name="r8_leg_extra" value="${r8_platform-r8_leg}"/> <!-- [m]-->
+   
+</robot>

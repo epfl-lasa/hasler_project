@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="define_leg_joints">
+  
+    <joint name="hip_adduction" type="revolute">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="hip_base_link"/>
+      <child link="hip_adduction_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(0)}" upper="${radians(44)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="hip_extension" type="revolute">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <parent link="hip_adduction_link"/>
+      <child link="hip_extension_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-30)}" upper="${radians(32)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="hip_roll" type="revolute">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <parent link="hip_extension_link"/>
+      <child link="hip_roll_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-33)}" upper="${radians(33)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="knee_extension" type="revolute">
+      <origin xyz="0 0 ${d3_leg}" rpy="${-pi/2} 0 ${pi}"/> 
+      <parent link="hip_roll_link"/>
+      <child link="knee_extension_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-90)}" upper="${radians(30)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+
+    <joint name="ankle_pitch" type="revolute">
+      <origin xyz="${r4_leg} 0 0" rpy="${pi} 0 ${pi}"/>
+      <parent link="knee_extension_link"/>
+      <child link="ankle_pitch_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-45.8)}" upper="${radians(29.8)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="ankle_roll" type="revolute">
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/> 
+      <parent link="ankle_pitch_link"/>
+      <child link="ankle_roll_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-22)}" upper="${radians(17)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+    <joint name="ankle_yaw" type="revolute">
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/> 
+      <parent link="ankle_roll_link"/>
+      <child link="ankle_yaw_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-36)}" upper="${radians(25.9)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint>
+
+      <joint name="fixed_foot_base" type="fixed">
+          <origin xyz="0 ${-r7_leg} ${-d7_leg}" rpy="0 0 ${-pi/2}"/> 
+          <parent link="ankle_yaw_link"/>
+          <child link="foot_base"/>
+      </joint>
+
+      <joint name="fixed_foot_tip" type="fixed">
+          <origin xyz="${r8_leg} 0 0" rpy="0 0 0"/> 
+          <parent link="foot_base"/>
+          <child link="foot_tip"/>
+      </joint>
+      
+      <joint name="fixed_pedal_tip" type="fixed">
+          <origin xyz="${r8_leg_extra} 0 0" rpy="0 0 0"/> 
+          <parent link="foot_tip"/>
+          <child link="virtual_pedal_tip"/>
+      </joint>
+  </xacro:macro>
+</robot>

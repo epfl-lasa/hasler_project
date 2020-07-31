@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
 
   ros::NodeHandle nh_("~");
   nh_.getParam("legID", leg_name);
+  
 
   if (leg_name.compare("right") == 0) {
     leg_id_ = legRobot::RIGHT;

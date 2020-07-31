@@ -1,33 +1,49 @@
-  <launch>
-
-  <arg name="leg_model" default="$(find leg_as_robot)/urdf/leg.create.xacro"/>
-  <arg name="id" default="right" />
+<launch>
+  <arg name="id"          default="right" />
+  <arg name="leg_model"   default="$(find leg_as_robot)/urdf/$(arg id)/leg.create.xacro"/>
   <arg name="virtual_leg" default="true" />
-  <arg name="rvizconfig" default="$(find leg_as_robot)/rviz/leg_alone.rviz" />
-    
-  <group ns="$(arg id)">
-      
-    <param name="leg_description" command="$(find xacro)/xacro.py $(arg leg_model)"/>
-    
-    <group if="$(arg virtual_leg)">
-      <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
-        <remap from="robot_description" to="leg_description" />
-        <remap from="joint_states" to="leg_joint_states" />
-        <remap from="foot_base_wrench" to="leg_joint_publisher/foot_base_wrench" />
-      </node>
-    </group>	  
+	<arg name="freq"        default="400"/>  
+  <arg name="rviz"        default="true"/>
+  <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" />
 
-    <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <param name="tf_prefix" value="$(arg id)"/>
-      <remap from="robot_description" to="leg_description" />
-      <remap from="joint_states" to="leg_joint_states" />
-      
-    </node>
+  <arg name="offset_x"    default="0.0"/>  
+  <arg name="offset_y"    default="0.0"/>
+  <arg name="offset_z"    default="0.0"/>
+
+  <group ns="$(arg id)">
+        
+      <param name="leg_description" command="$(find xacro)/xacro --inorder $(arg leg_model)"/>
+
+      <group if="$(arg virtual_leg)">
+        <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" output="screen">
+        <param name="tf_prefix" value="$(arg id)"/>
+        <param name="publish_frequency" value="$(arg freq)"/>
+        <remap from="robot_description" to="leg_description" />
+        <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+        </node>
+      </group>	  
+
+      <group unless="$(arg virtual_leg)">
+        <node name="leg_joint_publisher" pkg="leg_as_robot" type="legRobot" output="screen">
+          <param name="legID" value="$(arg id)"/>
+          <remap from="robot_description" to="leg_description" />
+          <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+        </node>
+      </group>
+
+      <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+        <param name="publish_frequency" value="$(arg freq)"/>
+        <param name="tf_prefix" value="$(arg id)"/>
+        <remap from="robot_description" to="leg_description" />
+        <remap from="joint_states" to="leg_joint_publisher/joint_states" />
+      </node>
 
   </group>
-  
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
-  <node pkg="tf" type="static_transform_publisher" name="world_to_leg" args="0 0 0 0 0 0 1 world $(arg id)/virtual_platform_base_link 100" />
+  <group if="$(arg rviz)"> 
+      <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true"/> 
+  </group>
 
-  </launch>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)/hip_base_link" />  
+
+</launch>

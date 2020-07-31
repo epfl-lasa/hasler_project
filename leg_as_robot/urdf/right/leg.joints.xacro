@@ -1,28 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:property name="base_to_hip_offset_x" value="${chair_x_offset}"/>
-  <xacro:property name="base_to_hip_offset_y" value="${- r7_leg - d3_leg}"/>
-  <xacro:property name="base_to_hip_offset_z" value="${r3_platform + d6_platform + d7_platform + d7_leg + r4_leg}"/>
-  <xacro:property name="base_to_hip_offset_baseline_y" value="${- r7Baseline_leg - d3Baseline_leg}"/>
-  <xacro:property name="base_to_hip_offset_baseline_z" value="${r3_platform + d6_platform + d7_platform +  d7Baseline_leg + r4Baseline_leg}"/>
-
-   <xacro:property name="base_to_hip_offset">
-      <origin xyz="${base_to_hip_offset_x} ${base_to_hip_offset_y} ${base_to_hip_offset_z}" rpy="0 0 0"/> <!-- <origin xyz="0 -0.5100 0.9246" rpy="0 0 0"/> -->
-  </xacro:property>
-
 
   <xacro:macro name="define_leg_joints">
-    <joint name="hip_fixed" type="fixed">
-      <xacro:insert_block name="base_to_hip_offset"/>
-      <parent link="virtual_platform_base_link"/>
-      <child link="hip_base_link"/>
-    </joint>
     <joint name="hip_adduction" type="revolute">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <parent link="hip_base_link"/>
       <child link="hip_adduction_link"/>
-      <limit effort="30" velocity="10.0" lower="${radians(-44)}" upper="${radians(10)}"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-44)}" upper="${radians(0)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 

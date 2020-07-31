@@ -104,6 +104,8 @@ _dt(1.0f/frequency)
 		
 
     _ros_forceSensor.setConstant(0.0f);
+	_ros_forceSensor_unbiased.setZero();
+	
     _ros_forceSensor_filt.setConstant(0.0f);
     _ros_forceSensor_prev.setConstant(0.0f);
     _ros_forceBias.setConstant(0.0f);
@@ -118,6 +120,7 @@ _dt(1.0f/frequency)
     _force_filt_alpha = 0.5f;
     _leg_grav_comp_effort.setZero();
     _legWrenchGravityComp.setZero();
+	_rotationfSensor.setIdentity();
 
 }
 footVarSynchronizer::~footVarSynchronizer()
@@ -166,6 +169,18 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 
   	_dynRecCallback = boost::bind(&footVarSynchronizer::dynamicReconfigureCallback, this, _1, _2);
   	_dynRecServer.setCallback(_dynRecCallback);
+
+	if (_platform_name==LEFT)
+	{
+		cout<<"The rotation matrix for the left force sensor has been considered!"<<endl;
+		Eigen::Matrix3d rotTemp;
+		rotTemp<< cos(-M_PI), -sin(-M_PI), 0,
+				sin(-M_PI),  cos(-M_PI), 0,
+						0,           0, 1;
+		_rotationfSensor.block(0,0,3,3) = rotTemp;
+		_rotationfSensor.block(3,3,3,3) = rotTemp;
+	}
+	  
 
 	if (!_n.getParam("force_alpha", _force_filt_alpha))
 		{ ROS_ERROR("No force filter gain found"); }
@@ -286,7 +301,7 @@ void footVarSynchronizer::run()
 					}
 				}
 
-				if (_ros_forceSensor_filt(2) < -HUMAN_ON_PLATFORM_THRESHOLD) {
+				if (abs(_ros_forceSensor_filt.segment(0,3).norm()) > HUMAN_ON_PLATFORM_THRESHOLD) {
 					if(!_flagHumanOnPlatform)
 					{ 
 						ROS_INFO("Probably there is a human on the platform"); 
@@ -1004,6 +1019,10 @@ void footVarSynchronizer::updateForceMeas(
 	_ros_forceSensor[3] = msg->wrench.torque.x;
 	_ros_forceSensor[4] = msg->wrench.torque.y;
 	_ros_forceSensor[5] = msg->wrench.torque.z;
+
+	_ros_forceSensor = _rotationfSensor * _ros_forceSensor; 
+
+
     if (!_flagForceMeasured)
 	 {
 		ROS_INFO("Force Sensor Connected");
@@ -1012,17 +1031,35 @@ void footVarSynchronizer::updateForceMeas(
 }
 
 void footVarSynchronizer::filterForceMeas() {
+    _ros_forceSensor_unbiased.setZero();
     
-    _ros_forceSensor_filt = _ros_forceSensor_prev * _force_filt_alpha +
-                            _ros_forceSensor * (1.0f - _force_filt_alpha);
-    if (_flagForceCalibrated && _flagForceBiasMeasured) {
-      _ros_forceSensor_filt += _ros_forceBias - _undesiredForceBias;
-    }
-    if (_flagHumanOnPlatform && _flagCompensateLeg && _flagLegCompWrenchRead)
-	{
-      _ros_forceSensor_filt += _legWrenchGravityComp;
-	}
+    if (_flagForceCalibrated) {
+      
+      //cout << _ros_forceSensor_filt.transpose() << endl;
+    
+
+     if (_flagForceBiasMeasured)
+     {
+		_ros_forceSensor_unbiased = _ros_forceSensor - (_undesiredForceBias-_ros_forceBias);
+     }
+	 else
+	 {
+		 _ros_forceSensor_unbiased = _ros_forceSensor - _undesiredForceBias;
+	 }
+	 
+	 if (_flagHumanOnPlatform && _flagCompensateLeg && _flagLegCompWrenchRead)
+	 {
+		_ros_forceSensor_filt = _ros_forceSensor_prev * _force_filt_alpha +
+                               (_ros_forceSensor_unbiased + _legWrenchGravityComp) * (1.0f - _force_filt_alpha);
+	 }
+
+	 else
+	 {
+		_ros_forceSensor_filt = _ros_forceSensor_prev * _force_filt_alpha +
+                            _ros_forceSensor_unbiased * (1.0f - _force_filt_alpha);
+	 }
       _ros_forceSensor_prev = _ros_forceSensor_filt;
+    }
 }
 
 void footVarSynchronizer::readForceBias(
@@ -1058,7 +1095,7 @@ void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg_v3::
     
 	for (unsigned int i = 0; i<NB_AXIS; i++)
 	{
-		_leg_grav_comp_effort(i) = msg->ros_effort[i];
+		_leg_grav_comp_effort(i) = msg->ros_effort[rosAxis[i]];
 	}
 
   if (!_flagLegCompTorquesRead) {
@@ -1071,7 +1108,7 @@ void footVarSynchronizer::calibrateForce()
 {
 	if (!_flagForceCalibrated)
 	{
-		_undesiredForceBias+=_ros_forceSensor_filt;
+		_undesiredForceBias+=_ros_forceSensor;
 		_calibrationCount++;
 	}
 	if (_calibrationCount==NB_CALIBRATION_COUNT)

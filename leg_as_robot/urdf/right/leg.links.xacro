@@ -1,16 +1,14 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   
+
+  <xacro:arg name="with_chair" default="true"/>
+
   <xacro:property name="thigh_mass" value="${14.47 * 100.0/165.0 * body_weight / 100}"/> <!-- [kg] -->
-  <xacro:property name="shin_mass" value="${4.57 * 100.0/165.0 * body_weight / 100}"/> <!-- [kg] -->
-  <xacro:property name="foot_mass" value="${1.33 * 100.0/165.0 *body_weight / 100}"/> <!--[kg] -->
-
+  <xacro:property name="shin_mass" value="${4.57 * 100.0/165.0  * body_weight / 100}"/> <!-- [kg] -->
+  <xacro:property name="foot_mass" value="${1.33 * 100.0/165.0  *body_weight / 100}"/> <!--[kg] -->
   <xacro:property name="scale_mass" value="${body_weight / body_weight_baseline}"/>
-
-  <xacro:property name="base_scale_x" value="${1.0}"/>
-  <xacro:property name="base_scale_y" value="${base_to_hip_offset_y/base_to_hip_offset_baseline_y}"/>
-  <xacro:property name="base_scale_z" value="${base_to_hip_offset_z/base_to_hip_offset_baseline_z}"/>
-
+  
   <xacro:property name="thigh_scale_x" value="${thigh_d/thighBaseline_d}"/> 
   <xacro:property name="thigh_scale_y" value="${thigh_w/thighBaseline_w}"/> 
   <xacro:property name="thigh_scale_z" value="${d3_leg/d3Baseline_leg}"/> 
@@ -24,21 +22,7 @@
   <xacro:property name="foot_scale_z" value="${d7_leg/d7Baseline_leg}"/> 
 
   <xacro:macro name="define_leg_links">
-    <link name="virtual_platform_base_link"/>
-    <link name="hip_base_link">
-        <visual>
-          <origin rpy="0 0 0" xyz="0 0 0"/>
-          <geometry>
-            <mesh filename="package://leg_as_robot/model/meshes/dae/leg_base_visual.dae" scale ="${base_scale_x} ${base_scale_y} ${base_scale_z}"/>
-          </geometry>
-        </visual>
-        <collision>
-          <origin rpy="0 0 0" xyz="0 0 0"/>
-          <geometry>
-            <mesh filename="package://leg_as_robot/model/meshes/stl/leg_base_collision.stl" scale ="${base_scale_x} ${base_scale_y} ${base_scale_z}"/>
-          </geometry>      
-        </collision>
-    </link>
+    <link name="hip_base_link"/>
     <link name="hip_adduction_link"/> <!-- virtual link-->
     <link name="hip_extension_link"/> <!-- virtual link-->
     <link name="hip_roll_link" >

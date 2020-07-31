@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+
+  <xacro:property name="base_scale_x" value="${hip_width/hip_widthBaseline}"/>
+  <xacro:property name="base_scale_y" value="${1.0}"/>
+  <xacro:property name="base_scale_z" value="${hip_height/hip_heightBaseline}"/>
+
+  <xacro:macro name="define_chair_link">
+    <link name="/world"/>
+    <link name="chair_intermediate_link"/>
+    <link name="chair_base_link">
+        <visual> 
+          <origin rpy="0 0 0" xyz="${0.1998/2} 0 0"/>
+          <geometry>
+            <mesh filename="package://leg_as_robot/model/meshes/dae/leg_base_visual.dae" scale ="${base_scale_x} ${base_scale_y} ${base_scale_z}"/>
+          </geometry>
+        </visual>
+        <collision>
+          <origin rpy="0 0 0" xyz="${0.1998/2} 0 0"/>
+          <geometry>
+            <mesh filename="package://leg_as_robot/model/meshes/stl/leg_base_collision.stl" scale ="${base_scale_x} ${base_scale_y} ${base_scale_z}"/>
+          </geometry>      
+        </collision> 
+    </link>
+  </xacro:macro>
+</robot>

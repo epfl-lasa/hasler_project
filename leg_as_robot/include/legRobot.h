@@ -21,6 +21,7 @@
 #include <eigen_conversions/eigen_kdl.h>
 #include <tf2_kdl/tf2_kdl.h>
 #include <tf2_ros/transform_listener.h>
+#include <chainfdsolvertorque_wdls.h>
 
 
 #include "Eigen/Eigen"
@@ -42,6 +43,7 @@
 #include <mutex>
 #include <ros/package.h>
 #include <sensor_msgs/JointState.h>
+#include <visualization_msgs/Marker.h>
 
 
 //! Joint Space
@@ -60,6 +62,7 @@ enum Leg_Axis : size_t { LEG_AXES };
 extern const char *Leg_Axis_Names[];
 
 using namespace std;
+using namespace Eigen;
 
 class legRobot {
 
@@ -77,7 +80,8 @@ private:
   KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _gravityTorques;
 
-
+  Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
+  
   urdf::Model _myModel;
   KDL::Tree _myTree;
   std::vector<KDL::Segment> _mySegments;
@@ -85,10 +89,20 @@ private:
   KDL::ChainDynParam*  _myChainDyn;
   KDL::Chain _myFootBaseChain;
   KDL::Vector _cogLeg;
+  KDL::Jacobian _myJacobian;
   KDL::ChainFkSolverPos_recursive* _myFKSolver;
   //KDL::ChainIkSolverVel_pinv* _myVelIKSolver;
   KDL::ChainIkSolverVel_wdls* _myVelIKSolver;
+  KDL::ChainFdSolverTorque_wdls* _myTorqueFDSolver;
   KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver;
+  std::vector<KDL::ArticulatedBodyInertia> _myArticulatedBodyInertias;
+  KDL::ArticulatedBodyInertia _myTotalArticulatedBodyInertia;
+  KDL::JntSpaceInertiaMatrix _myJointSpaceInertiaMatrix;
+  KDL::ChainJntToJacSolver* _myJacSolver;
+  Eigen::JacobiSVD<MatrixXd> _mySVD;
+  
+
+  Eigen::Matrix<double,NB_LEG_AXIS,NB_LEG_AXIS> _weightedJointSpaceMassMatrix;
 
   bool _mySolutionFound;
   
@@ -102,6 +116,7 @@ private:
   tf2_ros::Buffer _tfBuffer;
   tf2_ros::TransformListener* _tfListener;
   KDL::Frame _footPosFrame;
+  KDL::Frame _hipPosFrame;
   KDL::FrameVel _footVelFrame;
   Eigen::Vector3d _footPosition;
   Eigen::Vector3d _footEuler;
@@ -112,13 +127,14 @@ private:
   Eigen::Vector3d _gravityVector;
   
   // Publisher declaration
+  ros::Publisher _pubManipEllipsoid;
   ros::Publisher _pubLegJointStates;
   ros::Publisher _pubNetCoG;
   ros::Publisher _pubFootBaseWrench; //! To the foot variable synchornizer
 
 
   // Messages
-
+  visualization_msgs::Marker _msgManipEllipsoid;
   sensor_msgs::JointState _msgJointStates;
   geometry_msgs::PointStamped _msgNetCoG;
   geometry_msgs::WrenchStamped _msgFootBaseWrench;
@@ -126,6 +142,7 @@ private:
   //! boolean variables
 
   bool _flagFootPoseConnected;
+  bool _flagHipPoseConnected;
   bool _stop;
 
   std::mutex _mutex;
@@ -149,12 +166,20 @@ private:
   // bool allSubscribersOK();
   void publishLegJointStates();
   void readFootBasePose();
+  void readHipBasePose();
+  void readHipWorldPose();
   void performInverseKinematics();
-  void processAngles(Eigen::MatrixXd ikSolutions);
+  //void processAngles(Eigen::MatrixXd ikSolutions);
   void computeGravityTorque(); //! effort in each leg joint
-  void computeFootBaseGravityWrench();
+  void performChainForwardKinematics();
+  //void processArticulatedBodyInertias();
+  void computeNetCoG();
   void publishNetCoG();
+  void computeFootBaseWrenchForwardDynamics();
   void publishFootBaseGravityWrench();
+  void computedWeightingMatrixes();
+  void computeLegManipulability();
+  void publishManipulabilityEllipsoid();
 
   //! OTHER METHODS
   static void stopNode(int sig);

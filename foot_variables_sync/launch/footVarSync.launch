@@ -1,15 +1,15 @@
 <launch>
-	<arg name="platformID" default="right"/>
+	<arg name="id" default="right"/>
 	<arg name="forceAlpha" default="0.5"/>
 
-    <group ns="$(arg platformID)">
-        <node pkg="foot_platform_ros" type="footForceMeasModifier" name="force_sensor_modifier">
-            <param name="platformID" value="$(arg platformID)"/>
+    <group ns="$(arg id)">
+        <node pkg="foot_platform_ros" type="footForceMeasModifier" name="force_sensor_modifier" output="screen" >
+            <param name="platformID" value="$(arg id)"/>
             <remap from="robot_description" to="platform_description"/>
         </node>
 
 		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
-			<param name="platformID" value="$(arg platformID)"/>
+			<param name="platformID" value="$(arg id)"/>
 			<param name="force_alpha" value="$(arg forceAlpha)"/>
 		</node>
 	

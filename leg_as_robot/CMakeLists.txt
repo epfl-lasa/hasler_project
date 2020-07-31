@@ -35,10 +35,9 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-add_executable(legSolver  src/ikfast61Solver.cpp)
-add_executable(legRobot src/legRobot.cpp src/legRobot_node.cpp)
+add_executable(legRobot src/legRobot.cpp src/legRobot_node.cpp src/chainfdsolvertorque_wdls.cpp)
 
-target_link_libraries(legSolver ${catkin_LIBRARIES})
+
 target_link_libraries(legRobot ${catkin_LIBRARIES})
 
 

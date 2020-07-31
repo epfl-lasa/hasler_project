@@ -10,3 +10,5 @@ ankle_to_foot_base_z: 0.080
 ankle_to_foot_base_x: 0.04046
 foot_base_to_foot_tip: 0.15621
 body_weight: 83
+hip_width: 0.24
+hip_height: 0.9246 

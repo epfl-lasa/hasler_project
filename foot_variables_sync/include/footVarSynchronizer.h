@@ -115,15 +115,18 @@ class footVarSynchronizer
             Eigen::Matrix<double, NB_AXIS, 1> _leg_grav_comp_effort;
 
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_unbiased;
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_prev;
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_filt;
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, NB_AXIS_WRENCH> _rotationfSensor;
 
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _legWrenchGravityComp;
 
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceBias; //! Comes from force modifier node
 
             int _calibrationCount;
-            #define NB_CALIBRATION_COUNT 50
+            #define NB_CALIBRATION_COUNT 500
 
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _undesiredForceBias;
 
@@ -158,7 +161,7 @@ class footVarSynchronizer
 
         volatile bool _flagWasDynReconfCalled;
         bool _flagForceMeasured, _flagForceBiasMeasured;
-        #define HUMAN_ON_PLATFORM_THRESHOLD 50
+        #define HUMAN_ON_PLATFORM_THRESHOLD 20
         bool _flagHumanOnPlatform, _flagCompensateLeg;
         bool _flagForceCalibrated;
 
