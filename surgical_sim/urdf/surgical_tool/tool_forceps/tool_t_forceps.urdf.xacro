@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="surgical_tool" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/tool_forceps/tool_t_forceps.links.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/tool_forceps/tool_t_forceps.joints.xacro"/>
+  
+  <xacro:macro name="create_forceps">
+    <xacro:create_forceps_links/>
+    <xacro:create_forceps_joints/>       
+  </xacro:macro>
+
+
+</robot>
+
+

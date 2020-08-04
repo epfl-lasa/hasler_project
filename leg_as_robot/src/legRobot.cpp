@@ -408,9 +408,9 @@ void legRobot::publishManipulabilityEllipsoid() {
   _msgManipEllipsoid.scale.y = svdValues(1);
   _msgManipEllipsoid.scale.z = svdValues(2);
   _msgManipEllipsoid.color.a = 0.5; // Don't forget to set the alpha!
-  _msgManipEllipsoid.color.r = svdValues(3);
-  _msgManipEllipsoid.color.g = svdValues(4);
-  _msgManipEllipsoid.color.b = svdValues(5);
+  _msgManipEllipsoid.color.r = 0;
+  _msgManipEllipsoid.color.g = 1;
+  _msgManipEllipsoid.color.b = 0;
   // only if using a MESH_RESOURCE marker type:
   // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
   _pubManipEllipsoid.publish(_msgManipEllipsoid);

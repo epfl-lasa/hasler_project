@@ -1,0 +1,38 @@
+<launch>
+	<arg name="id" default="right"/>
+	<arg name="virtual_tool" default="true"/>
+	
+	<!-- <rosparam file="$(find surgical_sim)/config/tool_control.yaml" command="load"/> -->
+	<!-- <node name="joint_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+		output="screen" ns="/surgical_tool" args="joint_state_controller tool_yaw_position_ctrl tool_pitch_position_ctrl tool_insertion_position_ctrl tool_roll_position_ctrl tool_wrist_pitch_joint_position_ctrl tool_wrist_yaw_joint_position_ctrl tool_wrist_open_angle_joint_position_ctrl"/>	node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_pub" /	 -->
+  
+	<group if="$(arg virtual_tool)">
+		<node name="tool_joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+			<param name="tf_prefix" 		value="$(arg id)"/>
+			<remap from="robot_description" to="tool_description"/>
+			<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>
+			<param name="publish_frequency" type="double" value="100.0"/>
+		</node>
+	</group>
+
+
+	<group unless="$(arg virtual_tool)">
+		<node name="tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
+			<param name="toolID" value="$(arg id)"/>
+			<param name="publish_frequency" type="double" value="400.0"/>
+			<remap from="robot_description" to="tool_description"/>
+			<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>
+		</node>
+	</group>
+
+	<node name="tool_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"  output="screen">
+
+		<param name="tf_prefix" 		value="$(arg id)"/>
+		<remap from="robot_description" to="tool_description"/>
+		<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>
+		<param name="publish_frequency" type="double" value="100.0"/>
+	</node>
+
+
+
+</launch>

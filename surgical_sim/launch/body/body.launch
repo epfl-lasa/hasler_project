@@ -1,0 +1,31 @@
+
+<launch>
+  <arg name="model" default="$(find surgical_sim)/urdf/body/body_create.urdf.xacro" />
+  <arg name="gui" default="true" />
+  <arg name="w_liver" default="true" />
+  <arg name="rviz" default="true"/>
+
+  <param name="body_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver)"/>
+  <param name="use_gui" value="$(arg gui)"/>
+
+  <!-- <node name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" /> -->
+  
+   <node pkg="robot_state_publisher" type="robot_state_publisher"  name="body_state_publisher">
+    <param name="publish_frequency" type="double" value="50.0" />
+    <remap from="robot_description" to="body_description"/>
+  </node>
+
+  <group if="$(arg rviz)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find surgical_sim)/rviz/body_view.rviz" />
+  </group>
+  
+  
+  <!-- <include file="$(find surgical_sim)/launch/tool/tool.gazebo.launch">
+    <arg name="model" value="$(arg model)" />
+  </include>  -->
+
+
+
+</launch>
+
+

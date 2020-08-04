@@ -47,7 +47,7 @@
 
 
 //! Joint Space
-#define LEG_AXES                                                                   \
+#define LEG_AXES \
   ListofLegAxes(hip_adduction, "hip_adduction")    \
   ListofLegAxes(hip_extension, "hip_extension")    \
   ListofLegAxes(hip_roll, "hip_roll")              \

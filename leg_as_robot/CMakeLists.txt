@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   dynamic_reconfigure
   custom_msgs
-  utils
+  utils_math
   urdf
   kdl_parser
 )
@@ -30,20 +30,13 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils custom_msgs urdf kdl_parser eigen_conversions
+  CATKIN_DEPENDS roscpp rospy std_msgs tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils_math custom_msgs urdf kdl_parser eigen_conversions
  )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
 add_executable(legRobot src/legRobot.cpp src/legRobot_node.cpp src/chainfdsolvertorque_wdls.cpp)
 
-
-target_link_libraries(legRobot ${catkin_LIBRARIES})
-
-
-# add_dependencies(legSolver ${PROJECT_NAME}_gencpp)
-# add_dependencies(legSolver ${PROJECT_NAME}_gencfg)
-# add_dependencies(legRobot ${PROJECT_NAME}_gencpp)
-# add_dependencies(legRobot ${PROJECT_NAME}_gencfg)
+target_link_libraries(legRobot  ${catkin_LIBRARIES})
 
 

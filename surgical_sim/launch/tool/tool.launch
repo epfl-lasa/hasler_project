@@ -1,0 +1,40 @@
+
+<launch>
+  <arg name="id" default="right"/>
+
+  <arg name="virtual_tool" default="true"/>
+  
+  <arg name="model" default="$(find surgical_sim)/urdf/surgical_tool/tool_create.urdf.xacro" />
+  <arg name="gui" default="true" />
+  <arg name="w_forceps" default="true" />
+  <arg name="w_gripper" default="false" />
+  <arg name="rviz" default="true"/>
+  <arg name="rvizConfig" default="$(find surgical_sim)/rviz/tool_view.rviz"/>
+
+  <group ns="$(arg id)">
+
+    <param name="tool_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) with_gripper:=$(arg w_gripper)"/>
+    
+    
+    <include file="$(find surgical_sim)/launch/tool/tool.control.launch">
+      <arg name="id" value="$(arg id)"/>
+      <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+    </include>
+
+    <!--include file="$(find surgical_sim)/launch/tool/tool.gazebo.launch">
+      <arg name="model" value="$(arg model)" />
+    </include>  -->
+
+  </group>
+
+  <group if="$(arg rviz)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" required="true" />
+  </group>
+  
+  
+  
+
+
+</launch>
+
+

@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   dynamic_reconfigure
   custom_msgs
-  utils
+  utils_math
 )
 
 find_package(PkgConfig)
@@ -28,7 +28,7 @@ generate_dynamic_reconfigure_options(cfg/machineStateParams.cfg)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs custom_msgs dynamic_reconfigure utils custom_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs custom_msgs dynamic_reconfigure utils_math custom_msgs
  )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})

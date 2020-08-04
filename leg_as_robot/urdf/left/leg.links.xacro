@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   
 
-  <xacro:arg name="with_chair" default="true"/>
+  
      
   <xacro:property name="thigh_mass" value="${14.47 * 100.0/165.0 * body_weight / 100}"/> <!-- [kg] -->
   <xacro:property name="shin_mass" value="${4.57 * 100.0/165.0 * body_weight / 100}"/> <!-- [kg] -->

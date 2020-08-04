@@ -29,7 +29,7 @@
   </include>
 
   <group if="$(arg rviz)"> 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true"/> 
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"/> 
   </group>
 
 </launch>

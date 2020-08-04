@@ -1,0 +1,38 @@
+
+<launch>
+ <arg name="id1" default="right"/>
+
+ <arg name="virtual_tool" default="true"/>
+ <arg name="virtual_leg" default="false"/>
+ <arg name="virtual_platform" default="true"/>
+ 
+ <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_with_platform.rviz"/>
+
+ 
+ <include file="$(find surgical_sim)/launch/body/body.launch">
+  <arg name="w_liver" value="true" />
+  <arg name="rviz" value="false"/>
+ </include> 
+
+ <include file="$(find surgical_sim)/launch/tool/tool.launch">
+  <arg name="id" value="$(arg id1)"/>
+  <arg name="w_forceps" value="true" />
+  <arg name="rviz" value="true"/>
+  <arg name="rvizConfig" value="$(arg rvizConfig)"/>
+  <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+ </include> 
+
+  <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
+      <arg name="id" value="$(arg id1)"/>
+      <arg name="rviz" value="false"/>
+
+      <arg name="virtual_leg" value="$(arg virtual_leg)"/>
+      <arg name="virtual_platform" value="$(arg virtual_platform)"/>
+      
+  </include> 
+
+ <node pkg="tf2_ros" type="static_transform_publisher" name="$(arg id1)_tool_fixed_joint" args="0 0 0 0 0 0 /$(arg id1)/trocar_link /$(arg id1)/tool_base_link" />
+  
+</launch>
+
+
