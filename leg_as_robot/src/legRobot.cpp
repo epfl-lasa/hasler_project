@@ -345,7 +345,7 @@ void legRobot::computedWeightingMatrixes()
 {
   _myChainDyn->JntToMass(*_legJoints, _myJointSpaceInertiaMatrix);
   _weightedJointSpaceMassMatrix = _myJointSpaceInertiaMatrix.data;
-  _myVelIKSolver->setWeightJS(_weightedJointSpaceMassMatrix.inverse().normalized());
+  //_myVelIKSolver->setWeightJS(_weightedJointSpaceMassMatrix.inverse().normalized());
   //_myTorqueFDSolver->setWeightJS(_weightedJointSpaceMassMatrix.inverse().normalized());
 }
 

@@ -94,14 +94,17 @@ private:
   // internal variables
 
   Eigen::Matrix<double,NB_TOOL_AXIS_,1> _toolJointsAll;
+  Eigen::Matrix<double, NB_TOOL_AXIS_, 1> _toolJointsAllOffset;
   KDL::JntArray* _toolJoints;
   KDL::JntArray* _toolJointsInit;
   KDL::JntArray* _toolJointLims[NB_LIMS];
   KDL::JntArray* _toolJointLimsAll[NB_LIMS];
+  KDL::JntArray* _legJointLims[NB_LIMS];
 
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   
   urdf::Model _myModel;
+  urdf::Model _legModel;
   KDL::Tree _myTree;
   std::vector<KDL::Segment> _mySegments;
   std::vector<KDL::Frame> _myFrames;
@@ -120,8 +123,11 @@ private:
   Eigen::Matrix<double,NB_TOOL_AXIS,NB_TOOL_AXIS> _weightedJointSpaceMassMatrix;
   Eigen::Matrix<double,NB_AXIS_WRENCH,NB_AXIS_WRENCH> _weightedTaskSpaceMassMatrix;
 
-  bool _mySolutionFound;
   
+  bool _mySolutionFound;
+  bool _flagToolJointLimitsOffsetCalculated;
+  bool _flagLegJointLimitsOffsetCalculated;
+
   // ros variables
   ros::NodeHandle _n;
   ros::Rate _loopRate;
@@ -141,6 +147,7 @@ private:
   
   
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJoints;
+  Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJointsOffset;
 
   // Publisher declaration
   ros::Publisher _pubToolJointStates;
@@ -179,7 +186,8 @@ private:
   void publishToolJointStates();
   void readFootTipBasePose();
   void performInverseKinematics();
-  void computeIndividualJoints();
+  void computeIndividualJoints7DoF();
+  void computeIndividualJoints4DoF();
   void performChainForwardKinematics();
 
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);

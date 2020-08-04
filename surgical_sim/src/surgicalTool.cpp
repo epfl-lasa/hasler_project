@@ -27,6 +27,9 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _toolJoints->data.setZero();
   _toolJointsInit = new KDL::JntArray(NB_TOOL_AXIS);
   _toolJointsInit->data.setZero();
+  _legJointLims[L_MIN] = new KDL::JntArray(NB_LEG_AXIS);
+  _legJointLims[L_MAX] = new KDL::JntArray(NB_LEG_AXIS);
+
   _toolJointLims[L_MIN] = new KDL::JntArray(NB_TOOL_AXIS);
   _toolJointLims[L_MAX] = new KDL::JntArray(NB_TOOL_AXIS);
   _toolJointLimsAll[L_MIN] = new KDL::JntArray(NB_TOOL_AXIS_);
@@ -43,11 +46,16 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
   _flagFootTipPoseConnected =  false;
   _flagLegJointsConnected = false;
+  _flagToolJointLimitsOffsetCalculated = false;
 
   _toolJointsAll.setZero();
+  _toolJointsAllOffset.setZero();
   _legJoints.setZero();
 
 
+  if (!_legModel.initParam("leg_description")) {
+      ROS_ERROR("Failed to parse urdf file");
+    }
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
     ROS_ERROR("Failed to construct kdl tree");
@@ -68,6 +76,14 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _myJacSolver = new KDL::ChainJntToJacSolver(_myToolBaseToTipChain);
 
   _mySegments = _myToolBaseToTipChain.segments;
+
+
+  for (unsigned int i = 0; i<NB_LEG_AXIS; i++)
+  {
+    _legJointLims[L_MIN]->data(i) = _legModel.getJoint(Leg_Axis_Names[i])->limits->lower;
+    _legJointLims[L_MAX]->data(i) = _legModel.getJoint(Leg_Axis_Names[i])->limits->upper;
+  }
+
 
   for (unsigned int joint_=0; joint_ < NB_TOOL_AXIS_; joint_++ )
   {
@@ -127,7 +143,7 @@ void surgicalTool::run() {
   while (!_stop) {
     readFootTipBasePose();
     if (_flagFootTipPoseConnected && _flagLegJointsConnected) {
-     computeIndividualJoints();
+     computeIndividualJoints4DoF();
       // performInverseKinematics();
       publishToolJointStates();
       performChainForwardKinematics();
@@ -252,22 +268,109 @@ void surgicalTool::performInverseKinematics(){
 }
 
 
-void surgicalTool::computeIndividualJoints()
+void surgicalTool::computeIndividualJoints7DoF()
 {
 
- 
-  _toolJointsAll(tool_yaw) = -_legJoints(hip_roll);
-  _toolJointsAll(tool_pitch) = _legJoints(knee_extension);
-  _toolJointsAll(tool_roll) =  Utils_math<double>::bound((_toolJointLimsAll[L_MAX]->data(tool_roll)/0.45) * -_legJoints(ankle_yaw), _toolJointLimsAll[L_MIN]->data(tool_roll), _toolJointLimsAll[L_MAX]->data(tool_roll));
-  _toolJointsAll(tool_wrist_pitch) =  Utils_math<double>::bound( (M_PI_2 / 0.52 )* _legJoints(ankle_pitch), _toolJointLimsAll[L_MIN]->data(tool_wrist_pitch), _toolJointLimsAll[L_MAX]->data(tool_wrist_pitch));
-  _toolJointsAll(tool_wrist_yaw) =  Utils_math<double>::bound( (M_PI_2 / 0.30 )* _legJoints(ankle_roll), _toolJointLimsAll[L_MIN]->data(tool_wrist_yaw), _toolJointLimsAll[L_MAX]->data(tool_wrist_yaw));
-  _toolJointsAll(tool_insertion) = Utils_math<double>::bound( (0.24 / 0.77 )* (_legJoints(hip_adduction)-0.3), _toolJointLimsAll[L_MIN]->data(tool_insertion), _toolJointLimsAll[L_MAX]->data(tool_insertion)) + 0.05;
+  
+  _toolJointsAll(tool_yaw) = -Utils_math<double>::map( (_legJoints(hip_roll) - _legJointsOffset(hip_roll)),
+                                      _legJointLims[L_MIN]->data(hip_roll), _legJointLims[L_MAX]->data(hip_roll), 
+                                      _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw));
+  
+  _toolJointsAll(tool_pitch) = Utils_math<double>::map( (_legJoints(knee_extension) - _legJointsOffset(knee_extension)),
+                                      _legJointLims[L_MIN]->data(knee_extension), _legJointLims[L_MAX]->data(knee_extension), 
+                                      _toolJointLimsAll[L_MIN]->data(tool_pitch), _toolJointLimsAll[L_MAX]->data(tool_pitch));
+  
+  _toolJointsAll(tool_roll) =  - Utils_math<double>::map( (_legJoints(ankle_yaw) - _legJointsOffset(ankle_yaw)) , 
+                                _legJointLims[L_MIN]->data(ankle_yaw), _legJointLims[L_MAX]->data(ankle_yaw), 
+                                _toolJointLimsAll[L_MIN]->data(tool_roll), _toolJointLimsAll[L_MAX]->data(tool_roll));
+  
+  _toolJointsAll(tool_wrist_pitch) =  Utils_math<double>::map( (_legJoints(ankle_pitch) - _legJointsOffset(ankle_pitch)),
+                                      _legJointLims[L_MIN]->data(ankle_pitch), _legJointLims[L_MAX]->data(ankle_pitch), 
+                                      _toolJointLimsAll[L_MIN]->data(tool_wrist_pitch), _toolJointLimsAll[L_MAX]->data(tool_wrist_pitch));
+  
+  
+  _toolJointsAll(tool_wrist_yaw) =  Utils_math<double>::map( (_legJoints(ankle_roll) - _legJointsOffset(ankle_roll)),
+                                    _legJointLims[L_MIN]->data(ankle_roll), _legJointLims[L_MAX]->data(ankle_roll), 
+                                    _toolJointLimsAll[L_MIN]->data(tool_wrist_yaw), _toolJointLimsAll[L_MAX]->data(tool_wrist_yaw));
+  
+  _toolJointsAll(tool_insertion) = Utils_math<double>::map( (_legJoints(hip_adduction) - _legJointsOffset(hip_adduction)),
+                                    _legJointLims[L_MIN]->data(hip_adduction), _legJointLims[L_MAX]->data(hip_adduction), 
+                                    _toolJointLimsAll[L_MIN]->data(tool_insertion), _toolJointLimsAll[L_MAX]->data(tool_insertion));
+
 
   // _toolJointsAll(tool_wrist_open_angle) = Utils_math<double>::bound((M_PI_2/0.1) * _footAnklePosFrame.p.x(), 0.0, M_PI_2) ;
   // _toolJointsAll(tool_wrist_open_angle_mimic) = _toolJointsAll(tool_wrist_open_angle) ;
+
+  if (!_flagToolJointLimitsOffsetCalculated)
+  {
+    _toolJointsAllOffset=_toolJointsAll;
+    _toolJointsAllOffset(tool_insertion)-=0.05;
+    _flagToolJointLimitsOffsetCalculated=true;
+  }
+  else
+  {
+    for (int i = 0 ; i<NB_TOOL_AXIS_; i++)
+    {
+      _toolJointsAll(i)  = Utils_math<double>::bound(_toolJointsAll(i) - _toolJointsAllOffset(i),
+                                              _toolJointLimsAll[L_MIN]->data(i), _toolJointLimsAll[L_MAX]->data(i));
+    }
+  }
+  
 }
 
+void surgicalTool::computeIndividualJoints4DoF()
+{
 
+  
+  _toolJointsAll(tool_yaw) = -Utils_math<double>::map( (_legJoints(hip_roll) - _legJointsOffset(hip_roll)),
+                                      _legJointLims[L_MIN]->data(hip_roll), _legJointLims[L_MAX]->data(hip_roll), 
+                                      _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw));
+  
+  _toolJointsAll(tool_pitch) = Utils_math<double>::map( (_legJoints(knee_extension) - _legJointsOffset(knee_extension)),
+                                      _legJointLims[L_MIN]->data(knee_extension), _legJointLims[L_MAX]->data(knee_extension), 
+                                      _toolJointLimsAll[L_MIN]->data(tool_pitch), _toolJointLimsAll[L_MAX]->data(tool_pitch));
+  
+  _toolJointsAll(tool_roll) =  - 0.25 *  Utils_math<double>::map( (_legJoints(ankle_yaw) - _legJointsOffset(ankle_yaw)) , 
+                                _legJointLims[L_MIN]->data(ankle_yaw), _legJointLims[L_MAX]->data(ankle_yaw), 
+                                _toolJointLimsAll[L_MIN]->data(tool_roll), _toolJointLimsAll[L_MAX]->data(tool_roll))
+                               - 0.75 * Utils_math<double>::map( (_legJoints(ankle_roll) - _legJointsOffset(ankle_roll)) , 
+                                _legJointLims[L_MIN]->data(ankle_roll), _legJointLims[L_MAX]->data(ankle_roll), 
+                                _toolJointLimsAll[L_MIN]->data(tool_roll), _toolJointLimsAll[L_MAX]->data(tool_roll))
+                                ;
+
+  
+  _toolJointsAll(tool_insertion) = - Utils_math<double>::map( (_legJoints(ankle_pitch) - _legJointsOffset(ankle_pitch)),
+                                      _legJointLims[L_MIN]->data(ankle_pitch), _legJointLims[L_MAX]->data(ankle_pitch), 
+                                      _toolJointLimsAll[L_MIN]->data(tool_insertion), _toolJointLimsAll[L_MAX]->data(tool_insertion));
+  
+  _toolJointsAll(tool_wrist_open_angle) = - Utils_math<double>::map( (_legJoints(hip_adduction) - _legJointsOffset(hip_adduction)),
+                                          _legJointLims[L_MIN]->data(hip_adduction), _legJointLims[L_MAX]->data(hip_adduction), 
+                                          _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
+  
+  _toolJointsAll(tool_wrist_open_angle_mimic) = _toolJointsAll(tool_wrist_open_angle) ;
+
+  if (!_flagToolJointLimitsOffsetCalculated && _flagLegJointLimitsOffsetCalculated)
+  {
+    _toolJointsAllOffset=_toolJointsAll;
+    _toolJointsAllOffset(tool_insertion)-=0.05;
+    if (fabs(_legJointsOffset(hip_adduction))> FLT_EPSILON )
+    {
+        _toolJointsAllOffset(tool_wrist_open_angle)-= M_PI_4;
+        _toolJointsAllOffset(tool_wrist_open_angle_mimic) = _toolJointsAllOffset(tool_wrist_open_angle);
+        cout << _legJointsOffset(hip_adduction) << endl;
+    }
+    _flagToolJointLimitsOffsetCalculated=true;
+  }
+  else
+  {
+    for (int i = 0 ; i<NB_TOOL_AXIS_; i++)
+    {
+      _toolJointsAll(i)  = Utils_math<double>::bound(_toolJointsAll(i) - _toolJointsAllOffset(i),
+                                              _toolJointLimsAll[L_MIN]->data(i), _toolJointLimsAll[L_MAX]->data(i));
+    }
+  }
+  
+}
 
 void surgicalTool::performChainForwardKinematics() 
 {
@@ -344,4 +447,13 @@ void surgicalTool::readLegJoints(const sensor_msgs::JointState::ConstPtr &msg)
   }
   _flagLegJointsConnected = true;
 
+  if (!_flagLegJointLimitsOffsetCalculated) {
+    _legJointsOffset = _legJoints;
+    if (fabs(_legJoints(hip_adduction)) > FLT_EPSILON) {
+
+      _legJointsOffset(hip_adduction) = 0.7 * _legJointLims[L_MIN]->data(hip_adduction);
+    }
+
+    _flagLegJointLimitsOffsetCalculated = true;
+  }
 }
