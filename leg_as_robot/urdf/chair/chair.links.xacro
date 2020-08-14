@@ -7,8 +7,9 @@
   <xacro:property name="base_scale_z" value="${hip_height/hip_heightBaseline}"/>
 
   <xacro:macro name="define_chair_link">
-    <link name="/world"/>
-    <link name="chair_intermediate_link"/>
+    
+    <link name="chair_intermediate_link1"/>
+    <link name="chair_intermediate_link2"/>
     <link name="chair_base_link">
         <visual> 
           <origin rpy="0 0 0" xyz="${0.1998/2} 0 0"/>

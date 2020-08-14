@@ -37,8 +37,10 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
 add_executable(surgicalToolSim src/surgicalTool.cpp src/surgicalTool_node.cpp)
-
 target_link_libraries(surgicalToolSim ${catkin_LIBRARIES})
+add_executable(targetTracking src/protocol/targetObject.cpp src/protocol/targetObject_node.cpp src/protocol/targets.csv)
+target_link_libraries(targetTracking ${catkin_LIBRARIES})
+
 
 
 

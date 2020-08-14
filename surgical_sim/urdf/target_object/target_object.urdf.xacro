@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<robot name="target_object" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="parent_link" default="world"/>
+  
+  <xacro:include filename="$(find surgical_sim)/urdf/target_object/base_object/base_object.urdf.xacro"/>
+
+    
+  <link name="world"/>
+
+  <xacro:create_base_object
+        parent_link="world"
+        xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  
+    <gazebo>
+        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+        <robotNamespace>/target_object</robotNamespace>
+        <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+        <legacyModeNS>true</legacyModeNS>
+        </plugin>
+    </gazebo>
+
+</robot>

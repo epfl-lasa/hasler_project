@@ -22,7 +22,6 @@
 #include <custom_msgs/setControllerSrv.h>
 #include <geometry_msgs/WrenchStamped.h>
 
-#include "geometry_msgs/PointStamped.h"
 #define NB_PARAMS_CATEGORIES 10
 #define NB_FO_CATEGORIES 6
 #define NB_FI_PUBLISHERS 2
@@ -66,7 +65,7 @@ class footVarSynchronizer
     
     // Publisher declaration
     ros::Publisher _pubFootInput;               // FootInputMsg_v2
-    
+
     ros::ServiceClient _clientSetState;
     ros::ServiceClient _clientSetController;
 
@@ -76,8 +75,6 @@ class footVarSynchronizer
     custom_msgs::FootOutputMsg_v2 _msgFootOutputPrev;
     custom_msgs::setStateSrv_v2 _srvSetState;
     custom_msgs::setControllerSrv _srvSetController;
-    
-    
     
     //foot_variables_sync::FootOutputMsg_v2 _msgFootOutput;
 
@@ -117,11 +114,23 @@ class footVarSynchronizer
 
             Eigen::Matrix<double, NB_AXIS, 1> _leg_grav_comp_effort;
 
-            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_controlled;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_unbiased;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_prev;
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_filt;
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, NB_AXIS_WRENCH> _rotationfSensor;
 
             Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _legWrenchGravityComp;
 
-            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceModified; //! Comes from force modifier node
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceBias; //! Comes from force modifier node
+
+            int _calibrationCount;
+            #define NB_CALIBRATION_COUNT 500
+
+            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _undesiredForceBias;
+
+            double _force_filt_alpha;
 
             bool _ros_defaultControl;
 
@@ -151,10 +160,10 @@ class footVarSynchronizer
 
 
         volatile bool _flagWasDynReconfCalled;
-        bool  _flagForceModifiedConnected;
+        bool _flagForceMeasured, _flagForceBiasMeasured;
         #define HUMAN_ON_PLATFORM_THRESHOLD 20
         bool _flagHumanOnPlatform, _flagCompensateLeg;
-        
+        bool _flagForceCalibrated;
 
         bool _flagLegCompTorquesRead;
         bool _flagLegCompWrenchRead;
@@ -221,16 +230,14 @@ class footVarSynchronizer
     void controlGainsDefault(int axis_);
     void resetDesiredPositionToCurrent(int axis_);
 
-    
+    void calibrateForce();
 
-    // void readForceSensor(const geometry_msgs::WrenchStamped::ConstPtr &msg);
-    // void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
-    void readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void updateForceMeas(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readLegGravCompFI(const custom_msgs::FootInputMsg_v3::ConstPtr &msg);
     void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
-    void correctForceForLegCompensation();
+    void filterForceMeas();
 
-    
 
 
     static void stopNode(int sig);

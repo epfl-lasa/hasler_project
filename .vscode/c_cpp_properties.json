@@ -50,10 +50,12 @@
                 "/home/lsrob107772/catkin_hasler/src/serial_workspace/any_utils/std_utils/include/**",
                 "/home/lsrob107772/catkin_hasler/src/serial_workspace/any_utils/stopwatch/include/**",
                 "/home/lsrob107772/catkin_hasler/src/serial_workspace/any_utils/tinyxml_tools/include/**",
-                "/home/lsrob107772/catkin_hasler/src/utils/include/**",
+                "/home/lsrob107772/catkin_hasler/src/utils_math/include/**",
                 "/home/lsrob107772/catkin_hasler/src/serial_workspace/any_utils/yaml_tools/include/**",
                 "/usr/include/**",
-                "${workspaceFolder}/5_axis_platform/foot_platform_ros/include"
+                "${workspaceFolder}/5_axis_platform/foot_platform_ros/include",
+                "${workspaceFolder}/surgical_sim/include",
+                "/home/lsrob107772/catkin_hasler/src/utils_math/include"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",

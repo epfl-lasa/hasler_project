@@ -2,5 +2,12 @@
     "python.autoComplete.extraPaths": [
         "/home/lsrob107772/catkin_hasler/devel/lib/python2.7/dist-packages",
         "/opt/ros/kinetic/lib/python2.7/dist-packages"
-    ]
+    ],
+    "files.associations": {
+        "iosfwd": "cpp",
+        "array": "cpp",
+        "string": "cpp",
+        "image": "cpp",
+        "*.ipp": "cpp"
+    }
 }

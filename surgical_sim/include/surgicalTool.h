@@ -30,20 +30,21 @@
 #include "geometry_msgs/WrenchStamped.h"
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
-#include <custom_msgs/FootInputMsg_v3.h>
-#include <custom_msgs/FootOutputMsg_v2.h>
-#include <custom_msgs/setControllerSrv.h>
-#include <custom_msgs/setStateSrv_v2.h>
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
-#include "../../5_axis_platform/lib/platform/src/definitions_security.h"
+
+// #include <custom_msgs/FootInputMsg_v3.h>
+// #include <custom_msgs/FootOutputMsg_v2.h>
+// #include <custom_msgs/setControllerSrv.h>
+// #include <custom_msgs/setStateSrv_v2.h>
+// #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
+// #include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
+// #include "../../5_axis_platform/lib/platform/src/definitions_security.h"
+
 #include <dynamic_reconfigure/server.h>
 #include <mutex>
 #include <ros/package.h>
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/Marker.h>
-
 
 
 #define LEG_AXES \
@@ -54,14 +55,13 @@
   ListofLegAxes(ankle_pitch, "ankle_pitch")  \
   ListofLegAxes(ankle_roll, "ankle_roll")  \
   ListofLegAxes(ankle_yaw, "ankle_yaw")  \
-  ListofLegAxes(NB_LEG_AXIS, "total_joints") 
+  ListofLegAxes(NB_LEG_AXIS, "total_leg_joints") 
 #define ListofLegAxes(enumeration, names) enumeration,
 enum Leg_Axis : size_t { LEG_AXES };
 #undef ListofLegAxes
 extern const char *Leg_Axis_Names[];
 
 
-//! Joint Space
 #define TOOL_AXES                                                                   \
   ListofToolAxes(tool_yaw, "tool_yaw")    \
   ListofToolAxes(tool_pitch, "tool_pitch")    \
@@ -71,13 +71,13 @@ extern const char *Leg_Axis_Names[];
   ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
   ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
   ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
-  ListofToolAxes(NB_TOOL_AXIS_, "total_joints") 
+  ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
 #define ListofToolAxes(enumeration, names) enumeration,
 enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
-#define NB_TOOL_AXIS (NB_TOOL_AXIS_ - 2)
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 2)
 
 using namespace std;
 using namespace Eigen;
@@ -87,24 +87,30 @@ class surgicalTool {
 public:
   enum Tool_Name { UNKNOWN = 0, RIGHT = 1, LEFT = 2};
 
+
 private:
+  enum Control_Input { LEG_INPUT = 1, PLATFORM_INPUT = 2 };
+  
+  Control_Input _myInput;
   
   Tool_Name _tool_id;
 
   // internal variables
 
-  Eigen::Matrix<double,NB_TOOL_AXIS_,1> _toolJointsAll;
-  Eigen::Matrix<double, NB_TOOL_AXIS_, 1> _toolJointsAllOffset;
+  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
+  Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
   KDL::JntArray* _toolJoints;
   KDL::JntArray* _toolJointsInit;
   KDL::JntArray* _toolJointLims[NB_LIMS];
   KDL::JntArray* _toolJointLimsAll[NB_LIMS];
   KDL::JntArray* _legJointLims[NB_LIMS];
+  KDL::JntArray* _platformJointLims[NB_LIMS];
 
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   
   urdf::Model _myModel;
   urdf::Model _legModel;
+  urdf::Model _platformModel;
   KDL::Tree _myTree;
   std::vector<KDL::Segment> _mySegments;
   std::vector<KDL::Frame> _myFrames;
@@ -120,13 +126,14 @@ private:
   // Eigen::JacobiSVD<MatrixXd> _mySVD;
   
 
-  Eigen::Matrix<double,NB_TOOL_AXIS,NB_TOOL_AXIS> _weightedJointSpaceMassMatrix;
+  Eigen::Matrix<double,NB_TOOL_AXIS_RED,NB_TOOL_AXIS_RED> _weightedJointSpaceMassMatrix;
   Eigen::Matrix<double,NB_AXIS_WRENCH,NB_AXIS_WRENCH> _weightedTaskSpaceMassMatrix;
 
   
   bool _mySolutionFound;
   bool _flagToolJointLimitsOffsetCalculated;
   bool _flagLegJointLimitsOffsetCalculated;
+  bool _flagPlatformJointLimitsOffsetCalculated;
 
   // ros variables
   ros::NodeHandle _n;
@@ -143,16 +150,17 @@ private:
   Eigen::Vector3d _footTipPosition;
   Eigen::Quaterniond _footTipQuaternion;
   Eigen::Matrix3d _footTipRotationMatrix;
-  
-  
-  
+   
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJoints;
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJointsOffset;
+
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJoints;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJointsOffset;
 
   // Publisher declaration
   ros::Publisher _pubToolJointStates;
   ros::Subscriber _subLegJointStates;
-
+  ros::Subscriber _subPlatformJointStates;
 
   // Messages
   sensor_msgs::JointState _msgJointStates;
@@ -161,6 +169,7 @@ private:
 
   bool _flagFootTipPoseConnected;
   bool _flagLegJointsConnected;
+  bool _flagPlatformJointsConnected;
 
   bool _stop;
 
@@ -186,11 +195,13 @@ private:
   void publishToolJointStates();
   void readFootTipBasePose();
   void performInverseKinematics();
-  void computeIndividualJoints7DoF();
-  void computeIndividualJoints4DoF();
+  void computeWithLegJoints7DoF();
+  void computeWithLegJoints4DoF();
+  void computeWithPlatformJoints4DoF();
   void performChainForwardKinematics();
 
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
+  void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
   //! OTHER METHODS
   static void stopNode(int sig);
 };

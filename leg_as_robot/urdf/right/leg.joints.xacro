@@ -7,7 +7,7 @@
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <parent link="hip_base_link"/>
       <child link="hip_adduction_link"/>
-      <limit effort="30" velocity="10.0" lower="${radians(-44)}" upper="${radians(0)}"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-44)}" upper="${radians(30)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
@@ -23,7 +23,7 @@
       <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
       <parent link="hip_extension_link"/>
       <child link="hip_roll_link"/>
-      <limit effort="30" velocity="10.0" lower="${radians(-33)}" upper="${radians(33)}"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-45)}" upper="${radians(45)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
@@ -59,6 +59,14 @@
       <limit effort="30" velocity="10.0" lower="${radians(-25.9)}" upper="${radians(36)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
+
+     <!-- <joint name="ankle_yaw" type="revolute">
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/> 
+      <parent link="ankle_roll_link"/>
+      <child link="ankle_yaw_link"/>
+      <limit effort="30" velocity="10.0" lower="${radians(-5)}" upper="${radians(10)}"/>
+      <axis xyz="0 0 1"/> 
+    </joint> -->
 
       <joint name="fixed_foot_base" type="fixed">
           <origin xyz="0 ${-r7_leg} ${-d7_leg}" rpy="0 0 ${-pi/2}"/> 

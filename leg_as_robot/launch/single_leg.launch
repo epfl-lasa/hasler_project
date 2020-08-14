@@ -5,13 +5,17 @@
   <arg name="offset_x"    default="$(eval -0.24/2.0)" if="$(eval arg('id')=='left')" />
   <arg name="offset_y"    default="0.0"/>
   <arg name="offset_z"    default="0.0"/>
-  <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" />
+  <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" if="$(arg virtual_leg)"/>
+  <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_platform.rviz" unless="$(arg virtual_leg)"/>
   <arg name="inc_chair"   default="true"/>
   <arg name="rviz"        default="true"/>
   
   <group if="$(arg inc_chair)">
     <include file="$(find leg_as_robot)/launch/chair.launch" >
       <arg name="rviz"        value="false"/>
+      <arg name="offset_x"    value="0.12"/>
+      <arg name="offset_y"    value="0.0"/>
+      <arg name="offset_z"    value="0.0"/>
     </include>
   </group>
 

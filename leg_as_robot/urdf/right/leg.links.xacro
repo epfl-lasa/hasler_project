@@ -5,7 +5,7 @@
   <xacro:arg name="with_chair" default="true"/>
 
   <xacro:property name="thigh_mass" value="${14.47 * 100.0/165.0 * body_weight / 100}"/> <!-- [kg] -->
-  <xacro:property name="shin_mass" value="${4.57 * 100.0/165.0  * body_weight / 100}"/> <!-- [kg] -->
+  <xacro:property name="shin_mass" value="${4.57 * body_weight / 100}"/> <!-- [kg] -->
   <xacro:property name="foot_mass" value="${1.33 * 100.0/165.0  *body_weight / 100}"/> <!--[kg] -->
   <xacro:property name="scale_mass" value="${body_weight / body_weight_baseline}"/>
   
@@ -18,7 +18,7 @@
   <xacro:property name="shin_scale_z" value="${shin_w/shinBaseline_w}"/> 
 
   <xacro:property name="foot_scale_x" value="${foot_l/footBaseline_l}"/> 
-  <xacro:property name="foot_scale_y" value="${r7_leg/r7Baseline_leg}"/> 
+  <xacro:property name="foot_scale_y" value="${r8_leg/r8Baseline_leg}"/> 
   <xacro:property name="foot_scale_z" value="${d7_leg/d7Baseline_leg}"/> 
 
   <xacro:macro name="define_leg_links">

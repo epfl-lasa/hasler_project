@@ -1,5 +1,7 @@
 <launch>
 	<arg name="id" default="right"/>
+	<arg name="control_input" default="leg"/>
+	
 	<arg name="virtual_tool" default="true"/>
 	
 	<!-- <rosparam file="$(find surgical_sim)/config/tool_control.yaml" command="load"/> -->
@@ -18,7 +20,8 @@
 
 	<group unless="$(arg virtual_tool)">
 		<node name="tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
-			<param name="toolID" value="$(arg id)"/>
+			<param name="toolID"            value="$(arg id)"/>
+			<param name="controlInput"      value="$(arg control_input)"/>
 			<param name="publish_frequency" type="double" value="400.0"/>
 			<remap from="robot_description" to="tool_description"/>
 			<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>

@@ -1,16 +1,18 @@
 <launch>
 	<arg name="id" default="right"/>
-	<arg name="forceAlpha" default="0.5"/>
-
-    <group ns="$(arg id)">
-        <node pkg="foot_platform_ros" type="footForceMeasModifier" name="force_sensor_modifier" output="screen" >
-            <param name="platformID" value="$(arg id)"/>
-            <remap from="robot_description" to="platform_description"/>
-        </node>
-
+	<arg name="fSensor" default="true"/>
+	<arg name="forceAlpha" default="0.9"/>
+	
+	<group if="$(arg fSensor)">	
+		<include file="$(find foot_platform_ros)/launch/force_sensor_modifier.launch">
+			<arg name="id" value="$(arg id)"/>
+			<arg name="forceAlpha" value="$(arg forceAlpha)"/>
+		</include>
+	</group>	
+    
+	<group ns="$(arg id)">
 		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
 			<param name="platformID" value="$(arg id)"/>
-			<param name="force_alpha" value="$(arg forceAlpha)"/>
 		</node>
 	
 	</group>

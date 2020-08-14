@@ -44,6 +44,6 @@
       <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"/> 
   </group>
 
-  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)/hip_base_link" />  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="chair_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)/hip_base_link" />  
 
 </launch>

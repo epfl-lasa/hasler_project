@@ -4,14 +4,11 @@
   <arg name="virtual_legs"        default="false"/>
   <arg name="virtual_platforms"   default="true" />
   <arg name="fsensors"            default="false"/>
-  <arg name="port1"               default="/dev/ttyACM0" />
-  <arg name="port2"               default="/dev/ttyACM1" />
   <arg name="rvizconfig"          default="$(find leg_as_robot)/rviz/base/legs_platforms.rviz" />
 
   <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
     <arg name="id"                 value="$(arg id1)"/>  
     <arg name="rviz"               value="false"/>  
-    <arg name="port"               value="$(arg port1)" />
     <arg name="fsensor"            value="$(arg fsensors)"/>
     <arg name="virtual_platform"   value="$(arg virtual_platforms)" />
     <arg name="inc_chair"          value="true"/>
@@ -20,7 +17,6 @@
   <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
     <arg name="id"                 value="$(arg id2)"/>
     <arg name="rviz"               value="true"/>  
-    <arg name="port"               value="$(arg port1)" />
     <arg name="fsensor"            value="$(arg fsensors)"/>
     <arg name="virtual_platform"   value="$(arg virtual_platforms)" />
     <arg name="inc_chair"          value="false"/>

@@ -5,14 +5,14 @@
   
     <joint name="chair_x_joint" type="prismatic">
       <origin xyz="0 0 0.0" rpy="0 0 0"/>
-      <parent link="/world"/>
-      <child link="chair_intermediate_link"/>
+      <parent link="chair_intermediate_link1"/>
+      <child link="chair_intermediate_link2"/>
       <axis xyz="1.0 0.0 0.0"/>
       <limit effort="0" velocity="0.0" lower="${-0.4}" upper="${0.4}"/>
     </joint>
     <joint name="chair_y_joint" type="prismatic">
-      <origin xyz="0 0 0.9246" rpy="0 0 0"/>
-      <parent link="chair_intermediate_link"/>
+      <origin xyz="0 0 ${hip_height}" rpy="0 0 0"/>
+      <parent link="chair_intermediate_link2"/>
       <child link="chair_base_link"/>
       <axis xyz="0.0 1.0 0.0"/>
       <limit effort="0" velocity="0.0" lower="${-0.4}" upper="${0.4}"/>
