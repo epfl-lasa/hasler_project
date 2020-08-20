@@ -34,7 +34,7 @@
 
     <!-- <xacro:joint_trans name="torso_joint" reduction="1"/> -->
   
-    <!-- <xacro:gazebo_joints name="torso_joint"/> -->
+    <xacro:gazebo_joints name="torso_joint"/>
     
   </xacro:macro>
 </robot>

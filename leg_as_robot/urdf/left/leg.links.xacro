@@ -4,7 +4,7 @@
 
   
      
-  <xacro:property name="thigh_mass" value="${14.47 * 100.0/165.0 * body_weight / 100}"/> <!-- [kg] -->
+  <xacro:property name="thigh_mass" value="${14.47 * 90.0/165.0 * body_weight / 100}"/> <!-- [kg] -->
   <xacro:property name="shin_mass" value="${4.57 * body_weight / 100}"/> <!-- [kg] -->
   <xacro:property name="foot_mass" value="${1.33 * body_weight / 100}"/> <!--[kg] -->
 

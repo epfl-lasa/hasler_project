@@ -1,14 +1,14 @@
 <launch>
 	<arg name="id" default="right"/>
 	<arg name="fSensor" default="true"/>
-	<arg name="forceAlpha" default="0.9"/>
+	<!-- <arg name="forceAlpha" default="0.9"/>
 	
 	<group if="$(arg fSensor)">	
 		<include file="$(find foot_platform_ros)/launch/force_sensor_modifier.launch">
 			<arg name="id" value="$(arg id)"/>
 			<arg name="forceAlpha" value="$(arg forceAlpha)"/>
 		</include>
-	</group>	
+	</group>	 -->
     
 	<group ns="$(arg id)">
 		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >

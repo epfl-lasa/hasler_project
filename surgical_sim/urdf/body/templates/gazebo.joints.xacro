@@ -5,9 +5,9 @@
 		<gazebo reference="${name}">
 			<implicitSpringDamper>0</implicitSpringDamper>
 			<provideFeedback>1</provideFeedback>
-			<!--stopCfm></stopCfm--> <!-- Force Mixing Error -->
-			<!--stopErp></stopErp--> <!-- Error Reduction Parameter -->
-			<!-- <fudgeFactor>0.5</fudgeFactor> -->
+			<stopCfm></stopCfm> <!-- Force Mixing Error -->
+			<stopErp></stopErp> <!-- Error Reduction Parameter -->
+			<fudgeFactor>0.5</fudgeFactor>
 		</gazebo>
 	</xacro:macro>	
 	

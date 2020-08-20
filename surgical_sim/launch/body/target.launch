@@ -5,6 +5,8 @@
   <arg name="virtual_target" default="true"/>
   <arg name="tracking_mode" default="right"/>
   <arg name="target_name" default="targetx"/>
+  <arg name="subjectID" default="s0"/>
+  
   
   
   <param name="target_object_description" command="rosrun xacro xacro --inorder $(arg model)"/>
@@ -21,6 +23,7 @@
     <node name="target_state_publisher" pkg="surgical_sim" type="targetTracking" output="screen">
       <param name="trackingMode" value="$(arg tracking_mode)"/>
       <param name="targetName" value="$(arg target_name)"/>
+      <param name="subjectID" value="$(arg subjectID)"/>
       <param name="publish_frequency" type="double" value="50.0" />
       <remap from="robot_description" to="target_object_description"/>
       <remap from="joint_states" to="target_state_publisher/joint_states"/>

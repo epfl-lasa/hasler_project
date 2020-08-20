@@ -4,7 +4,14 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+//#include "boost/date_time/gregorian/gregorian.hpp"
+#include "boost/date_time/posix_time/posix_time.hpp"
+// #include "boost/date_time/gregorian_types.hpp"
 
+using namespace boost::gregorian;
+#define ListofToolAxes(enumeration, names) names,
+char const *Tool_Axis_Names[]{TOOL_AXES};
+#undef ListofToolAxes
 
 #define ListofTools(enumeration, names) names,
 char const *Tools_Names[]{TOOL_NAMES};
@@ -19,14 +26,17 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
    me = this;
   _stop = false;
 
-  
+  _precisionAng=0.0;
+  _precisionPos=0.0;  
   NB_TARGETS=0;
+  _xTarget=0;
   _nTarget=0;
   for (unsigned int tool=0; tool<NB_TOOLS; tool++)
   {
     _toolTipPosition[tool].setZero();
     _trocarPosition[tool].setZero();
-    
+
+    _toolJointStates[tool].setZero();  
     _toolTipQuaternion[tool].setIdentity();
     _trocarQuaternion[tool].setIdentity();
    
@@ -36,6 +46,9 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _flagTargetReached[tool] = false;
     _flagTrocarTFConnected[tool] = false;
     _flagToolTipTFConnected[tool] = false;
+    _flagFootBaseForceConnected[tool]=false;
+    _flagToolJointsConnected[tool]=false;
+  
   }
 
   _myPosition.setZero();
@@ -44,11 +57,20 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   
   std::string trackingMode;
   _startDelayForCorrection = ros::Time::now();
+  _startingTime = ros::Time::now();
   
   if (!_n.getParam("trackingMode", trackingMode))
   { 
       ROS_ERROR("No indicaton of tracking mode (right, left, both) was done"); 
   }
+
+   
+  if (!_n.getParam("subjectID", _subjectID))
+  { 
+      ROS_ERROR("No indicaton of the subject ID (e.g. sXX) was done"); 
+      _subjectID = "s0";
+  }
+
 
   _myTrackMode = RIGHT_TOOL;
   
@@ -85,6 +107,45 @@ bool targetObject::init() //! Initialization of the node. Its datatype
                           //! initialization
 
 {
+
+  _pubTargetReachedSphere = _n.advertise<visualization_msgs::Marker>("target_reached_sphere", 0);
+  
+
+  switch (_myTrackMode)
+  {
+  case ALL_TOOLS:
+    for (unsigned int i=0; i<NB_TOOLS; i++)
+    {
+      _subForceFootRestWorld[i] = _n.subscribe<geometry_msgs::WrenchStamped>(
+                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1, i),
+                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
+      , 1, boost::bind(&targetObject::readToolState, this, _1, i),
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());                  
+    }
+    break;
+  
+  default:
+    unsigned int i = 0;
+    _subForceFootRestWorld[i] = _n.subscribe<geometry_msgs::WrenchStamped>(
+                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1, i),
+                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+     _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
+      , 1, boost::bind(&targetObject::readToolState, this, _1, i),
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());               
+    break;
+  }
+ 
+
+  boost::posix_time::ptime thistime = ros::Time::now().toBoost();
+  
+  std::string datefilename = to_iso_extended_string(thistime);
+ // cout<<_statsfilename<<endl;
+ if (_subjectID!="none")
+  {
+    _statsOutputFile.open(ros::package::getPath(std::string("surgical_sim")) + "/data/log/"+ _subjectID + "_" + datefilename + ".txt");
+  }
+
   // Subscriber definitions
   signal(SIGINT, targetObject::stopNode);
 
@@ -99,7 +160,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   }
 }
 
-void targetObject::stopNode(int sig) { me->_stop = true; }
+void targetObject::stopNode(int sig) { me->_stop = true;  }
 
 void targetObject::run() {
 
@@ -107,14 +168,15 @@ void targetObject::run() {
     readTFTool(_myTrackMode);
     readTFTrocar(_myTrackMode);
     if (true) {
-      generateNextTarget();
-      computeTargetObjectPose();
+      generateNextTarget(_myTrackMode);
+      computeTargetObjectPose(_myTrackMode);
       writeTFTargetObject();
+      recordStatistics();
     }
     ros::spinOnce();
     _loopRate.sleep();
   }
-
+  me->_statsOutputFile.close();
   ROS_INFO("The target spawner stopped");
   ros::spinOnce();
   _loopRate.sleep();
@@ -214,12 +276,11 @@ void targetObject::readTFTrocar(unsigned int n_) {
 }
 
 
+void targetObject::computeTargetObjectPose(unsigned int n_){
 
-void targetObject::computeTargetObjectPose(){
-
- _myPosition << _targetsXYZ[0].second[_nTarget], _targetsXYZ[2].second[_nTarget], -_targetsXYZ[1].second[_nTarget];
+ _myPosition << _targetsXYZ[0].second[_xTarget], _targetsXYZ[2].second[_xTarget], -_targetsXYZ[1].second[_xTarget]+0.01;
 //  cout<<_myPosition.transpose()<<endl; 
-  Eigen::Vector3d targetTrocarDistance = _trocarPosition[RIGHT_TOOL]-_myPosition;
+  Eigen::Vector3d targetTrocarDistance = _trocarPosition[n_]-_myPosition;
   
   if (targetTrocarDistance.norm() > FLT_EPSILON) {
     _myRotationMatrix = Utils_math<double>::rodriguesRotation(
@@ -229,28 +290,45 @@ void targetObject::computeTargetObjectPose(){
 }
 
 
-void targetObject::generateNextTarget()
+void targetObject::generateNextTarget(unsigned int n_)
 {
-  double posError = (_myPosition - _toolTipPosition[RIGHT_TOOL]).norm();
-  double rotError = 1.0-cos(_myQuaternion.angularDistance(_toolTipQuaternion[RIGHT_TOOL]));
+  _precisionPos = (_myPosition - _toolTipPosition[n_]).norm();
+  _precisionAng = _myQuaternion.angularDistance(_toolTipQuaternion[n_]);
+  double errorAng = 1.0-cos(_precisionAng);
   //std::cout << rotError << endl;
-  if (posError < 0.020 && rotError < (1-cos(10.0*DEG_TO_RAD))) {
-    if (!_flagTargetReached[RIGHT_TOOL])
+  if (_precisionPos < 0.01 && errorAng < (1-cos(5.0*DEG_TO_RAD)) && _toolJointStates[n_](tool_wrist_open_angle)<20*DEG_TO_RAD) {
+    if (!_flagTargetReached[n_])
     {
       _startDelayForCorrection = ros::Time::now(); 
-      _flagTargetReached[RIGHT_TOOL]=true;
+      _flagTargetReached[n_]=true;
+      publishTargetReachedSphere(visualization_msgs::Marker::ADD);
+      _myStatus = TARGET_REACHED;
     }
   }
+  else
+  {
+    publishTargetReachedSphere(visualization_msgs::Marker::DELETE);
+    _flagTargetReached[n_]=false;
+    _myStatus = TARGET_NOT_REACHED;
+  }
   
-  if (_flagTargetReached[RIGHT_TOOL])
+  
+  if (_flagTargetReached[n_] && _nTarget < NB_TARGETS)
   {
     if ((ros::Time::now() - _startDelayForCorrection).toSec() > 5.0)
     { 
-    _nTarget = int(rand() % NB_TARGETS-1); // Generate new target randomly
-    _flagTargetReached[RIGHT_TOOL] =false;
+    _nTarget++;
+    _xTarget = int(rand() % NB_TARGETS-1); // Generate new target randomly
+    _flagTargetReached[n_] =false;
     _startDelayForCorrection=ros::Time::now();
-    ROS_INFO("New target generated!");
+    ROS_INFO("New target generated!. # %i",_nTarget);
+    _myStatus = TARGET_CHANGED;
     }
+  }
+
+  if (_nTarget>=NB_TARGETS)
+  {
+    ROS_INFO("Protocol finished");
   }
 
 }
@@ -332,3 +410,79 @@ std::vector<std::pair<std::string, std::vector<float>>> targetObject::readTarget
 }
 
 
+void targetObject::publishTargetReachedSphere(int32_t action_){
+  
+  _msgTargetReachedSphere.header.frame_id = "target_object_link";
+  _msgTargetReachedSphere.header.stamp = ros::Time::now();
+  _msgTargetReachedSphere.ns = "";
+  _msgTargetReachedSphere.id = 0;
+  _msgTargetReachedSphere.type = visualization_msgs::Marker::SPHERE;
+  _msgTargetReachedSphere.action = action_;
+  _msgTargetReachedSphere.pose.position.x = 0.0;
+  _msgTargetReachedSphere.pose.position.y = 0.0;
+  _msgTargetReachedSphere.pose.position.z = 0.0;
+  _msgTargetReachedSphere.pose.orientation.x = 0.0;
+  _msgTargetReachedSphere.pose.orientation.y = 0.0;
+  _msgTargetReachedSphere.pose.orientation.z = 0.0;
+  _msgTargetReachedSphere.pose.orientation.w = 1;
+  _msgTargetReachedSphere.scale.x = 0.05;
+  _msgTargetReachedSphere.scale.y = 0.05;
+  _msgTargetReachedSphere.scale.z = 0.05;
+  _msgTargetReachedSphere.color.a = 0.2; // Don't forget to set the alpha!
+  _msgTargetReachedSphere.color.r = 1;
+  _msgTargetReachedSphere.color.g = 1;
+  _msgTargetReachedSphere.color.b = 0;
+  _msgTargetReachedSphere.lifetime= ros::Duration(5);
+  // only if using a MESH_RESOURCE marker type:
+  // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
+  _pubTargetReachedSphere.publish(_msgTargetReachedSphere);
+  // _mutex.unlock();
+}
+
+void targetObject::recordStatistics(){
+  ros::Duration deltaTime = ros::Time::now() - _startingTime;
+  double precisionPOS_on = _myStatus != TARGET_NOT_REACHED ? _precisionPos : 0.0;
+  double precisionANG_on = _myStatus != TARGET_NOT_REACHED ? _precisionAng * RAD_TO_DEG : 0.0;
+  
+  if (_subjectID != std::string("none"))
+	{
+		_statsOutputFile << deltaTime<< " "
+					<< _nTarget<< " "
+          << _myStatus<< " "
+          << _myPosition.transpose()<<" "
+          << _myQuaternion.x()<<" "
+          << _myQuaternion.y()<<" "
+          << _myQuaternion.z()<<" "
+          << _myQuaternion.w()<<" "
+          << _toolTipPosition[RIGHT_TOOL].transpose() << " "
+          << _toolTipQuaternion[RIGHT_TOOL].x()<<" "
+          << _toolTipQuaternion[RIGHT_TOOL].y()<<" "
+          << _toolTipQuaternion[RIGHT_TOOL].z()<<" "
+          << _toolTipQuaternion[RIGHT_TOOL].w()<<" "
+          << precisionPOS_on<<" "
+          << precisionANG_on<<" "
+          << std::endl;
+	}
+}
+
+  void targetObject::readToolState(const sensor_msgs::JointState::ConstPtr &msg, unsigned int n_) {
+
+  for (unsigned int i = 0; i < NB_TOOL_AXIS_FULL; i++) {
+    me->_toolJointStates[n_](i) = msg->position[i];
+  }
+
+  if (!_flagToolJointsConnected[n_]) {
+    ROS_INFO("Joints received from tool %i", n_);
+  }
+  _flagToolJointsConnected[n_] = true;
+}
+
+  void targetObject::readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg, unsigned int n_){
+    _footBaseWorldForce[n_] = msg->wrench;
+    if (!_flagFootBaseForceConnected[n_])
+	 {
+		ROS_INFO("Reading forces in the foot %i base w.r.t. world",n_);
+    _flagFootBaseForceConnected[n_] = true;
+	 }
+}
+  

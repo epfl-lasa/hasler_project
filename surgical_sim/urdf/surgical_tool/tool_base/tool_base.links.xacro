@@ -24,6 +24,14 @@
 			</inertial> 
     </link>
 
+    <link name="tool_roll_link">
+      <inertial>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<mass value="0.05"/>
+				<inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
+			</inertial> 
+    </link>
+
     <!-- link 3: tool_main_link -->
     <link name="tool_main_link">
       <visual>
@@ -71,8 +79,8 @@
 
 
     <xacro:gazebo_links name="tool_yaw_link"/>
-    <xacro:gazebo_links name="tool_pitch_link"/>
-    <xacro:gazebo_links name="tool_main_link"/>
+    <xacro:gazebo_links name="tool_pitch_link"/> 
+    <xacro:gazebo_links name="tool_main_link"/> 
     <xacro:gazebo_links name="tool_wrist_link"/>
     <xacro:gazebo_links name="tool_shaft_link"/>
  

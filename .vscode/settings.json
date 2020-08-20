@@ -8,6 +8,25 @@
         "array": "cpp",
         "string": "cpp",
         "image": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "buffered_value": "cpp",
+        "fstream": "cpp",
+        "*.tcc": "cpp",
+        "hash_map": "cpp",
+        "map": "cpp",
+        "bufferobject": "cpp",
+        "camera": "cpp",
+        "program": "cpp",
+        "shader": "cpp",
+        "shadercomposer": "cpp",
+        "state": "cpp",
+        "stateset": "cpp",
+        "stats": "cpp",
+        "texture": "cpp",
+        "iostream": "cpp",
+        "deque": "cpp",
+        "vector": "cpp",
+        "mixinvector": "cpp",
+        "fast_back_stack": "cpp"
     }
 }

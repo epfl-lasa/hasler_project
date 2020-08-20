@@ -48,8 +48,23 @@ enum TrackMode : size_t { TOOL_NAMES };
 #undef ListofTools
 #define NB_TOOLS ALL_TOOLS
 
-extern const char *Tools_Names[];
 
+#define TOOL_AXES                                                                   \
+  ListofToolAxes(tool_pitch, "tool_pitch")    \
+  ListofToolAxes(tool_roll, "tool_roll")              \
+  ListofToolAxes(tool_yaw, "tool_yaw")    \
+  ListofToolAxes(tool_insertion, "tool_insertion")  \
+  ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
+  ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
+  ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
+  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
+  ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
+#define ListofToolAxes(enumeration, names) enumeration,
+enum Tool_Axis : size_t { TOOL_AXES };
+#undef ListofToolAxes
+extern const char *Tool_Axis_Names[];
+
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
 
 
 class targetObject {
@@ -58,12 +73,18 @@ private:
   
   static targetObject *me;
 
+  enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_CHANGED};
+
+  Target_Status _myStatus;
+
   TrackMode _myTrackMode; 
   // Eigen and Geometry
 
   Eigen::Vector3d    _toolTipPosition[NB_TOOLS];
   Eigen::Quaterniond _toolTipQuaternion[NB_TOOLS];
   Eigen::Matrix3d    _toolTipRotationMatrix[NB_TOOLS];
+  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates[NB_TOOLS];
+  geometry_msgs::Wrench _footBaseWorldForce[NB_TOOLS];
 
   Eigen::Vector3d    _trocarPosition[NB_TOOLS];
   Eigen::Quaterniond _trocarQuaternion[NB_TOOLS];
@@ -73,11 +94,18 @@ private:
   Eigen::Quaterniond _myQuaternion;
   Eigen::Matrix3d    _myRotationMatrix;
 
+  double _precisionPos, _precisionAng;
+
   // std variables
 
   std::ofstream _myFile;
   std::string _myName;
   std::mutex _mutex;
+
+
+   //! Variables for Logging    
+    std::string _subjectID;
+		std::ofstream _statsOutputFile;   
   
   // ROS
   
@@ -87,12 +115,23 @@ private:
   ros::NodeHandle _n;
   ros::Rate _loopRate;
   ros::Time _startDelayForCorrection;
+  ros::Time _startingTime;
   float _dt;
   //! topics, actions, services, listeners and broadcasters
   tf2_ros::Buffer _tfBuffer;
   tf2_ros::TransformListener* _tfListener;
   tf2_ros::TransformBroadcaster* _tfBroadcaster;
   geometry_msgs::TransformStamped _msgTargetObjectTransform;
+  
+
+  
+  ros::Publisher _pubTargetReachedSphere;
+  visualization_msgs::Marker _msgTargetReachedSphere;
+
+
+  ros::Subscriber _subToolJointStates[NB_TOOLS];
+  ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
+
  
   
   //KDL 
@@ -103,7 +142,8 @@ private:
   // KDL::Frame _myFrame;
   
   //! boolean variables
-
+  bool _flagFootBaseForceConnected[NB_TOOLS];
+  bool  _flagToolJointsConnected[NB_TOOLS];
   bool  _flagToolTipTFConnected[NB_TOOLS];
   bool  _flagTrocarTFConnected[NB_TOOLS];
   bool  _flagTargetReached[NB_TOOLS];
@@ -131,14 +171,21 @@ private:
   _targetsXYZ;
 
   int NB_TARGETS;
-  int _nTarget;
+  int _nTarget, _xTarget;
 
+  void readToolState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
+  void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg,unsigned int n_);
   void readTFTool(unsigned int n_);
   void readTFTrocar(unsigned int n_);
   void writeTFTargetObject();
 
-  void computeTargetObjectPose();
-  void generateNextTarget();
+  void computeTargetObjectPose(unsigned int n_);
+  void generateNextTarget(unsigned int n_);
+
+  void publishTargetReachedSphere(int32_t action_);
+  void recordStatistics();
+
+  
 
   //! OTHER METHODS
   static void stopNode(int sig);

@@ -4,44 +4,53 @@
   
   <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/templates/joint.transmissions.xacro"/>
   <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/templates/gazebo.joints.xacro"/>
-
   <xacro:macro name="create_tool_base_joints" params="parent_link xyz rpy">
 
-    <!-- joint 1 -->
-    <joint name="tool_yaw" type="revolute">
+    <!-- joint 1: tool_yaw -->
+    <joint name="tool_pitch" type="revolute">
       <parent link="${parent_link}"/>
-      <child link="tool_yaw_link"/>
+      <child link="tool_pitch_link"/>
       <axis xyz="0 0 1"/>
-      <origin rpy="0 -1.5708 1.5708" xyz="0.0 0.0 0.0"/>
-      <limit lower="-1.5707" upper="1.5707" velocity=".4" effort="1000"/>
+      <origin rpy="0 -${pi/2} ${pi}" xyz="0.0 0.0 0.0"/>
+      <limit lower="-1.5707" upper="1.5707" velocity="3" effort="1000"/>
     </joint>
 
     <!-- joint 2: tool_pitch -->
-    <joint name="tool_pitch" type="revolute">
-      <parent link="tool_yaw_link"/>
-      <child link="tool_pitch_link"/>
-      <axis xyz="0 0 1"/>
-      <origin rpy="-1.5708 -1.5708 0" xyz="0 0 0"/>
-      <limit lower="-0.7854" upper="0.7854" velocity=".4" effort="1000"/>
-    </joint>
-   
-    <!-- joint 3: insertion -->
-    <joint name="tool_insertion" type="prismatic">
+    <joint name="tool_roll" type="revolute">
       <parent link="tool_pitch_link"/>
-      <child link="tool_main_link"/>
+      <child link="tool_roll_link"/>
       <axis xyz="0 0 1"/>
-      <origin rpy="1.5708 0 0" xyz="0 ${0.4318-0.041} 0"/>
-      <limit lower="0" upper="0.240" velocity=".4" effort="1000"/>
+      <origin rpy="-${pi/2} -${pi/2} 0" xyz="0 0 0"/>
+      <limit lower="-1.5707" upper="1.5707" velocity="3" effort="1000"/>
+    </joint>
+  
+
+
+    <!-- joint : tool Roll -->
+    <joint name="tool_yaw" type="revolute">
+      <parent link="tool_roll_link"/>
+      <child link="tool_yaw_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="${pi/2} 0 0" xyz="0 0 0"/>
+      <limit lower="-${1.5*pi}" upper="${1.5*pi}" velocity="3" effort="1000"/>
     </joint>
 
-    <!-- joint 4: tool Roll -->
-    <joint name="tool_roll" type="revolute">
+    <!-- joint 3: insertion -->
+    <joint name="tool_insertion" type="prismatic">
+      <parent link="tool_yaw_link"/>
+      <child link="tool_main_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 -${0.4318-0.041}"/>
+      <limit lower="0" upper="0.240" velocity="3" effort="1000"/>
+    </joint>
+
+    <joint name="tool_wrist_fixed" type="fixed">
       <parent link="tool_main_link"/>
       <child link="tool_wrist_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 0" xyz="0 0 ${0.4162-0.041}"/>
-      <limit lower="-2.2689" upper="2.2689" velocity=".4" effort="1000"/>
-    </joint>
+    </joint> -->
+
 
     <!-- joint 4-1: tool roll shaft joint FIXED-->
     <joint name="wrist_fixed" type="fixed">
@@ -52,15 +61,15 @@
     </joint>
   
 
-    <xacro:joint_trans name="tool_yaw" reduction="1"/>
     <xacro:joint_trans name="tool_pitch" reduction="1"/>
     <xacro:joint_trans name="tool_roll" reduction="1"/>
+    <xacro:joint_trans name="tool_yaw" reduction="1"/>
     <xacro:joint_trans name="tool_insertion" reduction="1"/>
 
-    <xacro:gazebo_joints name="tool_yaw"/>
     <xacro:gazebo_joints name="tool_pitch"/>
     <xacro:gazebo_joints name="tool_roll"/>
-    <xacro:gazebo_joints name="tool_insertion"/>
+    <xacro:gazebo_joints name="tool_yaw"/>
+    <xacro:gazebo_joints name="tool_insertion"/> 
 
   </xacro:macro>
 </robot>

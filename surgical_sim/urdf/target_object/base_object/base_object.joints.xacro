@@ -21,7 +21,6 @@
       <parent link="base_object_link"/>
       <child link="target_object_link"/>
       <axis xyz="0.0 0.0 1.0"/>
-      <!-- <limit effort="0" velocity="0.0" lower="${-0.4}" upper="${0.4}"/> -->
     </joint>
 
     <xacro:joint_trans name="base_object_joint" reduction="1"/>

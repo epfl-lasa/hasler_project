@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
 )
 
+find_package(Boost REQUIRED COMPONENTS date_time)
+
 find_package(PkgConfig)
 pkg_search_module(Eigen3 REQUIRED eigen3)
 
@@ -34,11 +36,11 @@ catkin_package(
   CATKIN_DEPENDS roscpp rospy std_msgs gazebo_ros tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils_math custom_msgs urdf kdl_parser eigen_conversions 
  )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
+include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
 add_executable(surgicalToolSim src/surgicalTool.cpp src/surgicalTool_node.cpp)
 target_link_libraries(surgicalToolSim ${catkin_LIBRARIES})
-add_executable(targetTracking src/protocol/targetObject.cpp src/protocol/targetObject_node.cpp src/protocol/targets.csv)
+add_executable(targetTracking src/protocol/targetObject.cpp src/protocol/targetObject_node.cpp)
 target_link_libraries(targetTracking ${catkin_LIBRARIES})
 
 

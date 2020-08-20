@@ -2,10 +2,11 @@
 <launch>
  <arg name="id1" default="right"/>
 
- <arg name="virtual_tool" default="true"/>
+ <arg name="virtual_tool" default="false"/>
  <arg name="virtual_leg" default="false"/>
- <arg name="control_input" default="leg"/>
+ <arg name="control_input" default="platform"/>
  <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_with_platform.rviz"/>
+ <arg name="subjectID" default="none"/>
 
 
 
@@ -31,6 +32,7 @@
     <arg name="virtual_target" value="false"/>    
     <arg name="target_name" value="needle"/>
     <arg name="tracking_mode" value="right"/>
+    <arg name="subjectID" value="$(arg subjectID)"/>
  </include>
 
   <include file="$(find leg_as_robot)/launch/single_leg.launch">

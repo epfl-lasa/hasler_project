@@ -63,9 +63,9 @@ extern const char *Leg_Axis_Names[];
 
 
 #define TOOL_AXES                                                                   \
-  ListofToolAxes(tool_yaw, "tool_yaw")    \
   ListofToolAxes(tool_pitch, "tool_pitch")    \
   ListofToolAxes(tool_roll, "tool_roll")              \
+  ListofToolAxes(tool_yaw, "tool_yaw")    \
   ListofToolAxes(tool_insertion, "tool_insertion")  \
   ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
   ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
@@ -77,7 +77,7 @@ enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
-#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 2)
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
 
 using namespace std;
 using namespace Eigen;
@@ -98,6 +98,7 @@ private:
   // internal variables
 
   Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
+  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll_prev;
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
   KDL::JntArray* _toolJoints;
   KDL::JntArray* _toolJointsInit;
@@ -105,6 +106,7 @@ private:
   KDL::JntArray* _toolJointLimsAll[NB_LIMS];
   KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _platformJointLims[NB_LIMS];
+  KDL::JntArray* _platformJointLimsDelta;
 
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   
@@ -119,10 +121,14 @@ private:
   KDL::Chain _myToolWristToTipChain;
   KDL::Chain _myToolBaseToTipChain;
   KDL::Jacobian _myJacobian;
-  KDL::ChainFkSolverPos_recursive* _myFKSolver;
-  KDL::ChainIkSolverVel_wdls* _myVelIKSolver;
-  KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver;
-  KDL::ChainJntToJacSolver* _myJacSolver;
+  KDL::ChainFkSolverPos_recursive* _myFKSolver_tip;
+  KDL::ChainFkSolverPos_recursive* _myFKSolver_wrist;
+  KDL::ChainIkSolverVel_wdls* _myVelIKSolver_tip;
+  KDL::ChainIkSolverVel_wdls* _myVelIKSolver_wrist;
+  KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver_tip;
+  KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver_wrist;
+  KDL::ChainJntToJacSolver* _myJacSolver_tip;
+  KDL::ChainJntToJacSolver* _myJacSolver_wrist;
   // Eigen::JacobiSVD<MatrixXd> _mySVD;
   
 
@@ -144,6 +150,7 @@ private:
   // Subscribers declarations
   tf2_ros::Buffer _tfBuffer;
   tf2_ros::TransformListener* _tfListener;
+  KDL::Frame _desiredTargetFrame;
   KDL::Frame _footTipPosFrame;
   KDL::Frame _footTipPosFrameInit;
 
@@ -198,8 +205,9 @@ private:
   void computeWithLegJoints7DoF();
   void computeWithLegJoints4DoF();
   void computeWithPlatformJoints4DoF();
+  void computeWithPlatformTask4DoF();
   void performChainForwardKinematics();
-
+  void calculateDesiredFrame();
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
   //! OTHER METHODS
