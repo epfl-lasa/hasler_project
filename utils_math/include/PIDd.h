@@ -1,0 +1,106 @@
+#ifndef PIDd_H
+#define PIDd_H
+//#define LIBRARY_VERSION	1.2.1
+#include "LP_Filterd.h"
+#include "ros/ros.h"
+class PIDd
+{
+  public:
+
+  //Constants used in some of the functions below
+  #define AUTOMATIC	1
+  #define MANUAL	0
+  #define DIRECT  0
+  #define REVERSE  1
+  #define P_ON_M 0
+  #define P_ON_E 1
+
+  //commonly used functions **************************************************************************
+    PIDd(double*, double*, double*,        // * constructor.  links the PIDd to the Input, Output, and 
+        double, double, double, int, int, double);//   Setpoint.  Initial tuning parameters are also set here.
+                                          //   (overload for specifying proportional mode)
+
+    PIDd(double*, double*, double*,        // * constructor.  links the PIDd to the Input, Output, and 
+        double, double, double, int, double);     //   Setpoint.  Initial tuning parameters are also set here
+
+    PIDd(double *, double *, double *,
+        double, double, double, int);
+
+    ~PIDd();
+    
+    void setMode(int Mode);               // * sets PIDd to either Manual (0) or Auto (non-0)
+
+    bool compute();                       // * performs the PIDd calculation.  it should be
+                                          //   called every time loop() cycles. ON/OFF and
+                                          //   calculation frequency can be set using SetMode
+                                          //   SetSampleTime respectively
+
+    void setOutputLimits(double, double); // * clips the output to a specific range. 0-255 by default, but
+										                      //   it's likely the user will want to change this depending on
+										                      //   the application
+	
+
+
+  //available but not commonly used functions ********************************************************
+    void setTunings(double, double,       // * While most users will set the tunings once in the 
+                    double);         	    //   constructor, this function gives the user the option
+                                          //   of changing tunings during runtime for Adaptive control
+    void setTunings(double, double,       // * overload for specifying proportional mode
+                    double, int);         	  
+
+	void setControllerDirection(int);	  // * Sets the Direction, or "Action" of the controller. DIRECT
+										  //   means the output will increase when error is positive. REVERSE
+										  //   means the opposite.  it's very unlikely that this will be needed
+										  //   once it is set in the constructor.
+    void setSampleTime(int);              // * sets the frequency, in Microseconds, with which 
+                                          //   the PIDd calculation is performed.  default is 100
+										  
+										  
+										  
+  //Display functions ****************************************************************
+	double getKp();						  // These functions query the PIDd for interal values.
+	double getKi();						  //  they were created mainly for the PIDd front-end,
+	double getKd();						  // where it's important to know what is actually 
+  double getIntegralTerm();
+  double getError();
+	int getMode();						  //  inside the PIDd.
+	int getDirection();					  //
+  void reset();
+  
+
+  private:
+	void initialize();
+
+  LP_Filterd dInputFilter;
+
+  double outputSum;
+  double errorM;
+  
+	double dispKp;				// * we'll hold on to the tuning parameters in user-entered 
+	double dispKi;				//   format for display purposes
+	double dispKd;				//
+    
+	double kp;                  // * (P)roportional Tuning Parameter
+    double ki;                  // * (I)ntegral Tuning Parameter
+    double kd;                  // * (D)erivative Tuning Parameter
+
+	int controllerDirection;
+	int pOn;
+
+    double *myInput;              // * Pointers to the Input, Output, and Setpoint variables
+    double *myOutput;             //   This creates a hard link between the variables and the 
+    double *mySetpoint;           //   PIDd, freeing the user from having to constantly tell us
+                                  //   what these values are.  with pointers we'll just know.
+	double lastTime;
+
+  ros::Duration timeChange;
+  
+	double lastInput;
+
+	int SampleTime;
+  double SampleTimeSec;
+	double outMin, outMax;
+	bool inAuto, pOnE;
+};
+#endif
+
