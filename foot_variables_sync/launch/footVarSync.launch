@@ -1,15 +1,8 @@
 <launch>
 	<arg name="id" default="right"/>
-	<arg name="fSensor" default="true"/>
-	<!-- <arg name="forceAlpha" default="0.9"/>
-	
-	<group if="$(arg fSensor)">	
-		<include file="$(find foot_platform_ros)/launch/force_sensor_modifier.launch">
-			<arg name="id" value="$(arg id)"/>
-			<arg name="forceAlpha" value="$(arg forceAlpha)"/>
-		</include>
-	</group>	 -->
-    
+
+	<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="$(arg id)" />
+
 	<group ns="$(arg id)">
 		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
 			<param name="platformID" value="$(arg id)"/>

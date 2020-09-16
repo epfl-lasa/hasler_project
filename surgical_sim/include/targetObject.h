@@ -21,6 +21,8 @@
 #include "geometry_msgs/WrenchStamped.h"
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
+
+#include "custom_msgs/FootInputMsg_v3.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
 #include <dynamic_reconfigure/server.h>
@@ -35,6 +37,8 @@
 #include <utility> // std::pair
 #include <stdexcept> // std::runtime_error
 #include <sstream> // std::stringstream
+
+#include "vibrator.h"
 
 using namespace std;
 using namespace Eigen;
@@ -74,8 +78,10 @@ private:
   static targetObject *me;
 
   enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_CHANGED};
+  enum Human_State {H_STOPPING, H_POSITIONING, H_GRASPING};
 
   Target_Status _myStatus;
+  Human_State _hState;
 
   TrackMode _myTrackMode; 
   // Eigen and Geometry
@@ -84,7 +90,11 @@ private:
   Eigen::Quaterniond _toolTipQuaternion[NB_TOOLS];
   Eigen::Matrix3d    _toolTipRotationMatrix[NB_TOOLS];
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates[NB_TOOLS];
+  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates_prev[NB_TOOLS];
   geometry_msgs::Wrench _footBaseWorldForce[NB_TOOLS];
+  #define NB_AXIS_POSITIONING 4
+  Eigen::Matrix<double, NB_AXIS_POSITIONING ,1> _positioningV;
+  double _graspingV;
 
   Eigen::Vector3d    _trocarPosition[NB_TOOLS];
   Eigen::Quaterniond _trocarQuaternion[NB_TOOLS];
@@ -93,6 +103,16 @@ private:
   Eigen::Vector3d    _myPosition;
   Eigen::Quaterniond _myQuaternion;
   Eigen::Matrix3d    _myRotationMatrix;
+
+  Eigen::Vector3d _maxLimsTarget;
+
+  double _errorPenetration;
+  double _vibrationGrasping;
+  double _impedanceGrasping;
+  double _errorPenetration_prev;
+  double _devErrorPenetration;
+
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques[NB_TOOLS];
 
   double _precisionPos, _precisionAng;
 
@@ -126,13 +146,17 @@ private:
 
   
   ros::Publisher _pubTargetReachedSphere;
+  ros::Publisher _pubFootInput[NB_TOOLS];
+
+  custom_msgs::FootInputMsg_v3 _msgFootInput[NB_TOOLS];
+
   visualization_msgs::Marker _msgTargetReachedSphere;
 
 
   ros::Subscriber _subToolJointStates[NB_TOOLS];
   ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
 
- 
+  vibrator* _myVibrator;
   
   //KDL 
 
@@ -147,6 +171,8 @@ private:
   bool  _flagToolTipTFConnected[NB_TOOLS];
   bool  _flagTrocarTFConnected[NB_TOOLS];
   bool  _flagTargetReached[NB_TOOLS];
+  bool  _flagRecordingStarted;
+  bool _flagHapticGrasping;
 
   bool  _stop;
 
@@ -176,13 +202,15 @@ private:
   void readToolState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
   void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg,unsigned int n_);
   void readTFTool(unsigned int n_);
+  void guessHumanState();
   void readTFTrocar(unsigned int n_);
   void writeTFTargetObject();
 
   void computeTargetObjectPose(unsigned int n_);
-  void generateNextTarget(unsigned int n_);
+  void evaluateTarget(unsigned int n_);
 
   void publishTargetReachedSphere(int32_t action_);
+  void publishFootInput(int n_);
   void recordStatistics();
 
   

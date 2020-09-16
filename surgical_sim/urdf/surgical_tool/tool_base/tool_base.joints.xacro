@@ -49,11 +49,11 @@
       <child link="tool_wrist_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 0" xyz="0 0 ${0.4162-0.041}"/>
-    </joint> -->
+    </joint>
 
 
     <!-- joint 4-1: tool roll shaft joint FIXED-->
-    <joint name="wrist_fixed" type="fixed">
+    <joint name="tool_wrist_shaft_fixed" type="fixed">
       <parent link="tool_wrist_link"/>
       <child link="tool_wrist_shaft_link"/>
       <axis xyz="0 0 1"/>
@@ -70,6 +70,8 @@
     <xacro:gazebo_joints name="tool_roll"/>
     <xacro:gazebo_joints name="tool_yaw"/>
     <xacro:gazebo_joints name="tool_insertion"/> 
+    <!-- <xacro:gazebo_joints name="tool_wrist_fixed"/> 
+    <xacro:gazebo_joints name="tool_wrist_shaft_fixed"/>  -->
 
   </xacro:macro>
 </robot>

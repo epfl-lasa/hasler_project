@@ -3,13 +3,11 @@
   <arg name="id2"                 default="left" />
   <arg name="virtual_legs"        default="false"/>
   <arg name="virtual_platforms"   default="true" />
-  <arg name="fsensors"            default="false"/>
   <arg name="rvizconfig"          default="$(find leg_as_robot)/rviz/base/legs_platforms.rviz" />
 
   <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
     <arg name="id"                 value="$(arg id1)"/>  
     <arg name="rviz"               value="false"/>  
-    <arg name="fsensor"            value="$(arg fsensors)"/>
     <arg name="virtual_platform"   value="$(arg virtual_platforms)" />
     <arg name="inc_chair"          value="true"/>
   </include>
@@ -17,7 +15,6 @@
   <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
     <arg name="id"                 value="$(arg id2)"/>
     <arg name="rviz"               value="true"/>  
-    <arg name="fsensor"            value="$(arg fsensors)"/>
     <arg name="virtual_platform"   value="$(arg virtual_platforms)" />
     <arg name="inc_chair"          value="false"/>
     <arg name="rvizconfig"         value="$(arg rvizconfig)"/>

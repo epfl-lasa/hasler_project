@@ -52,6 +52,7 @@ class footVarSynchronizer
     ros::Rate _loopRate;
     float _dt;
 
+    int _nbDesiredFootInputPublishers;
     
 
 	//!subscribers and publishers declaration    
@@ -62,8 +63,11 @@ class footVarSynchronizer
     ros::Subscriber _subForceModified;            // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subLegGravCompTorques;           //custom_msgs/FootInputMsg_v3
     ros::Subscriber _subLegGravCompWrench;    // geometry_msgs/WrenchStamped.h
-    ros::Subscriber _subFootInput;            // FootInputMsg_v3
     
+    std::vector<ros::Subscriber> _subDesiredFootInput;            // FootInputMsg_v3
+    std::vector<custom_msgs::FootInputMsg_v3> _msgDesiredFootInput;
+    custom_msgs::FootInputMsg_v3 _msgTotalDesiredFootInput;
+   
     // Publisher declaration
     ros::Publisher _pubFootInput;               // FootInputMsg_v2
     
@@ -147,7 +151,7 @@ class footVarSynchronizer
         Eigen::Matrix<double,NB_AXIS,1> _ros_speedD;
 
         // Other variables
-    public:
+    private:
 
 
         volatile bool _flagWasDynReconfCalled;
@@ -185,7 +189,7 @@ class footVarSynchronizer
         bool _flagResponseSetController;
         bool _flagResponseSetState;
 
-        
+        std::vector<bool> _flagDesiredFootInputsRead;
 
         // METHODS
       public:
@@ -229,8 +233,9 @@ class footVarSynchronizer
     void readLegGravCompFI(const custom_msgs::FootInputMsg_v3::ConstPtr &msg);
     void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void correctForceForLegCompensation();
+    void processAllPublishers();
 
-    
+    void readDesiredFootInputs(const custom_msgs::FootInputMsg_v3::ConstPtr &msg, unsigned int n_);
 
 
     static void stopNode(int sig);

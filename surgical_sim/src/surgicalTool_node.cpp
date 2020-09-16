@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
   std::string tool_name;
 
-  double frequency = 400.0f;
+  double frequency = 500.0f;
 
   ros::NodeHandle nh_("~");
   nh_.getParam("toolID", tool_name);

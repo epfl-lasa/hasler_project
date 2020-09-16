@@ -13,7 +13,6 @@
       <child link="torso_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="${rpy}" xyz="${xyz}"/>
-      <!-- <limit lower="-1.5707" upper="1.5707" velocity=".4" effort="1000"/> -->
     </joint>
 
     <joint name="right_trocar_joint" type="fixed">
@@ -21,7 +20,6 @@
       <child link="/right/trocar_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 ${pi/2}" xyz="0.015 0.015 0.2"/>
-      <!-- <limit lower="-1.5707" upper="1.5707" velocity=".4" effort="1000"/> -->
     </joint>
     
     <joint name="left_trocar_joint" type="fixed">
@@ -29,10 +27,8 @@
       <child link="/left/trocar_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 ${pi/2}" xyz="0.0 0.0 0.2"/>
-      <!-- <limit lower="-1.5707" upper="1.5707" velocity=".4" effort="1000"/> -->
     </joint>
 
-    <!-- <xacro:joint_trans name="torso_joint" reduction="1"/> -->
   
     <xacro:gazebo_joints name="torso_joint"/>
     

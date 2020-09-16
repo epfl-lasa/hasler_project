@@ -262,13 +262,13 @@ void surgicalTool::calculateDesiredFrame(){
   
   _desiredTargetFrame.p.data[0] = Utils_math<double>::map( _platformJoints(p_x),
                                                           -_platformJointLimsDelta->data(p_x), _platformJointLimsDelta->data(p_x), 
-                                                          -0.1,0.1);
+                                                          -0.15,0.15);
   _desiredTargetFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y),
                                                           -_platformJointLimsDelta->data(p_y), _platformJointLimsDelta->data(p_y), 
-                                                          -0.1,0.1);
+                                                          -0.15,0.15);
   _desiredTargetFrame.p.data[2] = -0.12 + Utils_math<double>::map( _platformJoints(p_pitch),
                                                           -_platformJointLimsDelta->data(p_pitch), 0.5*_platformJointLimsDelta->data(p_pitch), 
-                                                          -0.1,0.1) ;
+                                                          -0.15,0.15) ;
   Eigen::Vector3d p_;
   tf::vectorKDLToEigen(_desiredTargetFrame.p,p_);  
   Quaterniond q_ = Quaterniond::FromTwoVectors(Eigen::Vector3d(0.0, 0.0, 1.0), p_);
@@ -347,7 +347,7 @@ void surgicalTool::performInverseKinematics(){
                                     -35*DEG_TO_RAD, 35*DEG_TO_RAD, 
                                     _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw));
 
-  _toolJointsAll(tool_wrist_open_angle) =  Utils_math<double>::map( (_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
+  _toolJointsAll(tool_wrist_open_angle) =  Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
                                           -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
                                            _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
   
@@ -570,7 +570,7 @@ void surgicalTool::readPlatformJoints(const sensor_msgs::JointState::ConstPtr &m
   _flagPlatformJointsConnected = true;
 
   if (!_flagPlatformJointLimitsOffsetCalculated) {
-   // _platformJointsOffset = _platformJoints;
+    _platformJointsOffset(p_roll) = - 10.0f*DEG_TO_RAD;
     _flagPlatformJointLimitsOffsetCalculated = true;
   }
 }

@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"cmath": "cpp",
+			"complex": "cpp",
+			"*.org": "cpp",
+			"*.tpp": "cpp",
+			"*.tcc": "cpp",
+			"fstream": "cpp",
+			"iosfwd": "cpp",
+			"istream": "cpp",
+			"limits": "cpp",
+			"sstream": "cpp",
+			"streambuf": "cpp"
+		},
+		"python.autoComplete.extraPaths": [
+			"/home/lsrob107772/catkin_hasler/devel/lib/python2.7/dist-packages",
+			"/opt/ros/kinetic/lib/python2.7/dist-packages"
+		]
+	}
+}

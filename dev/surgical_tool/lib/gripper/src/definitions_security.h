@@ -1,0 +1,18 @@
+#ifndef DEFINITIONS_SECURITY_H
+#define DEFINITIONS_SECURITY_H
+
+#include "definitions_main.h"
+#include "definitions_hardware.h"
+
+//! Security Variables
+
+const float WS_LIMITS = WS_RANGE_GRIPPER / 2.0f;
+
+const float C_WS_LIMITS = WS_LIMITS * 0.5f ;
+
+const float EFFORT_LIMIT_GRIPPER_DEFAULT =
+    (TORQUE_CONSTANT_MOTOR_GRIPPER / 1000.0f) * (NOMINAL_CURRENT_MOTOR_GRIPPER)* GEARBOX_TRANSMISSION * CABLE_TRANSMISSION ;
+
+const float SPEED_LIMIT_GRIPPER_DEFAULT = NOMINAL_SPEED_GEARBOX_GRIPPER;
+
+#endif // DEFINITIONS_SECURITY_H

@@ -3,11 +3,8 @@
 	
 	<xacro:macro name="gazebo_joints" params="name">
 		<gazebo reference="${name}">
-			<implicitSpringDamper>0</implicitSpringDamper>
-			<provideFeedback>1</provideFeedback>
-			<stopCfm></stopCfm> 
-			<stopErp></stopErp> 
-			<fudgeFactor>0.5</fudgeFactor> 
+			<!-- <implicitSpringDamper>0</implicitSpringDamper>
+			<provideFeedback>1</provideFeedback> -->
 		</gazebo>
 	</xacro:macro>	
 	

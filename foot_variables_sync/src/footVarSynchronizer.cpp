@@ -112,7 +112,38 @@ footVarSynchronizer::~footVarSynchronizer()
 }
 
 bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
-{
+{	
+	_nbDesiredFootInputPublishers = 0;
+	ros::NodeHandle n_;
+	n_.resolveName(Platform_Names[_platform_name]);
+	if (!n_.getParam("nFIPublishers", _nbDesiredFootInputPublishers))
+	{ 
+		ROS_ERROR("Missing number of foot input publishers in yaml file"); 
+	}
+	
+	if (_nbDesiredFootInputPublishers!=0)
+	{
+		_subDesiredFootInput.resize(_nbDesiredFootInputPublishers);
+		_msgDesiredFootInput.resize(_nbDesiredFootInputPublishers);
+		_flagDesiredFootInputsRead.resize(_nbDesiredFootInputPublishers);
+		
+		for (unsigned int i  = 0; i<_nbDesiredFootInputPublishers; i++)
+		{	
+			_flagDesiredFootInputsRead[i]=false;
+			std::string topic_name;
+			char pub_name[6];
+			sprintf(pub_name,"pub_%i",i+1);
+			if (!n_.getParam(pub_name, topic_name))
+			{ 
+				ROS_ERROR("Missing topic name for %s", pub_name); 
+			}
+			else{
+				cout<<"/"+std::string(Platform_Names[_platform_name])+"/"+topic_name<<endl;
+				_subDesiredFootInput[i] = _n.subscribe<custom_msgs::FootInputMsg_v3>("/"+std::string(Platform_Names[_platform_name])+"/"+topic_name, 1, boost::bind(&footVarSynchronizer::readDesiredFootInputs, this, _1,i), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+			}
+		}
+	}
+
 	if (_platform_name==LEFT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v3>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -123,7 +154,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 
 		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v3>("/left/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());							
-    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("left/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/left/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
@@ -138,7 +169,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v3>("/right/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());	
 
-		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("right/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/right/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
@@ -176,7 +207,7 @@ void footVarSynchronizer::run()
   while (!_stop) 
   {	
 
-	if (_flagPlatformOutCommStarted)
+	if (_flagPlatformOutCommStarted && _subFootOutput.getNumPublishers()!=0)
 	{
 		if ((_platform_id!=(uint8_t) _platform_name)&&(_platform_id!=UNKNOWN))
 		{
@@ -185,7 +216,7 @@ void footVarSynchronizer::run()
 		}
 		else
 		{
-			if (!_flagInitialConfig && _flagPlatformOutCommStarted)
+			if (!_flagInitialConfig)
 			{
 				controlGainsDefault(-1);
 				_config.machine_state = (uint8_t)_platform_machineState;
@@ -217,7 +248,7 @@ void footVarSynchronizer::run()
 			// 	_flagWasDynReconfCalled = false;
 			// }
 
-			else
+			else if(_subFootOutput.getNumPublishers()!=0)
 				{
 					changeParamCheck();
 					if (_flagWasDynReconfCalled)
@@ -272,7 +303,7 @@ void footVarSynchronizer::run()
 					}
 					}
 					
-					if (_flagHumanOnPlatform && _flagCompensateLeg)
+					if (_flagHumanOnPlatform && _flagCompensateLeg && _subLegGravCompTorques.getNumPublishers()!=0)
 					{	
 						_ros_effort = _leg_grav_comp_effort;
 						//cout<<_ros_effort.transpose()<<endl;
@@ -283,9 +314,13 @@ void footVarSynchronizer::run()
 					}
 				
 			}
-
+			
 
 		}
+	}
+	else
+	{
+		_flagInitialConfig=false;
 	}
           publishFootInput(&_flagPositionOnlyPublished);
 		  
@@ -588,7 +623,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 			_config.desired_Position_PITCH = C_WS_LIMIT_PITCH;
 			_config.desired_Position_ROLL = C_WS_LIMIT_ROLL;
 			_config.desired_Position_YAW = C_WS_LIMIT_YAW;
-			_ros_position << C_WS_LIMIT_X, C_WS_LIMIT_Y, C_WS_LIMIT_PITCH, C_WS_LIMIT_ROLL, C_WS_LIMIT_YAW;
+			_ros_position << C_WS_LIMIT_Y, C_WS_LIMIT_X, C_WS_LIMIT_PITCH, C_WS_LIMIT_ROLL, C_WS_LIMIT_YAW;
 			_flagParamsActionsTaken = true;
 		}
 
@@ -702,16 +737,36 @@ void footVarSynchronizer::requestDoActionsPlatform()
 
 }
 
+void footVarSynchronizer::processAllPublishers()
+{
+	_msgTotalDesiredFootInput.ros_effort.fill(0.0f);
+	_msgTotalDesiredFootInput.ros_speed.fill(0.0f);
+	_msgTotalDesiredFootInput.ros_position.fill(0.0f);
+	
+	for (unsigned int i=0; i<_nbDesiredFootInputPublishers; i++)
+	{
+		if (_flagDesiredFootInputsRead[i] && _subDesiredFootInput[i].getNumPublishers()!=0)
+		{
+			for (unsigned int j=0; j<NB_PLATFORM_AXIS; j++)
+			{
+				_msgTotalDesiredFootInput.ros_effort[j] += _msgDesiredFootInput[i].ros_effort[j];
+				_msgTotalDesiredFootInput.ros_speed[j] += _msgDesiredFootInput[i].ros_speed[j];
+				_msgTotalDesiredFootInput.ros_position[j] += _msgDesiredFootInput[i].ros_position[j];
+			}
+		}	
+	}
+}
+
 void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
   //! Keep send the same valuest that the platform is broadcasting
-	
+  processAllPublishers();	
  // _mutex.lock();
-  for (int k = 0; k < NB_AXIS; k++) {
-    _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k];
-    _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k];
-    _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k];
+  for (int k = 0; k < NB_PLATFORM_AXIS; k++) {
+    _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k] + _msgTotalDesiredFootInput.ros_position[rosAxis[k]];
+    _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k] + _msgTotalDesiredFootInput.ros_speed[rosAxis[k]] ;
+    _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + _msgTotalDesiredFootInput.ros_effort[rosAxis[k]];
   }
-  if (_flagForceModifiedConnected)
+  if (_flagForceModifiedConnected && _subForceModified.getNumPublishers()!=0)
   {
 	for (int k = 0; k < NB_AXIS_WRENCH; k++) {
 		_msgFootInput.ros_forceSensor[k] = _ros_forceSensor_controlled[k]; // rosAxis not applied
@@ -964,9 +1019,9 @@ void footVarSynchronizer::resetDesiredPositionToCurrent(int axis_)
 
 void footVarSynchronizer::correctForceForLegCompensation() {
 	 
-	 if (_flagHumanOnPlatform && _flagCompensateLeg && _flagLegCompWrenchRead)
+	 if (_flagHumanOnPlatform && _flagCompensateLeg && _flagLegCompWrenchRead && _subLegGravCompWrench.getNumPublishers()!=0)
 	 {
-		_ros_forceSensor_controlled = _ros_forceModified + _legWrenchGravityComp;                               
+		_ros_forceSensor_controlled = _ros_forceModified;// + _legWrenchGravityComp;                               
 	 }
 
 	 else
@@ -979,7 +1034,7 @@ void footVarSynchronizer::correctForceForLegCompensation() {
 void footVarSynchronizer::readForceModified(
    const geometry_msgs::WrenchStamped::ConstPtr &msg) {
   if (!_flagForceModifiedConnected) {
-    ROS_INFO("Unbiased force read!");
+    ROS_INFO_ONCE("Unbiased force read!");
   	_flagForceModifiedConnected = true;
   }
   _ros_forceModified(0) = msg->wrench.force.x;
@@ -1016,4 +1071,17 @@ void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg_v3::
     ROS_INFO("Receiving Leg Compensation Torques");
   }
   _flagLegCompTorquesRead = true;
+}
+
+void footVarSynchronizer::readDesiredFootInputs(const custom_msgs::FootInputMsg_v3::ConstPtr &msg,unsigned int n_)
+{
+	
+	_msgDesiredFootInput[n_].ros_effort = msg->ros_effort;
+	_msgDesiredFootInput[n_].ros_forceSensor = msg->ros_forceSensor;
+	_msgDesiredFootInput[n_].ros_position = msg->ros_position;
+	_msgDesiredFootInput[n_].ros_speed = msg->ros_speed;
+  	if (!_flagDesiredFootInputsRead[n_]) {
+  	  ROS_INFO_ONCE("Receiving messages of foot input. Pub #%i", n_);
+  	}
+  _flagDesiredFootInputsRead[n_] = true;
 }

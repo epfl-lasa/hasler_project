@@ -4,6 +4,8 @@
   <arg name="gui" default="true" />
   <arg name="w_liver" default="true" />
   <arg name="rviz" default="true"/>
+  <arg name="rvizConfig" default="$(find surgical_sim)/rviz/body_view.rviz"/>
+
 
   <param name="body_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver)"/>
   <param name="use_gui" value="$(arg gui)"/>
@@ -16,14 +18,15 @@
   </node>
 
   <group if="$(arg rviz)">
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find surgical_sim)/rviz/body_view.rviz" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" />
   </group>
   
-  
-  <!-- <include file="$(find surgical_sim)/launch/tool/tool.gazebo.launch">
-    <arg name="model" value="$(arg model)" />
-  </include>  -->
-
+    
+    <!-- <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
+      <arg name="robot_description_name" value="body_description" />
+      <arg name="robot_name" value="body" />
+      <arg name="w_world" value="true" if="$(arg rviz)"/>  
+    </include>  -->
 
 
 </launch>

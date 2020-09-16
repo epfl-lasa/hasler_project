@@ -55,7 +55,9 @@
                 "/usr/include/**",
                 "${workspaceFolder}/5_axis_platform/foot_platform_ros/include",
                 "${workspaceFolder}/surgical_sim/include",
-                "/home/lsrob107772/catkin_hasler/src/utils_math/include"
+                "/home/lsrob107772/catkin_hasler/src/utils_math/include",
+                "/usr/include/eigen3/Eigen",
+                "${workspaceFolder}/utils_math/include"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",

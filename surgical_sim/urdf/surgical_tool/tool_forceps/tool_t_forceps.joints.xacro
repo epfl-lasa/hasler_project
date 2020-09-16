@@ -32,7 +32,7 @@
       <child link="tool_wrist_forceps_link_2_left"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <limit lower="0" upper="${pi/2}" velocity=".4" effort="1000"/>
+      <limit lower="0" upper="${30*pi/180}" velocity=".4" effort="1000"/>
     </joint>
 
   <!-- joint 6-2: tool open angle 2  -->
@@ -41,7 +41,7 @@
       <child link="tool_wrist_forceps_link_2_right"/>
       <axis xyz="0 0 1"/>
       <origin rpy="3.1415926 0 0" xyz="0 0 0"/>
-      <limit lower="0" upper="${pi/4}" velocity=".4" effort="1000"/>
+      <limit lower="0" upper="${30*pi/180}" velocity=".4" effort="1000"/>
       <mimic joint="tool_wrist_open_angle" multiplier="1"/>
     </joint>
 
@@ -67,6 +67,8 @@
     <xacro:gazebo_joints name="tool_wrist_yaw"/>
     <xacro:gazebo_joints name="tool_wrist_open_angle"/>
     <xacro:gazebo_joints name="tool_wrist_open_angle_mimic"/>
+    <!-- <xacro:gazebo_joints name="tool_tip_"/>
+    <xacro:gazebo_joints name="tool_tip_ee"/> -->
 
   </xacro:macro>
 

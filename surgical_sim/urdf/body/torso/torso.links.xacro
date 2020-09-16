@@ -14,6 +14,12 @@
           <mesh filename="package://surgical_sim/model/meshes/dae/body/torso.dae"/>      
         </geometry>
       </visual>
+      <collision>
+        <origin rpy="${-pi/2} 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://surgical_sim/model/meshes/stl/body/torso_simp.stl"/>      
+        </geometry>
+      </collision>
       <inertial>
 				<origin xyz="0 0 0" rpy="0 0 0"/>
 				<mass value="30"/>

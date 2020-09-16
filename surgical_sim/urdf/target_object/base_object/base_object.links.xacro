@@ -15,6 +15,9 @@
         <geometry>
           <sphere radius="0.007"/>
         </geometry>
+      <material name="Cyan">
+       <color rgba="0 1.0 1.0 0.5"/>
+     </material>  
       </visual>
       <inertial>
 				<origin xyz="0 0 0" rpy="0 0 0"/>
