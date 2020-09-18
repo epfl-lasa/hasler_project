@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Useful definitions -->
+  <xacro:property name="meshes_path"
+    value="package://rokubimini_description/meshes"/>
+  <xacro:property name="meshes_scale"
+    value="0.001 0.001 0.001"/>
+
+  <xacro:macro name = "forceTorqueSensor" params = "frame_name link_name joint_name parent_name child_name">
+    <!-- Joint: SENSOR_FRAME -->
+    <joint name="${frame_name}" type="fixed">
+      <parent link="${parent_name}"/>
+      <child link="${link_name}"/>
+      <origin xyz="${roku.x_sf} ${roku.y_sf} ${roku.z_sf}" rpy="${roku.r_sf} ${roku.p_sf} ${roku.yaw_sf}"/>
+      <limit effort="0" lower="0" upper="0" velocity="0"/>
+    </joint>
+
+    <!-- sensor link -->
+    <link name="${link_name}">
+      <visual>
+        <origin
+	  xyz="${roku.x_sl} ${roku.y_sl} ${roku.z_sl}"
+	  rpy="${roku.r_sl} ${roku.p_sl} ${roku.yaw_sl}"/>
+        <geometry>
+          <mesh
+            filename="${meshes_path}/${roku.mesh_file_name}"
+            scale="${meshes_scale}"/>
+        </geometry>
+        <material name="gray">
+          <color rgba="${105/255} ${105/255} ${105/255} 1.0"/>
+        </material>
+      </visual>
+      <inertial>
+        <origin xyz="${roku.s_x_sl} ${roku.s_y_sl} ${roku.s_z_sl}" rpy="0 0 0"/>
+        <mass   value="${roku.m_sl}"/>
+        <inertia ixx="${roku.ixx_sl}"
+                 ixy="${roku.ixy_sl}" iyy="${roku.iyy_sl}"
+                 ixz="${roku.ixz_sl}" iyz="${roku.iyz_sl}" izz="${roku.izz_sl}"/>
+      </inertial>
+      <collision name="collision">
+        <origin
+                xyz="${roku.collision_x_offset_sl} ${roku.collision_y_offset_sl} ${roku.collision_z_offset_sl}"
+                rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${roku.collision_r_sl}" length="${roku.collision_l_sl}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <xacro:arg name="fix_sensor" default="true"/>
+    <xacro:property name="fix_sensor" value="$(arg fix_sensor)"/>
+    <!-- Joint: SENSOR_JOINT -->
+    <xacro:if value="${fix_sensor}">
+      <joint name="${joint_name}" type="fixed">
+        <parent link="${link_name}"/>
+        <child link="${child_name}"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <limit effort="0" lower="0" upper="0" velocity="0"/>
+      </joint>
+    </xacro:if>
+    <xacro:unless value="${fix_sensor}">
+        <joint name="${joint_name}" type="revolute">
+            <parent link="${link_name}"/>
+            <child link="${child_name}"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <limit effort="0" lower="0" upper="0" velocity="0"/>
+        </joint>
+    </xacro:unless>
+
+    <!-- Gazebo customization -->
+    <gazebo reference="${link_name}">
+      <kp>${roku.kp}</kp>
+      <kd>${roku.kd}</kd>
+      <mu1>1000000000</mu1>
+      <mu2>1000000000</mu2>
+      <self_collide>1</self_collide>
+    </gazebo>
+    <gazebo reference="${joint_name}">
+      <provideFeedback>1</provideFeedback>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:arg name="simulation" default="false"/>
+  <xacro:property name="simulation" value="$(arg simulation)"/>
+
+  <xacro:macro name="gazebo_rokubimini" params="plugin_name file_name ns update_rate body_name topic_name">
+    <xacro:if value="$(arg simulation)">
+      <xacro:unless value="$(arg fix_sensor)">
+        <gazebo>
+          <plugin name="${plugin_name}" filename="${file_name}">
+            <robotNamespace>${ns}</robotNamespace>
+            <statePublisherRate>${update_rate}</statePublisherRate>
+            <bodyName>${body_name}</bodyName>
+            <topicName>${topic_name}</topicName>
+          </plugin>
+        </gazebo>
+      </xacro:unless>
+    </xacro:if>
+  </xacro:macro>
+
+</robot>

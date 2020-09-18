@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Math constants -->
+  <xacro:property name="PI" value="3.1415926535897931"/>
+
+  <!-- Mesh file name -->
+  <xacro:property name="mesh_file_name" value="R212.STL"/>
+
+  <!-- Contact model -->
+  <xacro:property name="kp" value="1000000.0"/>
+  <xacro:property name="kd" value="1.5"/>
+  <xacro:property name="mu" value="1.2"/>
+
+  <!-- Sensor frame -->
+  <xacro:property name="x_sf" value="0.0"/>
+  <xacro:property name="y_sf" value="0.0"/>
+  <xacro:property name="z_sf" value="0.034"/>
+  <xacro:property name="r_sf" value="0.0"/>
+  <xacro:property name="p_sf" value="0.0"/>
+  <xacro:property name="yaw_sf" value="0"/>
+
+  <!-- Sensor link -->
+  <xacro:property name="x_sl" value="-0.2458" />
+  <xacro:property name="y_sl" value="-0.1323" />
+  <xacro:property name="z_sl" value="-0.034" />
+  <xacro:property name="r_sl" value="1.570796327" />
+  <xacro:property name="p_sl" value="0.0" />
+  <xacro:property name="yaw_sl" value="1.57079327" />
+  <xacro:property name="m_sl" value="0.230"/> <!-- [kg]  estimated value -->
+  <xacro:property name="s_x_sl" value="0.0"/> <!-- COM [m] estimated value -->
+  <xacro:property name="s_y_sl" value= "0.0"/> <!-- COM [m] estimated value -->
+  <xacro:property name="s_z_sl" value="-0.017"/> <!-- COM [m] estimated value -->
+  <xacro:property name="ixx_sl" value="0.0"/> <!-- [kg * m^2] until I get the real value -->
+  <xacro:property name="iyy_sl" value="0.0"/> <!-- [kg * m^2] until I get the real value-->
+  <xacro:property name="izz_sl" value="0.0"/> <!-- [kg * m^2] until I get the real value-->
+  <xacro:property name="ixy_sl" value="0.0"/> <!-- [kg * m^2] until I get the real value-->
+  <xacro:property name="ixz_sl" value="0.0"/> <!-- [kg * m^2] until I get the real value-->
+  <xacro:property name="iyz_sl" value="0.0"/> <!-- [kg * m^2] until I get the real value-->
+  <xacro:property name="collision_r_sl" value="0.034"/> <!-- [m] -->
+  <xacro:property name="collision_l_sl" value="0.034"/> <!-- [m] -->
+  <xacro:property name="collision_x_offset_sl" value="0.0"/> <!-- [m] -->
+  <xacro:property name="collision_y_offset_sl" value="0.0"/> <!-- [m] -->
+  <xacro:property name="collision_z_offset_sl" value="-0.017"/> <!-- [m] -->
+
+</robot>

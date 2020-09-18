@@ -1,0 +1,6 @@
+device: "operator_screen"
+notification:
+  output_devices:
+    operator_screen:
+      topic: /notification
+      queue_size: 100
