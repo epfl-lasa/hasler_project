@@ -20,6 +20,10 @@ char const *Tools_Names[]{TOOL_NAMES};
 
 #define DELAY_SEC 3.0
 
+const float SAMPLING_TIME = 100; // 1.5 s
+
+const float Axis_Mod[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_roll,p_yaw};
+
 targetObject *targetObject::me = NULL;
 
 targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model model_, std::string name_)
@@ -33,28 +37,33 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   double decayRate_vib = 60.0;
   double frequency_vib = 32.6;
 
-  _positioningV.setZero();
-  _graspingV=0.0;
   _devErrorPenetration=0.0;
   _vibrationGrasping = 0.0;
   _impedanceGrasping = 0.0;
-  _hapticTorques->setZero();
+  for (size_t i = 0; i < NB_TOOLS; i++)
+  {
+    _hapticTorques[i].setZero();
+  }
+  
   _errorPenetration=0.0;
   _errorPenetration_prev=0.0;
   _precisionAng=0.0;
   _precisionPos=0.0;  
-    NB_TARGETS=0;
+  NB_TARGETS=0;
   
   _xTarget=0;  _nTarget=0;
 
+  
   for (unsigned int tool=0; tool<NB_TOOLS; tool++)
   {
     _toolTipPosition[tool].setZero();
+    _toolTipPositionPrev[tool].setZero();
     _trocarPosition[tool].setZero();
 
     _toolJointStates[tool].setZero();  
     _toolJointStates_prev[tool].setZero();  
     _toolTipQuaternion[tool].setIdentity();
+    _toolTipQuaternionPrev[tool].setIdentity();
     _trocarQuaternion[tool].setIdentity();
    
     _toolTipRotationMatrix[tool].setIdentity();
@@ -66,7 +75,49 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _flagFootBaseForceConnected[tool]=false;
     _flagToolJointsConnected[tool]=false;
 
+    _kpPosition[tool].setZero();
+    _kiPosition[tool].setZero();
+    _kdPosition[tool].setZero();
+    
+    _posCtrlRef[tool].setZero();
+    _posCtrlIn[tool].setZero();
+    _posCtrlOut[tool].setZero();
+
+    _kpGrasping[tool]=0.0;
+    _kiGrasping[tool]=0.0;
+    _kdGrasping[tool]=0.0;
+
+    _graspCtrlRef[tool]=0.0;
+    _graspCtrlIn[tool]=0.0;
+    _graspCtrlOut[tool]=0.0;
+
+    _aStateNext[tool]=A_POSITIONING;
+    _aState[tool]=A_GRASPING;
+
+
+    for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
+    {
+      _pidPosition[tool][i] = new PIDd(&_posCtrlIn[tool](i), &_posCtrlOut[tool](i), &_posCtrlRef[tool](i),
+      _kpPosition[tool](i), _kiPosition[tool](i), _kdPosition[tool](i), P_ON_E , DIRECT, 0.5);
+      _pidPosition[tool][i]->setMode(AUTOMATIC);
+      _pidPosition[tool][i]->setSampleTime(SAMPLING_TIME);
+    }
+    
+    _pidGrasping[tool] = new PIDd(&_graspCtrlIn[tool], &_graspCtrlOut[tool], &_graspCtrlRef[tool],
+    _kpGrasping[tool], _kiGrasping[tool], _kdGrasping[tool], P_ON_E , DIRECT, 0.0);
+    _pidGrasping[tool]->setMode(AUTOMATIC);
+    _pidGrasping[tool]->setSampleTime(SAMPLING_TIME);
+
+    _pidPosition[tool][p_x]->setOutputLimits(-5.0,5.0);
+    _pidPosition[tool][p_y]->setOutputLimits(-5.0,5.0);
+    _pidPosition[tool][p_pitch]->setOutputLimits(-0.5,0.5);
+    _pidPosition[tool][p_yaw-1]->setOutputLimits(-0.5,0.5);
+    
+    _pidGrasping[tool]->setOutputLimits(-0.5,0.5);
   }
+
+
+
     _flagRecordingStarted=false;
     _flagHapticGrasping=false;
 
@@ -132,7 +183,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _myTrackMode = ALL_TOOLS;
   }
 
-  _hState=H_STOPPING;
+
   _myStatus = TARGET_NOT_REACHED;
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
@@ -178,6 +229,9 @@ bool targetObject::init() //! Initialization of the node. Its datatype
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
       , 1, boost::bind(&targetObject::readToolState, this, _1, i),
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay()); 
+      _subPlatformJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/platform_joint_publisher/joint_states"
+      , 1, boost::bind(&targetObject::readPlatformState, this, _1, i),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());                  
     }
     break;
@@ -191,7 +245,10 @@ bool targetObject::init() //! Initialization of the node. Its datatype
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
      _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
       , 1, boost::bind(&targetObject::readToolState, this, _1, i),
-      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());               
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());    
+     _subPlatformJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/platform_joint_publisher/joint_states"
+      , 1, boost::bind(&targetObject::readPlatformState, this, _1, i),
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());             
     break;
   }
  
@@ -225,10 +282,16 @@ void targetObject::stopNode(int sig) { me->_stop = true;  }
 void targetObject::run() {
 
   while (!_stop) {
-    _hapticTorques->setZero();
+    for (size_t i = 0; i < NB_TOOLS; i++)
+    {
+      _hapticTorques[i].setZero();
+    }
+       
     readTFTool(_myTrackMode);
     readTFTrocar(_myTrackMode);
     if (true) {
+      estimateActionState(_myTrackMode);
+      doSharedControl(_myTrackMode);
       evaluateTarget(_myTrackMode);
       computeTargetObjectPose(_myTrackMode);
       writeTFTargetObject();
@@ -271,9 +334,10 @@ void targetObject::readTFTool(unsigned int n_) {
           original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
 
       if (_flagToolTipTFConnected[n_]) {
-
+        _toolTipPositionPrev[n_] = _toolTipPosition[n_];
         tf::vectorMsgToEigen(toolTipTransform_.transform.translation,
                              _toolTipPosition[n_]);
+        _toolTipQuaternionPrev[n_] = _toolTipQuaternion[n_];
         tf::quaternionMsgToEigen(toolTipTransform_.transform.rotation,
                                  _toolTipQuaternion[n_]);
         _toolTipRotationMatrix[n_] =
@@ -395,18 +459,24 @@ void targetObject::evaluateTarget(unsigned int n_)
       _impedanceGrasping = 0.0;
       if (_toolJointStates[n_](tool_wrist_open_angle)>25*DEG_TO_RAD)
       {
-        if (_devErrorPenetration<=0)
-        {
+        // if (_devErrorPenetration<=0)
+        // {
           _myVibrator->reset();
-        }
+        // }
       }
 
     }
-  if (_flagHapticGrasping)  
-  {
-    _hapticTorques[n_](p_roll) = Utils_math<double>::bound(-(_vibrationGrasping + _impedanceGrasping),-2.0, 2.0);
+
+    if (_flagHapticGrasping)  
+    {
+      _hapticTorques[n_](p_roll) = Utils_math<double>::bound(-(_vibrationGrasping + _impedanceGrasping) + _graspCtrlOut[n_],-2.0, 2.0);
+    }
+    else
+    {
+      _hapticTorques[n_](p_roll) = Utils_math<double>::bound(_graspCtrlOut[n_],-2.0, 2.0);
+    }
   }
-  }
+
 
   else{
         cout<<"first grasp"<<endl;
@@ -451,6 +521,99 @@ void targetObject::evaluateTarget(unsigned int n_)
     _stop=true;
   }
 
+}
+  
+  
+void targetObject::estimateActionState(unsigned int n_)
+{
+
+  if ( (30.0*DEG_TO_RAD - _toolJointStates[n_](tool_wrist_open_angle)) < 5.0*DEG_TO_RAD)
+  {
+    _aStateNext[n_] = A_POSITIONING;
+    //cout<<"positioning"<<endl;
+  }
+  else
+  {
+    _aStateNext[n_] = A_GRASPING;
+    //cout<<"grasping"<<endl;
+  }
+  
+  if (_aState[n_]!=_aStateNext[n_])
+  {
+    _posCtrlRef[n_] = _posCtrlIn[n_];
+    _aState[n_] = _aStateNext[n_];
+  }
+
+};
+
+void targetObject::doSharedControl(unsigned int n_)
+{
+
+  switch (_aState[n_])
+  {
+  case A_POSITIONING:
+    {
+      _kpPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kpPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      
+      _kpPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      
+      _kdPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+
+      _kdPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      
+      _kpGrasping[n_] = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      break;
+    }
+  
+  case A_GRASPING:
+    {
+      _kpPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kpPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      
+      _kpPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      
+      _kdPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+
+      _kdPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      
+      _kpGrasping[n_] = 0.0f * SCALE_GAINS_ANGULAR_POSITION; 
+      break;
+    }
+  }
+  
+  for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
+    {
+
+      _posCtrlIn[n_][i]=_platformJointStates[n_](Axis_Mod[i]);
+            
+      _pidPosition[n_][i]->setTunings(_kpPosition[n_](i),_kiPosition[n_](i),_kdPosition[n_](i));
+      _pidPosition[n_][i]->compute();
+
+       if (i<NB_CART_AXIS)
+      {
+        _hapticTorques[n_](i)=_posCtrlOut[n_](Axis_Mod[i]);
+      }
+      else
+      {
+        _hapticTorques[n_](p_yaw)=_posCtrlOut[n_](Axis_Mod[i]);
+      }
+    }
+
+    cout<<_posCtrlRef[n_](p_x)<<endl;
+    
+
+    
+    _graspCtrlIn[n_] = _toolJointStates[n_](tool_wrist_open_angle);
+    _pidGrasping[n_]->setTunings(_kpGrasping[n_],_kiGrasping[n_],_kdGrasping[n_]);
+    _pidGrasping[n_]->compute(); 
+    //_hapticTorques[n_](p_roll)=_graspCtrlOut[n_]; -> Added in the detect grasp condition in evaluate target routine
 }
 
 void targetObject::writeTFTargetObject(){
@@ -642,10 +805,19 @@ void targetObject::recordStatistics(){
   _flagToolJointsConnected[n_] = true;
 }
 
-  void targetObject::guessHumanState()
-  {
+  void targetObject::readPlatformState(const sensor_msgs::JointState::ConstPtr &msg, unsigned int n_) {
 
-  };
+  for (unsigned int i = 0; i < NB_TOOL_AXIS_FULL; i++) {
+    me->_platformJointStates_prev[n_](i) = me->_platformJointStates[n_](i);
+    me->_platformJointStates[n_](i) = msg->position[i];
+  }
+
+  if (!_flagPlatformJointsConnected[n_]) {
+    ROS_INFO("Joints received from platform %i", n_);
+  }
+  _flagPlatformJointsConnected[n_] = true;
+}
+
 
   void targetObject::readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg, unsigned int n_){
     _footBaseWorldForce[n_] = msg->wrench;

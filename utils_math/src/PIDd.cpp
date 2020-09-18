@@ -30,7 +30,7 @@ PIDd::PIDd(double* Input, double* Output, double* Setpoint,
 
     PIDd::setTunings(Kp, Ki, Kd, POn);
 
-   lastTime = ros::Time::now().toSec() - SampleTime*0.001;
+   lastTime = ros::Time::now().toSec() - SampleTimeSec;
    // lastTime = myTimer->read_us()-SampleTime;
 
     dInputFilter.setAlpha(filterGain);
@@ -73,7 +73,7 @@ bool PIDd::compute()
    ros::Time now = ros::Time::now();
    double timeChange = now.toSec() - lastTime;
 
-   if(timeChange>= (double) SampleTime*0.001)
+   if(timeChange>= SampleTimeSec)
    {
       /*Compute all the working error variables*/
       double input = *myInput;

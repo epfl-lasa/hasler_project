@@ -39,6 +39,10 @@
 #include <sstream> // std::stringstream
 
 #include "vibrator.h"
+#include "PIDd.h"
+
+
+const uint8_t NB_AXIS_POSITIONING = 4;
 
 using namespace std;
 using namespace Eigen;
@@ -69,7 +73,8 @@ enum Tool_Axis : size_t { TOOL_AXES };
 extern const char *Tool_Axis_Names[];
 
 #define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
-
+const float SCALE_GAINS_LINEAR_POSITION  = 1.0f;
+const float SCALE_GAINS_ANGULAR_POSITION = 1e-4f * RAD_TO_DEG;
 
 class targetObject {
 
@@ -78,24 +83,28 @@ private:
   static targetObject *me;
 
   enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_CHANGED};
-  enum Human_State {H_STOPPING, H_POSITIONING, H_GRASPING};
+  enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
 
   Target_Status _myStatus;
-  Human_State _hState;
+  
+  Action_State _aState[NB_TOOLS];
+  Action_State _aStateNext[NB_TOOLS];
 
   TrackMode _myTrackMode; 
   // Eigen and Geometry
 
   Eigen::Vector3d    _toolTipPosition[NB_TOOLS];
+  Eigen::Vector3d    _toolTipPositionPrev[NB_TOOLS];
   Eigen::Quaterniond _toolTipQuaternion[NB_TOOLS];
+  Eigen::Quaterniond _toolTipQuaternionPrev[NB_TOOLS];
   Eigen::Matrix3d    _toolTipRotationMatrix[NB_TOOLS];
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates[NB_TOOLS];
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates_prev[NB_TOOLS];
   geometry_msgs::Wrench _footBaseWorldForce[NB_TOOLS];
-  #define NB_AXIS_POSITIONING 4
-  Eigen::Matrix<double, NB_AXIS_POSITIONING ,1> _positioningV;
-  double _graspingV;
-
+ 
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates_prev[NB_TOOLS];
+  
   Eigen::Vector3d    _trocarPosition[NB_TOOLS];
   Eigen::Quaterniond _trocarQuaternion[NB_TOOLS];
   Eigen::Matrix3d    _trocarRotationMatrix[NB_TOOLS];
@@ -115,6 +124,28 @@ private:
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques[NB_TOOLS];
 
   double _precisionPos, _precisionAng;
+
+  
+  
+  PIDd* _pidPosition[NB_TOOLS][NB_AXIS_POSITIONING];
+  
+  PIDd* _pidGrasping[NB_TOOLS];
+
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kpPosition[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kiPosition[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kdPosition[NB_TOOLS];
+
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlRef[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlIn[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlOut[NB_TOOLS];
+
+  double _graspCtrlRef[NB_TOOLS];
+  double _graspCtrlIn[NB_TOOLS];
+  double _graspCtrlOut[NB_TOOLS];
+
+  double _kpGrasping[NB_TOOLS];
+  double _kiGrasping[NB_TOOLS];
+  double _kdGrasping[NB_TOOLS];
 
   // std variables
 
@@ -154,6 +185,7 @@ private:
 
 
   ros::Subscriber _subToolJointStates[NB_TOOLS];
+  ros::Subscriber _subPlatformJointStates[NB_TOOLS];
   ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
 
   vibrator* _myVibrator;
@@ -167,6 +199,7 @@ private:
   
   //! boolean variables
   bool _flagFootBaseForceConnected[NB_TOOLS];
+  bool  _flagPlatformJointsConnected[NB_TOOLS];
   bool  _flagToolJointsConnected[NB_TOOLS];
   bool  _flagToolTipTFConnected[NB_TOOLS];
   bool  _flagTrocarTFConnected[NB_TOOLS];
@@ -200,11 +233,15 @@ private:
   int _nTarget, _xTarget;
 
   void readToolState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
+  
+  void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
+
   void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg,unsigned int n_);
   void readTFTool(unsigned int n_);
-  void guessHumanState();
+  void estimateActionState(unsigned int n_);
   void readTFTrocar(unsigned int n_);
   void writeTFTargetObject();
+  void doSharedControl(unsigned int n_);
 
   void computeTargetObjectPose(unsigned int n_);
   void evaluateTarget(unsigned int n_);
