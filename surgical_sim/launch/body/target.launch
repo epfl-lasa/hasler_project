@@ -9,7 +9,8 @@
   <arg name="magnitudeVibration" default="240.0"/>
   <arg name="decayRateVibration" default="60.0"/>
   <arg name="frequencyVibration" default="32.6"/>
-  <arg name="hapticGrasp" default="true"/>
+  <arg name="hapticGrasp" default="false"/>
+  <arg name="sharedGrasp" default="false"/>
   
   
   
@@ -33,14 +34,15 @@
       <param name="targetName" value="$(arg target_name)"/>
       <param name="subjectID" value="$(arg subjectID)"/>
       <param name="hapticGraspOn" value="$(arg hapticGrasp)"/>
-      <param name="publish_frequency" type="double" value="200.0" />
+      <param name="sharedGraspOn" value="$(arg sharedGrasp)"/>
+      <param name="publish_frequency" type="double" value="300.0" />
       <remap from="robot_description" to="target_object_description"/>
       <remap from="joint_states" to="target_state_publisher/joint_states"/>
     </node> 
   </group>
   
   <node pkg="robot_state_publisher" type="robot_state_publisher"  name="target_object_state_publisher">
-    <param name="publish_frequency" type="double" value="200.0" />
+    <param name="publish_frequency" type="double" value="300.0" />
     <remap from="robot_description" to="target_object_description"/>
     <remap from="joint_states" to="target_state_publisher/joint_states"/>
   </node>

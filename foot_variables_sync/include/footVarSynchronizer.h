@@ -17,7 +17,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include <foot_variables_sync/machineStateParamsConfig.h>
 #include <custom_msgs/FootOutputMsg_v2.h>
-#include <custom_msgs/FootInputMsg_v3.h>
+#include <custom_msgs/FootInputMsg_v5.h>
 #include <custom_msgs/setStateSrv_v2.h>
 #include <custom_msgs/setControllerSrv.h>
 #include <geometry_msgs/WrenchStamped.h>
@@ -61,12 +61,12 @@ class footVarSynchronizer
     ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
     ros::Subscriber _subForceSensor;            // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subForceModified;            // geometry_msgs/WrenchStamped.h
-    ros::Subscriber _subLegGravCompTorques;           //custom_msgs/FootInputMsg_v3
+    ros::Subscriber _subLegGravCompTorques;           //custom_msgs/FootInputMsg_v5
     ros::Subscriber _subLegGravCompWrench;    // geometry_msgs/WrenchStamped.h
     
-    std::vector<ros::Subscriber> _subDesiredFootInput;            // FootInputMsg_v3
-    std::vector<custom_msgs::FootInputMsg_v3> _msgDesiredFootInput;
-    custom_msgs::FootInputMsg_v3 _msgTotalDesiredFootInput;
+    std::vector<ros::Subscriber> _subDesiredFootInput;            // FootInputMsg_v5
+    std::vector<custom_msgs::FootInputMsg_v5> _msgDesiredFootInput;
+    custom_msgs::FootInputMsg_v5 _msgTotalDesiredFootInput;
    
     // Publisher declaration
     ros::Publisher _pubFootInput;               // FootInputMsg_v2
@@ -75,7 +75,7 @@ class footVarSynchronizer
     ros::ServiceClient _clientSetController;
 
     // Subsciber and publisher messages declaration
-    custom_msgs::FootInputMsg_v3 _msgFootInput;
+    custom_msgs::FootInputMsg_v5 _msgFootInput;
     custom_msgs::FootOutputMsg_v2 _msgFootOutput;
     custom_msgs::FootOutputMsg_v2 _msgFootOutputPrev;
     custom_msgs::setStateSrv_v2 _srvSetState;
@@ -118,6 +118,7 @@ class footVarSynchronizer
             Eigen::Matrix<double,NB_AXIS,1> _ros_position;
             Eigen::Matrix<double,NB_AXIS,1> _ros_speed;
             Eigen::Matrix<double,NB_AXIS,1> _ros_effort;
+            Eigen::Matrix<double,NB_AXIS,1> _ros_filterAxisFS;
 
             Eigen::Matrix<double, NB_AXIS, 1> _leg_grav_comp_effort;
 
@@ -207,7 +208,7 @@ class footVarSynchronizer
 
     //bool allSubscribersOK();
     void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);
-    void sniffFootInput(const custom_msgs::FootInputMsg_v3::ConstPtr& msg); 
+    void sniffFootInput(const custom_msgs::FootInputMsg_v5::ConstPtr& msg); 
     
     void dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level);
     void changeParamCheck();
@@ -230,12 +231,12 @@ class footVarSynchronizer
     // void readForceSensor(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     // void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg);
-    void readLegGravCompFI(const custom_msgs::FootInputMsg_v3::ConstPtr &msg);
+    void readLegGravCompFI(const custom_msgs::FootInputMsg_v5::ConstPtr &msg);
     void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void correctForceForLegCompensation();
     void processAllPublishers();
 
-    void readDesiredFootInputs(const custom_msgs::FootInputMsg_v3::ConstPtr &msg, unsigned int n_);
+    void readDesiredFootInputs(const custom_msgs::FootInputMsg_v5::ConstPtr &msg, unsigned int n_);
 
 
     static void stopNode(int sig);

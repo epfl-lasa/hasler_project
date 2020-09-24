@@ -48,7 +48,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _toolJoints->data.setZero();
   _toolJointsInit = new KDL::JntArray(NB_TOOL_AXIS_RED);
   _toolJointsInit->data.setZero();
-  _toolJointsInit->data(tool_insertion) = 0.05;
+  _toolJointsInit->data(tool_insertion) = 0.0;
 
   _legJointLims[L_MIN] = new KDL::JntArray(NB_LEG_AXIS);
   _legJointLims[L_MAX] = new KDL::JntArray(NB_LEG_AXIS);
@@ -342,6 +342,16 @@ void surgicalTool::performInverseKinematics(){
 
   int ret = _myPosIkSolver_wrist->CartToJnt(*me->_toolJointsInit,_desiredTargetFrame,*me->_toolJoints);
   *_toolJointsInit = *_toolJoints;
+
+  if  (_toolJoints->data(tool_pitch)>89.0*DEG_TO_RAD || _toolJoints->data(tool_roll)>89.0*DEG_TO_RAD)
+    {
+      _toolJoints->data.setZero();
+      _toolJoints->data(tool_insertion)=0.05;
+      *_toolJointsInit = *_toolJoints;
+      //_stop=true;
+      ROS_ERROR_ONCE("Please center the platform and launch the scenario again");
+    }
+
 
   _toolJoints->data(tool_yaw) = -Utils_math<double>::map( (_platformJoints(p_yaw) - _platformJointsOffset(p_yaw)) , 
                                     -35*DEG_TO_RAD, 35*DEG_TO_RAD, 

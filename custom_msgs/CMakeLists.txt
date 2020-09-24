@@ -19,6 +19,7 @@ add_message_files(
 	FootInputMsg.msg
   FootInputMsg_v2.msg
   FootInputMsg_v3.msg
+  FootInputMsg_v5.msg
 	FootOutputMsg.msg
   FootOutputMsg_v2.msg
 	FeetOutputMsg.msg

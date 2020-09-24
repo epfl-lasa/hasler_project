@@ -9,6 +9,8 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 // #include "boost/date_time/gregorian_types.hpp"
 
+
+
 using namespace boost::gregorian;
 #define ListofToolAxes(enumeration, names) names,
 char const *Tool_Axis_Names[]{TOOL_AXES};
@@ -20,9 +22,11 @@ char const *Tools_Names[]{TOOL_NAMES};
 
 #define DELAY_SEC 3.0
 
-const float SAMPLING_TIME = 100; // 1.5 s
+const float SAMPLING_TIME = 3000; // 0.5 s
 
-const float Axis_Mod[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_roll,p_yaw};
+const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
+
+const int Axis_Pos[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_yaw,p_roll};
 
 targetObject *targetObject::me = NULL;
 
@@ -61,7 +65,9 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _trocarPosition[tool].setZero();
 
     _toolJointStates[tool].setZero();  
-    _toolJointStates_prev[tool].setZero();  
+    _toolJointStates_prev[tool].setZero(); 
+    _platformJointStates[tool].setZero();
+    _platformJointStates_prev[tool].setZero(); 
     _toolTipQuaternion[tool].setIdentity();
     _toolTipQuaternionPrev[tool].setIdentity();
     _trocarQuaternion[tool].setIdentity();
@@ -70,6 +76,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _trocarRotationMatrix[tool].setIdentity();
   
     _flagTargetReached[tool] = false;
+    _flagTargetReachedAndGrasped[tool] = false;
     _flagTrocarTFConnected[tool] = false;
     _flagToolTipTFConnected[tool] = false;
     _flagFootBaseForceConnected[tool]=false;
@@ -81,6 +88,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     
     _posCtrlRef[tool].setZero();
     _posCtrlIn[tool].setZero();
+    _posCtrlInPrev[tool].setZero();
     _posCtrlOut[tool].setZero();
 
     _kpGrasping[tool]=0.0;
@@ -95,23 +103,23 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _aState[tool]=A_GRASPING;
 
 
-    for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
-    {
+   for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
+   {
       _pidPosition[tool][i] = new PIDd(&_posCtrlIn[tool](i), &_posCtrlOut[tool](i), &_posCtrlRef[tool](i),
       _kpPosition[tool](i), _kiPosition[tool](i), _kdPosition[tool](i), P_ON_E , DIRECT, 0.5);
       _pidPosition[tool][i]->setMode(AUTOMATIC);
       _pidPosition[tool][i]->setSampleTime(SAMPLING_TIME);
-    }
+   }
     
     _pidGrasping[tool] = new PIDd(&_graspCtrlIn[tool], &_graspCtrlOut[tool], &_graspCtrlRef[tool],
-    _kpGrasping[tool], _kiGrasping[tool], _kdGrasping[tool], P_ON_E , DIRECT, 0.0);
+    _kpGrasping[tool], _kiGrasping[tool], _kdGrasping[tool], P_ON_E , DIRECT, 0.5);
     _pidGrasping[tool]->setMode(AUTOMATIC);
     _pidGrasping[tool]->setSampleTime(SAMPLING_TIME);
 
-    _pidPosition[tool][p_x]->setOutputLimits(-5.0,5.0);
-    _pidPosition[tool][p_y]->setOutputLimits(-5.0,5.0);
-    _pidPosition[tool][p_pitch]->setOutputLimits(-0.5,0.5);
-    _pidPosition[tool][p_yaw-1]->setOutputLimits(-0.5,0.5);
+    _pidPosition[tool][Axis_Mod[p_x]]->setOutputLimits(-15.0,15.0);
+    _pidPosition[tool][Axis_Mod[p_y]]->setOutputLimits(-15.0,15.0);
+    _pidPosition[tool][Axis_Mod[p_pitch]]->setOutputLimits(-2.0,2.0);
+    _pidPosition[tool][Axis_Mod[p_yaw]]->setOutputLimits(-2.0,2.0);
     
     _pidGrasping[tool]->setOutputLimits(-0.5,0.5);
   }
@@ -120,6 +128,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
 
     _flagRecordingStarted=false;
     _flagHapticGrasping=false;
+    _flagSharedGrasping=false;
 
   _myPosition.setZero();
   _myQuaternion.setIdentity();
@@ -146,6 +155,12 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   { 
       ROS_ERROR("No indicaton of the subject ID (e.g. sXX) was done"); 
       _flagHapticGrasping = false;
+  }
+  
+     if (!_n.getParam("sharedGraspOn", _flagSharedGrasping))
+  { 
+      ROS_ERROR("No indicaton of the subject ID (e.g. sXX) was done"); 
+      _flagSharedGrasping = false;
   }
   
 
@@ -223,15 +238,15 @@ bool targetObject::init() //! Initialization of the node. Its datatype
     for (unsigned int i=0; i<NB_TOOLS; i++)
     {
       _hapticTorques[i].setZero();
-      _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v3>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
+      _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
       _subForceFootRestWorld[i] = _n.subscribe<geometry_msgs::WrenchStamped>(
                   "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1, i),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
-      , 1, boost::bind(&targetObject::readToolState, this, _1, i),
+      , 10, boost::bind(&targetObject::readToolState, this, _1, i),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay()); 
       _subPlatformJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/platform_joint_publisher/joint_states"
-      , 1, boost::bind(&targetObject::readPlatformState, this, _1, i),
+      , 10, boost::bind(&targetObject::readPlatformState, this, _1, i),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());                  
     }
     break;
@@ -239,7 +254,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   default:
     unsigned int i = 0;
     _hapticTorques[i].setZero();
-    _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v3>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
+    _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
     _subForceFootRestWorld[i] = _n.subscribe<geometry_msgs::WrenchStamped>(
                   "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1, i),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -291,7 +306,10 @@ void targetObject::run() {
     readTFTrocar(_myTrackMode);
     if (true) {
       estimateActionState(_myTrackMode);
-      doSharedControl(_myTrackMode);
+      if (_flagSharedGrasping)
+      {
+        doSharedControl(_myTrackMode);
+      }
       evaluateTarget(_myTrackMode);
       computeTargetObjectPose(_myTrackMode);
       writeTFTargetObject();
@@ -438,71 +456,93 @@ void targetObject::evaluateTarget(unsigned int n_)
   double errorAng = 1.0-cos(_precisionAng);
   //std::cout << rotError << endl;
   
-  bool grasped_target = _toolJointStates[n_](tool_wrist_open_angle)<20*DEG_TO_RAD;
+  bool grasped_target = _toolJointStates[n_](tool_wrist_open_angle)<17.0*DEG_TO_RAD;
   _errorPenetration_prev = _errorPenetration;
-  _errorPenetration = 20.0 * DEG_TO_RAD - _toolJointStates[n_](tool_wrist_open_angle);
+  _errorPenetration = 17.0 * DEG_TO_RAD - _toolJointStates[n_](tool_wrist_open_angle);
   _devErrorPenetration = (_errorPenetration - _errorPenetration_prev) * _dt;
   
   
 
-  if (count != 0)
-  {
-    if (_precisionPos < 0.01 && grasped_target){
-      _myVibrator->start();
-      //cout<<"target_grasped"<<endl;
-          //cout<<_devErrorPenetration<<endl;
-        _impedanceGrasping =   Utils_math<double>::bound(3.0 * _errorPenetration - 1.0 * _devErrorPenetration,-2.0f,2.0f); 
+  // if (count != 0)
+  // {
+  //   if (_myStatus == TARGET_GRASPED){
+  //     _myVibrator->start();
+  //     //cout<<"target_grasped"<<endl;
+  //         //cout<<_devErrorPenetration<<endl;
+  //       _impedanceGrasping =   Utils_math<double>::bound(3.0 * _errorPenetration - 1.0 * _devErrorPenetration,-2.0f,2.0f); 
           
-      }
-    else
-    {
-      _impedanceGrasping = 0.0;
-      if (_toolJointStates[n_](tool_wrist_open_angle)>25*DEG_TO_RAD)
-      {
-        // if (_devErrorPenetration<=0)
-        // {
-          _myVibrator->reset();
-        // }
-      }
+  //     }
+  //   else
+  //   {
+  //     _impedanceGrasping = 0.0;
+  //     if (_toolJointStates[n_](tool_wrist_open_angle)>25*DEG_TO_RAD)
+  //     {
+  //       // if (_devErrorPenetration<=0)
+  //       // {
+  //         _myVibrator->reset();
+  //       // }
+  //     }
 
-    }
+  //   }
 
-    if (_flagHapticGrasping)  
-    {
-      _hapticTorques[n_](p_roll) = Utils_math<double>::bound(-(_vibrationGrasping + _impedanceGrasping) + _graspCtrlOut[n_],-2.0, 2.0);
-    }
-    else
-    {
-      _hapticTorques[n_](p_roll) = Utils_math<double>::bound(_graspCtrlOut[n_],-2.0, 2.0);
-    }
-  }
-
-
-  else{
-        cout<<"first grasp"<<endl;
-      }
-  count++;
+  //   if (_flagHapticGrasping)  
+  //   {
+  //     _hapticTorques[n_](p_roll) = Utils_math<double>::bound(-(_vibrationGrasping + _impedanceGrasping) + _graspCtrlOut[n_],-2.0, 2.0);
+  //   }
+  //   else
+  //   {
+  //     _hapticTorques[n_](p_roll) = Utils_math<double>::bound(_graspCtrlOut[n_],-2.0, 2.0);
+  //   }
+  // }
 
 
+  // else{
+  //       cout<<"first grasp"<<endl;
+  //     }
+  // count++;
 
-  if (_precisionPos < 0.01 && errorAng < (1-cos(5.0*DEG_TO_RAD)) && grasped_target) {
+
+
+  if (_precisionPos < 0.01 && errorAng < (1-cos(5.0*DEG_TO_RAD))) {
     if (!_flagTargetReached[n_])
     {
-      _startDelayForCorrection = ros::Time::now(); 
       _flagTargetReached[n_]=true;
-      publishTargetReachedSphere(visualization_msgs::Marker::ADD);
+      publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
       _myStatus = TARGET_REACHED;
     }
+    if (_flagTargetReached && grasped_target)
+    {
+      if (!_flagTargetReachedAndGrasped[n_])
+      {
+        _startDelayForCorrection = ros::Time::now(); 
+        _flagTargetReachedAndGrasped[n_]=true;
+        publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,3.0);
+        _myStatus = TARGET_GRASPED;
+      }
+    }
+    else
+    {
+      if (_flagTargetReachedAndGrasped[n_])
+      {
+        publishTargetReachedSphere(visualization_msgs::Marker::DELETE,NONE,0.0);
+        _flagTargetReachedAndGrasped[n_]=false;
+      }
+       _myStatus = TARGET_REACHED;
+    }
+    
   }
   else
   {
-    publishTargetReachedSphere(visualization_msgs::Marker::DELETE);
-    _flagTargetReached[n_]=false;
+    if (_flagTargetReached)
+    {
+      publishTargetReachedSphere(visualization_msgs::Marker::DELETE,NONE,0.0);
+      _flagTargetReached[n_]=false;
+    }
     _myStatus = TARGET_NOT_REACHED;
   }
   
   
-  if (_flagTargetReached[n_] && _nTarget < NB_TARGETS)
+  if (_myStatus==TARGET_GRASPED && _nTarget < NB_TARGETS)
   {
     if ((ros::Time::now() - _startDelayForCorrection).toSec() > DELAY_SEC)
     { 
@@ -518,13 +558,14 @@ void targetObject::evaluateTarget(unsigned int n_)
   if (_nTarget>=NB_TARGETS)
   {
     ROS_INFO("Protocol finished");
+    publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
     _stop=true;
   }
 
 }
-  
-  
 void targetObject::estimateActionState(unsigned int n_)
+  
+  
 {
 
   if ( (30.0*DEG_TO_RAD - _toolJointStates[n_](tool_wrist_open_angle)) < 5.0*DEG_TO_RAD)
@@ -553,66 +594,67 @@ void targetObject::doSharedControl(unsigned int n_)
   {
   case A_POSITIONING:
     {
-      _kpPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
-      _kpPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
-      
-      _kpPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      _kpPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      
-      _kdPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
-      _kdPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _pidPosition[n_][Axis_Mod[p_x]]->reset();
+      _pidPosition[n_][Axis_Mod[p_y]]->reset();
+      _pidPosition[n_][Axis_Mod[p_pitch]]->reset();
+      _pidPosition[n_][Axis_Mod[p_yaw]]->reset();
 
-      _kdPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      _kdPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition[n_](Axis_Mod[p_x]) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kpPosition[n_](Axis_Mod[p_y]) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      
+      _kpPosition[n_](Axis_Mod[p_pitch]) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition[n_](Axis_Mod[p_yaw]) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      
+      _kdPosition[n_](Axis_Mod[p_x]) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_y]) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+
+      _kdPosition[n_](Axis_Mod[p_pitch]) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_yaw]) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
       
       _kpGrasping[n_] = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdGrasping[n_] = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
       break;
     }
   
   case A_GRASPING:
     {
-      _kpPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
-      _kpPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _pidGrasping[n_]->reset();
+      _kpPosition[n_](Axis_Mod[p_x]) = 1000.0 * SCALE_GAINS_LINEAR_POSITION;
+      _kpPosition[n_](Axis_Mod[p_y]) = 1000.0 * SCALE_GAINS_LINEAR_POSITION;
       
-      _kpPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      _kpPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition[n_](Axis_Mod[p_pitch]) = 1000.0 * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition[n_](Axis_Mod[p_yaw]) = 1000.0 * SCALE_GAINS_ANGULAR_POSITION;
       
-      _kdPosition[n_](p_x) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
-      _kdPosition[n_](p_y) = 0.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_x]) = 3000.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_y]) = 2000.0f * SCALE_GAINS_LINEAR_POSITION;
 
-      _kdPosition[n_](p_pitch) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      _kdPosition[n_](p_yaw-1) = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_pitch]) = 2000.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_yaw]) = 6000.0f * SCALE_GAINS_ANGULAR_POSITION;
       
       _kpGrasping[n_] = 0.0f * SCALE_GAINS_ANGULAR_POSITION; 
       break;
     }
   }
-  
+  _posCtrlInPrev[n_] =  _posCtrlIn[n_];
   for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
     {
-
-      _posCtrlIn[n_][i]=_platformJointStates[n_](Axis_Mod[i]);
+      
+      _posCtrlIn[n_](i)=_platformJointStates[n_](Axis_Mod[i]);
             
       _pidPosition[n_][i]->setTunings(_kpPosition[n_](i),_kiPosition[n_](i),_kdPosition[n_](i));
-      _pidPosition[n_][i]->compute();
+      _pidPosition[n_][i]->compute(ros::Time::now());
+        // _posCtrlOut[n_](p_x) = Utils_math<double>::bound(_kpPosition[n_](p_x) * (_posCtrlRef[n_](p_x) - _posCtrlIn[n_](p_x)) - _kdPosition[n_](p_x) * (_posCtrlIn[n_](p_x) - _posCtrlInPrev[n_](p_x)) *_dt ,-5.0,5.0);    
+      _hapticTorques[n_](Axis_Pos[i])=_posCtrlOut[n_](i);    
 
-       if (i<NB_CART_AXIS)
-      {
-        _hapticTorques[n_](i)=_posCtrlOut[n_](Axis_Mod[i]);
-      }
-      else
-      {
-        _hapticTorques[n_](p_yaw)=_posCtrlOut[n_](Axis_Mod[i]);
-      }
     }
 
-    cout<<_posCtrlRef[n_](p_x)<<endl;
+    //cout<<_posCtrlRef[n_](p_x)<<endl;
     
 
     
-    _graspCtrlIn[n_] = _toolJointStates[n_](tool_wrist_open_angle);
+    _graspCtrlIn[n_] = _toolJointStates[n_](p_roll);
     _pidGrasping[n_]->setTunings(_kpGrasping[n_],_kiGrasping[n_],_kdGrasping[n_]);
-    _pidGrasping[n_]->compute(); 
+    //_pidGrasping[n_]->compute(ros::Time::now()); 
     //_hapticTorques[n_](p_roll)=_graspCtrlOut[n_]; -> Added in the detect grasp condition in evaluate target routine
 }
 
@@ -693,7 +735,7 @@ std::vector<std::pair<std::string, std::vector<float>>> targetObject::readTarget
 }
 
 
-void targetObject::publishTargetReachedSphere(int32_t action_){
+void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color_, double delay_){
   
   _msgTargetReachedSphere.header.frame_id = "target_object_link";
   _msgTargetReachedSphere.header.stamp = ros::Time::now();
@@ -712,10 +754,35 @@ void targetObject::publishTargetReachedSphere(int32_t action_){
   _msgTargetReachedSphere.scale.y = 0.05;
   _msgTargetReachedSphere.scale.z = 0.05;
   _msgTargetReachedSphere.color.a = 0.2; // Don't forget to set the alpha!
-  _msgTargetReachedSphere.color.r = 1;
-  _msgTargetReachedSphere.color.g = 1;
-  _msgTargetReachedSphere.color.b = 0;
-  _msgTargetReachedSphere.lifetime= ros::Duration(DELAY_SEC);
+  switch (color_)
+  {
+  case YELLOW:
+  {
+    _msgTargetReachedSphere.color.r = 1;
+    _msgTargetReachedSphere.color.g = 1;
+    _msgTargetReachedSphere.color.b = 0;  
+    break;
+  }
+  case RED:
+  {
+    _msgTargetReachedSphere.color.r = 1;
+    _msgTargetReachedSphere.color.g = 0;
+    _msgTargetReachedSphere.color.b = 0;  
+    break;
+  }
+  case CYAN:
+  {
+    _msgTargetReachedSphere.color.r = 0;
+    _msgTargetReachedSphere.color.g = 1;
+    _msgTargetReachedSphere.color.b = 1;  
+    break;
+  }
+  default:
+  {
+    break;
+  }
+  }
+  _msgTargetReachedSphere.lifetime= ros::Duration(delay_);
   // only if using a MESH_RESOURCE marker type:
   // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
   _pubTargetReachedSphere.publish(_msgTargetReachedSphere);
@@ -807,7 +874,7 @@ void targetObject::recordStatistics(){
 
   void targetObject::readPlatformState(const sensor_msgs::JointState::ConstPtr &msg, unsigned int n_) {
 
-  for (unsigned int i = 0; i < NB_TOOL_AXIS_FULL; i++) {
+  for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
     me->_platformJointStates_prev[n_](i) = me->_platformJointStates[n_](i);
     me->_platformJointStates[n_](i) = msg->position[i];
   }
@@ -843,12 +910,25 @@ void targetObject::publishFootInput(int n_)
     _msgFootInput[n_].ros_position.fill(0.0f);
     _msgFootInput[n_].ros_forceSensor.fill(0.0f);
     _msgFootInput[n_].ros_speed.fill(0.0f);
+    _msgFootInput[n_].ros_filterAxisForce.fill(1.0f); 
 
     for (unsigned int i=0; i<NB_PLATFORM_AXIS; i++)
     {
       _msgFootInput[n_].ros_effort[i] =  _hapticTorques[n_](i);
     }
-
+    if (_flagSharedGrasping)
+    {
+      if (_aState[n_] == A_GRASPING)
+      {
+        _msgFootInput[n_].ros_filterAxisForce.fill(0.0f); 
+        _msgFootInput[n_].ros_filterAxisForce[p_roll] = 1.0f;
+      }
+      if (_aState[n_] == A_POSITIONING)
+      {
+        _msgFootInput[n_].ros_filterAxisForce.fill(1.0f); 
+        //_msgFootInput[n_].ros_filterAxisForce[p_roll] = 0.0f;
+      }
+    }
     _pubFootInput[n_].publish(_msgFootInput[n_]);
   }
   

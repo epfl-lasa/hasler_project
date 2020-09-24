@@ -7,7 +7,7 @@ int main(int argc, char **argv) {
 
   ros::init(argc, argv, "targetSpawner");
 
-  double frequency = 500.0f;
+  double frequency = 300.0f;
 
   ros::NodeHandle nh_("~");
   std:: string target_name;

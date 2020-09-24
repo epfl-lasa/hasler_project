@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     return -1;
   }
 
-  float frequency = 500.0f;
+  float frequency = 400.0f;
   footVarSynchronizer footVarSynchronizer(nh_,frequency,platform_id_);  
 
   

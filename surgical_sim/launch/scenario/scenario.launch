@@ -10,7 +10,8 @@
  <arg name="magnitudeVibration" default="-100000.0"/>
  <arg name="decayRateVibration" default="3.0"/> 
  <arg name="frequencyVibration" default="50.0"/>
- <arg name="hapticGrasp" default="true"/>
+ <arg name="hapticGrasp" default="false"/>
+ <arg name="sharedGrasp" default="false"/>
 
 
  <include file="$(find surgical_sim)/launch/body/body.launch">
@@ -32,6 +33,7 @@
     <arg name="rviz" value="false"/>
     <arg name="virtual_target" value="false"/> 
     <arg name="hapticGrasp" value="$(arg hapticGrasp)"/>   
+    <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>   
     <arg name="target_name" value="needle"/>
     <arg name="tracking_mode" value="right"/>
     <arg name="subjectID" value="$(arg subjectID)"/>

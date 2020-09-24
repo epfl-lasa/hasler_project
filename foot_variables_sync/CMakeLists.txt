@@ -21,7 +21,6 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 
 #Generate dynamic_reconfigure parameters
 generate_dynamic_reconfigure_options(cfg/machineStateParams.cfg)
-
 #generate_dynamic_reconfigure_options(cfg/position_control_params.cfg)
 #generate_dynamic_reconfigure_options(cfg/speed_control_params.cfg)
 

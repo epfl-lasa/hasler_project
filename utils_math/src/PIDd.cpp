@@ -67,10 +67,10 @@ PIDd::~PIDd()
  *   pidd Output needs to be computed.  returns true when the output is computed,
  *   false when nothing has been done.
  **********************************************************************************/
-bool PIDd::compute()
+bool PIDd::compute(ros::Time now_)
 {
    if(!inAuto) return false;
-   ros::Time now = ros::Time::now();
+   ros::Time now = now_;
    double timeChange = now.toSec() - lastTime;
 
    if(timeChange>= SampleTimeSec)

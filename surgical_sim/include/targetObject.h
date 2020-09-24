@@ -22,7 +22,7 @@
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 
-#include "custom_msgs/FootInputMsg_v3.h"
+#include "custom_msgs/FootInputMsg_v5.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
 #include <dynamic_reconfigure/server.h>
@@ -82,7 +82,8 @@ private:
   
   static targetObject *me;
 
-  enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_CHANGED};
+  enum Marker_Color {NONE, RED, YELLOW, CYAN};
+  enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_GRASPED, TARGET_CHANGED};
   enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
 
   Target_Status _myStatus;
@@ -126,21 +127,21 @@ private:
   double _precisionPos, _precisionAng;
 
   
-  
-  PIDd* _pidPosition[NB_TOOLS][NB_AXIS_POSITIONING];
-  
-  PIDd* _pidGrasping[NB_TOOLS];
-
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kpPosition[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kiPosition[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kdPosition[NB_TOOLS];
 
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlRef[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlIn[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlInPrev[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlOut[NB_TOOLS];
+
+  PIDd* _pidPosition[NB_TOOLS][NB_AXIS_POSITIONING];
+  PIDd* _pidGrasping[NB_TOOLS];
 
   double _graspCtrlRef[NB_TOOLS];
   double _graspCtrlIn[NB_TOOLS];
+  double _graspCtrlInPrev[NB_TOOLS];
   double _graspCtrlOut[NB_TOOLS];
 
   double _kpGrasping[NB_TOOLS];
@@ -179,7 +180,8 @@ private:
   ros::Publisher _pubTargetReachedSphere;
   ros::Publisher _pubFootInput[NB_TOOLS];
 
-  custom_msgs::FootInputMsg_v3 _msgFootInput[NB_TOOLS];
+
+  custom_msgs::FootInputMsg_v5 _msgFootInput[NB_TOOLS];
 
   visualization_msgs::Marker _msgTargetReachedSphere;
 
@@ -204,8 +206,10 @@ private:
   bool  _flagToolTipTFConnected[NB_TOOLS];
   bool  _flagTrocarTFConnected[NB_TOOLS];
   bool  _flagTargetReached[NB_TOOLS];
+  bool  _flagTargetReachedAndGrasped[NB_TOOLS];
   bool  _flagRecordingStarted;
   bool _flagHapticGrasping;
+  bool _flagSharedGrasping;
 
   bool  _stop;
 
@@ -246,7 +250,7 @@ private:
   void computeTargetObjectPose(unsigned int n_);
   void evaluateTarget(unsigned int n_);
 
-  void publishTargetReachedSphere(int32_t action_);
+  void publishTargetReachedSphere(int32_t action_, Marker_Color color_, double delay_);
   void publishFootInput(int n_);
   void recordStatistics();
 

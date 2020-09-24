@@ -30,7 +30,7 @@ class PIDd
     
     void setMode(int Mode);               // * sets PIDd to either Manual (0) or Auto (non-0)
 
-    bool compute();                       // * performs the PIDd calculation.  it should be
+    bool compute(ros::Time now_);                       // * performs the PIDd calculation.  it should be
                                           //   called every time loop() cycles. ON/OFF and
                                           //   calculation frequency can be set using SetMode
                                           //   SetSampleTime respectively
