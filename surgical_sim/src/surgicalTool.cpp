@@ -357,7 +357,11 @@ void surgicalTool::performInverseKinematics(){
                                     -35*DEG_TO_RAD, 35*DEG_TO_RAD, 
                                     _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw));
 
-  _toolJointsAll(tool_wrist_open_angle) =  Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
+  //_toolJointsAll(tool_wrist_open_angle) = _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle) - Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
+  //                                        -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
+  //                                         _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
+
+  _toolJointsAll(tool_wrist_open_angle) = Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
                                           -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
                                            _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
   

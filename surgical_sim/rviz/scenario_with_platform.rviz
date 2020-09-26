@@ -537,7 +537,7 @@ Visualization Manager:
     Background Color: 48; 48; 48
     Default Light: true
     Fixed Frame: world
-    Frame Rate: 30
+    Frame Rate: 70
   Name: root
   Tools:
     - Class: rviz/Interact
@@ -557,25 +557,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.345624328
+      Distance: 0.659114718
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.0275004487
-        Y: 0.0571323931
-        Z: -0.113314763
+        X: -0.0180502534
+        Y: 0.156068996
+        Z: -0.445489764
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.849760413
+      Pitch: 1.20476007
       Target Frame: right/tool_tip_link_ee
       Value: Orbit (rviz)
-      Yaw: 4.73040485
+      Yaw: 4.80040073
     Saved:
       - Class: rviz/Orbit
         Distance: 1.1899302

@@ -83,7 +83,7 @@ private:
   static targetObject *me;
 
   enum Marker_Color {NONE, RED, YELLOW, CYAN};
-  enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_GRASPED, TARGET_CHANGED};
+  enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED_AND_GRASPED, TARGET_CHANGED};
   enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
 
   Target_Status _myStatus;
@@ -206,7 +206,7 @@ private:
   bool  _flagToolTipTFConnected[NB_TOOLS];
   bool  _flagTrocarTFConnected[NB_TOOLS];
   bool  _flagTargetReached[NB_TOOLS];
-  bool  _flagTargetReachedAndGrasped[NB_TOOLS];
+  bool  _flagTargetGrasped[NB_TOOLS];
   bool  _flagRecordingStarted;
   bool _flagHapticGrasping;
   bool _flagSharedGrasping;

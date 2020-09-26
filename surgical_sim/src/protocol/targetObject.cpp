@@ -22,7 +22,7 @@ char const *Tools_Names[]{TOOL_NAMES};
 
 #define DELAY_SEC 3.0
 
-const float SAMPLING_TIME = 3000; // 0.5 s
+const float SAMPLING_TIME = 5000; // 0.5 s
 
 const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 
@@ -76,7 +76,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _trocarRotationMatrix[tool].setIdentity();
   
     _flagTargetReached[tool] = false;
-    _flagTargetReachedAndGrasped[tool] = false;
+    _flagTargetGrasped[tool] = false;
     _flagTrocarTFConnected[tool] = false;
     _flagToolTipTFConnected[tool] = false;
     _flagFootBaseForceConnected[tool]=false;
@@ -116,8 +116,8 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _pidGrasping[tool]->setMode(AUTOMATIC);
     _pidGrasping[tool]->setSampleTime(SAMPLING_TIME);
 
-    _pidPosition[tool][Axis_Mod[p_x]]->setOutputLimits(-15.0,15.0);
-    _pidPosition[tool][Axis_Mod[p_y]]->setOutputLimits(-15.0,15.0);
+    _pidPosition[tool][Axis_Mod[p_x]]->setOutputLimits(-17.0,17.0);
+    _pidPosition[tool][Axis_Mod[p_y]]->setOutputLimits(-17.0,17.0);
     _pidPosition[tool][Axis_Mod[p_pitch]]->setOutputLimits(-2.0,2.0);
     _pidPosition[tool][Axis_Mod[p_yaw]]->setOutputLimits(-2.0,2.0);
     
@@ -455,14 +455,12 @@ void targetObject::evaluateTarget(unsigned int n_)
   _precisionAng = _myQuaternion.angularDistance(_toolTipQuaternion[n_]);
   double errorAng = 1.0-cos(_precisionAng);
   //std::cout << rotError << endl;
-  
-  bool grasped_target = _toolJointStates[n_](tool_wrist_open_angle)<17.0*DEG_TO_RAD;
+  _flagTargetGrasped[n_]= _toolJointStates[n_](tool_wrist_open_angle)<17.0*DEG_TO_RAD;
+  //std::cout<<_flagTargetGrasped[n_]<<std::endl;
   _errorPenetration_prev = _errorPenetration;
   _errorPenetration = 17.0 * DEG_TO_RAD - _toolJointStates[n_](tool_wrist_open_angle);
   _devErrorPenetration = (_errorPenetration - _errorPenetration_prev) * _dt;
   
-  
-
   // if (count != 0)
   // {
   //   if (_myStatus == TARGET_GRASPED){
@@ -501,48 +499,36 @@ void targetObject::evaluateTarget(unsigned int n_)
   //     }
   // count++;
 
-
-
-  if (_precisionPos < 0.01 && errorAng < (1-cos(5.0*DEG_TO_RAD))) {
-    if (!_flagTargetReached[n_])
-    {
-      _flagTargetReached[n_]=true;
-      publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
-      _myStatus = TARGET_REACHED;
-    }
-    if (_flagTargetReached && grasped_target)
-    {
-      if (!_flagTargetReachedAndGrasped[n_])
-      {
-        _startDelayForCorrection = ros::Time::now(); 
-        _flagTargetReachedAndGrasped[n_]=true;
-        publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,3.0);
-        _myStatus = TARGET_GRASPED;
-      }
-    }
-    else
-    {
-      if (_flagTargetReachedAndGrasped[n_])
-      {
-        publishTargetReachedSphere(visualization_msgs::Marker::DELETE,NONE,0.0);
-        _flagTargetReachedAndGrasped[n_]=false;
-      }
-       _myStatus = TARGET_REACHED;
-    }
-    
+  if (_precisionPos < 0.01 && errorAng < (1-cos(5.0*DEG_TO_RAD)))
+  {
+    _flagTargetReached[n_]=true;
+    publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);   
   }
   else
   {
-    if (_flagTargetReached)
+    _flagTargetReached[n_]=false;
+    publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+  }
+
+  if (_flagTargetGrasped[n_] && _flagTargetReached[n_])
+  {
+    publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
+    if (_myStatus == TARGET_NOT_REACHED)
     {
-      publishTargetReachedSphere(visualization_msgs::Marker::DELETE,NONE,0.0);
-      _flagTargetReached[n_]=false;
+      _startDelayForCorrection = ros::Time::now(); 
+    }
+    _myStatus=TARGET_REACHED_AND_GRASPED;
+  }    
+  else
+  {
+    if (_myStatus==TARGET_REACHED_AND_GRASPED)
+    {
+      publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
     }
     _myStatus = TARGET_NOT_REACHED;
   }
-  
-  
-  if (_myStatus==TARGET_GRASPED && _nTarget < NB_TARGETS)
+     
+  if (_myStatus==TARGET_REACHED_AND_GRASPED && _nTarget < NB_TARGETS)
   {
     if ((ros::Time::now() - _startDelayForCorrection).toSec() > DELAY_SEC)
     { 
@@ -552,6 +538,7 @@ void targetObject::evaluateTarget(unsigned int n_)
     _startDelayForCorrection=ros::Time::now();
     ROS_INFO("New target generated!. # %i",_nTarget);
     _myStatus = TARGET_CHANGED;
+    publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
     }
   }
 
@@ -568,7 +555,7 @@ void targetObject::estimateActionState(unsigned int n_)
   
 {
 
-  if ( (30.0*DEG_TO_RAD - _toolJointStates[n_](tool_wrist_open_angle)) < 5.0*DEG_TO_RAD)
+  if ( 30*DEG_TO_RAD - (_toolJointStates[n_](tool_wrist_open_angle)) < 5.0*DEG_TO_RAD)
   {
     _aStateNext[n_] = A_POSITIONING;
     //cout<<"positioning"<<endl;
@@ -625,11 +612,11 @@ void targetObject::doSharedControl(unsigned int n_)
       _kpPosition[n_](Axis_Mod[p_pitch]) = 1000.0 * SCALE_GAINS_ANGULAR_POSITION;
       _kpPosition[n_](Axis_Mod[p_yaw]) = 1000.0 * SCALE_GAINS_ANGULAR_POSITION;
       
-      _kdPosition[n_](Axis_Mod[p_x]) = 3000.0f * SCALE_GAINS_LINEAR_POSITION;
-      _kdPosition[n_](Axis_Mod[p_y]) = 2000.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_x]) = 10000.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_y]) = 10000.0f * SCALE_GAINS_LINEAR_POSITION;
 
-      _kdPosition[n_](Axis_Mod[p_pitch]) = 2000.0f * SCALE_GAINS_ANGULAR_POSITION;
-      _kdPosition[n_](Axis_Mod[p_yaw]) = 6000.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_pitch]) = 8000.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition[n_](Axis_Mod[p_yaw]) = 8000.0f * SCALE_GAINS_ANGULAR_POSITION;
       
       _kpGrasping[n_] = 0.0f * SCALE_GAINS_ANGULAR_POSITION; 
       break;
