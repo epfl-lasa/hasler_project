@@ -50,7 +50,10 @@ public:
   vibrator(double* input, double* output,double magnitude, double decayRate, double frequency, double filterGain);
   vibrator(double* input, double* output, double magnitude);
   bool run(ros::Time myCurrentTime);
+  bool finished();
+
   void start();
+  void changeParams(double magnitude, double decayRate, double frequency);
   void reset();
   ~vibrator();
 

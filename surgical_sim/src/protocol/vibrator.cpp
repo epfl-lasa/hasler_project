@@ -42,7 +42,7 @@ void vibrator::update(ros::Time myCurrentTime)
                 {
                     _myDuration = (myCurrentTime - _myStartTime);
                     //cout<<_myDuration<<endl;
-                    double vibration = _vibInputInit * _vibMagnitude * exp(-_vibDecayRate * (_myDuration.toSec())) *
+                    double vibration = 1.0f * _vibMagnitude * exp(-_vibDecayRate * (_myDuration.toSec())) *
                                             sin(2 * M_PI * _vibFrequency * _myDuration.toSec());
 
                     *_vibOutput = _vibFilter->update(vibration);
@@ -91,10 +91,23 @@ void vibrator::start()
 
 void vibrator::reset(){
 
-    if(!_flagReset && _myStatus==FINISHED)
+    if(!_flagReset)
     {
        _myStatus=STANDBY;
        _flagTrigger=false;
        _flagReset=true;
     }
+}
+
+bool vibrator::finished()
+{
+    return _myStatus==FINISHED;
+}
+
+
+void vibrator::changeParams(double magnitude, double decayRate, double frequency)
+{
+    _vibMagnitude = magnitude;
+    _vibDecayRate = decayRate;
+    _vibFrequency = frequency;
 }

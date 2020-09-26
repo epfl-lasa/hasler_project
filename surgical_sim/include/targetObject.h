@@ -99,9 +99,12 @@ private:
   Eigen::Quaterniond _toolTipQuaternion[NB_TOOLS];
   Eigen::Quaterniond _toolTipQuaternionPrev[NB_TOOLS];
   Eigen::Matrix3d    _toolTipRotationMatrix[NB_TOOLS];
+  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _devToolJointStates[NB_TOOLS];
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates[NB_TOOLS];
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointStates_prev[NB_TOOLS];
   geometry_msgs::Wrench _footBaseWorldForce[NB_TOOLS];
+
+  LP_Filterd _hapticAxisFilter;
  
   Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates[NB_TOOLS];
   Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates_prev[NB_TOOLS];
@@ -116,20 +119,24 @@ private:
 
   Eigen::Vector3d _maxLimsTarget;
 
-  double _errorPenetration;
-  double _vibrationGrasping;
-  double _impedanceGrasping;
-  double _errorPenetration_prev;
-  double _devErrorPenetration;
+  double _errorPenetration[NB_TOOLS];
+  double _vibrationGrasping[NB_TOOLS];
+  double _impedanceGrasping[NB_TOOLS];
+  double _errorPenetration_prev[NB_TOOLS];
+  double _devErrorPenetration[NB_TOOLS];
 
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques[NB_TOOLS];
 
-  double _precisionPos, _precisionAng;
+  double _precisionPos[NB_TOOLS], _precisionAng[NB_TOOLS];
 
   
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kpPosition[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kiPosition[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kdPosition[NB_TOOLS];
+
+  LP_Filterd _kpPositionFilter[NB_TOOLS][NB_AXIS_POSITIONING];
+  LP_Filterd _kiPositionFilter[NB_TOOLS][NB_AXIS_POSITIONING];
+  LP_Filterd _kdPositionFilter[NB_TOOLS][NB_AXIS_POSITIONING];
 
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlRef[NB_TOOLS];
   Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlIn[NB_TOOLS];
@@ -190,7 +197,7 @@ private:
   ros::Subscriber _subPlatformJointStates[NB_TOOLS];
   ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
 
-  vibrator* _myVibrator;
+  vibrator* _myVibrator[NB_TOOLS];
   
   //KDL 
 

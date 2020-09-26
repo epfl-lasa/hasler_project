@@ -7,9 +7,9 @@
  <arg name="control_input" default="platform"/>
  <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_with_platform.rviz"/>
  <arg name="subjectID" default="none"/>
- <arg name="magnitudeVibration" default="-100000.0"/>
- <arg name="decayRateVibration" default="3.0"/> 
- <arg name="frequencyVibration" default="50.0"/>
+ <arg name="magnitudeVibration" default="2.5"/>
+ <arg name="decayRateVibration" default="2.0"/> 
+ <arg name="frequencyVibration" default="70.0"/>
  <arg name="hapticGrasp" default="false"/>
  <arg name="sharedGrasp" default="false"/>
 
