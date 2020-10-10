@@ -35,6 +35,10 @@ class Utils_math
 
 	static Eigen::Matrix<T,3,3> orthogonalProjector(Eigen::Matrix<T,3,1> v);
 
+	static T linearRise(T x, T a, T b);
+	
+	static T linearFall(T x, T a, T b);
+
   	static T smoothRise(T x, T a, T b);
 
 	static T smoothFall(T x, T a, T b);

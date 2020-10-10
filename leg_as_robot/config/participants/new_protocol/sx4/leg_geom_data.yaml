@@ -1,0 +1,15 @@
+#These you can measure in the subject and update
+#Amalric Ortlieb
+thigh_width: 0.180
+thigh_depth: 0.200 
+shin_width: 0.145
+shin_depth: 0.145 
+foot_length: 0.350 
+thigh_length: 0.475
+shin_length:  0.490
+ankle_to_foot_base_z: 0.110
+ankle_to_foot_base_x: 0.065
+foot_base_to_foot_tip: 0.185
+body_weight: 100
+hip_width: 0.290
+hip_height: 0.980 

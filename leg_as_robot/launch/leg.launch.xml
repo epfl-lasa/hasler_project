@@ -2,7 +2,7 @@
   <arg name="id"          default="right" />
   <arg name="leg_model"   default="$(find leg_as_robot)/urdf/$(arg id)/leg.create.xacro"/>
   <arg name="virtual_leg" default="true" />
-	<arg name="freq"        default="400"/>  
+	<arg name="freq"        default="10000.0"/>  
   <arg name="rviz"        default="true"/>
   <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" />
 
@@ -27,12 +27,13 @@
         <node name="leg_joint_publisher" pkg="leg_as_robot" type="legRobot" output="screen">
           <param name="legID" value="$(arg id)"/>
           <remap from="robot_description" to="leg_description" />
+          <param name="publish_frequency" value="$(arg freq)"/>
           <remap from="joint_states" to="leg_joint_publisher/joint_states" />
         </node>
       </group>
 
       <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-        <param name="publish_frequency" value="$(arg freq)"/>
+        <param name="publish_frequency" value="$(eval 2*arg('freq'))"/>
         <param name="tf_prefix" value="$(arg id)"/>
         <remap from="robot_description" to="leg_description" />
         <remap from="joint_states" to="leg_joint_publisher/joint_states" />

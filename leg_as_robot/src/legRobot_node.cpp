@@ -28,7 +28,13 @@ int main(int argc, char **argv) {
   }
   ROS_INFO("Successfully parsed urdf file");
 
-  float frequency = 400.0f;
+  double frequency = 1000.0;
+
+  if (!nh_.getParam("publish_frequency", frequency))
+  {
+    frequency = 1000.0;
+  }
+
   legRobot legRobot(nh_, frequency, leg_id_, modelLoad);
 
   if (!legRobot.init()) {

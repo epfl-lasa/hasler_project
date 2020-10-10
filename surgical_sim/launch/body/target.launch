@@ -6,12 +6,9 @@
   <arg name="tracking_mode" default="right"/>
   <arg name="target_name" default="targetx"/>
   <arg name="subjectID" default="s0"/>
-  <arg name="magnitudeVibration" default="240.0"/>
-  <arg name="decayRateVibration" default="60.0"/>
-  <arg name="frequencyVibration" default="32.6"/>
-  <arg name="hapticGrasp" default="false"/>
-  <arg name="sharedGrasp" default="false"/>
+
   
+  <arg name="freq" default="300.0"/>  
   
   
   
@@ -22,27 +19,23 @@
     <node name="target_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
       <remap from="robot_description" to="target_object_description"/>
       <remap from="joint_states" to="target_state_publisher/joint_states"/>
+      <param name="publish_frequency" type="double" value="$(arg freq)" />
     </node>  
   </group>
 
   <group unless="$(arg virtual_target)">
-    <node name="target_state_publisher" pkg="surgical_sim" type="targetTracking" output="screen">
-      <param name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
-      <param name="decayRateVibration" value="$(arg decayRateVibration)"/>
-      <param name="frequencyVibration" value="$(arg frequencyVibration)"/>
+    <node name="target_state_publisher" pkg="surgical_sim" type="targetObject" output="screen">
       <param name="trackingMode" value="$(arg tracking_mode)"/>
       <param name="targetName" value="$(arg target_name)"/>
       <param name="subjectID" value="$(arg subjectID)"/>
-      <param name="hapticGraspOn" value="$(arg hapticGrasp)"/>
-      <param name="sharedGraspOn" value="$(arg sharedGrasp)"/>
-      <param name="publish_frequency" type="double" value="300.0" />
+      <param name="publish_frequency" type="double" value="$(arg freq)" />
       <remap from="robot_description" to="target_object_description"/>
       <remap from="joint_states" to="target_state_publisher/joint_states"/>
     </node> 
   </group>
   
   <node pkg="robot_state_publisher" type="robot_state_publisher"  name="target_object_state_publisher">
-    <param name="publish_frequency" type="double" value="300.0" />
+    <param name="publish_frequency" type="double" value="$(eval 2*arg('freq'))" />
     <remap from="robot_description" to="target_object_description"/>
     <remap from="joint_states" to="target_state_publisher/joint_states"/>
   </node>

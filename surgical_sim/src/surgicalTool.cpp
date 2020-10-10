@@ -25,6 +25,19 @@ char const *Platform_Names[]{"none", "right", "left"};
 surgicalTool *surgicalTool::me = NULL;
 
 
+
+#define MIN_THRESHOLD 5.0
+#define MAX_THRESHOLD 15.0
+#define STD 0.7
+
+const float Axis_Limits[] =  {0.090,0.0975,27.5*DEG_TO_RAD,120.0*DEG_TO_RAD};
+
+const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
+
+const int Axis_Pos[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_yaw,p_roll};
+
+
+
 surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
                    surgicalTool::Tool_Name tool_id, urdf::Model model_)
     : _n(n_1), _tool_id(tool_id), _loopRate(frequency), _dt(1.0f / frequency),
@@ -46,6 +59,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   //std::cout<<_myInput<<endl;
   _toolJoints = new KDL::JntArray(NB_TOOL_AXIS_RED);
   _toolJoints->data.setZero();
+  _toolJointsFull = new KDL::JntArray(NB_TOOL_AXIS_FULL);
+  _toolJointsFull->data.setZero();
   _toolJointsInit = new KDL::JntArray(NB_TOOL_AXIS_RED);
   _toolJointsInit->data.setZero();
   _toolJointsInit->data(tool_insertion) = 0.0;
@@ -76,6 +91,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _footTipQuaternion.setIdentity();
   _footTipRotationMatrix.setIdentity();
 
+  _flagSharedGrasp=false;
   _flagFootTipPoseConnected =  false;
   _flagLegJointsConnected = false;
   _flagPlatformJointsConnected = false;
@@ -84,15 +100,38 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _flagLegJointLimitsOffsetCalculated = false;
   _flagPlatformJointLimitsOffsetCalculated = false;
   _toolJointsAll.setZero(); 
-  _toolJointsAll_prev.setZero();
+  _toolJointsFiltered.setZero();
+  _toolJointsAllPrev.setZero();
+  _toolJointsAllSpeed.setZero();
+
+  _thresholds.setZero();
   
   _toolJointsAllOffset.setZero();
- 
+  
+   _hAxisFilterPosValue.setZero();
+
+   _hAxisFilterGraspValue=0.0;
+
+   _hAxisFilterPos = new MatLP_Filterd(_hAxisFilterPosValue);
+   _hAxisFilterGrasp.setAlpha(_hAxisFilterGraspValue);
+   _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
+
   _legJoints.setZero();
   _legJointsOffset.setZero();
 
   _platformJoints.setZero();
   _platformJointsOffset.setZero();
+  _platformVelocities.setZero();
+  _platformEfforts.setZero();
+
+
+
+  if (!_n.getParam("sharedGraspOn", _flagSharedGrasp))
+  { 
+      ROS_ERROR("No sharedGrasp param"); 
+  }
+  if (_flagSharedGrasp)
+  cout<<"flag shared grasp enabled"<<endl;
 
   if (!_legModel.initParam("leg_description")) {
       ROS_ERROR("Failed to parse urdf of the leg");
@@ -105,18 +144,22 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
       ROS_ERROR("Failed to construct kdl tree");
       _stop = true;
+
   }
 
-  KDL::Vector grav_vector(0.0, 0.0, (double)GRAVITY);
+  KDL::Vector grav_vector(0.0, 0.0, GRAVITY);
 
-  //_myTree.getChain("tool_base_link", "tool_tip_link_ee", _myToolBaseToTipChain);
   _myTree.getChain("tool_base_link", "tool_wrist_link", _myToolBaseToWristChain);
+  _myTree.getChain("tool_base_link", "tool_tip_link_ee", _myToolBaseToTipChain);
+
 
   _myFKSolver_wrist = new KDL::ChainFkSolverPos_recursive(_myToolBaseToWristChain);
+  _myFKSolver_tip = new KDL::ChainFkSolverPos_recursive(_myToolBaseToTipChain);
 
   _myJacSolver_wrist = new KDL::ChainJntToJacSolver(_myToolBaseToWristChain);
 
   _mySegments = _myToolBaseToWristChain.segments;
+  _mySegmentsTip = _myToolBaseToTipChain.segments;
 
 
   for (unsigned int i = 0; i<NB_LEG_AXIS; i++)
@@ -134,8 +177,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     _platformJointLimsDelta->data(i) = min(abs(_platformJointLims[L_MIN]->data(i)),abs(_platformJointLims[L_MAX]->data(i)));
   }
 
-  double test = Utils_math<double>::map(2.5,-5,5,-1,1);
-  cout<<test<<endl;
+  // double test = Utils_math<double>::map(2.5,-5,5,-1,1);
+  // cout<<test<<endl;
 
   for (unsigned int joint_=0; joint_ < NB_TOOL_AXIS_FULL; joint_++ )
   {
@@ -160,7 +203,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
       //_weightedJointSpaceMassMatrix.block(tool_insertion, tool_insertion, 2, 2).diagonal() << 1e-15, 1e-15;
       
       _myVelIKSolver_wrist->setWeightTS(_weightedTaskSpaceMassMatrix);
-      //_myVelIKSolver->setWeightJS(_weightedJointSpaceMassMatrix);
+     //_myVelIKSolver->setWeightJS(_weightedJointSpaceMassMatrix);
   /*                                                                                                */
 
 
@@ -175,6 +218,8 @@ bool surgicalTool::init() //! Initialization of the node. Its datatype
 { 
 
   _pubToolJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
+  
+  _pubToolTipPose = _n.advertise<geometry_msgs::PoseStamped>("tool_tip_pose", 1);
  
   _subLegJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_tool_id])+"/leg_joint_publisher/joint_states"
       , 1, boost::bind(&surgicalTool::readLegJoints, this, _1),
@@ -182,6 +227,10 @@ bool surgicalTool::init() //! Initialization of the node. Its datatype
   
   _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Platform_Names[_tool_id])+"/platform_joint_publisher/joint_states"
       , 1, boost::bind(&surgicalTool::readPlatformJoints, this, _1),
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
+
+  _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGrasping>( "/"+std::string(Platform_Names[_tool_id])+"/sharedGrasping"
+      , 1, boost::bind(&surgicalTool::readSharedGrasp, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
 
   // Subscriber definitions
@@ -204,8 +253,8 @@ void surgicalTool::run() {
   
   while (!_stop) {
     performChainForwardKinematics();
-    readFootTipBasePose();
-    if (_flagFootTipPoseConnected && _flagLegJointsConnected) {
+    //readFootTipBasePose();
+    if (_flagPlatformJointsConnected) {
      
     //  switch (_myInput)
     //  {
@@ -224,7 +273,8 @@ void surgicalTool::run() {
       calculateDesiredFrame();
       performInverseKinematics();
       publishToolJointStates();
-      _toolJointsAll_prev = _toolJointsAll;
+      _toolJointsAllSpeed = (_toolJointsAll - _toolJointsAllPrev) * (1.0/_dt);
+      _toolJointsAllPrev = _toolJointsAll;
       // computeToolManipulability();
       // publishManipulabilityEllipsoid();
     }
@@ -250,8 +300,8 @@ void surgicalTool::publishToolJointStates() {
 
   for (int k = 0; k < NB_TOOL_AXIS_FULL; k++) {
     _msgJointStates.name[k] = Tool_Axis_Names[k];
-    _msgJointStates.velocity[k] = 0.0f;
-    _msgJointStates.effort[k] = 0.0f;
+    _msgJointStates.velocity[k] = _toolJointsAllSpeed(k);
+    _msgJointStates.effort[k] = 0.0;
     _msgJointStates.position[k] = me->_toolJointsAll(k);
   }
   _pubToolJointStates.publish(_msgJointStates);
@@ -269,11 +319,20 @@ void surgicalTool::calculateDesiredFrame(){
   _desiredTargetFrame.p.data[2] = -0.12 + Utils_math<double>::map( _platformJoints(p_pitch),
                                                           -_platformJointLimsDelta->data(p_pitch), 0.5*_platformJointLimsDelta->data(p_pitch), 
                                                           -0.15,0.15) ;
+                                                     
   Eigen::Vector3d p_;
   tf::vectorKDLToEigen(_desiredTargetFrame.p,p_);  
   Quaterniond q_ = Quaterniond::FromTwoVectors(Eigen::Vector3d(0.0, 0.0, 1.0), p_);
   tf::quaternionEigenToKDL(q_,_desiredTargetFrame.M);
 }
+
+
+void surgicalTool::publishToolTipPose(){
+  _msgToolTipPose.header.stamp = ros::Time::now();
+  tf::poseKDLToMsg(_myFrames_tip[NB_TOOL_AXIS_FULL-1],_msgToolTipPose.pose);
+  _pubToolTipPose.publish(_msgToolTipPose);
+}
+
 
 void surgicalTool::readFootTipBasePose()
 {
@@ -341,37 +400,32 @@ void surgicalTool::readFootTipBasePose()
 void surgicalTool::performInverseKinematics(){
 
   int ret = _myPosIkSolver_wrist->CartToJnt(*me->_toolJointsInit,_desiredTargetFrame,*me->_toolJoints);
-  *_toolJointsInit = *_toolJoints;
+  _toolJointsInit->data=_toolJointsFiltered;
 
-  if  (_toolJoints->data(tool_pitch)>89.0*DEG_TO_RAD || _toolJoints->data(tool_roll)>89.0*DEG_TO_RAD)
-    {
+  if  (abs(_toolJoints->data(tool_pitch))>89.0*DEG_TO_RAD && abs(_toolJoints->data(tool_roll))>89.0*DEG_TO_RAD)
+  {
+      _toolJoints->data(tool_insertion)=0.12;
       _toolJoints->data.setZero();
-      _toolJoints->data(tool_insertion)=0.05;
       *_toolJointsInit = *_toolJoints;
       //_stop=true;
       ROS_ERROR_ONCE("Please center the platform and launch the scenario again");
-    }
-
+  }
 
   _toolJoints->data(tool_yaw) = -Utils_math<double>::map( (_platformJoints(p_yaw) - _platformJointsOffset(p_yaw)) , 
                                     -35*DEG_TO_RAD, 35*DEG_TO_RAD, 
-                                    _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw));
+                                    _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw)) + M_PI_2;
 
-  //_toolJointsAll(tool_wrist_open_angle) = _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle) - Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
-  //                                        -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
-  //                                         _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
-
-  _toolJointsAll(tool_wrist_open_angle) = Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
+  _toolJointsAll(tool_wrist_open_angle) = _hAxisFilterGrasp.update(Utils_math<double>::map( (-(_platformJoints(p_roll) - _platformJointsOffset(p_roll))),
                                           -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
-                                           _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
-  
+                                           _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle)));
+
   _toolJointsAll(tool_wrist_open_angle_mimic) = _toolJointsAll(tool_wrist_open_angle) ;
 
-  // _toolJoints->data(tool_roll) += 0.5*-Utils_math<double>::map( (_platformJoints(p_roll) - _platformJointsOffset(p_roll)) , 
-  //                                   -_platformJointLimsDelta->data(p_roll), _platformJointLimsDelta->data(p_roll) ,
-  //                                   _toolJointLimsAll[L_MIN]->data(tool_roll), _toolJointLimsAll[L_MAX]->data(tool_roll));
+   
+   _toolJointsFiltered =  _hAxisFilterPos->update(_toolJoints->data.segment(0,NB_TOOL_AXIS_RED));
+  _toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJointsFiltered;
+  _toolJointsAll.cwiseMin(_toolJointLimsAll[L_MAX]->data).cwiseMax(_toolJointLimsAll[L_MIN]->data);
 
-  me->_toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJoints->data;
   if (ret<0)
   {
     if (_mySolutionFound) 
@@ -540,10 +594,22 @@ void surgicalTool::performChainForwardKinematics()
 {
   KDL::Frame frame_;
   _myFrames.clear();
+  //cout<<_toolJoints->data.transpose()<<endl;
   for (unsigned int i = 0; i < _mySegments.size(); i++) {
-    _myFKSolver_wrist->JntToCart(*me->_toolJoints, frame_, i + 1);
-    _myFrames.push_back(frame_);
+      _myFKSolver_wrist->JntToCart(*me->_toolJoints, frame_, i + 1);
+      _myFrames.push_back(frame_); 
+    //  cout<<_myFrames[i].p.data[0]<<" "<<_myFrames[i].p.data[1]<<" "<<_myFrames[i].p.data[2]<<endl;
   }
+  KDL::Frame frameTip_;
+  _myFrames_tip.clear();
+  _toolJointsFull->data=_toolJointsAll;
+  //cout<<_toolJointsFull->data.transpose()<<endl;
+  for (unsigned int j = 0; j < _mySegmentsTip.size(); j++) {
+      _myFKSolver_tip->JntToCart(*me->_toolJointsFull, frameTip_, j + 1);
+      // cout<<frameTip_.p.data[0]<<" "<<frameTip_.p.data[1]<<" "<<frameTip_.p.data[2]<<endl;
+      _myFrames_tip.push_back(frameTip_);
+  }  
+  publishToolTipPose();
 }
 
 
@@ -576,6 +642,8 @@ void surgicalTool::readPlatformJoints(const sensor_msgs::JointState::ConstPtr &m
 
   for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
     me->_platformJoints(i) = msg->position[i];
+    me->_platformVelocities(i) = msg->velocity[i];
+    me->_platformEfforts(i) = msg->effort[i];
   }
 
   if (!_flagPlatformJointsConnected) {
@@ -584,7 +652,19 @@ void surgicalTool::readPlatformJoints(const sensor_msgs::JointState::ConstPtr &m
   _flagPlatformJointsConnected = true;
 
   if (!_flagPlatformJointLimitsOffsetCalculated) {
-    _platformJointsOffset(p_roll) = - 10.0f*DEG_TO_RAD;
+    _platformJointsOffset(p_roll) = 15.0*DEG_TO_RAD;
     _flagPlatformJointLimitsOffsetCalculated = true;
   }
+}
+
+void surgicalTool::readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg){
+    for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
+    {
+      _hAxisFilterPosValue(i)=1.0-msg->sGrasp_hFilters[Axis_Mod[i]];
+    }
+
+    _hAxisFilterGraspValue = 1.0-msg->sGrasp_hFilters[p_roll];
+
+    _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
+    _hAxisFilterGrasp.setAlpha(_hAxisFilterGraspValue);
 }

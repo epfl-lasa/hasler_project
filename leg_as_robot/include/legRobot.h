@@ -127,14 +127,16 @@ private:
   Eigen::Vector3d _gravityVector;
   
   // Publisher declaration
-  ros::Publisher _pubManipEllipsoid;
+  ros::Publisher _pubManipEllipsoidRot;
+  ros::Publisher _pubManipEllipsoidLin;
   ros::Publisher _pubLegJointStates;
   ros::Publisher _pubNetCoG;
   ros::Publisher _pubFootBaseWrench; //! To the foot variable synchornizer
 
 
   // Messages
-  visualization_msgs::Marker _msgManipEllipsoid;
+  visualization_msgs::Marker _msgManipEllipsoidRot;
+  visualization_msgs::Marker _msgManipEllipsoidLin;
   sensor_msgs::JointState _msgJointStates;
   geometry_msgs::PointStamped _msgNetCoG;
   geometry_msgs::WrenchStamped _msgFootBaseWrench;
@@ -179,7 +181,8 @@ private:
   void publishFootBaseGravityWrench();
   void computedWeightingMatrixes();
   void computeLegManipulability();
-  void publishManipulabilityEllipsoid();
+  void publishManipulabilityEllipsoidRot();
+  void publishManipulabilityEllipsoidLin();
 
   //! OTHER METHODS
   static void stopNode(int sig);

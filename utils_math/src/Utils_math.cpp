@@ -298,11 +298,37 @@ T Utils_math<T>::smoothRise(T x, T a, T b)
   return y;
 }
 
+template<typename T>
+T Utils_math<T>::linearRise(T x, T a, T b)
+{
+  T y; 
+  if(x<a)
+  {
+    y = 0.0f;
+  }
+  else if(x>b)
+  {
+    y = 1.0f;
+  }
+  else
+  {
+    y = x / (b - a);  
+  }
+
+  return y;
+}
+
 
 template<typename T>
 T Utils_math<T>::smoothFall(T x, T a, T b)
 {
   return 1.0f-smoothRise(x,a,b);
+}
+
+template<typename T>
+T Utils_math<T>::linearFall(T x, T a, T b)
+{
+  return 1.0f-linearRise(x,a,b);
 }
 
 

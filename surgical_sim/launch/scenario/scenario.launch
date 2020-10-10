@@ -10,7 +10,6 @@
  <arg name="magnitudeVibration" default="2.5"/>
  <arg name="decayRateVibration" default="2.0"/> 
  <arg name="frequencyVibration" default="70.0"/>
- <arg name="hapticGrasp" default="false"/>
  <arg name="sharedGrasp" default="false"/>
 
 
@@ -26,20 +25,20 @@
   <arg name="rviz" value="false"/>
   <arg name="virtual_tool" value="$(arg virtual_tool)"/>
   <arg name="control_input" value="$(arg control_input)"/>
+  <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
+  <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+  <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+  <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
   
  </include> 
 
  <include file="$(find surgical_sim)/launch/body/target.launch">
     <arg name="rviz" value="false"/>
     <arg name="virtual_target" value="false"/> 
-    <arg name="hapticGrasp" value="$(arg hapticGrasp)"/>   
-    <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>   
     <arg name="target_name" value="needle"/>
     <arg name="tracking_mode" value="right"/>
     <arg name="subjectID" value="$(arg subjectID)"/>
-    <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
-    <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
-    <arg name="frequencyVibration" value="$(arg frequencyVibration)"/>
+
  </include>
 
   <include file="$(find leg_as_robot)/launch/single_leg.launch">

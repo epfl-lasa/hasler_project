@@ -13,7 +13,7 @@ vibrator::vibrator(double* input, double* output,double magnitude, double decayR
     _vibFrequency = frequency; 
      me = this;
      _vibFilter = new LP_Filterd(filterGain);
-     _myStatus = STANDBY;
+     _myStatus = FINISHED;
      _flagTrigger=false;
      _flagReset=false;
      *_vibOutput=0.0;
@@ -47,7 +47,7 @@ void vibrator::update(ros::Time myCurrentTime)
 
                     *_vibOutput = _vibFilter->update(vibration);
                     
-                    if ( abs(*_vibOutput) < 0.0001f)
+                    if ( abs(*_vibOutput) < 0.001f)
                     {
                         _myStatus = FINISHED;
                         _flagTrigger=false;

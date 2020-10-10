@@ -91,6 +91,7 @@ private:
   Target_Status _myStatus;
   
   Action_State _aState[NB_TOOLS];
+  Action_State _aStateNext[NB_TOOLS];
 
   TrackMode _myTrackMode; 
   // Eigen and Geometry
@@ -130,6 +131,7 @@ private:
   Eigen::Quaterniond _trocarQuaternion[NB_TOOLS];
   Eigen::Matrix3d    _trocarRotationMatrix[NB_TOOLS];
 
+  Eigen::Matrix<double,NB_AXIS_POSITIONING,1> _thresholds[NB_TOOLS];
 
   Eigen::Vector3d    _myPosition;
   Eigen::Quaterniond _myQuaternion;
@@ -143,8 +145,35 @@ private:
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques[NB_TOOLS];
 
   double _precisionPos[NB_TOOLS], _precisionAng[NB_TOOLS],_precisionGrasp[NB_TOOLS];
+
   
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kpPosition[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kiPosition[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _kdPosition[NB_TOOLS];
+
+
+  LP_Filterd _thresholdFilter[NB_TOOLS];
+  LP_Filterd _kpPositionFilter[NB_TOOLS][NB_AXIS_POSITIONING];
+  LP_Filterd _kiPositionFilter[NB_TOOLS][NB_AXIS_POSITIONING];
+  LP_Filterd _kdPositionFilter[NB_TOOLS][NB_AXIS_POSITIONING];
+
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlRef[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlIn[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlInPrev[NB_TOOLS];
+  Eigen::Matrix<double, NB_AXIS_POSITIONING,1> _posCtrlOut[NB_TOOLS];
+
+  PIDd* _pidPosition[NB_TOOLS][NB_AXIS_POSITIONING];
+  PIDd* _pidGrasping[NB_TOOLS];
+
+  double _graspCtrlRef[NB_TOOLS];
+  double _graspCtrlIn[NB_TOOLS];
+  double _graspCtrlInPrev[NB_TOOLS];
+  double _graspCtrlOut[NB_TOOLS];
   double _myThreshold[NB_TOOLS];
+
+  double _kpGrasping[NB_TOOLS];
+  double _kiGrasping[NB_TOOLS];
+  double _kdGrasping[NB_TOOLS];
 
   double _myRandomAngle;
   // std variables
@@ -187,7 +216,7 @@ private:
   visualization_msgs::Marker _msgTargetReachedSphere;
 
 
-  ros::Subscriber _subSharedGrasp[NB_TOOLS];
+
   ros::Subscriber _subToolTipPose[NB_TOOLS];
   ros::Subscriber _subToolJointStates[NB_TOOLS];
   ros::Subscriber _subPlatformJointStates[NB_TOOLS];
@@ -213,6 +242,10 @@ private:
   bool  _flagTargetReachedOpen[NB_TOOLS];
   bool  _flagTargetGrasped[NB_TOOLS];
   bool  _flagRecordingStarted;
+  bool _flagHapticGrasping;
+  bool _flagSharedGrasping;
+  bool _flagProtocolFinished;
+
   bool  _stop;
 
 
@@ -240,24 +273,29 @@ private:
 
   void readToolState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
   
-  void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
+  // void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
 
   void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg,unsigned int n_);
   
-  void readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg, unsigned int n_);
+  void readToolTipPose(const geometry_msgs::PoseStamped::ConstPtr &msg,unsigned int n_);
   
   void computeToolTipDerivatives(unsigned int n_);
 
   void readTFTool(unsigned int n_);
+  // void estimateActionState(unsigned int n_);
   void readTFTrocar(unsigned int n_);
   void writeTFtargetObject();
+  // void doSharedControl(unsigned int n_);
 
   void computetargetObjectPose(unsigned int n_);
   void evaluateTarget(unsigned int n_);
 
   void publishTargetReachedSphere(int32_t action_, Marker_Color color_, double delay_);
+  void publishFootInput(int n_);
   void recordStatistics();
+  // void publishSharedGrasp(unsigned int n_);
 
+  
 
   //! OTHER METHODS
   static void stopNode(int sig);

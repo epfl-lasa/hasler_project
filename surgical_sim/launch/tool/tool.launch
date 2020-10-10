@@ -3,23 +3,30 @@
 
   <arg name="virtual_tool" default="true"/>
   <arg name="control_input" default="leg"/>
-  
   <arg name="model" default="$(find surgical_sim)/urdf/surgical_tool/tool_create.urdf.xacro" />
   <arg name="gui" default="true" />
   <arg name="w_forceps" default="true" />
   <arg name="w_gripper" default="false" />
   <arg name="rviz" default="true"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/tool_view.rviz"/>
+  <arg name="magnitudeVibration" default="50.0"/>
+	<arg name="decayRateVibration" default="60.0"/>
+	<arg name="frequencyVibration" default="32.6"/>
+	<arg name="sharedGrasp" default="false"/>
+	
 
 
   <group ns="$(arg id)">
 
   <param name="tool_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) with_gripper:=$(arg w_gripper)"/>
-    
     <include file="$(find surgical_sim)/launch/tool/tool.control.launch">
       <arg name="id" value="$(arg id)"/>
       <arg name="virtual_tool" value="$(arg virtual_tool)"/>
       <arg name="control_input" value="$(arg control_input)"/>
+      <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+      <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+      <arg name="frequencyVibration" value="$(arg frequencyVibration)"/>
+      <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
     </include>
 
   </group>

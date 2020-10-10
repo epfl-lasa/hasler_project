@@ -157,7 +157,7 @@ class footVarSynchronizer
 
         volatile bool _flagWasDynReconfCalled;
         bool  _flagForceModifiedConnected;
-        #define HUMAN_ON_PLATFORM_THRESHOLD 20
+        #define HUMAN_ON_PLATFORM_THRESHOLD 10
         bool _flagHumanOnPlatform, _flagCompensateLeg;
         
 

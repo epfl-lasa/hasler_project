@@ -1,0 +1,16 @@
+#These you can measure in the subject and update
+#Iason
+#constant: 1 - 26/59
+thigh_width: 0.170
+thigh_depth: 0.200 
+shin_width: 0.160
+shin_depth: 0.140 
+foot_length: 0.270 
+thigh_length: 0.410
+shin_length:  0.400
+ankle_to_foot_base_z: 0.110
+ankle_to_foot_base_x: 0.045
+foot_base_to_foot_tip: 0.175
+body_weight: 86
+hip_width: 0.305
+hip_height: 0.930

@@ -1,4 +1,8 @@
 #These you can measure in the subject and update
+#Jacob 0.790+ 0.165+0.080
+#chair, x:0.0, y:5.0
+#constant 1-32/56
+
 thigh_width: 0.290 
 thigh_depth: 0.200 
 shin_width: 0.135 
@@ -11,5 +15,56 @@ ankle_to_foot_base_x: 0.020
 foot_base_to_foot_tip: 0.15621
 body_weight: 84
 hip_width: 0.24
-hip_height: 0.945  
+hip_height: 1.035 
 
+#These you can measure in the subject and update
+#walid amanhoud #s5 
+
+#0.790+ 0.165+0.070
+# thigh_width: 0.150
+# thigh_depth: 0.190
+# shin_width: 0.130
+# shin_depth: 0.135
+# foot_length: 0.265
+# thigh_length: 0.470
+# shin_length:  0.435
+# ankle_to_foot_base_z: 0.105
+# ankle_to_foot_base_x: 0.040
+# foot_base_to_foot_tip: 0.170
+# body_weight: 69.5
+# hip_width: 0.260
+# hip_height: 1.025
+
+
+#Farshad Kadhivar
+#0.790+ 0.165+0.070
+# thigh_width: 0.170 
+# thigh_depth: 0.170 
+# shin_width: 0.115 
+# shin_depth: 0.115 
+# foot_length: 0.260 
+# thigh_length: 0.395
+# shin_length:  0.390
+# ankle_to_foot_base_z: 0.105
+# ankle_to_foot_base_x: 0.0505
+# foot_base_to_foot_tip: 0.155
+# body_weight: 68
+# hip_width: 0.260
+# hip_height: 1.015 
+
+
+#These you can measure in the subject and update
+#Bernardo 0.790+ 0.165+0.080
+# thigh_width: 0.160
+# thigh_depth: 0.160
+# shin_width: 0.100
+# shin_depth: 0.100
+# foot_length: 0.280
+# thigh_length: 0.400
+# shin_length:  0.430
+# ankle_to_foot_base_z: 0.100
+# ankle_to_foot_base_x: 0.040
+# foot_base_to_foot_tip: 0.175
+# body_weight: 68
+# hip_width: 0.260
+# hip_height: 1.015 

@@ -21,7 +21,7 @@
 #include <eigen_conversions/eigen_kdl.h>
 #include <tf2_kdl/tf2_kdl.h>
 #include <tf2_ros/transform_listener.h>
-
+#include <kdl_conversions/kdl_msg.h>
 
 #include "Eigen/Eigen"
 #include <signal.h>
@@ -45,7 +45,10 @@
 #include <ros/package.h>
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/Marker.h>
-
+#include "MatLP_Filterd.h"
+#include "LP_Filterd.h"
+#include <geometry_msgs/PoseStamped.h>
+#include <custom_msgs_gripper/SharedGrasping.h>
 
 #define LEG_AXES \
   ListofLegAxes(hip_adduction, "hip_adduction")    \
@@ -61,6 +64,9 @@ enum Leg_Axis : size_t { LEG_AXES };
 #undef ListofLegAxes
 extern const char *Leg_Axis_Names[];
 
+
+
+const uint8_t NB_AXIS_POSITIONING = 4;
 
 #define TOOL_AXES                                                                   \
   ListofToolAxes(tool_pitch, "tool_pitch")    \
@@ -78,6 +84,7 @@ enum Tool_Axis : size_t { TOOL_AXES };
 extern const char *Tool_Axis_Names[];
 
 #define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
+
 
 using namespace std;
 using namespace Eigen;
@@ -97,10 +104,13 @@ private:
 
   // internal variables
 
+  Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsFiltered;
   Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll_prev;
+  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllPrev;
+  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllSpeed;
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
   KDL::JntArray* _toolJoints;
+  KDL::JntArray* _toolJointsFull;
   KDL::JntArray* _toolJointsInit;
   KDL::JntArray* _toolJointLims[NB_LIMS];
   KDL::JntArray* _toolJointLimsAll[NB_LIMS];
@@ -109,13 +119,16 @@ private:
   KDL::JntArray* _platformJointLimsDelta;
 
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
+  Eigen::Matrix<double,NB_AXIS_POSITIONING,1> _thresholds;
   
   urdf::Model _myModel;
   urdf::Model _legModel;
   urdf::Model _platformModel;
   KDL::Tree _myTree;
   std::vector<KDL::Segment> _mySegments;
+  std::vector<KDL::Segment> _mySegmentsTip;
   std::vector<KDL::Frame> _myFrames;
+  std::vector<KDL::Frame> _myFrames_tip;
   // KDL::ChainDynParam*  _myChainDyn;
   KDL::Chain _myToolBaseToWristChain;
   KDL::Chain _myToolWristToTipChain;
@@ -134,12 +147,16 @@ private:
 
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,NB_TOOL_AXIS_RED> _weightedJointSpaceMassMatrix;
   Eigen::Matrix<double,NB_AXIS_WRENCH,NB_AXIS_WRENCH> _weightedTaskSpaceMassMatrix;
-
   
   bool _mySolutionFound;
+  bool _flagSharedGrasp;
   bool _flagToolJointLimitsOffsetCalculated;
   bool _flagLegJointLimitsOffsetCalculated;
   bool _flagPlatformJointLimitsOffsetCalculated;
+  
+  
+  Eigen::Vector4d _hAxisFilterPosValue;
+  double _hAxisFilterGraspValue;
 
   // ros variables
   ros::NodeHandle _n;
@@ -162,16 +179,20 @@ private:
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJointsOffset;
 
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJoints;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformVelocities;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformEfforts;
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJointsOffset;
 
   // Publisher declaration
   ros::Publisher _pubToolJointStates;
+  ros::Publisher _pubToolTipPose;
   ros::Subscriber _subLegJointStates;
   ros::Subscriber _subPlatformJointStates;
+  ros::Subscriber _subSharedGrasp;
 
   // Messages
   sensor_msgs::JointState _msgJointStates;
-
+  geometry_msgs::PoseStamped _msgToolTipPose;
   //! boolean variables
 
   bool _flagFootTipPoseConnected;
@@ -182,7 +203,8 @@ private:
 
   std::mutex _mutex;
   static surgicalTool *me;
-
+  MatLP_Filterd* _hAxisFilterPos;
+  LP_Filterd _hAxisFilterGrasp;
   //! Dynamic Reconfigures
 
   // METHODS
@@ -200,6 +222,7 @@ private:
 
   // bool allSubscribersOK();
   void publishToolJointStates();
+  void publishToolTipPose();
   void readFootTipBasePose();
   void performInverseKinematics();
   void computeWithLegJoints7DoF();
@@ -208,6 +231,7 @@ private:
   void computeWithPlatformTask4DoF();
   void performChainForwardKinematics();
   void calculateDesiredFrame();
+  void readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg);
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
   //! OTHER METHODS

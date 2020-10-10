@@ -1,31 +1,50 @@
 <launch>
 	<arg name="id" default="right"/>
 	<arg name="control_input" default="leg"/>
-	
 	<arg name="virtual_tool" default="true"/>
+	<arg name="freq" default="10000.0"/>
+
+	<arg name="magnitudeVibration" default="50.0"/>
+	<arg name="decayRateVibration" default="60.0"/>
+	<arg name="frequencyVibration" default="32.6"/>
+	<arg name="sharedGrasp" default="false"/>
+	
 	
 	<!-- <rosparam file="$(find surgical_sim)/config/tool_control.yaml" command="load"/> -->
 	<!-- <node name="joint_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
 		output="screen" ns="/surgical_tool" args="joint_state_controller tool_yaw_position_ctrl tool_pitch_position_ctrl tool_insertion_position_ctrl tool_roll_position_ctrl tool_wrist_pitch_joint_position_ctrl tool_wrist_yaw_joint_position_ctrl tool_wrist_open_angle_joint_position_ctrl"/>	node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_pub" /	 -->
   
+
 	<group if="$(arg virtual_tool)">
 		<node name="tool_joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
 			<param name="tf_prefix" 		value="$(arg id)"/>
 			<remap from="robot_description" to="tool_description"/>
 			<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>
-			<param name="publish_frequency" type="double" value="100.0"/>
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
 		</node>
 	</group>
 
 
 	<group unless="$(arg virtual_tool)">
 		<node name="tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
+			<param name="sharedGraspOn" value="$(arg sharedGrasp)"/>   
 			<param name="toolID"            value="$(arg id)"/>
 			<param name="controlInput"      value="$(arg control_input)"/>
-			<param name="publish_frequency" type="double" value="400.0"/>
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
 			<remap from="robot_description" to="tool_description"/>
 			<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>
+			<remap from="tool_tip_pose"      to="tool_joint_state_publisher/tool_tip_pose"/>
 		</node>
+
+		<node name="shared_control_grasp" pkg="surgical_sim" type="sharedGrasp" output="screen">
+			<param name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+			<param name="decayRateVibration" value="$(arg decayRateVibration)"/>
+			<param name="frequencyVibration" value="$(arg frequencyVibration)"/>
+			<param name="toolID" value="$(arg id)"/>
+			<param name="sharedGraspOn" value="$(arg sharedGrasp)"/>
+			<param name="publish_frequency" type="double" value="500.0" />
+		</node> 
+
 	</group>
 
 	<node name="tool_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"  output="screen">
@@ -33,9 +52,9 @@
 		<param name="tf_prefix" 		value="$(arg id)"/>
 		<remap from="robot_description" to="tool_description"/>
 		<remap from="joint_states"      to="tool_joint_state_publisher/joint_states"/>
-		<param name="publish_frequency" type="double" value="100.0"/>
+		<param name="publish_frequency" type="double" value="$(eval 2*arg('freq'))"/>
 	</node>
 
-
+	
 
 </launch>

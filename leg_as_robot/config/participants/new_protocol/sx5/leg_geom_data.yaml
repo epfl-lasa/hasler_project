@@ -1,0 +1,15 @@
+#These you can measure in the subject and update
+#Frederic
+thigh_width: 0.150
+thigh_depth: 0.160 
+shin_width: 0.110
+shin_depth: 0.120 
+foot_length: 0.280 
+thigh_length: 0.390
+shin_length:  0.435
+ankle_to_foot_base_z: 0.100
+ankle_to_foot_base_x: 0.070
+foot_base_to_foot_tip: 0.160
+body_weight: 73
+hip_width: 0.270
+hip_height: 0.925 

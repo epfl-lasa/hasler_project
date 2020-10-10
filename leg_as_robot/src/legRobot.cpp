@@ -87,7 +87,8 @@ bool legRobot::init() //! Initialization of the node. Its datatype
   _pubLegJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
   _pubFootBaseWrench = _n.advertise<geometry_msgs::WrenchStamped>("leg_foot_base_wrench", 1);
   _pubNetCoG = _n.advertise<geometry_msgs::PointStamped>("leg_cog",1);
-  _pubManipEllipsoid = _n.advertise<visualization_msgs::Marker>("leg_manipulability", 0);
+  _pubManipEllipsoidRot = _n.advertise<visualization_msgs::Marker>("leg_manipulability_rot", 0);
+  _pubManipEllipsoidLin = _n.advertise<visualization_msgs::Marker>("leg_manipulability_lin", 0);
 
   // Subscriber definitions
   signal(SIGINT, legRobot::stopNode);
@@ -119,7 +120,8 @@ void legRobot::run() {
       computeNetCoG();
       computeFootBaseWrenchForwardDynamics();
       computeLegManipulability();
-      publishManipulabilityEllipsoid();
+      publishManipulabilityEllipsoidRot();
+      publishManipulabilityEllipsoidLin();
     }
     ros::spinOnce();
     _loopRate.sleep();
@@ -382,7 +384,7 @@ void legRobot::performChainForwardKinematics()
 //   } 
 // }
 
-void legRobot::publishManipulabilityEllipsoid() {
+void legRobot::publishManipulabilityEllipsoidRot() {
   // _mutex.lock();
   VectorXd svdValues = _mySVD.singularValues();
   Matrix<double, 3,3> svdVectors = _mySVD.matrixU().block(0,0,3,3);
@@ -391,28 +393,63 @@ void legRobot::publishManipulabilityEllipsoid() {
   std::string ns_name;
   frame_name = _leg_id == RIGHT ? "/right/hip_base_link" : "/left/hip_base_link";
   ns_name = _leg_id == RIGHT ? "/right" : "/left";
-  _msgManipEllipsoid.header.frame_id = frame_name;
-  _msgManipEllipsoid.header.stamp = ros::Time::now();
-  _msgManipEllipsoid.ns = ns_name;
-  _msgManipEllipsoid.id = 0;
-  _msgManipEllipsoid.type = visualization_msgs::Marker::SPHERE;
-  _msgManipEllipsoid.action = visualization_msgs::Marker::ADD;
-  _msgManipEllipsoid.pose.position.x = _footPosFrame.p.x();
-  _msgManipEllipsoid.pose.position.y = _footPosFrame.p.y();
-  _msgManipEllipsoid.pose.position.z = _footPosFrame.p.z();
-  _msgManipEllipsoid.pose.orientation.x = svdSingQuaternion.x();
-  _msgManipEllipsoid.pose.orientation.y = svdSingQuaternion.y();
-  _msgManipEllipsoid.pose.orientation.z = svdSingQuaternion.z();
-  _msgManipEllipsoid.pose.orientation.w = svdSingQuaternion.w();
-  _msgManipEllipsoid.scale.x = svdValues(0);
-  _msgManipEllipsoid.scale.y = svdValues(1);
-  _msgManipEllipsoid.scale.z = svdValues(2);
-  _msgManipEllipsoid.color.a = 0.5; // Don't forget to set the alpha!
-  _msgManipEllipsoid.color.r = 0;
-  _msgManipEllipsoid.color.g = 1;
-  _msgManipEllipsoid.color.b = 0;
+  _msgManipEllipsoidRot.header.frame_id = frame_name;
+  _msgManipEllipsoidRot.header.stamp = ros::Time::now();
+  _msgManipEllipsoidRot.ns = ns_name;
+  _msgManipEllipsoidRot.id = 0;
+  _msgManipEllipsoidRot.type = visualization_msgs::Marker::SPHERE;
+  _msgManipEllipsoidRot.action = visualization_msgs::Marker::ADD;
+  _msgManipEllipsoidRot.pose.position.x = _footPosFrame.p.x();
+  _msgManipEllipsoidRot.pose.position.y = _footPosFrame.p.y();
+  _msgManipEllipsoidRot.pose.position.z = _footPosFrame.p.z();
+  _msgManipEllipsoidRot.pose.orientation.x = svdSingQuaternion.x();
+  _msgManipEllipsoidRot.pose.orientation.y = svdSingQuaternion.y();
+  _msgManipEllipsoidRot.pose.orientation.z = svdSingQuaternion.z();
+  _msgManipEllipsoidRot.pose.orientation.w = svdSingQuaternion.w();
+  _msgManipEllipsoidRot.scale.x = svdValues(3) * 150;
+  _msgManipEllipsoidRot.scale.y = svdValues(4) * 150;
+  _msgManipEllipsoidRot.scale.z = svdValues(5) * 150;
+  _msgManipEllipsoidRot.color.a = 0.5; // Don't forget to set the alpha!
+  _msgManipEllipsoidRot.color.r = 0;
+  _msgManipEllipsoidRot.color.g = 1;
+  _msgManipEllipsoidRot.color.b = 0;
   // only if using a MESH_RESOURCE marker type:
   // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
-  _pubManipEllipsoid.publish(_msgManipEllipsoid);
+  _pubManipEllipsoidRot.publish(_msgManipEllipsoidRot);
+  // _mutex.unlock();
+}
+
+void legRobot::publishManipulabilityEllipsoidLin() {
+  // _mutex.lock();
+  VectorXd svdValues = _mySVD.singularValues();
+  Matrix<double, 3,3> svdVectors = _mySVD.matrixU().block(0,0,3,3);
+  Quaternion<double> svdSingQuaternion(svdVectors);
+  std::string frame_name;
+  std::string ns_name;
+  frame_name = _leg_id == RIGHT ? "/right/hip_base_link" : "/left/hip_base_link";
+  ns_name = _leg_id == RIGHT ? "/right" : "/left";
+  _msgManipEllipsoidLin.header.frame_id = frame_name;
+  _msgManipEllipsoidLin.header.stamp = ros::Time::now();
+  _msgManipEllipsoidLin.ns = ns_name;
+  _msgManipEllipsoidLin.id = 0;
+  _msgManipEllipsoidLin.type = visualization_msgs::Marker::SPHERE;
+  _msgManipEllipsoidLin.action = visualization_msgs::Marker::ADD;
+  _msgManipEllipsoidLin.pose.position.x = _footPosFrame.p.x();
+  _msgManipEllipsoidLin.pose.position.y = _footPosFrame.p.y();
+  _msgManipEllipsoidLin.pose.position.z = _footPosFrame.p.z();
+  _msgManipEllipsoidLin.pose.orientation.x = svdSingQuaternion.x();
+  _msgManipEllipsoidLin.pose.orientation.y = svdSingQuaternion.y();
+  _msgManipEllipsoidLin.pose.orientation.z = svdSingQuaternion.z();
+  _msgManipEllipsoidLin.pose.orientation.w = svdSingQuaternion.w();
+  _msgManipEllipsoidLin.scale.x = svdValues(0);
+  _msgManipEllipsoidLin.scale.y = svdValues(1);
+  _msgManipEllipsoidLin.scale.z = svdValues(2);
+  _msgManipEllipsoidLin.color.a = 0.5; // Don't forget to set the alpha!
+  _msgManipEllipsoidLin.color.r = 0;
+  _msgManipEllipsoidLin.color.g = 1;
+  _msgManipEllipsoidLin.color.b = 1;
+  // only if using a MESH_RESOURCE marker type:
+  // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
+  _pubManipEllipsoidLin.publish(_msgManipEllipsoidLin);
   // _mutex.unlock();
 }

@@ -5,7 +5,7 @@
   <param name="chair_description" command="$(find xacro)/xacro --inorder $(arg chair_model)"/>
   <arg name="rviz"        default="true"/>
   <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/base/chair_alone.rviz" />
-  
+	<arg name="freq"        default="10000.0"/>  
   <arg name="offset_x"    default="0.0"/>  
   <arg name="offset_y"    default="0.0"/>
   <arg name="offset_z"    default="0.0"/>
@@ -13,10 +13,12 @@
   <node name="chair_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" output="screen">
     <remap from="robot_description" to="chair_description" />
     <remap from="joint_states" to="chair_joint_publisher/joint_states" />
+    <param name="rate" type="double" value="$(arg freq)"/>
   </node>
   
   <node name="chair_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-    <remap from="robot_description" to="chair_description" />
+    <param name="publish_frequency" type="double" value="$(eval 2*arg('freq'))"/>
+    <remap from="robot_description" to="chair_description" />    
     <remap from="joint_states" to="chair_joint_publisher/joint_states" />
   </node>
   

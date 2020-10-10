@@ -175,7 +175,7 @@ void PIDd::setTunings(double Kp, double Ki, double Kd){
 }
 
 /* SetSampleTime(...) *********************************************************
- * sets the period, in micros, at which the calculation is performed
+ * sets the period, in millis, at which the calculation is performed
  ******************************************************************************/
 void PIDd::setSampleTime(int NewSampleTime)
 {
@@ -185,6 +185,7 @@ void PIDd::setSampleTime(int NewSampleTime)
       ki *= ratio;
       kd /= ratio;
       SampleTime = (int)NewSampleTime;
+      SampleTimeSec = SampleTime * 0.001; 
    }
 }
 
