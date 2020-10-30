@@ -23,6 +23,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "custom_msgs/FootInputMsg_v5.h"
+#include "custom_msgs/FootOutputMsg_v3.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
 #include <dynamic_reconfigure/server.h>
@@ -123,9 +124,13 @@ private:
    
   Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointPosition[NB_TOOLS];
   Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointVelocity[NB_TOOLS];
-  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffort[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortD[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortRef[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortM[NB_TOOLS];
   // Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates_prev[NB_TOOLS];
   
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _legGravityCompTorques[NB_TOOLS];
+
   Eigen::Vector3d    _trocarPosition[NB_TOOLS];
   Eigen::Quaterniond _trocarQuaternion[NB_TOOLS];
   Eigen::Matrix3d    _trocarRotationMatrix[NB_TOOLS];
@@ -188,10 +193,14 @@ private:
 
 
   ros::Subscriber _subSharedGrasp[NB_TOOLS];
+  ros::Subscriber _subLegGravityCompTorques[NB_TOOLS];
   ros::Subscriber _subToolTipPose[NB_TOOLS];
   ros::Subscriber _subToolJointStates[NB_TOOLS];
   ros::Subscriber _subPlatformJointStates[NB_TOOLS];
+  ros::Subscriber _subFootPlatform[NB_TOOLS];
   ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
+  ros::Subscriber _subPlatformROSInput[NB_TOOLS];
+  ros::Subscriber _subUnbiasedJointTorques[NB_TOOLS];
 
   vibrator* _myVibrator[NB_TOOLS];
   smoothSignals* _mySmoothSignals[NB_TOOLS];
@@ -204,7 +213,8 @@ private:
   // KDL::Frame _myFrame;
   
   //! boolean variables
-  bool _flagFootBaseForceConnected[NB_TOOLS];
+  bool  _flagFootBaseForceConnected[NB_TOOLS];
+  bool  _flagLegGravityTorquesConnected[NB_TOOLS];
   bool  _flagPlatformJointsConnected[NB_TOOLS];
   bool  _flagToolJointsConnected[NB_TOOLS];
   bool  _flagToolTipTFConnected[NB_TOOLS];
@@ -242,7 +252,15 @@ private:
   
   void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
 
+  void readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg, unsigned int n_);
+
+  void readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
+
   void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg,unsigned int n_);
+
+  void readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
+  
+  void readGtraTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
   
   void readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg, unsigned int n_);
   
@@ -263,3 +281,4 @@ private:
   static void stopNode(int sig);
 };
 #endif // __targetObject_H__
+

@@ -103,8 +103,8 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
     _graspCtrlOut=0.0;
     _thresholdFilter.setAlpha(0.9);
 
-    _aStateNext=A_POSITIONING;
-    _aState=A_POSITIONING;
+    _aStateNext=A_POSITIONING_OPEN;
+    _aState=A_POSITIONING_OPEN;
 
 
    for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
@@ -132,7 +132,7 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
 
   std::string toolName="right";
 
-  if (!_n.getParam("id", toolName))
+  if (!_n.getParam("toolID", toolName))
   { 
       ROS_ERROR("No indicaton of tool id (right or left) was done"); 
   }
@@ -140,13 +140,13 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
 
    if (!_n.getParam("hapticGraspOn", _flagHapticGrasping))
   { 
-      ROS_ERROR("No indicaton of the subject ID (e.g. sXX) was done"); 
+      ROS_ERROR("No indicaton of the haptic grasp was done"); 
       _flagHapticGrasping = false;
   }
   
      if (!_n.getParam("sharedGraspOn", _flagSharedGrasping))
   { 
-      ROS_ERROR("No indicaton of the subject ID (e.g. sXX) was done"); 
+      ROS_ERROR("No indicaton of the shared grasp was done"); 
       _flagSharedGrasping = false;
   }
     
@@ -255,7 +255,7 @@ void sharedControlGrasp::estimateActionState()
   {
     if (_myVibrator->finished())
       {
-      _aStateNext = A_POSITIONING;
+      _aStateNext = A_POSITIONING_OPEN;
      }
   }
 
@@ -266,7 +266,7 @@ void sharedControlGrasp::estimateActionState()
     {
       _myVibrator->reset();
       _mySmoothSignals->reset();
-      if (_aStateNext==A_POSITIONING)
+      if (_aStateNext==A_POSITIONING_OPEN)
       {
         _myVibrator->changeParams(1.0*magnitude_vib,0.7*decayRate_vib,5.0*frequency_vib);
         _mySmoothSignals->changeParams(smoothSignals::SMOOTH_RISE,2.0);
@@ -291,7 +291,7 @@ void sharedControlGrasp::doSharedControl()
 
   switch (_aState)
   {
-  case A_POSITIONING:
+  case A_POSITIONING_OPEN:
     {
       _pidPosition[Axis_Mod[p_x]]->reset();
       _pidPosition[Axis_Mod[p_y]]->reset();
@@ -360,7 +360,7 @@ void sharedControlGrasp::doSharedControl()
       
       
       
-      if ((_myVibrator->finished() && _aState==A_POSITIONING) || _aState==A_GRASPING)
+      if ((_myVibrator->finished() && _aState==A_POSITIONING_OPEN) || _aState==A_GRASPING)
       {
         _pidPosition[i]->compute(ros::Time::now());        
         _hapticTorques(Axis_Pos[i])=_posCtrlOut(i);    
@@ -426,7 +426,7 @@ void sharedControlGrasp::publishFootInput()
         _msgFootInput.ros_filterAxisForce.fill(_hapticAxisFilterPos); 
         _msgFootInput.ros_filterAxisForce[p_roll] = _hapticAxisFilterGrasp;
       }
-      if (_aState == A_POSITIONING)
+      if (_aState == A_POSITIONING_OPEN)
       {
         _msgFootInput.ros_filterAxisForce.fill(_hapticAxisFilterPos); 
         _msgFootInput.ros_filterAxisForce[p_roll] = _hapticAxisFilterGrasp;
@@ -442,19 +442,20 @@ void sharedControlGrasp::publishSharedGrasp()
   _msgSharedGrasp.sGrasp_stamp = ros::Time::now();
   _msgSharedGrasp.sGrasp_aState=_aState;
   _msgSharedGrasp.sGrasp_threshold =_myThreshold; // In degrees
-  for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-  {
-      if (_flagSharedGrasping)
+  if (_flagSharedGrasping)
       {
         _msgSharedGrasp.sGrasp_hFilters.fill(_hapticAxisFilterPos);
         _msgSharedGrasp.sGrasp_hFilters[p_roll]=_hapticAxisFilterGrasp;
+        for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+        {  
+         _msgSharedGrasp.sGrasp_hapticTorques[i]=_hapticTorques(i);
+        }
       }
       else
       {
         _msgSharedGrasp.sGrasp_hFilters.fill(1.0f);
       }
-      
-  }
+  
   _pubSharedGrasp.publish(_msgSharedGrasp);
 
 }

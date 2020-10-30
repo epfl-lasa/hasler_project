@@ -77,7 +77,8 @@ private:
   
   enum ToolID { UNKNOWN = 0, RIGHT_TOOL = 1, LEFT_TOOL = 2};
 
-  enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
+  //enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
+  enum Action_State {A_POSITIONING_OPEN, A_GRASPING, A_POSITIONING_CLOSE, NB_ACTIONS};
 
   // Target_Status _myStatus;
   

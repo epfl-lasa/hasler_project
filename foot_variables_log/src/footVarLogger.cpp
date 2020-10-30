@@ -80,20 +80,20 @@ bool footVarLogger::init() //! Initialization of the node. Its datatype (bool) r
 
 	if (_platform_name==LEFT){
 		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT,1, boost::bind(&footVarLogger::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     	_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_filtered", 1);
 		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Left/sensor_pose", 1);
-		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Left/motors_invDyn", 1);
+		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v3>("FI_Data/Left/motors_invDyn", 1);
 		_pubDesiredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_desired", 1);
 		_pubMeasuredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Left/ft_measured", 1);
 		_subForceTorqueSensor = _n.subscribe<geometry_msgs::WrenchStamped>("ft_sensor_left/netft_data", 1, boost::bind(&footVarLogger::updateFtSensorWrench, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
 	if (_platform_name==RIGHT){
 		_subFootInput = _n.subscribe<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT,1, boost::bind(&footVarLogger::sniffFootInput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		_pubFtSensorFilteredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_filtered", 1);
 		_pubFootPose = _n.advertise<geometry_msgs::PoseStamped>("FI_Data/Right/sensor_pose", 1);
-		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Right/motors_effort", 1);
+		_pubMotorsEffortM = _n.advertise<custom_msgs::FootOutputMsg_v3>("FI_Data/Right/motors_effort", 1);
 		_pubDesiredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_desired", 1);
 		_pubMeasuredWrench = _n.advertise<geometry_msgs::WrenchStamped>("FI_Data/Right/ft_measured", 1);
 		_subForceTorqueSensor = _n.subscribe<geometry_msgs::WrenchStamped>("ft_sensor_right/netft_data", 1, boost::bind(&footVarLogger::updateFtSensorWrench, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -341,7 +341,7 @@ void footVarLogger::footDataTransformation()
 	  _measuredFootWrench = pseudoInverse(J_.transpose()) * temp3;
 		}
 
-  void footVarLogger::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr &msg)
+  void footVarLogger::fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg)
   {
 	  _flagOutputMessageReceived = true;
 	  _platform_id = msg->platform_id;

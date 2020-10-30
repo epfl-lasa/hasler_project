@@ -1,2 +1,4 @@
-nFIPublishers: 1
+nFIPublishers: 2
 pub_1: 'shared_control_publisher/foot_input'
+pub_2: 'surgical_task/foot_input'
+

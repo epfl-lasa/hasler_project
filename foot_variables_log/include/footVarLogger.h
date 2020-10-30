@@ -24,7 +24,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions_security.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
-#include <custom_msgs/FootOutputMsg_v2.h>
+#include <custom_msgs/FootOutputMsg_v3.h>
 #include <custom_msgs/FootInputMsg_v2.h>
 
 using namespace std;
@@ -64,18 +64,18 @@ class footVarLogger
     ros::Publisher _pubFootPose;
     ros::Publisher _pubMotorsEffortM;
     // Subscribers declarations
-    ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
+    ros::Subscriber _subFootOutput;            // FootOutputMsg_v3
     ros::Subscriber _subFootInput;            // FootInputMsg_v2
     ros::Subscriber _subForceTorqueSensor;			// force torque sensor
 
 
     // Subsciber and publisher messages declaration
-    custom_msgs::FootOutputMsg_v2 _msgFootOutput;
+    custom_msgs::FootOutputMsg_v3 _msgFootOutput;
     geometry_msgs::WrenchStamped _msgFilteredWrench;
     geometry_msgs::WrenchStamped _msgDesiredWrench;
     geometry_msgs::WrenchStamped _msgMeasuredWrench;
     geometry_msgs::PoseStamped _msgFootPoseStamped;
-    //foot_variables_sync::FootOutputMsg_v2 _msgFootOutput;
+    //foot_variables_sync::FootOutputMsg_v3 _msgFootOutput;
 
     //!boolean variables
     
@@ -87,7 +87,7 @@ class footVarLogger
     Platform_Name _platform_name;
 
     //Variables from messages
-        //! FootOutputMsg_v2 -> Internal for the platform
+        //! FootOutputMsg_v3 -> Internal for the platform
             int8_t _platform_id;
             
             Eigen::Matrix<float,NB_AXIS,1> _platform_position;
@@ -176,7 +176,7 @@ class footVarLogger
     void publishData(); 
     
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);
+    void fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg);
     void sniffFootInput(const custom_msgs::FootInputMsg_v2::ConstPtr &msg);
     void logData();
     static void stopNode(int sig);

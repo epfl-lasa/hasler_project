@@ -147,7 +147,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 
 	if (_platform_name==LEFT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
 		
 		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/left/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
@@ -162,7 +162,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 	}
 	if (_platform_name==RIGHT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
 		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/right/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -782,7 +782,7 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 }
 
 
-void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg)
+void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg)
 {
 	_msgFootOutput = *msg;
 	_flagOutputMessageReceived=true;

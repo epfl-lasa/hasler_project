@@ -16,7 +16,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions_security.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include <foot_variables_sync/machineStateParamsConfig.h>
-#include <custom_msgs/FootOutputMsg_v2.h>
+#include <custom_msgs/FootOutputMsg_v3.h>
 #include <custom_msgs/FootInputMsg_v5.h>
 #include <custom_msgs/setStateSrv_v2.h>
 #include <custom_msgs/setControllerSrv.h>
@@ -58,7 +58,7 @@ class footVarSynchronizer
 	//!subscribers and publishers declaration    
     
     // Subscribers declarations
-    ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
+    ros::Subscriber _subFootOutput;            // FootOutputMsg_v3
     ros::Subscriber _subForceSensor;            // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subForceModified;            // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subLegGravCompTorques;           //custom_msgs/FootInputMsg_v5
@@ -76,14 +76,14 @@ class footVarSynchronizer
 
     // Subsciber and publisher messages declaration
     custom_msgs::FootInputMsg_v5 _msgFootInput;
-    custom_msgs::FootOutputMsg_v2 _msgFootOutput;
-    custom_msgs::FootOutputMsg_v2 _msgFootOutputPrev;
+    custom_msgs::FootOutputMsg_v3 _msgFootOutput;
+    custom_msgs::FootOutputMsg_v3 _msgFootOutputPrev;
     custom_msgs::setStateSrv_v2 _srvSetState;
     custom_msgs::setControllerSrv _srvSetController;
     
     
     
-    //foot_variables_sync::FootOutputMsg_v2 _msgFootOutput;
+    //foot_variables_sync::FootOutputMsg_v3 _msgFootOutput;
 
     //!boolean variables
     
@@ -102,7 +102,7 @@ class footVarSynchronizer
     Platform_Name _platform_name;
 
     //Variables from messages
-        //! FootOutputMsg_v2 -> Internal for the platform
+        //! FootOutputMsg_v3 -> Internal for the platform
             int8_t _platform_id;
             
             Eigen::Matrix<double,NB_AXIS,1> _platform_position;
@@ -207,7 +207,7 @@ class footVarSynchronizer
     //! ROS METHODS
 
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);
+    void fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg);
     void sniffFootInput(const custom_msgs::FootInputMsg_v5::ConstPtr& msg); 
     
     void dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level);

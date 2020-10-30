@@ -131,15 +131,15 @@ bool frictionLogger::init() //! Initialization of the node. Its datatype (bool) 
 {
 
 	if (_platform_name==LEFT){
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&frictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_pubFriction = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Left/friction_data", 1);
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&frictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_pubFriction = _n.advertise<custom_msgs::FootOutputMsg_v3>("FI_Data/Left/friction_data", 1);
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
 		_clientSetState = _n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController = _n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
 	}
 	if (_platform_name==RIGHT){
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v2>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&frictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		_pubFriction = _n.advertise<custom_msgs::FootOutputMsg_v2>("FI_Data/Right/friction_data", 1);
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&frictionLogger::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_pubFriction = _n.advertise<custom_msgs::FootOutputMsg_v3>("FI_Data/Right/friction_data", 1);
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
 		_clientSetState = _n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController = _n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
@@ -696,7 +696,7 @@ void frictionLogger::publishDesiredPosition()
 
 
 void frictionLogger::fetchFootOutput(
-	const custom_msgs::FootOutputMsg_v2::ConstPtr &msg)
+	const custom_msgs::FootOutputMsg_v3::ConstPtr &msg)
 {
 	_flagOutputMessageReceived = true;
 	_platform_id = msg->platform_id;

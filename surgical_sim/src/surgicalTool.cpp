@@ -110,10 +110,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   
    _hAxisFilterPosValue.setZero();
 
-   _hAxisFilterGraspValue=0.0;
-
    _hAxisFilterPos = new MatLP_Filterd(_hAxisFilterPosValue);
-   _hAxisFilterGrasp.setAlpha(_hAxisFilterGraspValue);
    _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
 
   _legJoints.setZero();
@@ -412,12 +409,12 @@ void surgicalTool::performInverseKinematics(){
   }
 
   _toolJoints->data(tool_yaw) = -Utils_math<double>::map( (_platformJoints(p_yaw) - _platformJointsOffset(p_yaw)) , 
-                                    -35*DEG_TO_RAD, 35*DEG_TO_RAD, 
+                                    -25*DEG_TO_RAD, 25*DEG_TO_RAD, 
                                     _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw)) + M_PI_2;
 
-  _toolJointsAll(tool_wrist_open_angle) = _hAxisFilterGrasp.update(Utils_math<double>::map( (-(_platformJoints(p_roll) - _platformJointsOffset(p_roll))),
+  _toolJointsAll(tool_wrist_open_angle) = Utils_math<double>::map( (-(_platformJoints(p_roll) - _platformJointsOffset(p_roll))),
                                           -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
-                                           _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle)));
+                                           _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
 
   _toolJointsAll(tool_wrist_open_angle_mimic) = _toolJointsAll(tool_wrist_open_angle) ;
 
@@ -663,8 +660,5 @@ void surgicalTool::readSharedGrasp(const custom_msgs_gripper::SharedGrasping::Co
       _hAxisFilterPosValue(i)=1.0-msg->sGrasp_hFilters[Axis_Mod[i]];
     }
 
-    _hAxisFilterGraspValue = 1.0-msg->sGrasp_hFilters[p_roll];
-
     _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
-    _hAxisFilterGrasp.setAlpha(_hAxisFilterGraspValue);
 }

@@ -32,7 +32,7 @@
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 #include <custom_msgs/FootInputMsg_v3.h>
-#include <custom_msgs/FootOutputMsg_v2.h>
+#include <custom_msgs/FootOutputMsg_v3.h>
 #include <custom_msgs/setControllerSrv.h>
 #include <custom_msgs/setStateSrv_v2.h>
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"

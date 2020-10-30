@@ -13,7 +13,7 @@ shin_length:  0.380
 ankle_to_foot_base_z: 0.100
 ankle_to_foot_base_x: 0.020
 foot_base_to_foot_tip: 0.15621
-body_weight: 84
+body_weight: 86
 hip_width: 0.24
 hip_height: 1.035 
 
@@ -53,18 +53,88 @@ hip_height: 1.035
 # hip_height: 1.015 
 
 
-#These you can measure in the subject and update
-#Bernardo 0.790+ 0.165+0.080
-# thigh_width: 0.160
-# thigh_depth: 0.160
-# shin_width: 0.100
-# shin_depth: 0.100
+# These you can measure in the subject and update
+# Bernardo 0.790+ 0.165+0.065
+
+# thigh_width: 0.185
+# thigh_depth: 0.150
+# shin_width: 0.110
+# shin_depth: 0.105
 # foot_length: 0.280
 # thigh_length: 0.400
 # shin_length:  0.430
 # ankle_to_foot_base_z: 0.100
 # ankle_to_foot_base_x: 0.040
 # foot_base_to_foot_tip: 0.175
-# body_weight: 68
+# body_weight: 65
 # hip_width: 0.260
 # hip_height: 1.015 
+
+
+#These you can measure in the subject and update
+#Alireza  0.790+ 0.165 + 0.060
+# thigh_width: 0.140
+# thigh_depth: 0.170
+# shin_width: 0.120
+# shin_depth: 0.120
+# foot_length: 0.270
+# thigh_length: 0.390
+# shin_length:  0.430
+# ankle_to_foot_base_z: 0.110
+# ankle_to_foot_base_x: 0.035
+# foot_base_to_foot_tip: 0.175
+# body_weight: 64
+# hip_width: 0.235
+# hip_height: 1.015
+
+
+#These you can measure in the subject and update
+#Gustave 0.790+ 0.165 + 0.070
+# thigh_width: 0.290 
+# thigh_depth: 0.200 
+# shin_width: 0.135 
+# shin_depth: 0.135 
+# foot_length: 0.270 
+# thigh_length: 0.425
+# shin_length:  0.440
+# ankle_to_foot_base_z: 0.100
+# ankle_to_foot_base_x: 0.020
+# foot_base_to_foot_tip: 0.15621
+# body_weight: 84
+# hip_width: 0.24
+# hip_height: 1.025 
+
+#These you can measure in the subject and update
+#Sebastian 0.790+ 0.165 + 0.065
+
+# thigh_width: 0.165 
+# thigh_depth: 0.200 
+# shin_width: 0.140 
+# shin_depth: 0.140
+# foot_length: 0.290 
+# thigh_length: 0.420
+# shin_length:  0.435
+# ankle_to_foot_base_z: 0.105
+# ankle_to_foot_base_x: 0.050
+# foot_base_to_foot_tip: 0.200
+# body_weight: 80
+# hip_width: 0.260
+# hip_height: 1.020
+
+
+#These you can measure in the subject and update
+#Rui 0.039+ 0.790 + 0.065
+
+# thigh_width: 0.175 
+# thigh_depth: 0.200 
+# shin_width: 0.135 
+# shin_depth: 0.145
+# foot_length: 0.265 
+# thigh_length: 0.330
+# shin_length:  0.360
+# ankle_to_foot_base_z: 0.095
+# ankle_to_foot_base_x: 0.050
+# foot_base_to_foot_tip: 0.160
+# body_weight: 74.5
+# hip_width: 0.260
+# hip_height: 0.894

@@ -16,7 +16,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions_security.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include <foot_variables_sync/machineStateParamsConfig.h>
-#include <custom_msgs/FootOutputMsg_v2.h>
+#include <custom_msgs/FootOutputMsg_v3.h>
 #include <custom_msgs/FootInputMsg_v3.h>
 #include <custom_msgs/setStateSrv_v2.h>
 #include <custom_msgs/setControllerSrv.h>

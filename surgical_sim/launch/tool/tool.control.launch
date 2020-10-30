@@ -42,6 +42,7 @@
 			<param name="frequencyVibration" value="$(arg frequencyVibration)"/>
 			<param name="toolID" value="$(arg id)"/>
 			<param name="sharedGraspOn" value="$(arg sharedGrasp)"/>
+			<param name="hapticGraspOn" value="false"/>
 			<param name="publish_frequency" type="double" value="500.0" />
 		</node> 
 
