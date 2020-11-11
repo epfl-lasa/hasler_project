@@ -16,6 +16,14 @@ const double MAX_THRESHOLD = 7.0; // [DEG]
 
 char const *Tool_Names[]{"none", "right", "left"};
 
+char const *State_Names[]{"positioning with open gripper",
+                          "grasping",
+                          "holding grasp",
+                          "positioning with closed gripper",
+                          "closing gripper to regain control",
+                          "releasing grasp"};
+
+
 #define DELAY_SEC 3.0
 
 
@@ -72,9 +80,12 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
   _precisionPos=0.0;  
   _precisionGrasp=0.0; 
   _hapticAxisFilterPos=1.0; 
+  _hapticAxisFilterGrasp=1.0;
 
+  _graspingAnglePrev=0.0;
   _graspingAngle=0.0;
   _graspingAngleSpeed=0.0;
+  _vibInput=0.0;
     // _toolJointSpeed.setZero();  
     _platformJointPosition.setZero();
     _platformJointPositionOffset.setZero();
@@ -94,13 +105,13 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
     _posCtrlInPrev.setZero();
     _posCtrlOut.setZero();
 
-    _kpGrasping=0.0;
-    _kiGrasping=0.0;
-    _kdGrasping=0.0;
+    // _kpGrasping=0.0;
+    // _kiGrasping=0.0;
+    // _kdGrasping=0.0;
 
-    _graspCtrlRef=0.0;
-    _graspCtrlIn=0.0;
-    _graspCtrlOut=0.0;
+    // _graspCtrlRef=0.0;
+    // _graspCtrlIn=0.0;
+    // _graspCtrlOut=0.0;
     _thresholdFilter.setAlpha(0.9);
 
     _aStateNext=A_POSITIONING_OPEN;
@@ -116,19 +127,20 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
       _kpPositionFilter[i].setAlpha(0.99);
       _kiPositionFilter[i].setAlpha(0.99);
       _kdPositionFilter[i].setAlpha(0.99);
+      _pidPosition[i]->setTunings(_kpPosition(i),_kiPosition(i),_kdPosition(i));
    }
     
-    _pidGrasping = new PIDd(&_graspCtrlIn, &_graspCtrlOut, &_graspCtrlRef,
-    _kpGrasping, _kiGrasping, _kdGrasping, P_ON_E , DIRECT, 0.9);
-    _pidGrasping->setMode(AUTOMATIC);
-    _pidGrasping->setSampleTime(SAMPLING_TIME);
+    // _pidGrasping = new PIDd(&_graspCtrlIn, &_graspCtrlOut, &_graspCtrlRef,
+    // _kpGrasping, _kiGrasping, _kdGrasping, P_ON_E , DIRECT, 0.9);
+    // _pidGrasping->setMode(AUTOMATIC);
+    // _pidGrasping->setSampleTime(SAMPLING_TIME);
 
     _pidPosition[Axis_Mod[p_x]]->setOutputLimits(-17.0,17.0);
     _pidPosition[Axis_Mod[p_y]]->setOutputLimits(-17.0,17.0);
     _pidPosition[Axis_Mod[p_pitch]]->setOutputLimits(-2.0,2.0);
     _pidPosition[Axis_Mod[p_yaw]]->setOutputLimits(-2.0,2.0);
     
-    _pidGrasping->setOutputLimits(-0.5,0.5);
+    // _pidGrasping->setOutputLimits(-0.5,0.5);
 
   std::string toolName="right";
 
@@ -166,9 +178,12 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
   }
 
     // _myVibrator = new vibrator(&_toolJointSpeed(tool_wrist_open_angle), &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
-    _myVibrator = new vibrator(&_graspingAngleSpeed, &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
-    _mySmoothSignals = new smoothSignals(smoothSignals::SMOOTH_RISE, &_hapticAxisFilterPos,3.0); 
-
+    _myVibrator = new vibrator(&_vibInput, &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
+    _mySmoothSignalsPos = new smoothSignals(smoothSignals::SMOOTH_RISE, &_hapticAxisFilterPos,3.0); 
+    _mySmoothSignalsGrasp = new smoothSignals(smoothSignals::SMOOTH_RISE, &_hapticAxisFilterGrasp,3.0); 
+  _flagGraspingStarted=false;
+  _flagHoldingGraspStarted=false;
+  _flagPositioningStarted=false;
 
 }
 
@@ -206,21 +221,22 @@ void sharedControlGrasp::stopNode(int sig) { me->_stop = true;  }
 void sharedControlGrasp::run() {
 
   while (!_stop) {
-    _hapticTorques.setZero();
-      
-      estimateActionState();
+      _hapticTorques.setZero();
+      //cout<<"Current state: "<<State_Names[_aState]<<endl;
       if (_flagSharedGrasping)
       {
+        estimateActionState();
+        estimateActionTransition();
         doSharedControl();
-      }
-      
+            
       _myVibrator->run(ros::Time::now());
-      _mySmoothSignals->run(ros::Time::now());
+      _mySmoothSignalsPos->run(ros::Time::now());
+      _mySmoothSignalsGrasp->run(ros::Time::now());
       _hapticTorques(p_roll) = Utils_math<double>::bound(_vibrationGrasping,-2.5, 2.5);
-  
+      }
       publishFootInput();
       publishSharedGrasp();
-
+      
     ros::spinOnce();
     _loopRate.sleep();
   }
@@ -233,7 +249,13 @@ void sharedControlGrasp::run() {
 void sharedControlGrasp::estimateActionState()
 {
 
-  _graspingAngle=_toolJointPosition(tool_wrist_open_angle);
+  //_graspingAngle=_toolJointPosition(tool_wrist_open_angle);
+  //_graspingAngleSpeed = _toolJointSpeed(tool_wrist_open_angle);
+  _graspingAnglePrev = _graspingAngle;
+  _graspingAngle = Utils_math<double>::bound(_platformJointPosition(p_roll)-10.0*DEG_TO_RAD,0,20.5*DEG_TO_RAD) * 30.0 / 20.5;
+  //cout<<_graspingAngle<<endl;
+  // _graspingAngleSpeed = (_graspingAngle - _graspingAnglePrev) * (1.0 / _dt);
+  _graspingAngleSpeed = _platformJointVelocity(p_roll);
   for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
   {
     double speed_comp = Utils_math<double>::bound(1.1*exp(abs(_platformJointVelocity(Axis_Mod[i])))-1.0,0.0,0.5);
@@ -244,136 +266,201 @@ void sharedControlGrasp::estimateActionState()
   
   _myThreshold = _thresholdFilter.update(Utils_math<double>::bound(_myThreshold,MIN_THRESHOLD,MAX_THRESHOLD));
   // if ( (_toolJointPosition(tool_wrist_open_angle)) < (30.0 - _myThreshold) * DEG_TO_RAD)
-  if ( _graspingAngle < (30.0 - _myThreshold) * DEG_TO_RAD)
-  {
-    if (_myVibrator->finished())
-      {
-        _aStateNext = A_GRASPING;
-      }
-  }
-  else
-  {
-    if (_myVibrator->finished())
-      {
-      _aStateNext = A_POSITIONING_OPEN;
-     }
-  }
-
   
-  if (_aState!=_aStateNext)
+switch (_aState)
+{
+case A_POSITIONING_OPEN:
   {
-    if (_flagSharedGrasping)
-    {
-      _myVibrator->reset();
-      _mySmoothSignals->reset();
-      if (_aStateNext==A_POSITIONING_OPEN)
+     
+      if ( _graspingAngle > ((_myThreshold) * DEG_TO_RAD))
+      { 
+        if (_myVibrator->finished())
+          {
+            _aStateNext = A_GRASPING;
+            _startTimeForKeepingGrasp=ros::Time::now();
+         
+          }
+      }
+  break;
+  }
+  case A_GRASPING:
+  {
+    
+      if ( _graspingAngle>=(_myThreshold + 5.0) * DEG_TO_RAD && fabs(_graspingAngleSpeed)<=0.1)
+      
       {
-        _myVibrator->changeParams(1.0*magnitude_vib,0.7*decayRate_vib,5.0*frequency_vib);
-        _mySmoothSignals->changeParams(smoothSignals::SMOOTH_RISE,2.0);
+            double deltaTimeKeeping = ros::Time::now().toSec()-_startTimeForKeepingGrasp.toSec(); 
+            cout<<deltaTimeKeeping<<" "<<_graspingAngle<<" "<<fabs(_graspingAngleSpeed)<<endl;
+            if (deltaTimeKeeping>=2.0)
+            {
+              _aStateNext=A_HOLDING_GRASP;
+              _graspingAngleBeforeHolding=_graspingAngle;
+            } 
       }
       else
       {
-        _myVibrator->changeParams(1.0*magnitude_vib,1.0*decayRate_vib,1.0*frequency_vib);
-        _mySmoothSignals->changeParams(smoothSignals::SMOOTH_FALL,0.5);
+         _startTimeForKeepingGrasp=ros::Time::now();
+      if ( _graspingAngle < ((_myThreshold) * DEG_TO_RAD))
+      {
+          _aStateNext=A_POSITIONING_OPEN;
       }
 
-      _mySmoothSignals->start();
-      _myVibrator->start();
-    }
-    _posCtrlRef = _posCtrlIn;
-    _aState = _aStateNext;
+      }
+      
+  break;
   }
+case A_HOLDING_GRASP:
+  {
+      
+      if ( _graspingAngle < (_myThreshold) * DEG_TO_RAD)
+      {
+        _aStateNext=A_POSITIONING_CLOSE;
+      }
+      break;
+  }
+  
+
+case A_POSITIONING_CLOSE:
+  {
+      
+       if ( _graspingAngle >= (_myThreshold) * DEG_TO_RAD)
+      {
+        if (_myVibrator->finished())
+          {
+            _aStateNext = A_FETCHING_OLD_GRASP;
+            _startTimeForReleasingGrasp=ros::Time::now();
+          
+          }
+      }
+  break;
+  }
+case A_FETCHING_OLD_GRASP:
+{
+    
+    if (_graspingAngle>=(_graspingAngleBeforeHolding-3.5) && fabs(_graspingAngleSpeed)<=0.1)
+    {
+        if (_myVibrator->finished())
+        {
+              double deltaTimeReleasing = ros::Time::now().toSec()-_startTimeForReleasingGrasp.toSec(); 
+              cout<<deltaTimeReleasing<<" "<<_graspingAngle<<" "<<fabs(_graspingAngleSpeed)<<endl;
+              if (deltaTimeReleasing>=2.0)
+              {
+                _aStateNext = A_RELEASE_GRASP;
+              } 
+        }
+
+    }
+    else
+        {
+          _startTimeForKeepingGrasp=ros::Time::now();
+         if ( _graspingAngle < (_myThreshold) * DEG_TO_RAD)
+        {
+            _aStateNext=A_POSITIONING_CLOSE;
+         
+        }
+        }
+  break;
+
+}
+
+case A_RELEASE_GRASP:
+{
+  
+  if ( _graspingAngle < (_myThreshold) * DEG_TO_RAD)
+    {
+      if (_myVibrator->finished())
+      { 
+        _aStateNext=A_POSITIONING_OPEN;
+         
+      }
+    }
+  break;
+}
+ 
+default:
+  break;
+}
 
 };
 
-void sharedControlGrasp::doSharedControl()
+
+void sharedControlGrasp::estimateActionTransition()
 {
 
-  switch (_aState)
+if (_aState!=_aStateNext)
   {
-  case A_POSITIONING_OPEN:
+   
+    if (_flagSharedGrasping)
     {
-      _pidPosition[Axis_Mod[p_x]]->reset();
-      _pidPosition[Axis_Mod[p_y]]->reset();
-      _pidPosition[Axis_Mod[p_pitch]]->reset();
-      _pidPosition[Axis_Mod[p_yaw]]->reset();
-      _kiPositionFilter[Axis_Mod[p_x]].reset();
-      _kiPositionFilter[Axis_Mod[p_y]].reset();
-      _kiPositionFilter[Axis_Mod[p_pitch]].reset();
-      _kiPositionFilter[Axis_Mod[p_yaw]].reset();
+      _myVibrator->reset();
+      _mySmoothSignalsPos->reset();
+      _mySmoothSignalsGrasp->reset();
 
-      _kpPosition(Axis_Mod[p_x]) = _kpPositionFilter[Axis_Mod[p_x]].update(0.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kpPosition(Axis_Mod[p_y]) = _kpPositionFilter[Axis_Mod[p_y]].update(0.0f * SCALE_GAINS_LINEAR_POSITION);
-      
-      _kpPosition(Axis_Mod[p_pitch]) = _kpPositionFilter[Axis_Mod[p_pitch]].update(0.0f * SCALE_GAINS_ANGULAR_POSITION);
-      _kpPosition(Axis_Mod[p_yaw]) =   _kpPositionFilter[Axis_Mod[p_yaw]].update(0.0f * SCALE_GAINS_ANGULAR_POSITION);
-      
-      _kiPosition(Axis_Mod[p_x]) = _kiPositionFilter[Axis_Mod[p_x]].update(0.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kiPosition(Axis_Mod[p_y]) = _kiPositionFilter[Axis_Mod[p_y]].update(0.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kiPosition(Axis_Mod[p_pitch]) = _kiPositionFilter[Axis_Mod[p_pitch]].update(0.0f * SCALE_GAINS_ANGULAR_POSITION);
-      _kiPosition(Axis_Mod[p_yaw]) = _kiPositionFilter[Axis_Mod[p_yaw]].update(0.0f * SCALE_GAINS_ANGULAR_POSITION);
+      if (_aStateNext==A_POSITIONING_OPEN || _aStateNext==A_POSITIONING_CLOSE)
+      {
+        _myVibrator->changeParams(1.0*magnitude_vib,0.7*decayRate_vib,5.0*frequency_vib);
+        
+        for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
+        {
+          _pidPosition[i]->reset();
+          _kpPosition(i) = 0.0;
+          _kiPosition(i) = 0.0;
+          _kdPosition(i) = 0.0;
+        }
+      }
+      else
+      {   
+      _kpPosition(Axis_Mod[p_x]) = 5000.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kpPosition(Axis_Mod[p_y]) = 5000.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kpPosition(Axis_Mod[p_pitch]) = 10000.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kpPosition(Axis_Mod[p_yaw]) =   5000.0f * SCALE_GAINS_ANGULAR_POSITION;
 
-      _kdPosition(Axis_Mod[p_x]) = _kdPositionFilter[Axis_Mod[p_x]].update(0.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kdPosition(Axis_Mod[p_y]) = _kdPositionFilter[Axis_Mod[p_y]].update(0.0f * SCALE_GAINS_LINEAR_POSITION);
+      _kiPosition(Axis_Mod[p_x]) =     100.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kiPosition(Axis_Mod[p_y]) =     100.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kiPosition(Axis_Mod[p_pitch]) = 100.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kiPosition(Axis_Mod[p_yaw]) =   100.0f * SCALE_GAINS_ANGULAR_POSITION;
 
-      _kdPosition(Axis_Mod[p_pitch]) = _kdPositionFilter[Axis_Mod[p_pitch]].update(0.0f * SCALE_GAINS_ANGULAR_POSITION);
-      _kdPosition(Axis_Mod[p_yaw])   = _kdPositionFilter[Axis_Mod[p_yaw]].update(0.0f * SCALE_GAINS_ANGULAR_POSITION);
+      _kdPosition(Axis_Mod[p_x]) = 500.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition(Axis_Mod[p_y]) = 500.0f * SCALE_GAINS_LINEAR_POSITION;
+      _kdPosition(Axis_Mod[p_pitch]) = 500.0f * SCALE_GAINS_ANGULAR_POSITION;
+      _kdPosition(Axis_Mod[p_yaw])   = 500.0f * SCALE_GAINS_ANGULAR_POSITION;
       
-      _kpGrasping = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      _kdGrasping = 0.0f * SCALE_GAINS_ANGULAR_POSITION;
-      break;
+      _myVibrator->changeParams(1.0*magnitude_vib,1.0*decayRate_vib,1.0*frequency_vib);
+      
+      }
+      
+      _mySmoothSignalsPos->start();
+      _mySmoothSignalsGrasp->start();
+      _myVibrator->start();
     }
-  
-  case A_GRASPING:
+    
+    if (_aStateNext==A_GRASPING || _aStateNext==A_FETCHING_OLD_GRASP)
+    { 
+      _posCtrlRef = _posCtrlIn;
+    }
+
+    for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
     {
-      _pidGrasping->reset();
-            
-
-      _kpPosition(Axis_Mod[p_x]) = _kpPositionFilter[Axis_Mod[p_x]].update(5000.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kpPosition(Axis_Mod[p_y]) = _kpPositionFilter[Axis_Mod[p_y]].update(5000.0f * SCALE_GAINS_LINEAR_POSITION);
-      
-      _kpPosition(Axis_Mod[p_pitch]) = _kpPositionFilter[Axis_Mod[p_pitch]].update(10000.0f * SCALE_GAINS_ANGULAR_POSITION);
-      _kpPosition(Axis_Mod[p_yaw]) =   _kpPositionFilter[Axis_Mod[p_yaw]].update(5000.0f * SCALE_GAINS_ANGULAR_POSITION);
-
-      _kiPosition(Axis_Mod[p_x]) = _kiPositionFilter[Axis_Mod[p_x]].update(100.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kiPosition(Axis_Mod[p_y]) = _kiPositionFilter[Axis_Mod[p_y]].update(100.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kiPosition(Axis_Mod[p_pitch]) = _kiPositionFilter[Axis_Mod[p_pitch]].update(100.0f * SCALE_GAINS_ANGULAR_POSITION);
-      _kiPosition(Axis_Mod[p_yaw]) = _kiPositionFilter[Axis_Mod[p_yaw]].update(100.0f * SCALE_GAINS_ANGULAR_POSITION);
-
-      _kdPosition(Axis_Mod[p_x]) = _kdPositionFilter[Axis_Mod[p_x]].update(500.0f * SCALE_GAINS_LINEAR_POSITION);
-      _kdPosition(Axis_Mod[p_y]) = _kdPositionFilter[Axis_Mod[p_y]].update(500.0f * SCALE_GAINS_LINEAR_POSITION);
-
-      _kdPosition(Axis_Mod[p_pitch]) = _kdPositionFilter[Axis_Mod[p_pitch]].update(500.0f * SCALE_GAINS_ANGULAR_POSITION);
-      _kdPosition(Axis_Mod[p_yaw])   = _kdPositionFilter[Axis_Mod[p_yaw]].update(500.0f * SCALE_GAINS_ANGULAR_POSITION);
-
-      _kpGrasping = 0.0f * SCALE_GAINS_ANGULAR_POSITION; 
-      break;
+      _pidPosition[i]->setTunings(_kpPosition(i),_kiPosition(i),_kdPosition(i));
     }
+
+    _aState = _aStateNext;
+    cout<<"Next state: "<<State_Names[_aState]<<endl;
   }
+
+}
+
+void sharedControlGrasp::doSharedControl()
+{
   _posCtrlInPrev =  _posCtrlIn;
   for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
     {
       
-      _posCtrlIn(i)=_platformJointPosition(Axis_Mod[i]);
-            
-      _pidPosition[i]->setTunings(_kpPosition(i),_kiPosition(i),_kdPosition(i));
-      
-      
-      
-      if ((_myVibrator->finished() && _aState==A_POSITIONING_OPEN) || _aState==A_GRASPING)
-      {
-        _pidPosition[i]->compute(ros::Time::now());        
-        _hapticTorques(Axis_Pos[i])=_posCtrlOut(i);    
-      }
-      else
-      {
-        _hapticTorques(Axis_Pos[i])=0.0;    
-      }
-
+      _posCtrlIn(i)=_platformJointPosition(Axis_Mod[i]);  
+      _pidPosition[i]->compute(ros::Time::now());        
+      _hapticTorques(Axis_Pos[i])=_posCtrlOut(i) * fabs(1.0- _hapticAxisFilterPos);    
     }
-    
-    _graspCtrlIn = _graspingAngle;
-    _pidGrasping->setTunings(_kpGrasping,_kiGrasping,_kdGrasping);
+
 }
 
 void sharedControlGrasp::readToolState(const sensor_msgs::JointState::ConstPtr &msg) {
@@ -412,7 +499,7 @@ void sharedControlGrasp::publishFootInput()
     _msgFootInput.ros_forceSensor.fill(0.0f);
     _msgFootInput.ros_speed.fill(0.0f);
     _msgFootInput.ros_filterAxisForce.fill(1.0f); 
-    _hapticAxisFilterGrasp=1.0f;
+    
 
     for (unsigned int i=0; i<NB_PLATFORM_AXIS; i++)
     {
@@ -420,17 +507,8 @@ void sharedControlGrasp::publishFootInput()
     }
     if (_flagSharedGrasping)
     {
-      if (_aState == A_GRASPING)
-      {
-      
-        _msgFootInput.ros_filterAxisForce.fill(_hapticAxisFilterPos); 
-        _msgFootInput.ros_filterAxisForce[p_roll] = _hapticAxisFilterGrasp;
-      }
-      if (_aState == A_POSITIONING_OPEN)
-      {
-        _msgFootInput.ros_filterAxisForce.fill(_hapticAxisFilterPos); 
-        _msgFootInput.ros_filterAxisForce[p_roll] = _hapticAxisFilterGrasp;
-      }
+      _msgFootInput.ros_filterAxisForce.fill(_hapticAxisFilterPos); 
+      _msgFootInput.ros_filterAxisForce[p_roll] = 1.0;
     }
     _pubFootInput.publish(_msgFootInput); 
 }
@@ -444,19 +522,85 @@ void sharedControlGrasp::publishSharedGrasp()
   _msgSharedGrasp.sGrasp_threshold =_myThreshold; // In degrees
   if (_flagSharedGrasping)
       {
-        _msgSharedGrasp.sGrasp_hFilters.fill(_hapticAxisFilterPos);
-        _msgSharedGrasp.sGrasp_hFilters[p_roll]=_hapticAxisFilterGrasp;
+
+        switch (_aState)
+        {
+        case A_POSITIONING_OPEN:
+          {
+            // _msgSharedGrasp.sGrasp_hFilters.fill(1.0);
+            // _msgSharedGrasp.sGrasp_hFilters[p_roll]=1.0;
+            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+          break;
+          }
+          case A_GRASPING:
+          {
+            // _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
+            // _msgSharedGrasp.sGrasp_hFilters[p_roll]=1.0;              
+            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+          break;
+          }
+        case A_HOLDING_GRASP:
+          {
+            // _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
+            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+              break;
+          }
+          
+
+        case A_POSITIONING_CLOSE:
+          {
+            // _msgSharedGrasp.sGrasp_hFilters.fill(1.0);
+            // _msgSharedGrasp.sGrasp_hFilters[p_roll]=0.0; 
+            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+          break;
+          }
+        case A_FETCHING_OLD_GRASP:
+        {
+          //  _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
+          //  _msgSharedGrasp.sGrasp_hFilters[p_roll]=0.0; 
+
+          _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+          _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+
+          break;
+
+        }
+
+        case A_RELEASE_GRASP:
+        {
+          //  _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
+          //  _msgSharedGrasp.sGrasp_hFilters[p_roll]=1.0; 
+          _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+          _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+          break;
+        }
+        }
+
+
+
         for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
         {  
          _msgSharedGrasp.sGrasp_hapticTorques[i]=_hapticTorques(i);
         }
+        
+        _msgSharedGrasp.sGrasp_hFilters.fill(_hapticAxisFilterPos);
+        _msgSharedGrasp.sGrasp_hFilters[p_roll]=_hapticAxisFilterGrasp;
+
       }
       else
       {
         _msgSharedGrasp.sGrasp_hFilters.fill(1.0f);
       }
+
+      
   
   _pubSharedGrasp.publish(_msgSharedGrasp);
 
 }
+  
+
   

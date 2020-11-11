@@ -204,7 +204,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
         _maxLimsTarget(i) = fmax(_maxLimsTarget(i),abs(_targetsXYZ[i].second[j]));
       }
     }
-    cout<<_maxLimsTarget.transpose()<<endl;
+   // cout<<_maxLimsTarget.transpose()<<endl;
 }
 
 targetObject::~targetObject() { me->_n.shutdown(); }

@@ -78,7 +78,7 @@ private:
   enum ToolID { UNKNOWN = 0, RIGHT_TOOL = 1, LEFT_TOOL = 2};
 
   //enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
-  enum Action_State {A_POSITIONING_OPEN, A_GRASPING, A_POSITIONING_CLOSE, NB_ACTIONS};
+  enum Action_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS};
 
   // Target_Status _myStatus;
   
@@ -92,8 +92,9 @@ private:
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointSpeed;
   Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointPosition;
 
-
+  double _graspingAnglePrev;
   double _graspingAngle;
+  double _graspingAngleBeforeHolding;
   double _graspingAngleSpeed;
 
   double _hapticAxisFilterPos;
@@ -108,6 +109,7 @@ private:
   Eigen::Matrix<double,NB_AXIS_POSITIONING,1> _thresholds;
 
   double _vibrationGrasping;
+  double _vibInput;
   double _impedanceGrasping;
 
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques;
@@ -150,7 +152,7 @@ private:
   // ros variables
   ros::NodeHandle _n;
   ros::Rate _loopRate;
-  float _dt;
+  double _dt;
   
   ros::Publisher _pubSharedGrasp;
   custom_msgs_gripper::SharedGrasping _msgSharedGrasp;
@@ -165,13 +167,21 @@ private:
   ros::Subscriber _subPlatformJointStates;
 
   vibrator* _myVibrator;
-  smoothSignals* _mySmoothSignals;
+  smoothSignals* _mySmoothSignalsPos;
+  smoothSignals* _mySmoothSignalsGrasp;
+  ros::Time _startTimeForKeepingGrasp;
+  ros::Time _startTimeForReleasingGrasp;
+
+
   
   //! boolean variables
   bool  _flagPlatformJointsConnected;
   bool  _flagToolJointsConnected;
   bool _flagHapticGrasping;
   bool _flagSharedGrasping;
+  bool _flagGraspingStarted;
+  bool _flagHoldingGraspStarted;
+  bool _flagPositioningStarted;
 
   bool  _stop;
 
@@ -193,6 +203,7 @@ private:
   void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg);
 
   void estimateActionState();
+  void estimateActionTransition();
   void doSharedControl();
 
   void computesharedControlGraspPose();

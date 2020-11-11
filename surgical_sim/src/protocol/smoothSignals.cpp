@@ -11,7 +11,6 @@ smoothSignals::smoothSignals(smoothSignals_Type type, double* output, double dur
      _flagTrigger=false;
      _flagReset=false;
      _durationBias=0.0;
-     *_signalOutput=0.0;
      _myElapsedTime = ros::Duration(0.0);
 }
 
@@ -80,8 +79,6 @@ void smoothSignals::update(ros::Time myCurrentTime)
                               _flagTrigger=false;
                             }
                         }
-
-                        
                         
                         break;
                     }
@@ -146,4 +143,24 @@ void smoothSignals::changeParams(smoothSignals_Type type, double duration)
 {
     _myDuration=duration;
     _myType=type;
+    switch (_myType)
+    {
+    case SMOOTH_FALL:
+        if (fabs(*_signalOutput-0.0)<=FLT_EPSILON)
+        {   
+            *_signalOutput=0.0;
+            _myStatus=FINISHED;
+        }
+        break;
+    
+     case SMOOTH_RISE:
+        if (fabs(*_signalOutput-1.0)<=FLT_EPSILON)
+        {
+            *_signalOutput=1.0;
+            _myStatus=FINISHED;
+        }
+        break;
+    }
+
+    
 }

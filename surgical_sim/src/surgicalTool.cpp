@@ -100,7 +100,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _flagLegJointLimitsOffsetCalculated = false;
   _flagPlatformJointLimitsOffsetCalculated = false;
   _toolJointsAll.setZero(); 
-  _toolJointsFiltered.setZero();
+  _toolJointsPosFiltered.setZero();
   _toolJointsAllPrev.setZero();
   _toolJointsAllSpeed.setZero();
 
@@ -109,9 +109,13 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _toolJointsAllOffset.setZero();
   
    _hAxisFilterPosValue.setZero();
+   _hAxisFilterGraspValue=0.0;
 
    _hAxisFilterPos = new MatLP_Filterd(_hAxisFilterPosValue);
    _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
+
+   _hAxisFilterGrasp = new LP_Filterd(_hAxisFilterGraspValue);
+   _hAxisFilterGrasp->setAlpha(_hAxisFilterGraspValue);
 
   _legJoints.setZero();
   _legJointsOffset.setZero();
@@ -397,7 +401,7 @@ void surgicalTool::readFootTipBasePose()
 void surgicalTool::performInverseKinematics(){
 
   int ret = _myPosIkSolver_wrist->CartToJnt(*me->_toolJointsInit,_desiredTargetFrame,*me->_toolJoints);
-  _toolJointsInit->data=_toolJointsFiltered;
+  _toolJointsInit->data=_toolJointsPosFiltered;
 
   if  (abs(_toolJoints->data(tool_pitch))>89.0*DEG_TO_RAD && abs(_toolJoints->data(tool_roll))>89.0*DEG_TO_RAD)
   {
@@ -408,19 +412,19 @@ void surgicalTool::performInverseKinematics(){
       ROS_ERROR_ONCE("Please center the platform and launch the scenario again");
   }
 
+  
   _toolJoints->data(tool_yaw) = -Utils_math<double>::map( (_platformJoints(p_yaw) - _platformJointsOffset(p_yaw)) , 
                                     -25*DEG_TO_RAD, 25*DEG_TO_RAD, 
                                     _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw)) + M_PI_2;
 
-  _toolJointsAll(tool_wrist_open_angle) = Utils_math<double>::map( (-(_platformJoints(p_roll) - _platformJointsOffset(p_roll))),
+  _toolJointsAll(tool_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map( (-(_platformJoints(p_roll) - _platformJointsOffset(p_roll))),
                                           -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
-                                           _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
-
+                                           _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle)));
   _toolJointsAll(tool_wrist_open_angle_mimic) = _toolJointsAll(tool_wrist_open_angle) ;
 
    
-   _toolJointsFiltered =  _hAxisFilterPos->update(_toolJoints->data.segment(0,NB_TOOL_AXIS_RED));
-  _toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJointsFiltered;
+  _toolJointsPosFiltered =  _hAxisFilterPos->update(_toolJoints->data.segment(0,NB_TOOL_AXIS_RED));
+  _toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJointsPosFiltered;
   _toolJointsAll.cwiseMin(_toolJointLimsAll[L_MAX]->data).cwiseMax(_toolJointLimsAll[L_MIN]->data);
 
   if (ret<0)
@@ -657,8 +661,12 @@ void surgicalTool::readPlatformJoints(const sensor_msgs::JointState::ConstPtr &m
 void surgicalTool::readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg){
     for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
     {
-      _hAxisFilterPosValue(i)=1.0-msg->sGrasp_hFilters[Axis_Mod[i]];
+      _hAxisFilterPosValue(i)=1.0 - msg->sGrasp_hFilters[Axis_Mod[i]];
     }
 
+     _hAxisFilterGraspValue = 1.0 - msg->sGrasp_hFilters[p_roll];
+     //cout<<_hAxisFilterGraspValue<<endl;
+
     _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
+    _hAxisFilterGrasp->setAlpha(_hAxisFilterGraspValue);
 }

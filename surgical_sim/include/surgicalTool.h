@@ -104,7 +104,7 @@ private:
 
   // internal variables
 
-  Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsFiltered;
+  Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsPosFiltered;
   Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
   Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllPrev;
   Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllSpeed;
@@ -156,6 +156,7 @@ private:
   
   
   Eigen::Vector4d _hAxisFilterPosValue;
+  double _hAxisFilterGraspValue;
 
   // ros variables
   ros::NodeHandle _n;
@@ -203,6 +204,7 @@ private:
   std::mutex _mutex;
   static surgicalTool *me;
   MatLP_Filterd* _hAxisFilterPos;
+  LP_Filterd* _hAxisFilterGrasp;
   //! Dynamic Reconfigures
 
   // METHODS
