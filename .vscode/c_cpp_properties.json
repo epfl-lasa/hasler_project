@@ -57,7 +57,8 @@
                 "${workspaceFolder}/surgical_sim/include",
                 "/home/lsrob107772/catkin_hasler/src/utils_math/include",
                 "/usr/include/eigen3/Eigen",
-                "${workspaceFolder}/utils_math/include"
+                "${workspaceFolder}/utils_math/include",
+                "${workspaceFolder}/endoscope_feedback/include"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",

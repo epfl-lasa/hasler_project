@@ -6,9 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /RobotModel2
-        - /RobotModel3
-      Splitter Ratio: 0.5
+        - /TF1/Status1
+        - /right_platform1
+        - /left_platform1
+      Splitter Ratio: 0.350828737
     Tree Height: 547
   - Class: rviz/Selection
     Name: Selection
@@ -52,7 +53,7 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 1
+    - Alpha: 0.5
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -109,13 +110,13 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-      Name: RobotModel
+      Name: right_leg
       Robot Description: right/leg_description
       TF Prefix: right
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Alpha: 1
+    - Alpha: 0.5
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -172,7 +173,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-      Name: RobotModel
+      Name: left_leg
       Robot Description: left/leg_description
       TF Prefix: left
       Update Interval: 0
@@ -382,9 +383,143 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-      Name: RobotModel
+      Name: chair
       Robot Description: chair_description
       TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        fSensor:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        foot_rest:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pitch:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        platform_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        roll:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        virtual_ankle:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        y:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        yaw:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        z_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: right_platform
+      Robot Description: /right/platform_description
+      TF Prefix: right
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        fSensor:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        foot_rest:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pitch:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        platform_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        roll:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        virtual_ankle:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        y:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        yaw:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        z_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: left_platform
+      Robot Description: /left/platform_description
+      TF Prefix: left
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -428,10 +563,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.810398281
+      Pitch: 0.385398626
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.57539976
+      Yaw: 2.29540157
     Saved: ~
 Window Geometry:
   Displays:

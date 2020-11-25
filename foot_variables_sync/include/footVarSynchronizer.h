@@ -105,28 +105,28 @@ class footVarSynchronizer
         //! FootOutputMsg_v3 -> Internal for the platform
             int8_t _platform_id;
             
-            Eigen::Matrix<double,NB_AXIS,1> _platform_position;
-            Eigen::Matrix<double,NB_AXIS,1> _platform_speed;
-            Eigen::Matrix<double,NB_AXIS,1> _platform_effortD;
-            Eigen::Matrix<double,NB_AXIS,1> _platform_effortM;
+            Eigen::Matrix<float,NB_AXIS,1> _platform_position;
+            Eigen::Matrix<float,NB_AXIS,1> _platform_speed;
+            Eigen::Matrix<float,NB_AXIS,1> _platform_effortD;
+            Eigen::Matrix<float,NB_AXIS,1> _platform_effortM;
             
             Controller _platform_controllerType;
             State _platform_machineState;
 
     //! FootInputMsg_v2 + setStateSrv + setControllerSrv -> External = within the ros network
         
-            Eigen::Matrix<double,NB_AXIS,1> _ros_position;
-            Eigen::Matrix<double,NB_AXIS,1> _ros_speed;
-            Eigen::Matrix<double,NB_AXIS,1> _ros_effort;
-            Eigen::Matrix<double,NB_AXIS,1> _ros_filterAxisFS;
+            Eigen::Matrix<float,NB_AXIS,1> _ros_position;
+            Eigen::Matrix<float,NB_AXIS,1> _ros_speed;
+            Eigen::Matrix<float,NB_AXIS,1> _ros_effort;
+            Eigen::Matrix<float,NB_AXIS,1> _ros_filterAxisFS;
 
-            Eigen::Matrix<double, NB_AXIS, 1> _leg_grav_comp_effort;
+            Eigen::Matrix<float, NB_AXIS, 1> _leg_grav_comp_effort;
 
-            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceSensor_controlled;
+            Eigen::Matrix<float, NB_AXIS_WRENCH, 1> _ros_forceSensor_controlled;
 
-            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _legWrenchGravityComp;
+            Eigen::Matrix<float, NB_AXIS_WRENCH, 1> _legWrenchGravityComp;
 
-            Eigen::Matrix<double, NB_AXIS_WRENCH, 1> _ros_forceModified; //! Comes from force modifier node
+            Eigen::Matrix<float, NB_AXIS_WRENCH, 1> _ros_forceModified; //! Comes from force modifier node
 
             bool _ros_defaultControl;
 
@@ -144,12 +144,12 @@ class footVarSynchronizer
         // PID variables
         //General Variables
 
-        Eigen::Matrix<double,NB_AXIS,1> _ros_posP;
-        Eigen::Matrix<double,NB_AXIS,1> _ros_posI;
-        Eigen::Matrix<double,NB_AXIS,1> _ros_posD;
-        Eigen::Matrix<double,NB_AXIS,1> _ros_speedP;
-        Eigen::Matrix<double,NB_AXIS,1> _ros_speedI;
-        Eigen::Matrix<double,NB_AXIS,1> _ros_speedD;
+        Eigen::Matrix<float,NB_AXIS,1> _ros_posP;
+        Eigen::Matrix<float,NB_AXIS,1> _ros_posI;
+        Eigen::Matrix<float,NB_AXIS,1> _ros_posD;
+        Eigen::Matrix<float,NB_AXIS,1> _ros_speedP;
+        Eigen::Matrix<float,NB_AXIS,1> _ros_speedI;
+        Eigen::Matrix<float,NB_AXIS,1> _ros_speedD;
 
         // Other variables
     private:
@@ -194,8 +194,8 @@ class footVarSynchronizer
 
         // METHODS
       public:
-	// footVarSynchronizer(ros::NodeHandle &n_1, ros::NodeHandle &n_2, ros::NodeHandle &n_3, double frequency, footVarSynchronizer::Platform_Name platform_id_);
-	footVarSynchronizer(ros::NodeHandle &n_1, double frequency, footVarSynchronizer::Platform_Name platform_id_);
+	// footVarSynchronizer(ros::NodeHandle &n_1, ros::NodeHandle &n_2, ros::NodeHandle &n_3, float frequency, footVarSynchronizer::Platform_Name platform_id_);
+	footVarSynchronizer(ros::NodeHandle &n_1, float frequency, footVarSynchronizer::Platform_Name platform_id_);
 	
     ~footVarSynchronizer();
 	

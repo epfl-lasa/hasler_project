@@ -2,10 +2,12 @@
 <launch>
  <arg name="id1" default="right"/>
 
+ <arg name="two_platforms" default="false"/>
  <arg name="virtual_tool" default="false"/>
  <arg name="virtual_leg" default="false"/>
  <arg name="control_input" default="platform"/>
- <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_with_platform.rviz"/>
+ <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_with_platforms.rviz" if="$(arg two_platforms)"/>
+ <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_with_platform.rviz" unless="$(arg two_platforms)"/>
  <arg name="subjectID" default="none"/>
  <arg name="magnitudeVibration" default="2.5"/>
  <arg name="decayRateVibration" default="2.0"/> 
@@ -40,12 +42,21 @@
     <arg name="subjectID" value="$(arg subjectID)"/>
 
  </include>
+ 
+  <group unless="$(arg two_platforms)">    
+    <include file="$(find leg_as_robot)/launch/single_leg.launch">
+        <arg name="id" value="$(arg id1)"/>
+        <arg name="rviz" value="false"/>
+        <arg name="virtual_leg" value="$(arg virtual_leg)"/>
+    </include>  
+  </group>
 
-  <include file="$(find leg_as_robot)/launch/single_leg.launch">
-      <arg name="id" value="$(arg id1)"/>
-      <arg name="rviz" value="false"/>
-      <arg name="virtual_leg" value="$(arg virtual_leg)"/>
-  </include> 
+   <group if="$(arg two_platforms)">
+    <include file="$(find leg_as_robot)/launch/both_legs.launch">
+        <arg name="rviz" value="false"/>
+        <arg name="virtual_legs" value="$(arg virtual_leg)"/>
+    </include> 
+   </group>
 
  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="$(arg id1)_tool_fixed_joint" args="0 0 0 0 0 0 /$(arg id1)/trocar_link /$(arg id1)/tool_base_link" /> -->
   

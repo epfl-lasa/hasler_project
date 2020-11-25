@@ -2,7 +2,7 @@ rokubiminis:
   - name: ft_sensor_left
     configuration_file: rokubimini_sensor.yaml
     product_code: 1
-    port: /dev/ttyUSB0
+    port: /dev/left_force_sensor
     baud_rate: 460800
 #  - name:                     ft_sensor1
 #    configuration_file:       rokubimini_sensor.yaml

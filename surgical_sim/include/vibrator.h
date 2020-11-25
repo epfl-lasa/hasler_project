@@ -29,6 +29,8 @@ private:
 
   enum vibrator_Status {STANDBY, VIBRATING, FINISHED};
 
+  enum vibrator_Types {DECAYING_SINE, SINE, CHIRP, SQUARE, SAWTOOTH }
+
   double _vibMagnitude, _vibDecayRate, _vibFrequency;
 
   
