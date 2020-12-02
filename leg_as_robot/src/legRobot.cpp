@@ -359,8 +359,9 @@ void legRobot::computeLegManipulability()
   //_mySVD.compute(_myJacobian.data*_weightedJointSpaceMassMatrix.inverse(),ComputeThinU | ComputeThinV);
   _mySVD.compute(weightedJacobian.normalized(), ComputeThinU | ComputeThinV);
   //cout<<_mySVD.matrixU()<<endl;
-  //cout<<_mySVD.singularValues().transpose()<<endl;
-  //cout << _mySVD.singularValues().minCoeff()/_mySVD.singularValues().maxCoeff() << endl;
+  // cout<<"Singular Values: "<<_mySVD.singularValues().transpose()<<endl;
+  // cout<<"Leg Yoshikawa Manipulability: "<<_mySVD.singularValues().prod()<<endl;
+  // cout<<"Leg Jacobian Condition Number: "<<_mySVD.singularValues().minCoeff()/_mySVD.singularValues().maxCoeff() << endl;
 }
 
 void legRobot::performChainForwardKinematics() 
@@ -387,7 +388,7 @@ void legRobot::performChainForwardKinematics()
 void legRobot::publishManipulabilityEllipsoidRot() {
   // _mutex.lock();
   VectorXd svdValues = _mySVD.singularValues();
-  Matrix<double, 3,3> svdVectors = _mySVD.matrixU().block(0,0,3,3);
+  Matrix<double, 3,3> svdVectors = _mySVD.matrixU().block(3,3,3,3);
   Quaternion<double> svdSingQuaternion(svdVectors);
   std::string frame_name;
   std::string ns_name;
@@ -406,9 +407,9 @@ void legRobot::publishManipulabilityEllipsoidRot() {
   _msgManipEllipsoidRot.pose.orientation.y = svdSingQuaternion.y();
   _msgManipEllipsoidRot.pose.orientation.z = svdSingQuaternion.z();
   _msgManipEllipsoidRot.pose.orientation.w = svdSingQuaternion.w();
-  _msgManipEllipsoidRot.scale.x = svdValues(3) * 150;
-  _msgManipEllipsoidRot.scale.y = svdValues(4) * 150;
-  _msgManipEllipsoidRot.scale.z = svdValues(5) * 150;
+  _msgManipEllipsoidRot.scale.x = svdValues(3) * 1.0;
+  _msgManipEllipsoidRot.scale.y = svdValues(4) * 1.0;
+  _msgManipEllipsoidRot.scale.z = svdValues(5) * 1.0;
   _msgManipEllipsoidRot.color.a = 0.5; // Don't forget to set the alpha!
   _msgManipEllipsoidRot.color.r = 0;
   _msgManipEllipsoidRot.color.g = 1;

@@ -43,7 +43,7 @@
 #include "smoothSignals.h"
 #include "PIDd.h"
 #include "MatLP_Filterd.h"
-#include <custom_msgs_gripper/SharedGrasping.h>
+#include <custom_msgs_gripper/SharedGraspingMsg.h>
 
 const uint8_t NB_AXIS_POSITIONING = 4;
 
@@ -180,7 +180,7 @@ private:
   geometry_msgs::TransformStamped _msgtargetObjectTransform;
   
   ros::Publisher _pubSharedGrasp[NB_TOOLS];
-  custom_msgs_gripper::SharedGrasping _msgSharedGrasp[NB_TOOLS];
+  custom_msgs_gripper::SharedGraspingMsg _msgSharedGrasp[NB_TOOLS];
 
   
   ros::Publisher _pubTargetReachedSphere;
@@ -262,7 +262,7 @@ private:
   
   void readGtraTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
   
-  void readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg, unsigned int n_);
+  void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg, unsigned int n_);
   
   void computeToolTipDerivatives(unsigned int n_);
 

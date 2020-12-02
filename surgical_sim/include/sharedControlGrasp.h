@@ -42,7 +42,7 @@
 #include "smoothSignals.h"
 #include "PIDd.h"
 #include "MatLP_Filterd.h"
-#include <custom_msgs_gripper/SharedGrasping.h>
+#include <custom_msgs_gripper/SharedGraspingMsg.h>
 
 const uint8_t NB_AXIS_POSITIONING = 4;
 
@@ -155,7 +155,7 @@ private:
   double _dt;
   
   ros::Publisher _pubSharedGrasp;
-  custom_msgs_gripper::SharedGrasping _msgSharedGrasp;
+  custom_msgs_gripper::SharedGraspingMsg _msgSharedGrasp;
 
   
   ros::Publisher _pubFootInput;

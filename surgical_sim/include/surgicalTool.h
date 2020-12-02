@@ -48,7 +48,7 @@
 #include "MatLP_Filterd.h"
 #include "LP_Filterd.h"
 #include <geometry_msgs/PoseStamped.h>
-#include <custom_msgs_gripper/SharedGrasping.h>
+#include <custom_msgs_gripper/SharedGraspingMsg.h>
 
 #define LEG_AXES \
   ListofLegAxes(hip_adduction, "hip_adduction")    \
@@ -231,7 +231,7 @@ private:
   void computeWithPlatformTask4DoF();
   void performChainForwardKinematics();
   void calculateDesiredFrame();
-  void readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg);
+  void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg);
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
   //! OTHER METHODS

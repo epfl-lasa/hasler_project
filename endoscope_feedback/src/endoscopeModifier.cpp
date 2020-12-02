@@ -13,6 +13,7 @@
 endoscopeModifier *endoscopeModifier::me = NULL;
 
 char const *toolState_Names[]{"insertion mode", "moving inside"};
+char const *gripperAState_Names[]{"positioning open", "grasping", "holding grasp", "positioning close", "fetching old grasp", "release grasp"};
 char const *toolID_Names[]{"e: ", "g: "};
 
 endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
@@ -20,7 +21,7 @@ endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
     me = this;
     _it = new image_transport::ImageTransport(_nh);
     _stop = false; 
-    for (size_t i = 0; i < NB_TOOLS_TYPES; i++)
+    for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
     {
       _toolDOFEnable[i].setZero();  
       _toolTextCoord[i].setZero();
@@ -30,9 +31,16 @@ endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
     _feedIMGDims.setZero();
     _flagImageReceivedOnce=false;
     _flagImageReceived=false;
-    _flagSurgicalTaskStateReceived = true;
-    _iconHeight=50;
-  
+    _flagSurgicalTaskStateReceived = false;
+    _flagSharedGraspingMsgReceived = false;
+    _flagGripperOutputMsgReceived = false;
+
+    _grasperRobotSharedControl = NO_SHARED_CONTROL;
+    for (size_t i = 0; i < NB_TOOLS; i++)
+    {
+      _allToolsPose[NB_TOOLS].setIdentity();
+    }
+    
 }
 
 endoscopeModifier::~endoscopeModifier()
@@ -47,10 +55,20 @@ bool endoscopeModifier::init()
   _surgicalTaskStateSub = _nh.subscribe<endoscope_feedback::SurgicalTaskStateMsg>( "/surgicalTaskState"
     , 1, boost::bind(&endoscopeModifier::readSurgicalTaskState, this, _1),
     ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+ 
   _myImageSub = _it->subscribe("/cv_camera/image_raw", 1,
       &endoscopeModifier::imageCb, this);
+ 
   _myOverlayedImagePub = _it->advertise("/image_converter/output_video", 1);
   cv::namedWindow(OPENCV_WINDOW);
+
+  _sharedGraspingSub = _nh.subscribe<custom_msgs_gripper::SharedGraspingMsg>( "/right/sharedGrasping"
+    , 1, boost::bind(&endoscopeModifier::readSharedGrasping, this, _1),
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
+  _gripperOutputSub = _nh.subscribe<custom_msgs_gripper::GripperOutputMsg>( "/right/gripperOutput"
+    , 1, boost::bind(&endoscopeModifier::readGripperOutput, this, _1),
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
   // Subscriber definitions
   signal(SIGINT, endoscopeModifier::stopNode);
@@ -72,10 +90,34 @@ void endoscopeModifier::run() {
 
   while (!_stop) {
       
-      if (_flagImageReceived)
-      {  
-        changeAndPublishImage();
+      if (_flagImageReceived && (_myCVPtr->image.rows > 60 && _myCVPtr->image.cols > 60))
+      {         
+        cv::Size sourceImgSize = _myCVPtr->image.size();
+        _myCVPtrCopy = _myCVPtr;
+
+        addToolStateFB();
         _flagImageReceived=false;
+
+        if(_flagSurgicalTaskStateReceived)
+        {
+          _flagSurgicalTaskStateReceived=false;
+        }
+
+        if(_flagSharedGraspingMsgReceived)
+        {
+          _flagSharedGraspingMsgReceived=false;
+        }
+
+        if(_flagGripperOutputMsgReceived)
+        {
+          _flagGripperOutputMsgReceived=false;
+        }
+
+      // Update GUI Window
+        cv::imshow(OPENCV_WINDOW, _myCVPtrCopy->image);
+        cv::waitKey(3);
+        // Output modified video stream
+        _myOverlayedImagePub.publish(_myCVPtrCopy->toImageMsg());
       }
 
       
@@ -106,7 +148,7 @@ void endoscopeModifier::imageCb(const sensor_msgs::ImageConstPtr& msg)
       if (_myCVPtr->image.rows > 60 && _myCVPtr->image.cols > 60)
       {
          _feedIMGDims<<_myCVPtr->image.rows, _myCVPtr->image.cols;
-         for (size_t i = 0; i < NB_TOOLS_TYPES; i++)
+         for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
          {
             _toolTextCoord[i] = (_feedIMGDims * R_TOOL_TXT_FB[i]).cast<int>();
          }
@@ -123,40 +165,19 @@ void endoscopeModifier::imageCb(const sensor_msgs::ImageConstPtr& msg)
 
 }
 
-void endoscopeModifier::changeAndPublishImage()
+void endoscopeModifier::addToolStateFB()
 {
-  // Information on the video stream
-    if (_myCVPtr->image.rows > 60 && _myCVPtr->image.cols > 60)
-    cv::Size sourceImgSize = _myCVPtr->image.size();
-    _myCVPtrCopy = _myCVPtr;
-    for (size_t i = 0; i < NB_TOOLS_TYPES; i++)
+
+    for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
     {
       putTextForTool(i, _toolState[i],eigenV2iToCv(_toolTextCoord[i]),COLOR_TOOL_TXT[i]);
       if(_toolState[i]==INSERTION_STATE)
       {
         drawTransparency(_myCVPtrCopy->image,_warning_icon_resized,_toolTextCoord[i].x() + 100,_toolTextCoord[i].y());
       }
-    }
-
-    // Update GUI Window
-    cv::imshow(OPENCV_WINDOW, _myCVPtrCopy->image);
-    cv::waitKey(3);
-
-    // Output modified video stream
-    _myOverlayedImagePub.publish(_myCVPtrCopy->toImageMsg());
+    }  
 }
-void endoscopeModifier::readSurgicalTaskState(const endoscope_feedback::SurgicalTaskStateMsgConstPtr& msg)
-{
-    for (size_t i = 0; i < NB_TOOLS_TYPES; i++)
-    {
-      _toolState[i] = (tool_States) msg->robotMode[i];
-    }
-    
-    if (!_flagSurgicalTaskStateReceived)
-    {
-      _flagSurgicalTaskStateReceived=true;
-    }    
-}
+
 
 void endoscopeModifier::drawTransparency(cv::Mat frame, cv::Mat transp, int xPos, int yPos) {
     cv::Mat mask;
@@ -194,4 +215,38 @@ void endoscopeModifier::putTextForTool(uint toolN_ ,tool_States toolState_, cv::
 cv::Point2i endoscopeModifier::eigenV2iToCv(Eigen::Vector2i eigenVec2i_)
 {
   return cv::Point2i(eigenVec2i_.x(),eigenVec2i_.y());
+}
+
+void endoscopeModifier::readSurgicalTaskState(const endoscope_feedback::SurgicalTaskStateMsgConstPtr& msg)
+{
+    for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
+    {
+      _toolState[i] = (tool_States) msg->robotsToolState[i];
+      tf::poseMsgToEigen(msg->allToolsPoseWRTImage[i], _allToolsPose[i]);
+    }
+    
+    if (!_flagSurgicalTaskStateReceived)
+    {
+      _flagSurgicalTaskStateReceived=true;
+    }    
+}
+
+void endoscopeModifier::readSharedGrasping(const custom_msgs_gripper::SharedGraspingMsgConstPtr& msg)
+{
+    _sharedGraspingMsg = *msg;
+    
+    if (!_flagSharedGraspingMsgReceived)
+    {
+      _flagSharedGraspingMsgReceived=true;
+    }    
+}
+
+void endoscopeModifier::readGripperOutput(const custom_msgs_gripper::GripperOutputMsgConstPtr& msg)
+{
+    _gripperOutputMsg = *msg;
+
+    if (!_flagGripperOutputMsgReceived)
+    {
+      _flagGripperOutputMsgReceived=true;
+    }    
 }
