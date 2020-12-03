@@ -2,8 +2,10 @@
 
 
 
- const Eigen::Array2f R_TOOL_TXT_FB[] = { Eigen::Array2f(20.0f/480.0f,30.0f/640.0f), 
+ const Eigen::Array2f R_T_STATE_TXT_FB[] = { Eigen::Array2f(20.0f/480.0f,30.0f/640.0f), 
                                           Eigen::Array2f(410.0f/480.0f,30.0f/640.0f)};
+
+ const Eigen::Array2f R_GRIPPER_ASTATE_TXT_FB=Eigen::Array2f(410.0f/480.0f,580.0f/640.0f);
 
  const float R_WARNING_ICON = 50.0f/480.0f;
   
@@ -24,9 +26,10 @@ endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
     for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
     {
       _toolDOFEnable[i].setZero();  
-      _toolTextCoord[i].setZero();
+      _toolStateTextCoord[i].setZero();
       _toolState[i]=INSERTION_STATE;
     }
+    _gripperAStateTextCoord.setZero();  
        
     _feedIMGDims.setZero();
     _flagImageReceivedOnce=false;
@@ -35,7 +38,7 @@ endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
     _flagSharedGraspingMsgReceived = false;
     _flagGripperOutputMsgReceived = false;
 
-    _grasperRobotSharedControl = NO_SHARED_CONTROL;
+    _gripperStateSC = NO_SHARED_CONTROL;
     for (size_t i = 0; i < NB_TOOLS; i++)
     {
       _allToolsPose[NB_TOOLS].setIdentity();
@@ -90,28 +93,55 @@ void endoscopeModifier::run() {
 
   while (!_stop) {
       
-      if (_flagImageReceived && (_myCVPtr->image.rows > 60 && _myCVPtr->image.cols > 60))
+      if (_flagImageReceived)
       {         
+        _flagImageReceived=false;
+        // Initialize -> Only once
+        if (!_flagImageReceivedOnce)
+        {
+           _feedIMGDims<<_myCVPtr->image.rows, _myCVPtr->image.cols;
+           for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
+           {
+             _toolStateTextCoord[i] = (_feedIMGDims * R_T_STATE_TXT_FB[i]).cast<int>();
+           }
+           _gripperAStateTextCoord = (_feedIMGDims * R_GRIPPER_ASTATE_TXT_FB).cast<int>();
+           loadIcons();
+           _flagImageReceivedOnce=true;
+        }
         cv::Size sourceImgSize = _myCVPtr->image.size();
         _myCVPtrCopy = _myCVPtr;
 
-        addToolStateFB();
-        _flagImageReceived=false;
-
         if(_flagSurgicalTaskStateReceived)
         {
+
+          // for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
+          // {
+            // _toolState[i] = (tool_States) msg->robotsToolState[i];
+            // tf::poseMsgToEigen(msg->allToolsPoseWRTImage[i], _allToolsPose[i]);
+          // }
+
           _flagSurgicalTaskStateReceived=false;
         }
 
         if(_flagSharedGraspingMsgReceived)
         {
+          _gripperStateSC = (gripperA_State) _sharedGraspingMsg.sGrasp_aState;       
+
           _flagSharedGraspingMsgReceived=false;
         }
 
+
+
         if(_flagGripperOutputMsgReceived)
         {
+
           _flagGripperOutputMsgReceived=false;
+
         }
+
+      addToolStateFB();
+      addGraspingStateFB();
+      addGraspingStateFB();
 
       // Update GUI Window
         cv::imshow(OPENCV_WINDOW, _myCVPtrCopy->image);
@@ -143,26 +173,14 @@ void endoscopeModifier::imageCb(const sensor_msgs::ImageConstPtr& msg)
       return;
     }
 
-    if (!_flagImageReceivedOnce)
+    if  (_myCVPtr->image.rows > 60 && _myCVPtr->image.cols > 60)
     {
-      if (_myCVPtr->image.rows > 60 && _myCVPtr->image.cols > 60)
-      {
-         _feedIMGDims<<_myCVPtr->image.rows, _myCVPtr->image.cols;
-         for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
-         {
-            _toolTextCoord[i] = (_feedIMGDims * R_TOOL_TXT_FB[i]).cast<int>();
-         }
-        loadIcons();
-      }
-      else
-      {
-        ROS_ERROR("The image received is corrupted (less than 60x60 pixels)");
-      }
-      _flagImageReceivedOnce=true;
+      _flagImageReceived=true;
     }
-
-    _flagImageReceived=true;
-
+    else
+    {
+       ROS_ERROR("The image received is corrupted (less than 60x60 pixels)");
+    }
 }
 
 void endoscopeModifier::addToolStateFB()
@@ -170,14 +188,21 @@ void endoscopeModifier::addToolStateFB()
 
     for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
     {
-      putTextForTool(i, _toolState[i],eigenV2iToCv(_toolTextCoord[i]),COLOR_TOOL_TXT[i]);
+      putTextForTool(i, _toolState[i],eigenV2iToCv(_toolStateTextCoord[i]),COLOR_TOOL_TXT[i]);
       if(_toolState[i]==INSERTION_STATE)
       {
-        drawTransparency(_myCVPtrCopy->image,_warning_icon_resized,_toolTextCoord[i].x() + 100,_toolTextCoord[i].y());
+        drawTransparency(_myCVPtrCopy->image,_warning_icon_resized,_toolStateTextCoord[i].x() + 100,_toolStateTextCoord[i].y());
       }
     }  
 }
 
+void endoscopeModifier::addGraspingStateFB()
+{
+  if (_gripperStateSC!=NO_SHARED_CONTROL)
+  {
+      putTextForGripper(1, _gripperStateSC,eigenV2iToCv(_gripperAStateTextCoord),COLOR_TOOL_TXT[1]);
+  }
+}
 
 void endoscopeModifier::drawTransparency(cv::Mat frame, cv::Mat transp, int xPos, int yPos) {
     cv::Mat mask;
@@ -200,10 +225,22 @@ void endoscopeModifier::loadIcons()
     cv::resize(warning_icon_raw,_warning_icon_resized,cv::Size(sz_.x(),sz_.y()));    
 }
 
-void endoscopeModifier::putTextForTool(uint toolN_ ,tool_States toolState_, cv::Point point_, cv::Scalar color_)
+void endoscopeModifier::putTextForTool(uint toolN_ , tool_States toolState_, cv::Point point_, cv::Scalar color_)
 {
   cv::putText(_myCVPtrCopy->image, 
          std::string(toolID_Names[toolN_])+std::string(toolState_Names[toolState_]),
+         point_, // Coordinates
+         cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+         1.0, // Scale. 2.0 = 2x bigger
+         color_, // BGR Color
+         1); // Line Thickness (Optional)
+         // cv::CV_AA); // Anti-alias (Optional)
+}
+
+void endoscopeModifier::putTextForGripper(uint toolN_ , gripperA_State gripperState_, cv::Point point_, cv::Scalar color_)
+{
+  cv::putText(_myCVPtrCopy->image, 
+         std::string(toolID_Names[1])+std::string(gripperAState_Names[gripperState_]),
          point_, // Coordinates
          cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
          1.0, // Scale. 2.0 = 2x bigger
@@ -219,11 +256,8 @@ cv::Point2i endoscopeModifier::eigenV2iToCv(Eigen::Vector2i eigenVec2i_)
 
 void endoscopeModifier::readSurgicalTaskState(const endoscope_feedback::SurgicalTaskStateMsgConstPtr& msg)
 {
-    for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
-    {
-      _toolState[i] = (tool_States) msg->robotsToolState[i];
-      tf::poseMsgToEigen(msg->allToolsPoseWRTImage[i], _allToolsPose[i]);
-    }
+
+    _surgicalTaskMsg = *msg;
     
     if (!_flagSurgicalTaskStateReceived)
     {
