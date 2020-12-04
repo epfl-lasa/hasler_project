@@ -10,12 +10,15 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  geometry_msgs
   message_generation
+  message_runtime
 )
 
 add_message_files(
   DIRECTORY msg
-	FILES 
+  FILES 
+  SurgicalTaskStateMsg.msg
 	FootInputMsg.msg
   FootInputMsg_v2.msg
   FootInputMsg_v3.msg
@@ -33,12 +36,12 @@ add_service_files(
   setStateSrv_v2.srv
 )
 
-generate_messages(DEPENDENCIES std_msgs)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 
 catkin_package(
   INCLUDE_DIRS
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation
+  CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_generation 
  )
 
 

@@ -16,9 +16,8 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>eigen_conversions</build_depend>
   <build_depend>utils_math</build_depend>
-  <build_depend>message_generation</build_depend>
-  <build_depend>message_runtime</build_depend>
   <build_depend>custom_msgs_gripper</build_depend>
+  <build_depend>custom_msgs</build_depend>
   <build_export_depend>cv_bridge</build_export_depend>
   <build_export_depend>image_transport</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
@@ -26,9 +25,9 @@
   <build_export_depend>geometry_msgs</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>utils_math</build_export_depend>
-  <build_export_depend>message_generation</build_export_depend>
   <build_export_depend>eigen_conversions</build_export_depend>
   <build_export_depend>custom_msgs_gripper</build_export_depend>
+  <build_export_depend>custom_msgs</build_export_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>image_transport</exec_depend>
   <exec_depend>roscpp</exec_depend>
@@ -36,10 +35,9 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>utils_math</exec_depend>
-  <exec_depend>message_generation</exec_depend>
-  <exec_depend>message_runtime</exec_depend>
   <exec_depend>eigen_conversions</exec_depend>
   <exec_depend>custom_msgs_gripper</exec_depend>
+  <exec_depend>custom_msgs</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

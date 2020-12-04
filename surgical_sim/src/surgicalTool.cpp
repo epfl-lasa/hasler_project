@@ -230,7 +230,7 @@ bool surgicalTool::init() //! Initialization of the node. Its datatype
       , 1, boost::bind(&surgicalTool::readPlatformJoints, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
 
-  _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGrasping>( "/"+std::string(Platform_Names[_tool_id])+"/sharedGrasping"
+  _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>( "/"+std::string(Platform_Names[_tool_id])+"/sharedGrasping"
       , 1, boost::bind(&surgicalTool::readSharedGrasp, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
 
@@ -658,7 +658,7 @@ void surgicalTool::readPlatformJoints(const sensor_msgs::JointState::ConstPtr &m
   }
 }
 
-void surgicalTool::readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg){
+void surgicalTool::readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg){
     for (size_t i = 0; i < NB_AXIS_POSITIONING; i++)
     {
       _hAxisFilterPosValue(i)=1.0 - msg->sGrasp_hFilters[Axis_Mod[i]];

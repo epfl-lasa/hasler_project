@@ -30,6 +30,7 @@
   <build_depend>joint_limits_interface</build_depend>
   <build_depend>transmission_interface</build_depend>
   <build_depend>realtime_tools</build_depend>
+  <build_depend>endoscope_feedback</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
@@ -55,6 +56,7 @@
   <run_depend>joint_limits_interface</run_depend>
   <run_depend>transmission_interface</run_depend>
   <run_depend>realtime_tools</run_depend>
+  <run_depend>endoscope_feedback</run_depend>
   
   <!-- The export tag contains other, unspecified, tags -->
   <export>

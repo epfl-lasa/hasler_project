@@ -226,7 +226,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
     {
       _hapticTorques[i].setZero();
       _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
-      _subSharedGrasp[i] = _n.subscribe<custom_msgs_gripper::SharedGrasping>(
+      _subSharedGrasp[i] = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>(
                   "/"+std::string(Tools_Names[i])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1, i),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       _subLegGravityCompTorques[i] = _n.subscribe<custom_msgs::FootInputMsg_v5>(
@@ -255,9 +255,8 @@ bool targetObject::init() //! Initialization of the node. Its datatype
     unsigned int i = 0;
     _hapticTorques[i].setZero();
     _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
-    _pubSharedGrasp[i] = _n.advertise<custom_msgs_gripper::SharedGrasping>("/"+std::string(Tools_Names[i])+"/sharedGrasping",0);
-    _subSharedGrasp[i] = _n.subscribe<custom_msgs_gripper::SharedGrasping>(
-                  "/"+std::string(Tools_Names[i])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1, i),
+    _pubSharedGrasp[i] = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[i])+"/sharedGrasping",0);
+    _subSharedGrasp[i] = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[i])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1, i),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     _subLegGravityCompTorques[i] = _n.subscribe<custom_msgs::FootInputMsg_v5>(
                   "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1, i),
@@ -915,7 +914,7 @@ void targetObject::readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3:
     }    
 }
 
-void targetObject::readSharedGrasp(const custom_msgs_gripper::SharedGrasping::ConstPtr &msg, unsigned int n_)
+void targetObject::readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg, unsigned int n_)
 {
     _hapticAxisFilterPos[n_] = msg->sGrasp_hFilters[p_x];  
     _hapticAxisFilterGrasp[n_] = msg->sGrasp_hFilters[p_roll];

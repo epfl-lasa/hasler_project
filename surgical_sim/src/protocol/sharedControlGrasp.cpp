@@ -27,13 +27,13 @@ char const *State_Names[]{"positioning with open gripper",
 #define DELAY_SEC 3.0
 
 
-const float Axis_Limits[] =  {0.090,0.0975,27.5*DEG_TO_RAD,120.0*DEG_TO_RAD};
+const float Axis_Limits[] =  {0.090f,0.0975f,27.5f*DEG_TO_RAD,120.0f*DEG_TO_RAD};
 
 const float SAMPLING_TIME = 10; // 100Hz
 
 const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 
-const double scaleFoot[] = {Axis_Limits[0]/0.15,Axis_Limits[1]/0.15,(1.5*Axis_Limits[2])/(2*0.15),35.0*DEG_TO_RAD/(1.5*M_PI),20.5*DEG_TO_RAD/30*DEG_TO_RAD}; // X, Y, Z, YAW, ROLL;
+const float scaleFoot[] = {Axis_Limits[0]/0.15f,Axis_Limits[1]/0.15f,(1.5f*Axis_Limits[2])/(2.0f*0.15f),35.0f*DEG_TO_RAD/(1.5f* (float) M_PI),20.5f*DEG_TO_RAD/30.0f*DEG_TO_RAD}; // X, Y, Z, YAW, ROLL;
 
 const int Axis_Pos[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_yaw,p_roll};
 
@@ -58,6 +58,10 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
       ROS_ERROR("You didn't enter a toolID left or right");
       _stop=true;
     }
+  _realGripperSpeed=0.0f;
+  _realGripperErrorPos=0.0f;
+  _realGripperPosition=0.0f;
+
   
    
   Eigen::Vector3d alphaPosition;
@@ -184,6 +188,7 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
   _flagGraspingStarted=false;
   _flagHoldingGraspStarted=false;
   _flagPositioningStarted=false;
+  _flagSurgicalTaskStateReceived=false;
 
 }
 
@@ -193,13 +198,19 @@ bool sharedControlGrasp::init()
 {
     _hapticTorques.setZero();
     _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tool_Names[_myID])+"/shared_control_publisher/foot_input",0);
-    _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGrasping>("/"+std::string(Tool_Names[_myID])+"/sharedGrasping",0);
+    _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myID])+"/sharedGrasping",0);
     _subToolJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myID])+"/tool_joint_state_publisher/joint_states"
     , 1, boost::bind(&sharedControlGrasp::readToolState, this, _1),
     ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay()); 
     _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myID])+"/platform_joint_publisher/joint_states"
     , 1, boost::bind(&sharedControlGrasp::readPlatformState, this, _1),
-    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());                  
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    _subSurgicalTaskStates = _n.subscribe<custom_msgs::SurgicalTaskStateMsg>( "/surgicalTaskState"
+    , 1, boost::bind(&sharedControlGrasp::readSurgicalTaskState, this, _1),
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    _subGripperOutput = _n.subscribe<custom_msgs_gripper::GripperOutputMsg>( "/right/gripperOutput"
+    , 1, boost::bind(&sharedControlGrasp::readGripperOutput, this, _1),
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());          
 
   // Subscriber definitions
   signal(SIGINT, sharedControlGrasp::stopNode);
@@ -252,7 +263,7 @@ void sharedControlGrasp::estimateActionState()
   //_graspingAngle=_toolJointPosition(tool_wrist_open_angle);
   //_graspingAngleSpeed = _toolJointSpeed(tool_wrist_open_angle);
   _graspingAnglePrev = _graspingAngle;
-  _graspingAngle = Utils_math<double>::bound(_platformJointPosition(p_roll)-10.0*DEG_TO_RAD,0,20.5*DEG_TO_RAD) * 30.0 / 20.5;
+  _graspingAngle = Utils_math<double>::bound(_platformJointPosition(p_roll)-10.0*DEG_TO_RAD,0,30.0*DEG_TO_RAD) * 30.0 / 20.5;
   //cout<<_graspingAngle<<endl;
   // _graspingAngleSpeed = (_graspingAngle - _graspingAnglePrev) * (1.0 / _dt);
   _graspingAngleSpeed = _platformJointVelocity(p_roll);
@@ -277,8 +288,7 @@ case A_POSITIONING_OPEN:
         if (_myVibrator->finished())
           {
             _aStateNext = A_GRASPING;
-            _startTimeForKeepingGrasp=ros::Time::now();
-         
+            //_startTimeForKeepingGrasp=ros::Time::now();
           }
       }
   break;
@@ -289,9 +299,10 @@ case A_POSITIONING_OPEN:
       if ( _graspingAngle>=(_myThreshold + 5.0) * DEG_TO_RAD && fabs(_graspingAngleSpeed)<=0.1)
       
       {
-            double deltaTimeKeeping = ros::Time::now().toSec()-_startTimeForKeepingGrasp.toSec(); 
-            cout<<deltaTimeKeeping<<" "<<_graspingAngle<<" "<<fabs(_graspingAngleSpeed)<<endl;
-            if (deltaTimeKeeping>=2.0)
+           // double deltaTimeKeeping = ros::Time::now().toSec()-_startTimeForKeepingGrasp.toSec(); 
+           // cout<<deltaTimeKeeping<<" "<<_graspingAngle<<" "<<fabs(_graspingAngleSpeed)<<endl;
+           // if (deltaTimeKeeping>=2.0)
+           if (_wrenchGrasperRobot.norm()>1.0 && (_realGripperErrorPos>15.0f*DEG_TO_RAD) && fabs(_realGripperSpeed) < 5.0f * DEG_TO_RAD)
             {
               _aStateNext=A_HOLDING_GRASP;
               _graspingAngleBeforeHolding=_graspingAngle;
@@ -299,11 +310,11 @@ case A_POSITIONING_OPEN:
       }
       else
       {
-         _startTimeForKeepingGrasp=ros::Time::now();
-      if ( _graspingAngle < ((_myThreshold) * DEG_TO_RAD))
-      {
-          _aStateNext=A_POSITIONING_OPEN;
-      }
+        //  _startTimeForKeepingGrasp=ros::Time::now();
+        if ( _graspingAngle < ((_myThreshold) * DEG_TO_RAD))
+        {
+            _aStateNext=A_POSITIONING_OPEN;
+        }
 
       }
       
@@ -329,7 +340,6 @@ case A_POSITIONING_CLOSE:
           {
             _aStateNext = A_FETCHING_OLD_GRASP;
             _startTimeForReleasingGrasp=ros::Time::now();
-          
           }
       }
   break;
@@ -604,3 +614,24 @@ void sharedControlGrasp::publishSharedGrasp()
   
 
   
+void sharedControlGrasp::readSurgicalTaskState(const custom_msgs::SurgicalTaskStateMsgConstPtr& msg)
+{
+    tf::wrenchMsgToEigen(msg->allToolsWrench[2],_wrenchGrasperRobot);
+
+    if (!_flagSurgicalTaskStateReceived)
+    {
+      _flagSurgicalTaskStateReceived=true;
+    }    
+}
+
+
+void sharedControlGrasp::readGripperOutput(const custom_msgs_gripper::GripperOutputMsgConstPtr& msg)
+{
+    _realGripperPosition = msg->gripper_position;
+    _realGripperErrorPos = msg->gripper_dPosition - _realGripperPosition;
+    
+    if (!_flagGripperOutputMsgReceived)
+    {
+      _flagGripperOutputMsgReceived=true;
+    }    
+}

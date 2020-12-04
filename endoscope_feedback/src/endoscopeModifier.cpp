@@ -3,20 +3,21 @@
 
 
  const Eigen::Array2f R_T_STATE_TXT_FB[] = { Eigen::Array2f(20.0f/480.0f,30.0f/640.0f), 
-                                          Eigen::Array2f(410.0f/480.0f,30.0f/640.0f)};
+                                          Eigen::Array2f(400.0f/480.0f,30.0f/640.0f)};
 
- const Eigen::Array2f R_GRIPPER_ASTATE_TXT_FB=Eigen::Array2f(410.0f/480.0f,580.0f/640.0f);
+ const Eigen::Array2f R_GRIPPER_ASTATE_TXT_FB=Eigen::Array2f(400.0f/480.0f,60.0f/640.0f);
 
- const float R_WARNING_ICON = 50.0f/480.0f;
+ const float R_WARNING_ICON = 30.0f/480.0f;
   
- const cv::Scalar COLOR_TOOL_TXT[] = {cv::Scalar(255,128,0), 
-                                      cv::Scalar(0,128,255)};
+ const cv::Scalar COLOR_TOOL_TXT[] = {cv::Scalar(0,255,255), 
+                                      cv::Scalar(0,128,255),
+                                      cv::Scalar(255,51,255)};
  
 endoscopeModifier *endoscopeModifier::me = NULL;
 
-char const *toolState_Names[]{"insertion mode", "moving inside"};
-char const *gripperAState_Names[]{"positioning open", "grasping", "holding grasp", "positioning close", "fetching old grasp", "release grasp"};
-char const *toolID_Names[]{"e: ", "g: "};
+char const *toolState_Names[]{"need to insert", "moving inside"};
+char const *gripperAState_Names[]{"pos. open", "grasping", "hold. grasp", "pos. close", "fetch. grasp", "rel. grasp"};
+char const *toolID_Names[]{"e: ", "g: ", "g-sc: "};
 
 endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
     : _nh(nh), _loopRate(frequency), _dt(1.0f / frequency){
@@ -55,7 +56,7 @@ endoscopeModifier::~endoscopeModifier()
 
 bool endoscopeModifier::init() 
 {
-  _surgicalTaskStateSub = _nh.subscribe<endoscope_feedback::SurgicalTaskStateMsg>( "/surgicalTaskState"
+  _surgicalTaskStateSub = _nh.subscribe<custom_msgs::SurgicalTaskStateMsg>( "/surgicalTaskState"
     , 1, boost::bind(&endoscopeModifier::readSurgicalTaskState, this, _1),
     ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
  
@@ -113,34 +114,30 @@ void endoscopeModifier::run() {
 
         if(_flagSurgicalTaskStateReceived)
         {
-
-          // for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
-          // {
-            // _toolState[i] = (tool_States) msg->robotsToolState[i];
-            // tf::poseMsgToEigen(msg->allToolsPoseWRTImage[i], _allToolsPose[i]);
-          // }
+          for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
+          {
+            _toolState[i] = (tool_States) (_surgicalTaskMsg.robotsToolState[i] >= NB_TOOL_STATES ? NB_TOOL_STATES - 1 : _surgicalTaskMsg.robotsToolState[i]);       
+            // _toolState[i] = (tool_States) Utils_math<int>::bound( _surgicalTaskMsg.robotsToolState[i], tool_States::INSERTION_STATE,tool_States::INSIDE_TROCAR_STATE);       
+            tf::poseMsgToEigen(_surgicalTaskMsg.allToolsPoseWRTImage[i], _allToolsPose[i]);
+          }
 
           _flagSurgicalTaskStateReceived=false;
         }
 
         if(_flagSharedGraspingMsgReceived)
         {
-          _gripperStateSC = (gripperA_State) _sharedGraspingMsg.sGrasp_aState;       
-
+          _gripperStateSC = (gripperA_State) (_sharedGraspingMsg.sGrasp_aState >= NB_ACTIONS_GRASPER ? NB_ACTIONS_GRASPER-1 : _sharedGraspingMsg.sGrasp_aState);       
+          cout<<_gripperStateSC<<endl;
           _flagSharedGraspingMsgReceived=false;
         }
 
 
-
-        if(_flagGripperOutputMsgReceived)
-        {
-
-          _flagGripperOutputMsgReceived=false;
-
-        }
+      if(_flagGripperOutputMsgReceived)
+      {
+        _flagGripperOutputMsgReceived=false;
+      }
 
       addToolStateFB();
-      addGraspingStateFB();
       addGraspingStateFB();
 
       // Update GUI Window
@@ -191,7 +188,7 @@ void endoscopeModifier::addToolStateFB()
       putTextForTool(i, _toolState[i],eigenV2iToCv(_toolStateTextCoord[i]),COLOR_TOOL_TXT[i]);
       if(_toolState[i]==INSERTION_STATE)
       {
-        drawTransparency(_myCVPtrCopy->image,_warning_icon_resized,_toolStateTextCoord[i].x() + 100,_toolStateTextCoord[i].y());
+        drawTransparency(_myCVPtrCopy->image,_warning_icon_resized,_toolStateTextCoord[i].x() + 7*R_WARNING_ICON*_feedIMGDims(0),_toolStateTextCoord[i].y()-(int) (0.7*R_WARNING_ICON*_feedIMGDims(1)));
       }
     }  
 }
@@ -200,7 +197,7 @@ void endoscopeModifier::addGraspingStateFB()
 {
   if (_gripperStateSC!=NO_SHARED_CONTROL)
   {
-      putTextForGripper(1, _gripperStateSC,eigenV2iToCv(_gripperAStateTextCoord),COLOR_TOOL_TXT[1]);
+    putTextForGripper(1, _gripperStateSC,eigenV2iToCv(_gripperAStateTextCoord),COLOR_TOOL_TXT[2]);
   }
 }
 
@@ -231,7 +228,7 @@ void endoscopeModifier::putTextForTool(uint toolN_ , tool_States toolState_, cv:
          std::string(toolID_Names[toolN_])+std::string(toolState_Names[toolState_]),
          point_, // Coordinates
          cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-         1.0, // Scale. 2.0 = 2x bigger
+         0.9, // Scale. 2.0 = 2x bigger
          color_, // BGR Color
          1); // Line Thickness (Optional)
          // cv::CV_AA); // Anti-alias (Optional)
@@ -240,10 +237,10 @@ void endoscopeModifier::putTextForTool(uint toolN_ , tool_States toolState_, cv:
 void endoscopeModifier::putTextForGripper(uint toolN_ , gripperA_State gripperState_, cv::Point point_, cv::Scalar color_)
 {
   cv::putText(_myCVPtrCopy->image, 
-         std::string(toolID_Names[1])+std::string(gripperAState_Names[gripperState_]),
+         std::string(toolID_Names[2])+std::string(gripperAState_Names[gripperState_]),
          point_, // Coordinates
          cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-         1.0, // Scale. 2.0 = 2x bigger
+         0.9, // Scale. 2.0 = 2x bigger
          color_, // BGR Color
          1); // Line Thickness (Optional)
          // cv::CV_AA); // Anti-alias (Optional)
@@ -254,7 +251,7 @@ cv::Point2i endoscopeModifier::eigenV2iToCv(Eigen::Vector2i eigenVec2i_)
   return cv::Point2i(eigenVec2i_.x(),eigenVec2i_.y());
 }
 
-void endoscopeModifier::readSurgicalTaskState(const endoscope_feedback::SurgicalTaskStateMsgConstPtr& msg)
+void endoscopeModifier::readSurgicalTaskState(const custom_msgs::SurgicalTaskStateMsgConstPtr& msg)
 {
 
     _surgicalTaskMsg = *msg;
