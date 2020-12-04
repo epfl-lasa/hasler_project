@@ -277,15 +277,15 @@ void sharedControlGrasp::estimateActionState()
   
   _myThreshold = _thresholdFilter.update(Utils_math<double>::bound(_myThreshold,MIN_THRESHOLD,MAX_THRESHOLD));
   // if ( (_toolJointPosition(tool_wrist_open_angle)) < (30.0 - _myThreshold) * DEG_TO_RAD)
-  
-switch (_aState)
-{
-   // Decision making
+  // Decision making
    bool graspinAngleThreshold1 = _graspingAngle > (_myThreshold + 5.0) * DEG_TO_RAD;
    bool graspinAngleThreshold2 = _graspingAngle > (_myThreshold + 5.0) * DEG_TO_RAD;
    bool contactFSOn = _wrenchGrasperRobot.norm() > 2.0;
    bool realGripperErrorBig = _realGripperErrorPos > 15.0f*DEG_TO_RAD;
    bool realGripperSpeedLow = fabs(_realGripperSpeed) < 5.0f * DEG_TO_RAD;
+
+switch (_aState)
+{
 
 case A_POSITIONING_OPEN:
   {
