@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   sg_differentiation
   utils
+  custom_msgs
+  surgical_simulator
 )
 
 # find_package(Eigen 3 QUIET) 
@@ -33,7 +35,7 @@ generate_dynamic_reconfigure_options(cfg/feetTelemanipulation_params.cfg)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure sg_differentiation utils custom_msgs custom_msgs_gripper
+  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure sg_differentiation utils custom_msgs custom_msgs_gripper surgical_simulator
   # DEPENDS Eigen
  )
 

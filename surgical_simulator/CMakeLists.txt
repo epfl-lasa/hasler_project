@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   utils
   utils_math
+  custom_msgs
 )
 
 find_package(gazebo REQUIRED)

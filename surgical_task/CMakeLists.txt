@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   tf
   custom_msgs
+  custom_msgs_gripper
   utils
 )
 
@@ -42,7 +43,7 @@ generate_messages(DEPENDENCIES std_msgs)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES
-  CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs message_generation tf gazebo_ros custom_msgs utils
+  CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs message_generation tf gazebo_ros custom_msgs utils custom_msgs_gripper
  )
 
 if(NOT qpOASES_FOUND)
