@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<launch>
+    <include file="$(find freenect_launch)/launch/freenect.launch">
+    </include>
+
+    <include file="$(find ar_tag_toolbox)/launch/ar_track_kinect.launch">
+    	 		<arg name="marker_size" value="5.9"/>
+    </include>
+
+    <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/>
+
+</launch>  

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot name="torso_upper" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- properties /-->
+
+  <!-- URDF model with default base_link (world)-->
+  <xacro:macro name="torso_upper" params="name base_link:=world *origin xDim yDim zDim scale">
+
+    <gazebo reference="${base_link}">
+      <static>true</static>
+      <turnGravityOff>true</turnGravityOff>
+    </gazebo>
+
+
+    <!-- First (shoulder) element of the arm. Fixed to its parent. -->
+    <joint name="${name}_base_joint" type="fixed">
+      <insert_block name="origin"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="${base_link}"/>
+      <child link="${name}_base_link"/>
+    </joint>
+
+  <link name="${name}_base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
+      <mass value="3" />
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
+      <geometry>
+        <mesh filename="package://surgical_simulator/models/torso_with_organs2.dae" scale="${scale} ${scale} ${scale}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="${3.1415/2} 3.1415 0"/>
+      <geometry>
+        <!-- <mesh filename="package://foot_control_xy/models/h_lower_limb/meshes/foot.dae" scale="${0.05*$(arg scale)} ${0.05*$(arg scale)} ${0.05*$(arg scale)}"/> -->
+        <!-- <mesh filename="package://surgical_simulator/models/Torso_Upper_Part.dae" scale="${scale} ${scale} ${scale}"/> -->
+        <mesh filename="package://surgical_simulator/models/torso_with_organs2.dae" scale="${scale} ${scale} ${scale}"/>
+      </geometry>
+    </visual>
+  </link>
+
+   <gazebo reference="${name}_base_link">
+      <minDepth>0</minDepth>
+      <maxVel>0</maxVel>
+  </gazebo>
+
+   </xacro:macro>
+
+
+</robot>

@@ -1,0 +1,141 @@
+<launch>
+	<arg name="paused" default="true"/>
+	<arg name="gui" default="true"/>
+	<arg name="rviz_bringup" default="false"/> 
+	<arg name="headless" default="false"/>
+	<arg name="debug" default="false"/>	
+	<arg name="use_sim_time" default="false"/>
+	<arg name="build_tower" default="false"/>	
+	<arg name="scale.c" default="0.9"/>
+	<arg name="scale.l" default="0.9"/>
+	<arg name="scale.t" default="0.5"/>
+	<arg name="left.x" default="-5"/>
+	<arg name="left.y" default="0"/>
+	<arg name="left.z" default="0"/>
+	<arg name="right.x" default="5"/>
+	<arg name="right.y" default="0"/>
+	<arg name="right.z" default="0"/>
+	<arg name="target.x" default="0"/>
+	<arg name="target.y" default="4"/>
+	<arg name="target.z" default="0"/>
+	<arg name="cube.x" default="0"/>
+	<arg name="cube.y" default="-3"/>
+	<arg name="cube.z" default="0"/>
+
+  <!-- <arg name="rviz_config" default="$(find lwr_launch)/launch/rviz/rviz_config.rviz"/> -->
+
+	<!-- World -->
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(find demo_scientastic)/worlds/build_tower_world.world" if="$(arg build_tower)"/>
+		<arg name="world_name" value="$(find demo_scientastic)/worlds/reach_target_world.world" unless="$(arg build_tower)"/>
+	<!-- <group unless="$(arg build_tower)"> -->
+			<!-- <arg name="world_name" value="$(find demo_scientastic)/worlds/track_target_world.world"/> -->
+		<!-- </group> -->
+		<arg name="debug" value="$(arg debug)" />
+		<arg name="gui" value="$(arg gui)" />
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="use_sim_time" value="$(arg use_sim_time)"/>
+		<arg name="headless" value="$(arg headless)"/>			
+	</include>
+
+	<!-- Left foot -->
+	<arg name="left_foot_init_pose" default="-x $(arg left.x)- y $(arg left.y) -z $(arg left.z) -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/>
+	<node name="worldLeftTransform" pkg="foot_control_xy" type="worldActorTransform" args="left_foot $(arg left_foot_init_pose)"/>
+	<group ns="left_foot">	
+		<arg name="model" default="$(find demo_scientastic)/models/h_lower_limb/urdf/foot_l.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) enableGzPlugin:=true scale:=$(arg scale.l) link_name:=left_foot --xacro-ns --inorder" />
+		<!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" args="-publish_frequency 200"/> -->
+		<!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" args="-publish_frequency 200"/> -->
+		<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+			<arg name="init_pose" value="-x $(arg left.x) -y $(arg left.y) -z $(arg left.z)" />
+			<arg name="robot_name" value="left_foot"/>
+		</include>
+	</group>
+
+	<!-- Right foot -->
+	<arg name="right_foot_init_pose" default="-x $(arg right.x) -y $(arg right.y) -z $(arg right.z) -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/>
+	<node name="worldRightTransform" pkg="foot_control_xy" type="worldActorTransform" args="right_foot $(arg right_foot_init_pose)"/>
+	<group ns="right_foot">	
+		<arg name="model" default="$(find demo_scientastic)/models/h_lower_limb/urdf/h_lower_limb.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro $(arg model) enableGzPlugin:=true scale:=$(arg scale.c) link_name:=right_foot --xacro-ns --inorder" />
+	<!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/> -->
+	<!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+		<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+			<arg name="init_pose" value="-x $(arg right.x) -y $(arg right.y) -z $(arg right.z)" />
+			<arg name="robot_name" value="right_foot"/>
+		</include>
+	</group>
+
+	<group if="$(arg build_tower)">
+
+		<group ns="box1" >		
+			<arg name="model" default="$(find demo_scientastic)/models/cube/cube.urdf.xacro"/>
+			<param name="robot_description" command="$(find xacro)/xacro $(arg model) link_name:=box1 gazeboColor:=Gazebo/Red --xacro-ns --inorder" />
+			<!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+			<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+				<arg name="init_pose" value="-x -3 -y -3 -z 0" />
+				<arg name="robot_name" value="box1"/>
+			</include>
+		</group>
+
+		<group ns="box2" >		
+			<arg name="model" default="$(find demo_scientastic)/models/cube/cube.urdf.xacro"/>
+			<param name="robot_description" command="$(find xacro)/xacro $(arg model) link_name:=box2 gazeboColor:=Gazebo/Green --xacro-ns --inorder" />
+			<!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+			<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+				<arg name="init_pose" value="-x 0 -y -3 -z 0" />
+				<arg name="robot_name" value="box2"/>
+			</include>
+		</group>
+
+		<group ns="box3" >		
+			<arg name="model" default="$(find demo_scientastic)/models/cube/cube.urdf.xacro"/>
+			<param name="robot_description" command="$(find xacro)/xacro $(arg model) link_name:=box3 gazeboColor:=Gazebo/Blue --xacro-ns --inorder" />
+			<!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+			<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+				<arg name="init_pose" value="-x 3 -y -3 -z 0" />
+				<arg name="robot_name" value="box3"/>
+			</include>
+		</group>
+
+	</group>
+
+	
+	<!-- Target -->
+	<group unless="$(arg build_tower)">
+
+		<group ns="target" >		
+			<arg name="model" default="$(find demo_scientastic)/models/target_plane_on_table.urdf.xacro"/>
+			<param name="robot_description" command="$(find xacro)/xacro $(arg model) origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z) scale:=$(arg scale.t) --xacro-ns --inorder" />
+			<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" args="-publish_frequency 200"/>
+    	<node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /target/robot_description -urdf -model target" respawn="false" output="screen" />
+		</group>
+
+		<group ns="cube" >		
+			<arg name="model" default="$(find demo_scientastic)/models/cube/cube.urdf.xacro"/>
+			<param name="robot_description" command="$(find xacro)/xacro $(arg model) link_name:=cube color:=green --xacro-ns --inorder" />
+			<!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" args="-publish_frequency 200"/> -->
+			<include file="$(find demo_scientastic)/launch/includes/agent.launch.xml">
+				<arg name="init_pose" value="-x $(arg cube.x) -y $(arg cube.y) -z $(arg cube.z)" />
+				<arg name="robot_name" value="cube"/>
+			</include>
+		</group>
+
+	</group>
+
+	<!-- Launch foot control -->
+	<node pkg="demo_scientastic" type="foot_control" name="foot_control" output="screen"/>
+
+	<!--Launch target-->
+	<group unless="$(arg build_tower)">
+		<!--START-WORLD-->
+		<!-- <node pkg="demo_scientastic" type="reach_target" name="reach_target" args="$(arg target.x) $(arg target.y) $(arg target.z)" output="screen"/> -->
+	</group>
+
+<!--   <node name="lwr_rviz" pkg="rviz" type="rviz" respawn="false" args="-d $(arg rviz_config)"
+        output="screen"
+        if="$(arg rviz_bringup)"/> -->
+</launch>
+			<!-- <arg name="model" default="$(find foot_control_xy)/models/target/urdf/target_plane.urdf.xacro"/> -->
+	<!-- <arg name="cube_init_pose" default="-x $(arg cube.x) -y $(arg cube.y) -z $(arg cube.z) -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/> -->
+	<!-- <node name="worldCubeTransform" pkg="foot_control_xy" type="worldActorTransform" args="cube $(arg cube_init_pose)"/> -->
