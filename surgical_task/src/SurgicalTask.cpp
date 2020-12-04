@@ -575,7 +575,7 @@ bool SurgicalTask::init()
     else
     {
       _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg_v3>("/FI_Output/Right",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-      _subFootSharedGrasping[RIGHT] = _nh.subscribe<custom_msgs_gripper::SharedGrasping>("/right/sharedGrasping",1, boost::bind(&SurgicalTask::updateFootSharedGrasping,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      _subFootSharedGrasping[RIGHT] = _nh.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/right/sharedGrasping",1, boost::bind(&SurgicalTask::updateFootSharedGrasping,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     }
 
     _subGripper = _nh.subscribe("/right/gripperOutput", 1, &SurgicalTask::updateGripperOutput, this, ros::TransportHints().reliable().tcpNoDelay());
@@ -2479,7 +2479,7 @@ void SurgicalTask::updateFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPt
   }
 }
 
-void SurgicalTask::updateFootSharedGrasping(const custom_msgs_gripper::SharedGrasping::ConstPtr& msg, int r)
+void SurgicalTask::updateFootSharedGrasping(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr& msg, int r)
 {
   for(int m = 0; m < 5; m++)
   {

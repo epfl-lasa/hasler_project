@@ -10,6 +10,7 @@ class LP_Filterd
 		LP_Filterd(); 
 		LP_Filterd(double alpha);
 		double update(double raw_input);
+		void setInit(double oldOutput);
 		void setAlpha(double alpha);		
 		double getAlpha();		
 		void reset();

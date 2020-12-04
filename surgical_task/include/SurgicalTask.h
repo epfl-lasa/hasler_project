@@ -30,7 +30,7 @@
 #include "custom_msgs/FootOutputMsg_v3.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
 #include "custom_msgs_gripper/GripperInputMsg.h"
-#include "custom_msgs_gripper/SharedGrasping.h"
+#include "custom_msgs_gripper/SharedGraspingMsg.h"
 #include "surgical_task/SurgicalTaskStateMsg.h"
 #include <dynamic_reconfigure/server.h>
 #include "Eigen/Eigen"
@@ -392,7 +392,7 @@ class SurgicalTask
 
     void updateFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg, int k);
     
-    void updateFootSharedGrasping(const custom_msgs_gripper::SharedGrasping::ConstPtr& msg, int k);
+    void updateFootSharedGrasping(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr& msg, int k);
 
     void updateGripperOutput(const custom_msgs_gripper::GripperOutputMsg::ConstPtr& msg);
 

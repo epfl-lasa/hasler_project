@@ -51,3 +51,8 @@ void LP_Filterd::setAlpha(double alpha)
 {
   _alpha=alpha;
 }
+
+void LP_Filterd::setInit(double oldOutput)
+{
+  _old_output=oldOutput;
+}
