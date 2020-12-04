@@ -28,6 +28,13 @@ list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 find_package(Eigen3 REQUIRED)
 
+
+add_message_files(
+  DIRECTORY msg
+  FILES 
+  SurgicalTaskStateMsg.msg)
+
+
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs)
 
@@ -59,7 +66,8 @@ include_directories(${qpOASES_INCLUDE_DIRS})
 # ${qpOASES_LIBRARIES} jacobian qpSolverRCM
 add_library(jacobian src/JacobianDefinitions.cpp include/JacobianDefinitions.h)
 add_library(qpSolverRCM STATIC src/QpSolverRCM.cpp include/QpSolverRCM.h
-                               src/QpSolverRCM2.cpp include/QpSolverRCM2.h)
+                               src/QpSolverRCM2.cpp include/QpSolverRCM2.h
+                               src/QpSolverRCM3.cpp include/QpSolverRCM3.h)
 target_link_libraries(qpSolverRCM ${qpOASES_LIBRARIES} jacobian)
 
 add_library(cvxgenSolverRCM include/cvxgen/solver.c 

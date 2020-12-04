@@ -20,8 +20,13 @@
 
 
 
-  <link name="world"/>
-
+  <link name="world">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="1e-6"/>
+        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+      </inertial>
+  </link>
   <gazebo reference="world">
 <!--     <static>true</static>
     <turnGravityOff>true</turnGravityOff> -->

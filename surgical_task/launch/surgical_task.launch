@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- LAUNCH INTERFACE -->
+
+  <arg name="surgical_task_params_file" default="$(find surgical_task)/config/surgicalTask_params.yaml"/>
+
+  <rosparam command="load" file="$(arg surgical_task_params_file)"/>
+
+  <node name="surgicalTask" pkg="surgical_task" type="surgical_task" output="screen"/>
+
+</launch>
