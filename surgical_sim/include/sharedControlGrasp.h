@@ -43,6 +43,9 @@
 #include "PIDd.h"
 #include "MatLP_Filterd.h"
 #include <custom_msgs_gripper/SharedGraspingMsg.h>
+#include <custom_msgs_gripper/GripperOutputMsg.h>
+
+#include <custom_msgs/SurgicalTaskStateMsg.h>
 
 const uint8_t NB_AXIS_POSITIONING = 4;
 
@@ -162,9 +165,16 @@ private:
 
 
   custom_msgs::FootInputMsg_v5 _msgFootInput;
+  Eigen::Matrix<double, 6, 1> _wrenchGrasperRobot;
+  
+  float _realGripperSpeed;
+  float _realGripperErrorPos;
+  float _realGripperPosition;
 
   ros::Subscriber _subToolJointStates;
   ros::Subscriber _subPlatformJointStates;
+  ros::Subscriber _subSurgicalTaskStates;
+  ros::Subscriber _subGripperOutput;
 
   vibrator* _myVibrator;
   smoothSignals* _mySmoothSignalsPos;
@@ -175,8 +185,11 @@ private:
 
   
   //! boolean variables
-  bool  _flagPlatformJointsConnected;
-  bool  _flagToolJointsConnected;
+  volatile bool _flagSurgicalTaskStateReceived;
+  volatile bool _flagGripperOutputMsgReceived;
+  volatile bool  _flagPlatformJointsConnected;
+  volatile bool  _flagToolJointsConnected;
+
   bool _flagHapticGrasping;
   bool _flagSharedGrasping;
   bool _flagGraspingStarted;
@@ -201,6 +214,8 @@ private:
   void readToolState(const sensor_msgs::JointState::ConstPtr &msg);
   
   void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg);
+  void readSurgicalTaskState(const custom_msgs::SurgicalTaskStateMsgConstPtr& msg);
+  void readGripperOutput(const custom_msgs_gripper::GripperOutputMsgConstPtr& msg);
 
   void estimateActionState();
   void estimateActionTransition();

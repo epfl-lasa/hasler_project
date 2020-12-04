@@ -21,7 +21,7 @@
 #include <stdexcept> // std::runtime_error
 #include <sstream> // std::stringstream
 #include "Utils_math.h"
-#include "endoscope_feedback/SurgicalTaskStateMsg.h"
+#include "custom_msgs/SurgicalTaskStateMsg.h"
 #include "custom_msgs_gripper/SharedGraspingMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
 
@@ -38,8 +38,8 @@ class endoscopeModifier {
 public:
   enum tool_Types{ENDOSCOPE_ROBOT, gripper_ROBOT, gripper_HAND_R, gripper_HAND_L, NB_TOOLS};
   static const int NB_ROBOT_TOOLS =  NB_TOOLS-2; 
-  enum tool_States {INSERTION_STATE, INSIDE_TROCAR_STATE};
-  enum gripperA_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS_gripper, NO_SHARED_CONTROL};
+  enum tool_States {INSERTION_STATE, INSIDE_TROCAR_STATE, NB_TOOL_STATES};
+  enum gripperA_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS_GRASPER, NO_SHARED_CONTROL};
   enum tool_SuperNum_ID {TOOL_1, TOOL_2, TOOL_3, NB_SUPERNUM_TOOLS}; //Other tools apart from the endoscope
   enum toolH_States {HUMAN_IDLE, HUMAN_ENGAGED, HUMAN_CONFUSED}; 
   enum tool_Axis {Y_TOOL_AXIS,X_TOOL_AXIS,Z_TOOL_AXIS,ROLL_TOOL_AXIS,GRASPING_TOOL_AXIS, NB_AXIS_TOOL};
@@ -101,7 +101,7 @@ private:
     volatile bool _flagSharedGraspingMsgReceived;
     volatile bool _flagGripperOutputMsgReceived;
 
-    endoscope_feedback::SurgicalTaskStateMsg _surgicalTaskMsg;
+    custom_msgs::SurgicalTaskStateMsg _surgicalTaskMsg;
     custom_msgs_gripper::SharedGraspingMsg _sharedGraspingMsg;
     custom_msgs_gripper::GripperOutputMsg _gripperOutputMsg;
 
@@ -114,7 +114,7 @@ private:
     void putTextForTool(uint toolN_ ,tool_States toolState_, cv::Point point_, cv::Scalar color_);
     void putTextForGripper(uint toolN_ ,gripperA_State gripperState_, cv::Point point_, cv::Scalar color_);
     
-    void readSurgicalTaskState(const endoscope_feedback::SurgicalTaskStateMsgConstPtr& msg);
+    void readSurgicalTaskState(const custom_msgs::SurgicalTaskStateMsgConstPtr& msg);
     void readSharedGrasping(const custom_msgs_gripper::SharedGraspingMsgConstPtr& msg);
     void readGripperOutput(const custom_msgs_gripper::GripperOutputMsgConstPtr& msg);
     static void stopNode(int sig);

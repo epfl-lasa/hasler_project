@@ -15,27 +15,18 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   std_msgs
   utils_math
-  message_generation
-  message_runtime
   eigen_conversions
   custom_msgs_gripper
+  custom_msgs
 )
 
 find_package(PkgConfig)
 pkg_search_module(Eigen3 REQUIRED eigen3)
 
-add_message_files(
-  DIRECTORY msg
-	FILES 
-  SurgicalTaskStateMsg.msg)
-  
-generate_messages(DEPENDENCIES geometry_msgs std_msgs)
-
-
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS cv_bridge  image_transport  roscpp  sensor_msgs geometry_msgs  std_msgs utils_math message_runtime eigen_conversions custom_msgs_gripper
+  CATKIN_DEPENDS cv_bridge  image_transport  roscpp  sensor_msgs geometry_msgs  std_msgs utils_math eigen_conversions custom_msgs_gripper custom_msgs
   DEPENDS 
   )
   find_package(OpenCV)
@@ -44,6 +35,6 @@ catkin_package(
   
   add_executable(endoscopeOverlay src/endoscopeModifier_node.cpp src/endoscopeModifier.cpp)
   
-  target_link_libraries(endoscopeOverlay ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+  target_link_libraries(endoscopeOverlay ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
 
 
