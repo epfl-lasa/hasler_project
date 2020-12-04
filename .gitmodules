@@ -1,4 +1,8 @@
 [submodule "5_axis_platform"]
 	path= 5_axis_platform	
 	url = git@github.com:epfl-lasa/5_axis_platform.git
-	branch=dev-v2
+	branch=master
+[submodule "surgical_gripper"]
+	path= surgical_gripper	
+	url = git@github.com:epfl-lasa/surgical_gripper.git
+	branch=master

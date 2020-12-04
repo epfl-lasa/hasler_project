@@ -280,6 +280,13 @@ void sharedControlGrasp::estimateActionState()
   
 switch (_aState)
 {
+   // Decision making
+   bool graspinAngleThreshold1 = _graspingAngle > (_myThreshold + 5.0) * DEG_TO_RAD;
+   bool graspinAngleThreshold2 = _graspingAngle > (_myThreshold + 5.0) * DEG_TO_RAD;
+   bool contactFSOn = _wrenchGrasperRobot.norm() > 2.0;
+   bool realGripperErrorBig = _realGripperErrorPos > 15.0f*DEG_TO_RAD;
+   bool realGripperSpeedLow = fabs(_realGripperSpeed) < 5.0f * DEG_TO_RAD;
+
 case A_POSITIONING_OPEN:
   {
      
@@ -295,14 +302,16 @@ case A_POSITIONING_OPEN:
   }
   case A_GRASPING:
   {
-    
-      if ( _graspingAngle>=(_myThreshold + 5.0) * DEG_TO_RAD && fabs(_graspingAngleSpeed)<=0.1)
+
+     
+
+      if ( graspinAngleThreshold1 && fabs(_graspingAngleSpeed)<=0.1)
       
       {
            // double deltaTimeKeeping = ros::Time::now().toSec()-_startTimeForKeepingGrasp.toSec(); 
            // cout<<deltaTimeKeeping<<" "<<_graspingAngle<<" "<<fabs(_graspingAngleSpeed)<<endl;
            // if (deltaTimeKeeping>=2.0)
-           if (_wrenchGrasperRobot.norm()>1.0 && (_realGripperErrorPos>15.0f*DEG_TO_RAD) && fabs(_realGripperSpeed) < 5.0f * DEG_TO_RAD)
+           if (contactFSOn && realGripperErrorBig && realGripperErrorBig)
             {
               _aStateNext=A_HOLDING_GRASP;
               _graspingAngleBeforeHolding=_graspingAngle;
@@ -315,7 +324,6 @@ case A_POSITIONING_OPEN:
         {
             _aStateNext=A_POSITIONING_OPEN;
         }
-
       }
       
   break;
