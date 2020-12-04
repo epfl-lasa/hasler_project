@@ -20,13 +20,17 @@ bool MoveToDesiredJoints::init()
   // Set the number of joints
 	for(int k = 0; k < NB_ROBOTS; k++)
 	{
+
 		_desiredJoints[k].data.resize(NB_JOINTS);
+		_targetJoints[k].data.resize(NB_JOINTS);
 		_currentJoints[k].data.resize(NB_JOINTS);
 
 		for(int m = 0; m < NB_JOINTS; m++)
 		{
+			_jointFilter[k][m].setAlpha(0.98);
 			_currentJoints[k].data[m] = 0.0f;
 			_desiredJoints[k].data[m] = 0.0f;
+			_targetJoints[k].data[m] = 0.0f;
 		}
   	_firstJointsUpdate[k] = false;
 	}
@@ -37,7 +41,7 @@ bool MoveToDesiredJoints::init()
 
   // Publish to the joint position controller topic
   _pubDesiredJoints[RIGHT] = _n.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/command_joint_pos", 1);
-  _pubDesiredJoints[LEFT] = _n.advertise<std_msgs::Float64MultiArray>("left_lwr/joint_controllers/command_joint_pos", 1);
+  _pubDesiredJoints[LEFT] = _n.advertise<std_msgs::Float64MultiArray>("/left_lwr/joint_controllers/command_joint_pos", 1);
 
 	if (_n.ok())
 	{ 
@@ -58,8 +62,16 @@ void MoveToDesiredJoints::run() {
 
 	while (_n.ok()) 
 	{
+
+
 		if(_mode == SINGLE_LEFT && _firstJointsUpdate[LEFT])
 		{
+			computeSmoothProfile(LEFT);
+			for(int m = 0; m < NB_JOINTS; m++)
+			{
+				std::cerr << _desiredJoints[LEFT].data[m] << " ";
+			}
+			std::cerr << std::endl;
 			_pubDesiredJoints[LEFT].publish(_desiredJoints[LEFT]);
 			if(checkJointsError(LEFT))
 			{
@@ -69,6 +81,7 @@ void MoveToDesiredJoints::run() {
 		}
 		else if(_mode == SINGLE_RIGHT && _firstJointsUpdate[RIGHT])
 		{
+			computeSmoothProfile(RIGHT);
 			_pubDesiredJoints[RIGHT].publish(_desiredJoints[RIGHT]);
 			if(checkJointsError(RIGHT))
 			{
@@ -78,6 +91,8 @@ void MoveToDesiredJoints::run() {
 		}
 		else if(_mode == BOTH && _firstJointsUpdate[LEFT] && _firstJointsUpdate[RIGHT])
 		{
+			computeSmoothProfile(LEFT);
+			computeSmoothProfile(RIGHT);
 			_pubDesiredJoints[LEFT].publish(_desiredJoints[LEFT]);
 			_pubDesiredJoints[RIGHT].publish(_desiredJoints[RIGHT]);
 			if(checkJointsError(LEFT) && checkJointsError(RIGHT))
@@ -99,16 +114,25 @@ void MoveToDesiredJoints::setDesiredJoints(std_msgs::Float64MultiArray desiredJo
 {
 	if(_mode == SINGLE_LEFT)
 	{
-		_desiredJoints[LEFT] = desiredJoints;
+		_targetJoints[LEFT] = desiredJoints;
 	}
 	else if(_mode == SINGLE_RIGHT)
 	{
-		_desiredJoints[RIGHT] = desiredJoints;
+		_targetJoints[RIGHT] = desiredJoints;
 	}
 	else if(_mode == BOTH)
 	{
-		_desiredJoints[LEFT] = desiredJoints;
-		_desiredJoints[RIGHT] = desiredJoints;	
+		_targetJoints[LEFT] = desiredJoints;
+		_targetJoints[RIGHT] = desiredJoints;	
+	}
+}
+
+void MoveToDesiredJoints::computeSmoothProfile(int k)
+{
+
+	for(int m = 0; m < NB_JOINTS; m++)
+	{
+		_desiredJoints[k].data[m] = _jointFilter[k][m].update(_targetJoints[k].data[m]);
 	}
 }
 
@@ -121,7 +145,13 @@ void MoveToDesiredJoints::updateCurrentJoints(const sensor_msgs::JointState::Con
 	}
 	if(!_firstJointsUpdate[k])
 	{
+
+		for(int m = 0; m < NB_JOINTS; m++)
+		{
+			_jointFilter[k][m].setInit(_currentJoints[k].data[m]);
+		}
 		_firstJointsUpdate[k] = true;
+
 	}
 }
 

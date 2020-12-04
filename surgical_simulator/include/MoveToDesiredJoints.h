@@ -4,6 +4,7 @@
 #include "ros/ros.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "sensor_msgs/JointState.h"
+#include "LP_Filterd.h"
 #include <vector>
 #include <mutex>
 
@@ -20,6 +21,8 @@ class MoveToDesiredJoints
 
 		enum Robot {LEFT = 0, RIGHT = 1};
 
+		LP_Filterd _jointFilter[NB_ROBOTS][NB_JOINTS];
+
 
 		// ROS variables
 		ros::NodeHandle _n;
@@ -32,6 +35,7 @@ class MoveToDesiredJoints
 		// Node variables
 		std_msgs::Float64MultiArray _currentJoints[NB_ROBOTS];
 		std_msgs::Float64MultiArray _desiredJoints[NB_ROBOTS];
+		std_msgs::Float64MultiArray _targetJoints[NB_ROBOTS];
 		float _jointTolerance;
 		bool _firstJointsUpdate[NB_ROBOTS];
 
@@ -42,7 +46,7 @@ class MoveToDesiredJoints
 
 
 	public:
-		MoveToDesiredJoints(ros::NodeHandle &n, float frequency, Mode mode, float jointTolerance = 1.0e-3f);
+		MoveToDesiredJoints(ros::NodeHandle &n, float frequency, Mode mode, float jointTolerance = 1.0e-4f);
 
 		// Initialize node
 		bool init();
@@ -54,6 +58,8 @@ class MoveToDesiredJoints
 		void setDesiredJoints(std_msgs::Float64MultiArray desiredJoints);
 
 	private:
+
+		void computeSmoothProfile(int k);
 
 
 		// Callback to update joint position

@@ -33,7 +33,7 @@ generate_dynamic_reconfigure_options(cfg/feetTelemanipulation_params.cfg)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure sg_differentiation utils custom_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs message_generation dynamic_reconfigure sg_differentiation utils custom_msgs custom_msgs_gripper
   # DEPENDS Eigen
  )
 

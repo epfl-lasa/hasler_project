@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   tf
   utils
+  utils_math
 )
 
 find_package(gazebo REQUIRED)
@@ -47,7 +48,8 @@ generate_dynamic_reconfigure_options(cfg/robotsTaskGeneration_params.cfg
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES
-  CATKIN_DEPENDS roscpp rospy std_msgs message_generation tf gazebo_ros custom_msgs utils
+  CATKIN_DEPENDS roscpp rospy std_msgs message_generation tf gazebo_ros custom_msgs utils utils_math
+
  )
 
 
