@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="body" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  
+  <xacro:include filename="$(find surgical_sim)/urdf/body/templates/joint.transmissions.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/urdf/body/templates/gazebo.joints.xacro"/>
+
+  <xacro:macro name="create_torso_joints" params="parent_link xyz rpy">
+
+    <!-- joint 1 -->
+    <joint name="torso_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="torso_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="${rpy}" xyz="${xyz}"/>
+    </joint>
+
+    <joint name="right_trocar_joint" type="fixed">
+      <parent link="torso_link"/>
+      <child link="/right/trocar_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 ${pi/2}" xyz="0.015 0.015 0.2"/>
+    </joint>
+    
+    <joint name="left_trocar_joint" type="fixed">
+      <parent link="torso_link"/>
+      <child link="/left/trocar_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 ${pi/2}" xyz="0.0 0.0 0.2"/>
+    </joint>
+
+  
+    <xacro:gazebo_joints name="torso_joint"/>
+    
+  </xacro:macro>
+</robot>

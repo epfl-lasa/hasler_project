@@ -1,0 +1,15 @@
+#These you can measure in the subject and update
+#Dawood Ahmed
+thigh_width: 0.145
+thigh_depth: 0.160 
+shin_width: 0.110
+shin_depth: 0.105 
+foot_length: 0.265 
+thigh_length: 0.400
+shin_length:  0.410
+ankle_to_foot_base_z: 0.110
+ankle_to_foot_base_x: 0.070
+foot_base_to_foot_tip: 0.165
+body_weight: 67
+hip_width: 0.255
+hip_height: 0.910 

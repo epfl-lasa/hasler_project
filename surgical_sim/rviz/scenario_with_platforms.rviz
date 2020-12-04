@@ -1,0 +1,880 @@
+Panels:
+  - Class: rviz/Displays
+    Help Height: 81
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Status1
+        - /TF1/Frames1
+        - /Body1/Links1
+        - /Right_Platform1/Links1
+        - /Right_Leg1
+        - /Right_Leg1/Links1
+        - /target1/Links1
+        - /target1/Links1/target_object_link1
+        - /left_leg1
+      Splitter Ratio: 0.715415001
+    Tree Height: 769
+  - Class: rviz/Selection
+    Name: Selection
+  - Class: rviz/Tool Properties
+    Expanded:
+      - /2D Pose Estimate1
+      - /2D Nav Goal1
+      - /Publish Point1
+    Name: Tool Properties
+    Splitter Ratio: 0.588679016
+  - Class: rviz/Views
+    Expanded:
+      - /Current View1
+      - /Current View1/Focal Point1
+      - /Orbit1
+    Name: Views
+    Splitter Ratio: 0.5
+  - Class: rviz/Time
+    Experimental: false
+    Name: Time
+    SyncMode: 0
+    SyncSource: ""
+Toolbars:
+  toolButtonStyle: 2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.0299999993
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Class: rviz/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        base_object_link:
+          Value: true
+        chair_base_link:
+          Value: true
+        chair_intermediate_link1:
+          Value: true
+        chair_intermediate_link2:
+          Value: true
+        left/ankle_pitch_link:
+          Value: true
+        left/ankle_roll_link:
+          Value: true
+        left/ankle_yaw_link:
+          Value: true
+        left/fSensor:
+          Value: true
+        left/foot_base:
+          Value: true
+        left/foot_rest:
+          Value: true
+        left/foot_tip:
+          Value: true
+        left/hip_adduction_link:
+          Value: true
+        left/hip_base_link:
+          Value: true
+        left/hip_extension_link:
+          Value: true
+        left/hip_roll_link:
+          Value: true
+        left/knee_extension_link:
+          Value: true
+        left/pedal_tip:
+          Value: true
+        left/pitch:
+          Value: true
+        left/platform_base_link:
+          Value: true
+        left/roll:
+          Value: true
+        left/trocar_link:
+          Value: false
+        left/virtual_ankle:
+          Value: true
+        left/virtual_pedal_tip:
+          Value: true
+        left/x:
+          Value: true
+        left/y:
+          Value: true
+        left/yaw:
+          Value: true
+        left/z_link:
+          Value: true
+        left_lwr_1_link:
+          Value: true
+        left_lwr_2_link:
+          Value: true
+        left_lwr_3_link:
+          Value: true
+        left_lwr_4_link:
+          Value: true
+        left_lwr_5_link:
+          Value: true
+        left_lwr_6_link:
+          Value: true
+        left_lwr_7_link:
+          Value: true
+        left_lwr_base_link:
+          Value: true
+        left_world:
+          Value: true
+        right/ankle_pitch_link:
+          Value: true
+        right/ankle_roll_link:
+          Value: true
+        right/ankle_yaw_link:
+          Value: true
+        right/fSensor:
+          Value: true
+        right/foot_base:
+          Value: true
+        right/foot_rest:
+          Value: true
+        right/foot_tip:
+          Value: true
+        right/hip_adduction_link:
+          Value: true
+        right/hip_base_link:
+          Value: true
+        right/hip_extension_link:
+          Value: true
+        right/hip_roll_link:
+          Value: true
+        right/knee_extension_link:
+          Value: true
+        right/pedal_tip:
+          Value: true
+        right/pitch:
+          Value: true
+        right/platform_base_link:
+          Value: true
+        right/roll:
+          Value: true
+        right/tool_base_link:
+          Value: false
+        right/tool_main_link:
+          Value: false
+        right/tool_pitch_link:
+          Value: false
+        right/tool_roll_link:
+          Value: true
+        right/tool_tip_link:
+          Value: false
+        right/tool_tip_link_ee:
+          Value: true
+        right/tool_wrist_forceps_link:
+          Value: false
+        right/tool_wrist_forceps_link_2_left:
+          Value: false
+        right/tool_wrist_forceps_link_2_right:
+          Value: false
+        right/tool_wrist_forceps_link_shaft:
+          Value: false
+        right/tool_wrist_link:
+          Value: false
+        right/tool_wrist_shaft_link:
+          Value: false
+        right/tool_yaw_link:
+          Value: false
+        right/trocar_link:
+          Value: false
+        right/virtual_ankle:
+          Value: true
+        right/virtual_pedal_tip:
+          Value: true
+        right/x:
+          Value: true
+        right/y:
+          Value: true
+        right/yaw:
+          Value: true
+        right/z_link:
+          Value: true
+        right_lwr_1_link:
+          Value: true
+        right_lwr_2_link:
+          Value: true
+        right_lwr_3_link:
+          Value: true
+        right_lwr_4_link:
+          Value: true
+        right_lwr_5_link:
+          Value: true
+        right_lwr_6_link:
+          Value: true
+        right_lwr_7_link:
+          Value: true
+        right_lwr_base_link:
+          Value: true
+        target_object_link:
+          Value: true
+        torso_link:
+          Value: true
+        world:
+          Value: true
+      Marker Scale: 0.100000001
+      Name: TF
+      Show Arrows: false
+      Show Axes: true
+      Show Names: false
+      Tree:
+        world:
+          base_object_link:
+            {}
+          chair_intermediate_link1:
+            chair_intermediate_link2:
+              chair_base_link:
+                left/hip_base_link:
+                  left/hip_adduction_link:
+                    left/hip_extension_link:
+                      left/hip_roll_link:
+                        left/knee_extension_link:
+                          left/ankle_pitch_link:
+                            left/ankle_roll_link:
+                              left/ankle_yaw_link:
+                                left/foot_base:
+                                  left/foot_tip:
+                                    left/virtual_pedal_tip:
+                                      {}
+                right/hip_base_link:
+                  right/hip_adduction_link:
+                    right/hip_extension_link:
+                      right/hip_roll_link:
+                        right/knee_extension_link:
+                          right/ankle_pitch_link:
+                            right/ankle_roll_link:
+                              right/ankle_yaw_link:
+                                right/foot_base:
+                                  right/foot_tip:
+                                    right/virtual_pedal_tip:
+                                      {}
+          left/platform_base_link:
+            left/y:
+              left/x:
+                left/z_link:
+                  left/pitch:
+                    left/roll:
+                      left/yaw:
+                        left/fSensor:
+                          left/foot_rest:
+                            left/pedal_tip:
+                              {}
+                            left/virtual_ankle:
+                              {}
+          right/platform_base_link:
+            right/y:
+              right/x:
+                right/z_link:
+                  right/pitch:
+                    right/roll:
+                      right/yaw:
+                        right/fSensor:
+                          right/foot_rest:
+                            right/pedal_tip:
+                              {}
+                            right/virtual_ankle:
+                              {}
+          right/tool_base_link:
+            right/tool_pitch_link:
+              right/tool_roll_link:
+                right/tool_yaw_link:
+                  right/tool_main_link:
+                    right/tool_wrist_link:
+                      right/tool_wrist_shaft_link:
+                        right/tool_wrist_forceps_link:
+                          right/tool_wrist_forceps_link_shaft:
+                            right/tool_tip_link:
+                              right/tool_tip_link_ee:
+                                {}
+                            right/tool_wrist_forceps_link_2_left:
+                              {}
+                            right/tool_wrist_forceps_link_2_right:
+                              {}
+          right_lwr_base_link:
+            right_lwr_1_link:
+              right_lwr_2_link:
+                right_lwr_3_link:
+                  right_lwr_4_link:
+                    right_lwr_5_link:
+                      right_lwr_6_link:
+                        right_lwr_7_link:
+                          {}
+          torso_link:
+            left/trocar_link:
+              {}
+            right/trocar_link:
+              {}
+            target_object_link:
+              {}
+      Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        /left/trocar_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        /right/trocar_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        torso_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Body
+      Robot Description: body_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        /world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        tool_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        tool_main_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        tool_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        tool_tip_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        tool_tip_link_ee:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        tool_wrist_forceps_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_wrist_forceps_link_2_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_wrist_forceps_link_2_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_wrist_forceps_link_shaft:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_wrist_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_wrist_shaft_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        tool_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Right_Tool
+      Robot Description: /right/tool_description
+      TF Prefix: right
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        fSensor:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        foot_rest:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pitch:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        platform_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        roll:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        virtual_ankle:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        y:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        yaw:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        z_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Right_Platform
+      Robot Description: /right/platform_description
+      TF Prefix: /right
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 0.5
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        ankle_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ankle_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ankle_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        foot_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        foot_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_adduction_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        knee_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        virtual_pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Right_Leg
+      Robot Description: /right/leg_description
+      TF Prefix: right
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        chair_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        chair_intermediate_link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        chair_intermediate_link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Chair
+      Robot Description: chair_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 0.5
+      Class: rviz/PointStamped
+      Color: 204; 41; 204
+      Enabled: true
+      History Length: 1
+      Name: PointStamped
+      Radius: 0.100000001
+      Topic: /right/leg_joint_publisher/leg_cog
+      Unreliable: false
+      Value: true
+    - Alpha: 0.800000012
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_object_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        target_object_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: target
+      Robot Description: target_object_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /target_state_publisher/target_reached_sphere
+      Name: target_reached
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        fSensor:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        foot_rest:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        pitch:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        platform_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        roll:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        virtual_ankle:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        y:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        yaw:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        z_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: left_platform
+      Robot Description: /left/platform_description
+      TF Prefix: left
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 0.5
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        ankle_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ankle_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ankle_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        foot_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        foot_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_adduction_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hip_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        knee_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        virtual_pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: left_leg
+      Robot Description: /left/leg_description
+      TF Prefix: left
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Default Light: true
+    Fixed Frame: world
+    Frame Rate: 70
+  Name: root
+  Tools:
+    - Class: rviz/Interact
+      Hide Inactive Objects: true
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+    - Class: rviz/FocusCamera
+    - Class: rviz/Measure
+    - Class: rviz/SetInitialPose
+      Topic: /initialpose
+    - Class: rviz/SetGoal
+      Topic: /move_base_simple/goal
+    - Class: rviz/PublishPoint
+      Single click: true
+      Topic: /clicked_point
+  Value: true
+  Views:
+    Current:
+      Class: rviz/Orbit
+      Distance: 0.711297631
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.0599999987
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: -0.015165179
+        Y: 0.0935746804
+        Z: -0.448392779
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.0500000007
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.00999999978
+      Pitch: 1.19976008
+      Target Frame: right/tool_tip_link_ee
+      Value: Orbit (rviz)
+      Yaw: 4.69221973
+    Saved:
+      - Class: rviz/Orbit
+        Distance: 1.1899302
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.0599999987
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Focal Point:
+          X: 0.186630756
+          Y: 0.266948909
+          Z: 0.105622366
+        Focal Shape Fixed Size: true
+        Focal Shape Size: 0.0500000007
+        Invert Z Axis: false
+        Name: Orbit
+        Near Clip Distance: 0.00999999978
+        Pitch: 0.175397992
+        Target Frame: <Fixed Frame>
+        Value: Orbit (rviz)
+        Yaw: 4.4535861
+      - Class: rviz/Orbit
+        Distance: 0.636469424
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.0599999987
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Focal Point:
+          X: 0.0717394277
+          Y: 0.363679856
+          Z: 1.00105262
+        Focal Shape Fixed Size: true
+        Focal Shape Size: 0.0500000007
+        Invert Z Axis: false
+        Name: Orbit
+        Near Clip Distance: 0.00999999978
+        Pitch: 1.10479677
+        Target Frame: <Fixed Frame>
+        Value: Orbit (rviz)
+        Yaw: 1.898543
+Window Geometry:
+  Displays:
+    collapsed: true
+  Height: 1000
+  Hide Left Dock: true
+  Hide Right Dock: true
+  QMainWindow State: 000000ff00000000fd00000004000000000000029b00000399fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000002e100000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073000000002e00000399000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000029f00000399fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002e00000399000000b700fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000078000000040fc0100000002fb0000000800540069006d00650000000000000007800000038300fffffffb0000000800540069006d00650100000000000004500000000000000000000004bf0000039900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Selection:
+    collapsed: false
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Views:
+    collapsed: true
+  Width: 1215
+  X: 65
+  Y: 24

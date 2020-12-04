@@ -1,0 +1,14 @@
+#These you can measure in the subject and update
+thigh_width: 0.14 
+thigh_depth: 0.17 
+shin_width: 0.120 
+shin_depth: 0.100
+foot_length: 0.270 
+thigh_length: 0.390
+shin_length:  0.430
+ankle_to_foot_base_z: 0.110
+ankle_to_foot_base_x: 0.035
+foot_base_to_foot_tip: 0.175
+body_weight: 60
+hip_width: 0.235
+hip_height: 0.945

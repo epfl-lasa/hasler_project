@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <node ns="notification_desktop" name="notification_desktop" pkg="notification_desktop" type="notification_desktop" output="screen">
+    <rosparam file="$(find notification_desktop)/config/params.yaml" command="load" />
+  </node>
+</launch>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="target_object" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+<xacro:include filename="$(find surgical_sim)/urdf/target_object/templates/gazebo.links.xacro"/>
+
+  <xacro:macro name="create_base_object_links" params="parent_link xyz rpy">
+
+
+    <!-- link 1: base_object_link -->
+    <link name="base_object_link"/>
+    <link name="target_object_link">
+      <visual>
+        <origin rpy="${-pi/2} 0 0" xyz="0 0 0"/>
+        <geometry>
+          <sphere radius="0.007"/>
+        </geometry>
+      <material name="Cyan">
+       <color rgba="0 1.0 1.0 0.5"/>
+     </material>  
+      </visual>
+      <inertial>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<mass value="1"/>
+				<inertia ixx="${2/5 * 1 * 0.019 * 0.019 }" ixy="0.0" ixz="0.0" iyy="${2/5 * 1 * 0.019 * 0.019 }" iyz="0.0" izz="${2/5 * 1 * 0.019 * 0.019 }"/>
+			</inertial> 
+    </link>
+
+   <xacro:gazebo_links name="base_object_link"/>
+   <xacro:gazebo_links name="target_object_link"/>
+ 
+  </xacro:macro>
+  
+
+</robot>

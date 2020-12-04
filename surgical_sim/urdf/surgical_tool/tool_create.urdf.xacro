@@ -1,0 +1,70 @@
+<?xml version="1.0" ?>
+<robot name="surgical_tool" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Macros -->
+  <!-- Macros -->
+  <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/tool_base/tool_base.urdf.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/tool_gripper/tool_t_gripper.urdf.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/urdf/surgical_tool/tool_forceps/tool_t_forceps.urdf.xacro"/>
+
+  <xacro:arg name="with_forceps" default="true"/>
+  <xacro:arg name="with_gripper" default="false"/>
+  <xacro:arg name="toolID" default="right"/>
+  
+  
+  <xacro:macro name="attach_gripper" params="parent_link xyz rpy">
+    <xacro:create_tool_base
+        parent_link="${parent_link}"
+        xyz="${xyz}" rpy="${rpy}"/>
+    <xacro:create_gripper/>
+  </xacro:macro>
+
+  <xacro:macro name="attach_forceps" params="parent_link xyz rpy">
+    <xacro:create_tool_base
+        parent_link="${parent_link}"
+        xyz="${xyz}" rpy="${rpy}"/>
+     <xacro:create_forceps/> 
+  </xacro:macro>
+
+ <!--  -->
+  <link name="/world"/>
+
+  <link name="tool_base_link">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.001"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+    </inertial>   
+  </link>
+
+  <xacro:if value="$(arg with_forceps)">
+    <xacro:attach_forceps
+        parent_link="tool_base_link"
+        xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" />
+  </xacro:if>
+
+  <xacro:unless value="$(arg with_forceps)">
+    <xacro:if value="$(arg with_gripper)">
+        <xacro:attach_gripper
+        parent_link="tool_base_link"
+        xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" />
+    </xacro:if>
+  </xacro:unless>
+  
+
+  <joint name="world_fixed" type="fixed">
+      <parent link="/world"/>
+      <child link="tool_base_link"/>
+      <origin rpy="0 0 0" xyz="${0+0.015} ${0.5 + 0.015} ${1.1 + 0.2} "/>
+  </joint> 
+
+    <gazebo>
+        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+        <robotNamespace>surgical_tool</robotNamespace>
+        <robotParam>/$(arg toolID)/tool_description</robotParam>
+        <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+        <legacyModeNS>true</legacyModeNS>
+        </plugin>
+    </gazebo>
+
+</robot>

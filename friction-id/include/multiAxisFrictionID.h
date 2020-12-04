@@ -7,19 +7,29 @@
 #include <mutex>
 #include "Eigen/Eigen"
 #include <signal.h>
-#include "../../5_axis_platform/lib/platform/src/definitions_2.h"
-#include <custom_msgs/FootOutputMsg_v2.h>
+#include "../../5_axis_platform/lib/platform/src/definitions_main.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_security.h"
+#include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
+#include "lp_filter.h"
+#include <custom_msgs/FootOutputMsg_v3.h>
 #include <custom_msgs/FootInputMsg_v2.h>
 
-
-
 using namespace std;
+
+#define NB_DIR 4
+#define NB_ERROR_CHECKS 2 
+#define NB_STEPS_DEFAULT 20
+#define TAU_DEFAULT 11.2f
 
 class multiAxisFrictionID
 {
 
     public:
-        enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2};    
+        enum Direction {FORWARD_1=0, REVERSE_1=1, REVERSE_2 = 2, FORWARD_2 = 3};
+        enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2};
+        enum Strategy {NONE, STEPS, RAMP};    
+        enum Sequence {ONE_AFTER_THE_OTHER, ALL_TOGETHER};
 	private:
         enum JointState {POSITION, SPEED, ACCELERATION}; 
         enum EffortComp {NORMAL,CONSTRAINS,COMPENSATION,FEEDFORWARD}; 
@@ -33,11 +43,12 @@ class multiAxisFrictionID
     float _dt;
     
     public:
-        //Stair case variables
-        Eigen::Matrix<float, NB_AXIS, 1> _limitWS;
-        float _tau[NB_AXIS];                                 // time constant of the loading of the step
-        int8_t _nSteps[NB_AXIS];                            // number of steps
+        //Strate case variables
+        float _tau;                                 // time constant of the loading of the step
+        int _nSteps[NB_AXIS];                            // number of steps
+        float _stepSize[NB_AXIS];
         int8_t _currentStep[NB_AXIS];
+        int8_t _currentOffset[NB_AXIS];
         ros::Duration _ros_dt;
         ros::Time _currentTime;
         ros::Time _prevTime[NB_AXIS];
@@ -47,7 +58,7 @@ class multiAxisFrictionID
 	//!subscribers and publishers declaration    
     
     // // Subscribers declarations
-     ros::Subscriber _subFootOutput;            // FootOutputMsg_v2
+     ros::Subscriber _subFootOutput;            // FootOutputMsg_v3
     
     // Publisher declaration
     ros::Publisher _pubFootInput;               // FootInputMsg_v2
@@ -67,21 +78,30 @@ class multiAxisFrictionID
     Platform_Name _platform_name;
 
     //Variables from messages
-        //! FootOutputMsg_v2 -> Internal for the platform
+        //! FootOutputMsg_v3 -> Internal for the platform
     int8_t _platform_id;
 
-    Eigen::Matrix<double, NB_AXIS, 1> _platform_position;
-    Eigen::Matrix<double, NB_AXIS, 1> _platform_speed;
-    Eigen::Matrix<double, NB_AXIS, 1> _platform_effortD;
-    Eigen::Matrix<double, NB_AXIS, 1> _platform_effortM;
+    Eigen::Matrix<float, NB_AXIS, 1> _platform_position;
+    Eigen::Matrix<float, NB_AXIS, 1> _platform_speed;
+    Eigen::Matrix<float, NB_AXIS, 1> _platform_effortD;
+    Eigen::Matrix<float, NB_AXIS, 1> _platform_effortM;
 
-    Eigen::Matrix<double, NB_AXIS, 1> _ros_position;
-    Eigen::Matrix<double, NB_AXIS, 1> _ros_speed;
-    Eigen::Matrix<double, NB_AXIS, 1> _ros_effort;
+    Eigen::Matrix<float, NB_AXIS, 1> _ros_position;
+    lp_filter* _ros_positionFilter[NB_AXIS];
+    Eigen::Matrix<float, NB_AXIS, 1> _ros_speed;
+    Eigen::Matrix<float, NB_AXIS, 1> _ros_effort;
 
     Controller _platform_controllerType;
     State _platform_machineState;
-    
+    Strategy _strategy;
+    Sequence _sequence;
+    int _whichAxis;
+    uint8_t _currentAxis;
+
+    //Variables related to the methods
+        Direction _direction[NB_AXIS];
+        Direction _direction_prev[NB_AXIS];
+        float _WS[NB_AXIS];
     //Flags 
 
 public:
@@ -89,18 +109,20 @@ public:
     bool _flagPlatformInCommStarted;
     bool _flagPlatformOutCommStarted;
     bool _flagPositionOnlyPublished;
-    bool _flagInitialConfig;
-    bool _flagIntegratorsZeroed[NB_AXIS];
+    bool _flagIntegratorsZeroed[NB_AXIS][NB_DIR];
+    bool _flagROSINFO;
 
 private:
-    bool _flagStairCaseStarted[NB_AXIS];
-    bool _flagStairCaseFinished[NB_AXIS];
-    bool _flagNextStep[NB_AXIS][2];
+    bool _flagStrategyStarted[NB_AXIS][NB_DIR]; //!Backwards-Forwards
+    bool _flagStrategyFinished[NB_AXIS][NB_DIR];
+    bool _flagNextStep[NB_AXIS][NB_DIR][NB_ERROR_CHECKS];
+    bool _flagNextAxis;
+    bool _flagWSDefined[NB_AXIS];
 
     // METHODS
 public:
 	// multiAxisFrictionID(ros::NodeHandle &n_1, ros::NodeHandle &n_2, ros::NodeHandle &n_3, double frequency, multiAxisFrictionID::Platform_Name platform_id_);
-	multiAxisFrictionID(ros::NodeHandle &n_1, double frequency, multiAxisFrictionID::Platform_Name platform_id_);
+	multiAxisFrictionID(ros::NodeHandle &n_1, double frequency,multiAxisFrictionID::Platform_Name platform_id, multiAxisFrictionID::Strategy strategy_, float tau_, int whichAxis_); 
 	
     ~multiAxisFrictionID();
 	
@@ -112,12 +134,15 @@ public:
     //! ROS METHODS
 
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg);     
+    void fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg);     
     void publishPositionOnly();
     
-    //! OTHER METHODS
-    double stepFunGen(int axis_, int dir_);
-    void staircaseJointGen(int axis_, int dir_);
+    //! FUNCTION GENERATOR METHODS
+    double stepFunGen(int axis_, float tau_, Strategy strategy_);
+    void funcJointGen(int axis_, float tau_);
+    void rampJointGen(int axis_, float slope_);
+    void axisSequenceControl(int whichAxis_, Sequence whichSequence_);
+    void functionControl(int whichAxis_, Sequence whichSequence_);
     static void stopNode(int sig);
 };
 #endif  // __multiAxisFrictionID_H__

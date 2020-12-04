@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="leg_geom_data_yaml" value="$(find leg_as_robot)/config/leg_geom_data.yaml"/>
+    <xacro:property name="leg_geom_data_baseline_yaml" value="$(find leg_as_robot)/config/leg_geom_data.baseline.yaml"/>
+    <xacro:property name="leg_geom_data" value="${load_yaml(leg_geom_data_yaml)}"/>
+    <xacro:property name="leg_geom_data_baseline" value="${load_yaml(leg_geom_data_baseline_yaml)}"/>
+
+    <xacro:property name="hip_height" value="${leg_geom_data['hip_height']}"/>
+    <xacro:property name="hip_width" value="${leg_geom_data['hip_width']}"/>
+   
+    <xacro:property name="hip_heightBaseline" value="${leg_geom_data_baseline['hip_height']}"/>
+    <xacro:property name="hip_widthBaseline" value="${leg_geom_data_baseline['hip_width']}"/>
+
+   
+</robot>

@@ -1,0 +1,13 @@
+<launch>
+	<arg name="id" default="right"/>
+
+	<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="$(arg id)" />
+
+	<group ns="$(arg id)">
+		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
+			<param name="platformID" value="$(arg id)"/>
+		</node>
+	
+	</group>
+
+</launch>

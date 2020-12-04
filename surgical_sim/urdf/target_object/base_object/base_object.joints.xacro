@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="target_object" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  
+  <xacro:include filename="$(find surgical_sim)/urdf/target_object/templates/joint.transmissions.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/urdf/target_object/templates/gazebo.joints.xacro"/>
+
+  <xacro:macro name="create_base_object_joints" params="parent_link xyz rpy">
+
+    <!-- joint 1 -->
+    <joint name="base_object_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="base_object_link"/>
+      
+      <origin rpy="${rpy}" xyz="${xyz}"/>
+    </joint>
+
+
+    <joint name="target_object_joint" type="fixed">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0 0"/>
+      <parent link="base_object_link"/>
+      <child link="target_object_link"/>
+      <axis xyz="0.0 0.0 1.0"/>
+    </joint>
+
+    <xacro:joint_trans name="base_object_joint" reduction="1"/>
+    <xacro:joint_trans name="target_object_joint" reduction="1"/>
+  
+    <!-- <xacro:gazebo_joints name="base_object_joint"/> -->
+    
+  </xacro:macro>
+</robot>

@@ -1,0 +1,46 @@
+#include "legRobot.h"
+#include <urdf/model.h>
+
+int main(int argc, char **argv) {
+  legRobot::Leg_Name leg_id_;
+
+  ros::init(argc, argv, "legStatePublisher");
+
+  std::string leg_name;
+
+  ros::NodeHandle nh_("~");
+  nh_.getParam("legID", leg_name);
+  
+
+  if (leg_name.compare("right") == 0) {
+    leg_id_ = legRobot::RIGHT;
+  } else if (leg_name.compare("left") == 0) {
+    leg_id_ = legRobot::LEFT;
+  } else {
+    ROS_ERROR("You didn't enter a legID left or right");
+    return -1;
+  }
+
+  urdf::Model modelLoad;
+  if (!modelLoad.initParam("robot_description")) {
+    ROS_ERROR("Failed to parse urdf file");
+    return -1;
+  }
+  ROS_INFO("Successfully parsed urdf file");
+
+  double frequency = 1000.0;
+
+  if (!nh_.getParam("publish_frequency", frequency))
+  {
+    frequency = 1000.0;
+  }
+
+  legRobot legRobot(nh_, frequency, leg_id_, modelLoad);
+
+  if (!legRobot.init()) {
+    return -1;
+  } else {
+    legRobot.run();
+  }
+  return 0;
+}

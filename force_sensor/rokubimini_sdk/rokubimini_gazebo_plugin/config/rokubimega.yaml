@@ -1,0 +1,5 @@
+publishers:
+  ft_readings:
+    topic: /ft_readings
+    queue_size: 1
+    latch: false

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <!-- Publisher -->
+  <node ns="notification_tutorial" name="publisher" pkg="notification_tutorial" type="publisher_node" output="screen">
+    <rosparam file="$(find notification_tutorial)/config/publisher.yaml" command="load" />
+  </node>
+</launch>

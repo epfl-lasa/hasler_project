@@ -12,7 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   dynamic_reconfigure
-  utils
+  custom_msgs
+  utils_math
 )
 
 find_package(PkgConfig)
@@ -20,14 +21,13 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 
 #Generate dynamic_reconfigure parameters
 generate_dynamic_reconfigure_options(cfg/machineStateParams.cfg)
-
 #generate_dynamic_reconfigure_options(cfg/position_control_params.cfg)
 #generate_dynamic_reconfigure_options(cfg/speed_control_params.cfg)
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs custom_msgs dynamic_reconfigure utils
+  CATKIN_DEPENDS roscpp rospy std_msgs custom_msgs dynamic_reconfigure utils_math custom_msgs
  )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
@@ -36,4 +36,5 @@ add_executable(footVarSynchronizer src/footVarSynchronizer.cpp src/footVarSynchr
 target_link_libraries(footVarSynchronizer ${catkin_LIBRARIES})
 
 add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencpp)
+add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencfg)
 

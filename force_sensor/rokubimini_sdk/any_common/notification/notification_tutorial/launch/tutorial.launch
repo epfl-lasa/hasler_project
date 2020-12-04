@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <!-- Publisher -->
+  <include file="$(find notification_tutorial)/launch/publisher.launch"/>
+  
+  <!-- Subscriber -->
+  <include file="$(find notification_tutorial)/launch/subscriber.launch"/>
+</launch>

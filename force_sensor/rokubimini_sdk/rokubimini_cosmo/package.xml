@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rokubimini_cosmo</name>
+  <version>0.0.1</version>
+  <description>Cosmo node for the serial version of the rokubimini sensor</description>
+
+  <license>Proprietary</license>
+  <author email="markus.staeuble@mavt.ethz.ch">Markus Staeuble</author>
+  <author email="pagmarco@ethz.ch">Marco Pagnamenta</author>
+  <maintainer email="markus.staeuble@mavt.ethz.ch">Markus Staeuble</maintainer>
+  <maintainer email="pagmarco@ethz.ch">Marco Pagnamenta</maintainer>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>any_node</depend>
+  <depend>any_msgs</depend>
+  <depend>cosmo</depend>
+  <depend>cosmo_ros</depend>
+  <depend>rokubimini</depend>
+  <depend>rokubimini_manager</depend>
+  <depend>rokubimini_msgs</depend>
+  <depend>rokubimini_ros</depend>
+
+</package>

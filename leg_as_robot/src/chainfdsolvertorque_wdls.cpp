@@ -1,0 +1,189 @@
+ // Copyright  (C)  2007  Ruben Smits <ruben dot smits at mech dot kuleuven dot be>
+ // Version: 1.0
+ // Author: Ruben Smits <ruben dot smits at mech dot kuleuven dot be>
+ // Maintainer: Ruben Smits <ruben dot smits at mech dot kuleuven dot be>
+ // URL: http://www.orocos.org/kdl
+ 
+ // This library is free software; you can redistribute it and/or
+ // modify it under the terms of the GNU Lesser General Public
+ // License as published by the Free Software Foundation; either
+ // version 2.1 of the License, or (at your option) any later version.
+ 
+ // This library is distributed in the hope that it will be useful,
+ // but WITHOUT ANY WARRANTY; without even the implied warranty of
+ // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ // Lesser General Public License for more details.
+ 
+ // You should have received a copy of the GNU Lesser General Public
+ // License along with this library; if not, write to the Free Software
+ // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ #include "chainfdsolvertorque_wdls.h"
+ #include "eigen_conversions/eigen_kdl.h"
+ #include "kdl/utilities/svd_eigen_HH.hpp"
+ namespace KDL {
+
+ ChainFdSolverTorque_wdls::ChainFdSolverTorque_wdls(const Chain &_chain, double _eps,
+                                              int _maxiter)
+     : chain(_chain), jnt2jac(chain), nj(chain.getNrOfJoints()), jac(nj),
+       U(MatrixXd::Zero(6, nj)), S(VectorXd::Zero(nj)),
+       V(MatrixXd::Zero(nj, nj)), eps(_eps), maxiter(_maxiter),
+       tmp(VectorXd::Zero(6)), tmp_jac(MatrixXd::Zero(6, nj)),
+       tmp_jac_weight1(MatrixXd::Zero(6, nj)),
+       tmp_jac_weight2(MatrixXd::Zero(6, nj)), tmp_ts(MatrixXd::Zero(6, nj)),
+       tmp_js(MatrixXd::Zero(nj, nj)), weight_ts(MatrixXd::Identity(6, 6)),
+       weight_js(MatrixXd::Identity(nj, nj)), lambda(0.0), lambda_scaled(0.0),
+       nrZeroSigmas(0), svdResult(0), sigmaMin(0) {}
+
+//  void ChainFdSolverTorque_wdls::updateInternalDataStructures() {
+//    jnt2jac.updateInternalDataStructures();
+//    nj = chain.getNrOfJoints();
+//    jac.resize(nj);
+//    MatrixXd z6nj = MatrixXd::Zero(6, nj);
+//    VectorXd znj = VectorXd::Zero(nj);
+//    MatrixXd znjnj = MatrixXd::Zero(nj, nj);
+//    U.conservativeResizeLike(z6nj);
+//    S.conservativeResizeLike(znj);
+//    V.conservativeResizeLike(znjnj);
+//    tmp.conservativeResizeLike(znj);
+//    tmp_jac.conservativeResizeLike(z6nj);
+//    tmp_jac_weight1.conservativeResizeLike(z6nj);
+//    tmp_jac_weight2.conservativeResizeLike(z6nj);
+//    tmp_js.conservativeResizeLike(znjnj);
+//    weight_js.conservativeResizeLike(MatrixXd::Identity(nj, nj));
+//  }
+
+ ChainFdSolverTorque_wdls::~ChainFdSolverTorque_wdls() {}
+
+ int ChainFdSolverTorque_wdls::setWeightJS(const MatrixXd &Mq) {
+   if (nj != chain.getNrOfJoints())
+     return (error = -4);
+
+   if (Mq.size() != weight_js.size())
+     return (error = -8);
+   weight_js = Mq;
+   return (error = E_NOERROR);
+ }
+
+ int ChainFdSolverTorque_wdls::setWeightTS(const MatrixXd &Mx) {
+   if (Mx.size() != weight_ts.size())
+     return (error = -8);
+   weight_ts = Mx;
+   return (error = E_NOERROR);
+ }
+
+ void ChainFdSolverTorque_wdls::setLambda(const double lambda_in) {
+   lambda = lambda_in;
+ }
+
+ void ChainFdSolverTorque_wdls::setEps(const double eps_in) { eps = eps_in; }
+
+ void ChainFdSolverTorque_wdls::setMaxIter(const int maxiter_in) {
+   maxiter = maxiter_in;
+ }
+
+ int ChainFdSolverTorque_wdls::getSigma(Eigen::VectorXd &Sout) {
+   if (Sout.size() != S.size())
+     return (error = -8);
+   Sout = S;
+   return (error = E_NOERROR);
+ }
+
+ int ChainFdSolverTorque_wdls::JntToCart(const JntArray &q_in,
+                                         const JntArray &torque_in,
+                                        Eigen::Matrix<double,6,1> &wrench_out) {
+   if (nj != chain.getNrOfJoints())
+     return (error = -4);
+
+   if (nj != q_in.rows() || nj != torque_in.rows())
+     return (error = -8);
+   error = jnt2jac.JntToJac(q_in, jac);
+   if (error < E_NOERROR)
+     return error;
+
+   double sum;
+   unsigned int i, j;
+
+   // Initialize (internal) return values
+   nrZeroSigmas = 0;
+   sigmaMin = 0.;
+   lambda_scaled = 0.;
+
+   // Create the Weighted jacobian
+   tmp_jac_weight1 = jac.data.lazyProduct(weight_js);
+   tmp_jac_weight2 = weight_ts.lazyProduct(tmp_jac_weight1);
+
+   // Compute the SVD of the weighted jacobian
+   svdResult = svd_eigen_HH(tmp_jac_weight2, U, S, V, tmp, maxiter);
+   if (0 != svdResult) {
+     wrench_out.setZero();
+     return (error = E_SVD_FAILED);
+   }
+
+  //  // Pre-multiply U and V by the task space and joint space weighting matrix
+  //  // respectively
+  // //  tmp_ts = weight_ts.lazyProduct(U.topLeftCorner(6, 6));
+  // //  tmp_js = weight_js.lazyProduct(V);
+
+   tmp_ts = weight_ts.transpose().lazyProduct(U.topLeftCorner(6, 6));
+   tmp_js = V.transpose()*weight_js.transpose();
+
+   // Minimum of six largest singular values of J is S(5) if number of joints
+   // >=6 and 0 for <6
+   if (jac.columns() >= 6) {
+     sigmaMin = S(5);
+   } else {
+     sigmaMin = 0.;
+   }
+
+   // tmp = (Si*U'*Mx*x),
+   // tmp_new = (Si'*V'*Mq'*torque),
+   for (i = 0; i < jac.rows(); i++) {
+     sum = 0.0;
+     for (j = 0; j < jac.columns(); j++) {
+       //if (j < 6)
+         sum += tmp_js(i, j) * torque_in(j);
+       //else
+       //  sum += 0.0;
+     }
+     // If sigmaMin > eps, then wdls is not active and lambda_scaled = 0
+     // (default value)
+     // If sigmaMin < eps, then wdls is active and lambda_scaled is scaled from
+     // 0 to lambda
+     // Note:  singular values are always positive so sigmaMin >=0
+     if (sigmaMin < eps) {
+       lambda_scaled = sqrt(1.0 - (sigmaMin / eps) * (sigmaMin / eps)) * lambda;
+     }
+     if (fabs(S(i)) < eps) {
+       if (i < 6) {
+         // Scale lambda to size of singular value sigmaMin
+         tmp(i) =
+             sum * ((S(i) / (S(i) * S(i) + lambda_scaled * lambda_scaled)));
+       } else {
+         tmp(i) = 0.0; // S(i)=0 for i>=6 due to cols>rows
+       }
+       //  Count number of singular values near zero
+       ++nrZeroSigmas;
+     } else {
+       tmp(i) = sum / S(i);
+     }
+   }
+
+   
+   wrench_out = tmp_ts.lazyProduct(tmp);
+
+   // If number of near zero singular values is greater than the full rank
+   // of jac, then wdls is active
+   if (nrZeroSigmas > (jac.columns() - jac.rows())) {
+     return (error = E_CONVERGE_PINV_SINGULAR); // converged but pinv singular
+   } else {
+     return (error = E_NOERROR); // have converged
+   }
+ }
+
+ const char *ChainFdSolverTorque_wdls::strError(const int error) const {
+   if (E_CONVERGE_PINV_SINGULAR == error)
+     return "Converged put pseudo inverse of jacobian is singular.";
+   else
+     return SolverI::strError(error);
+ }
+ }

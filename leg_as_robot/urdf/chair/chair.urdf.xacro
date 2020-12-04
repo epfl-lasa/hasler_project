@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="leg_as_robot">
+ <xacro:macro name="create_chair">
+  <xacro:include filename="$(find leg_as_robot)/urdf/chair/chair.yaml.xacro"/>
+  <xacro:include filename="$(find leg_as_robot)/urdf/chair/chair.links.xacro"/>
+  <xacro:include filename="$(find leg_as_robot)/urdf/chair/chair.joints.xacro"/>
+  <xacro:define_chair_link/>
+  <xacro:define_chair_joint/>
+ </xacro:macro>
+</robot>

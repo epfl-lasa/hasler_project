@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+	<node name="cosmo_node_example" pkg="cosmo_node_example" type="cosmo_node_example_node" output="screen">
+	  <param name="time_step" type="double" value="0.1" />
+	</node>
+</launch>

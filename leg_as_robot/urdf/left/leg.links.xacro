@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+
+  
+     
+  <xacro:property name="thigh_mass" value="${10.5 * (1.0-32/56) * (1.0-32/56) * body_weight / 100}"/>
+  <xacro:property name="shin_mass" value="${4.75 * body_weight / 100}"/> <!-- [kg] -->
+  <xacro:property name="foot_mass" value="${1.43  * body_weight / 100}"/> <!--[kg] -->
+  <xacro:property name="scale_mass" value="${body_weight / body_weight_baseline}"/>
+
+  <xacro:property name="thigh_scale_x" value="${thigh_d/thighBaseline_d}"/> 
+  <xacro:property name="thigh_scale_y" value="${thigh_w/thighBaseline_w}"/> 
+  <xacro:property name="thigh_scale_z" value="${d3_leg/d3Baseline_leg}"/> 
+  
+  <xacro:property name="shin_scale_x" value="${r4_leg/r4Baseline_leg}"/> 
+  <xacro:property name="shin_scale_y" value="${shin_d/shinBaseline_d}"/> 
+  <xacro:property name="shin_scale_z" value="${shin_w/shinBaseline_w}"/> 
+
+  <xacro:property name="foot_scale_x" value="${foot_l/footBaseline_l}"/> 
+  <xacro:property name="foot_scale_y" value="${r8_leg/r8Baseline_leg}"/> 
+  <xacro:property name="foot_scale_z" value="${d7_leg/d7Baseline_leg}"/> 
+
+  <xacro:macro name="define_leg_links">
+    <link name="hip_base_link"/>
+    <link name="hip_adduction_link"/> <!-- virtual link-->
+    <link name="hip_extension_link"/> <!-- virtual link-->
+    <link name="hip_roll_link" >
+      <inertial>
+      <origin xyz="${0.00265863 * thigh_scale_x} ${--0.00827375 * thigh_scale_y } ${0.17215567 * thigh_scale_z}" rpy="0 0 0"/>
+      <mass value="${thigh_mass}"/><!-- kg -->
+      <inertia ixx="${0.25495934 * scale_mass * thigh_scale_x * thigh_scale_x}"  ixy="${-0.00092859 * scale_mass * thigh_scale_x * thigh_scale_y}"  ixz="${-0.00803351 * scale_mass * thigh_scale_x * thigh_scale_z}" iyy="${0.25972836 * scale_mass * thigh_scale_y * thigh_scale_y}" iyz="${-0.00151866 * scale_mass * thigh_scale_y * thigh_scale_z}" izz="${0.05431793 * scale_mass * thigh_scale_z * thigh_scale_z}" />
+    </inertial>
+      <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://leg_as_robot/model/meshes/dae/thigh_visual.dae" scale ="${thigh_scale_x} ${-thigh_scale_y } ${thigh_scale_z}"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://leg_as_robot/model/meshes/stl/thigh_collision.stl" scale ="${thigh_scale_x} ${-thigh_scale_y} ${thigh_scale_z}"/>
+        </geometry>      
+      </collision>
+    </link>
+    <link name="knee_extension_link" >
+      <inertial>
+          <origin xyz="${0.14893265 * shin_scale_x} ${0.01010783 * shin_scale_y } ${--0.00938572 * shin_scale_z}" rpy="0 0 0"/>
+          <mass value="${shin_mass}"/><!-- kg -->
+          <inertia ixx="${0.00474593 * scale_mass * shin_scale_x * shin_scale_x}"  ixy="${0.00116322 * scale_mass * shin_scale_x * shin_scale_y}"  ixz="${-0.00035670 * scale_mass * shin_scale_x * shin_scale_z}" iyy="${0.04707968 * scale_mass * shin_scale_y * shin_scale_y }" iyz="${-0.00006150 * scale_mass * shin_scale_y * shin_scale_z }" izz="${0.04724374 * scale_mass * shin_scale_z * shin_scale_z }" />
+      </inertial>
+          <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://leg_as_robot/model/meshes/dae/shin_visual.dae" scale ="${shin_scale_x } ${shin_scale_y} ${-shin_scale_z}"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://leg_as_robot/model/meshes/stl/shin_collision.stl" scale ="${shin_scale_x } ${shin_scale_y} ${-shin_scale_z}"/>
+        </geometry>      
+      </collision>
+    </link>   
+    <link name="ankle_pitch_link" /> <!-- virtual link-->
+    <link name="ankle_roll_link" /> <!-- virtual link-->
+    <link name="ankle_yaw_link">
+        <inertial>
+          <origin xyz="${--0.00089807 * foot_scale_x} ${-0.04499748 * foot_scale_y} ${-0.04201224 * foot_scale_z}" rpy="0 0 0"/>
+          <mass value="${foot_mass}"/><!-- kg -->
+          <inertia ixx="${0.00322038 * scale_mass * foot_scale_x * foot_scale_x}"  ixy="${--0.00005516 * scale_mass * foot_scale_x * foot_scale_y}"  ixz="${-0.00007652 * scale_mass * foot_scale_x * foot_scale_z}" iyy="${0.00084882 * scale_mass * foot_scale_y * foot_scale_y }" iyz="${0.00056936 * scale_mass * foot_scale_y * foot_scale_z }" izz="${0.00297569 * scale_mass * foot_scale_z * foot_scale_z }" />
+      </inertial>
+          <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://leg_as_robot/model/meshes/dae/foot_visual.dae" scale ="${-foot_scale_x} ${foot_scale_y} ${foot_scale_z}"/>}
+        </geometry>
+      </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://leg_as_robot/model/meshes/stl/foot_collision.stl" scale ="${-foot_scale_x} ${foot_scale_y} ${foot_scale_z}"/>}
+        </geometry>      
+      </collision>
+    </link>
+    <link name="foot_base"/>
+    <link name="foot_tip"/>
+    <link name="virtual_pedal_tip"/>
+  </xacro:macro>
+</robot>

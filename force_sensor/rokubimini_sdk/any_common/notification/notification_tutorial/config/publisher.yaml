@@ -1,0 +1,20 @@
+notification:
+  notifiers:
+    screen:
+      topic: /notification
+      queue_size: 100
+      latch: false
+      output_devices: 
+        - "screen"
+    screen_and_audio:
+      topic: /notification
+      queue_size: 100
+      latch: false
+      output_devices: 
+        - "screen"
+        - "audio"
+    broadcast:
+      topic: /notification
+      queue_size: 100
+      latch: false
+      
