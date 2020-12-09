@@ -1,35 +1,28 @@
-surgical_tool:
-  # Publish all joint states -----------------------------------
-  joint_state_controller:
-    type: joint_state_controller/JointStateController
-    publish_rate: 50  
-  
-  # Position Controllers ---------------------------------------
-  tool_yaw_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_yaw
-    pid: {p: 100.0, i: 0.0, d: 60.0}
-  tool_pitch_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_pitch
-    pid: {p: 100.0, i: 0.0, d: 60.0}
-  tool_insertion_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_insertion
-    pid: {p: 100.0, i: 0.0, d: 60.0}
-  tool_roll_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_roll
-    pid: {p: 100.0, i: 0.0, d: 60.0}  
-  tool_wrist_pitch_joint_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_wrist_pitch
-    pid: {p: 100.0, i: 0.0, d: 60.0}   
-  tool_wrist_yaw_joint_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_wrist_yaw
-    pid: {p: 100.0, i: 0.0, d: 60.0}    
-  tool_wrist_open_angle_joint_position_ctrl:
-    type: effort_controllers/JointPositionController
-    joint: tool_wrist_open_angle
-    pid: {p: 100.0, i: 0.1, d: 60.0}    
+# Publish all joint states -----------------------------------
+joint_state_controller:
+  type: joint_state_controller/JointStateController
+  publish_rate: 100 
+
+gazebo_ros_control:
+  pid_gains:
+    tool_yaw: {p: 20, i: 0, d: 10}
+    tool_pitch: {p: 20, i: 0, d: 10}
+    tool_insertion: {p: 20, i: 0, d: 10}
+    tool_roll: {p: 20, i: 0, d: 10}
+    tool_wrist_pitch: {p: 20, i: 0, d: 10}
+    tool_wrist_yaw: {p: 20, i: 0, d: 10}
+    tool_wrist_open_angle: {p: 20, i: 0, d: 10}
+    tool_wrist_open_angle_mimic: {p: 20, i: 0, d: 10}
+# Position Controllers ---------------------------------------
+joint_position_controller:
+  type: position_controllers/JointGroupPositionController
+  joints:
+    - tool_yaw
+    - tool_pitch
+    - tool_insertion
+    - tool_roll
+    - tool_wrist_pitch
+    - tool_wrist_yaw
+    - tool_wrist_open_angle
+    - tool_wrist_open_angle_mimic
+

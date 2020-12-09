@@ -6,26 +6,24 @@
   <arg name="rviz" default="true"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/body_view.rviz"/>
 
-
-  <param name="body_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver)"/>
-  <param name="use_gui" value="$(arg gui)"/>
-
-  <!-- <node name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" /> -->
+   <group ns="body">
+     <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver)"/>
+     <param name="use_gui" value="$(arg gui)"/>
+      <!-- <node name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" /> -->
+      <node pkg="robot_state_publisher" type="robot_state_publisher"  name="body_state_publisher"/>
+   </group>
   
-   <node pkg="robot_state_publisher" type="robot_state_publisher"  name="body_state_publisher">
-    <remap from="robot_description" to="body_description"/>
-  </node>
 
   <group if="$(arg rviz)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" />
   </group>
   
     
-    <!-- <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
-      <arg name="robot_description_name" value="body_description" />
+    <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
+      <arg name="robot_description_name" value="/body/robot_description" />
       <arg name="robot_name" value="body" />
       <arg name="w_world" value="true" if="$(arg rviz)"/>  
-    </include>  -->
+    </include> 
 
 
 </launch>

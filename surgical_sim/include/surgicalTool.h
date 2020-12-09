@@ -32,6 +32,8 @@
 #include <boost/shared_ptr.hpp>
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
+#include <std_msgs/Float64MultiArray.h>
+
 // #include <custom_msgs/FootInputMsg_v3.h>
 // #include <custom_msgs/FootOutputMsg_v3.h>
 // #include <custom_msgs/setControllerSrv.h>
@@ -184,13 +186,15 @@ private:
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJointsOffset;
 
   // Publisher declaration
-  ros::Publisher _pubToolJointStates;
+  //ros::Publisher _pubToolJointStates;
+  ros::Publisher _pubToolJointCommands;
   ros::Publisher _pubToolTipPose;
   ros::Subscriber _subLegJointStates;
   ros::Subscriber _subPlatformJointStates;
   ros::Subscriber _subSharedGrasp;
 
   // Messages
+  std_msgs::Float64MultiArray _msgJointCommands;
   sensor_msgs::JointState _msgJointStates;
   geometry_msgs::PoseStamped _msgToolTipPose;
   //! boolean variables
@@ -221,7 +225,8 @@ private:
   //! ROS METHODS
 
   // bool allSubscribersOK();
-  void publishToolJointStates();
+  //void publishToolJointStates();
+  void publishToolJointCommands();
   void publishToolTipPose();
   void readFootTipBasePose();
   void performInverseKinematics();

@@ -27,7 +27,7 @@
   </xacro:macro>
 
  <!--  -->
-  <link name="/world"/>
+  <link name="world"/>
 
   <link name="tool_base_link">
     <inertial>
@@ -53,17 +53,17 @@
   
 
   <joint name="world_fixed" type="fixed">
-      <parent link="/world"/>
+      <parent link="world"/>
       <child link="tool_base_link"/>
       <origin rpy="0 0 0" xyz="${0+0.015} ${0.5 + 0.015} ${1.1 + 0.2} "/>
   </joint> 
 
     <gazebo>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
-        <robotNamespace>surgical_tool</robotNamespace>
-        <robotParam>/$(arg toolID)/tool_description</robotParam>
+        <robotNamespace>$(arg toolID)_tool</robotNamespace>
+        <robotParam>/$(arg toolID)_tool/robot_description</robotParam>
         <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
-        <legacyModeNS>true</legacyModeNS>
+        <legacyModeNS>false</legacyModeNS>
         </plugin>
     </gazebo>
 

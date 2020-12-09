@@ -49,13 +49,13 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
 
   KDL::Vector grav_vector(0.0, 0.0, (double)GRAVITY);
 
-  _myTree.getChain("hip_base_link", "foot_base", _myFootBaseChain);
+  _myTree.getChain(std::string(Leg_Names[_leg_id]) + "_hip_base_link", std::string(Leg_Names[_leg_id]) + "_foot_base", _myFootBaseChain);
 
   _myChainDyn = new KDL::ChainDynParam(_myFootBaseChain, grav_vector);
 
   _myFKSolver = new KDL::ChainFkSolverPos_recursive(_myFootBaseChain);
 
-   _myJacSolver = new KDL::ChainJntToJacSolver(_myFootBaseChain);
+  _myJacSolver = new KDL::ChainJntToJacSolver(_myFootBaseChain);
 
   _mySegments = _myFootBaseChain.segments;
 
@@ -65,8 +65,8 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
 
   for (int joint_=0; joint_<NB_LEG_AXIS; joint_++ )
   {
-    _legJointLims[L_MIN]->data(joint_) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->lower;
-    _legJointLims[L_MAX]->data(joint_) = _myModel.getJoint(Leg_Axis_Names[joint_])->limits->upper;
+    _legJointLims[L_MIN]->data(joint_) = _myModel.getJoint(std::string(Leg_Names[_leg_id]) + "_" + std::string(Leg_Axis_Names[joint_]))->limits->lower;
+    _legJointLims[L_MAX]->data(joint_) = _myModel.getJoint(std::string(Leg_Names[_leg_id]) + "_" + std::string(Leg_Axis_Names[joint_]))->limits->upper;
   }
   _myVelIKSolver = new KDL::ChainIkSolverVel_wdls(_myFootBaseChain);
 
@@ -144,7 +144,7 @@ void legRobot::publishLegJointStates() {
   _msgJointStates.effort.resize(NB_LEG_AXIS);
 
   for (int k = 0; k < NB_LEG_AXIS; k++) {
-    _msgJointStates.name[k] = Leg_Axis_Names[k];
+    _msgJointStates.name[k] = std::string(Leg_Names[_leg_id]) + "_" + std::string(Leg_Axis_Names[k]);
     _msgJointStates.position[k] = me->_legJoints->data[k];
     _msgJointStates.velocity[k] = 0.0f;
     _msgJointStates.effort[k] = 0.0f;
@@ -163,12 +163,12 @@ void legRobot::readFootBasePose()
 
   if (_leg_id==Leg_Name::LEFT)
   {
-    destination_frame = "left/foot_rest";
-    original_frame = "left/hip_base_link";
+    destination_frame = "left_platform_foot_rest";
+    original_frame = "left_hip_base_link";
   }
   else {
-    destination_frame = "right/foot_rest";
-    original_frame = "right/hip_base_link";
+    destination_frame = "right_platform_foot_rest";
+    original_frame = "right_hip_base_link";
   }
 
   geometry_msgs::TransformStamped footPoseTransform_;
@@ -199,11 +199,11 @@ void legRobot::readHipBasePose() {
   std::string destination_frame;
 
   if (_leg_id == Leg_Name::LEFT) {
-    destination_frame = "left/hip_base_link";
-    original_frame = "left/platform_base_link";
+    destination_frame = "left_hip_base_link";
+    original_frame = "left_platform_base_link";
   } else {
-    destination_frame = "right/hip_base_link";
-    original_frame = "right/platform_base_link";
+    destination_frame = "right_hip_base_link";
+    original_frame = "right_platform_base_link";
   }
 
   geometry_msgs::TransformStamped hipPoseTransform_;
@@ -300,7 +300,7 @@ void legRobot::publishNetCoG() {
   //! Keep send the same valuest that the leg is broadcasting
   // _mutex.lock();
   std::string frame_name;
-   frame_name = _leg_id==RIGHT ? "/right/platform_base_link" : "/left/platform_base_link"; 
+   frame_name = _leg_id==RIGHT ? "/right_platform_base_link" : "/left_platform_base_link"; 
   _msgNetCoG.header.stamp = ros::Time::now();
   _msgNetCoG.header.frame_id = frame_name; 
   _msgNetCoG.point.x = _netCoG(0);
@@ -327,8 +327,8 @@ void legRobot::publishFootBaseGravityWrench() {
   //! Keep send the same valuest that the leg is broadcasting
   // _mutex.lock();
   std::string frame_name;
-  frame_name = _leg_id == RIGHT ? "/right/foot_base"
-                                : "/left/foot_base";
+  frame_name = _leg_id == RIGHT ? "/right_foot_base"
+                                : "/left_foot_base";
   _msgFootBaseWrench.header.stamp = ros::Time::now();
   _msgFootBaseWrench.header.frame_id = frame_name;
   _msgFootBaseWrench.wrench.force.x = _supportWrenchEigen(0);
@@ -392,8 +392,8 @@ void legRobot::publishManipulabilityEllipsoidRot() {
   Quaternion<double> svdSingQuaternion(svdVectors);
   std::string frame_name;
   std::string ns_name;
-  frame_name = _leg_id == RIGHT ? "/right/hip_base_link" : "/left/hip_base_link";
-  ns_name = _leg_id == RIGHT ? "/right" : "/left";
+  frame_name = _leg_id == RIGHT ? "/right_hip_base_link" : "/left_hip_base_link";
+  // ns_name = _leg_id == RIGHT ? "/right" : "/left";
   _msgManipEllipsoidRot.header.frame_id = frame_name;
   _msgManipEllipsoidRot.header.stamp = ros::Time::now();
   _msgManipEllipsoidRot.ns = ns_name;
@@ -427,8 +427,8 @@ void legRobot::publishManipulabilityEllipsoidLin() {
   Quaternion<double> svdSingQuaternion(svdVectors);
   std::string frame_name;
   std::string ns_name;
-  frame_name = _leg_id == RIGHT ? "/right/hip_base_link" : "/left/hip_base_link";
-  ns_name = _leg_id == RIGHT ? "/right" : "/left";
+  frame_name = _leg_id == RIGHT ? "/right_hip_base_link" : "/left_hip_base_link";
+  // ns_name = _leg_id == RIGHT ? "/right" : "/left";
   _msgManipEllipsoidLin.header.frame_id = frame_name;
   _msgManipEllipsoidLin.header.stamp = ros::Time::now();
   _msgManipEllipsoidLin.ns = ns_name;

@@ -10,15 +10,13 @@
   <arg name="offset_y"    default="0.0"/>
   <arg name="offset_z"    default="0.0"/>
 
-  <group ns="$(arg id)">
+  <group ns="$(arg id)_leg">
         
-      <param name="leg_description" command="$(find xacro)/xacro --inorder $(arg leg_model)"/>
+      <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg leg_model)"/>
 
       <group if="$(arg virtual_leg)">
         <node name="virtual_leg_joint_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" output="screen">
-        <param name="tf_prefix" value="$(arg id)"/>
         <param name="publish_frequency" value="$(arg freq)"/>
-        <remap from="robot_description" to="leg_description" />
         <remap from="joint_states" to="leg_joint_publisher/joint_states" />
         </node>
       </group>	  
@@ -26,7 +24,6 @@
       <group unless="$(arg virtual_leg)">
         <node name="leg_joint_publisher" pkg="leg_as_robot" type="legRobot" output="screen">
           <param name="legID" value="$(arg id)"/>
-          <remap from="robot_description" to="leg_description" />
           <param name="publish_frequency" value="$(arg freq)"/>
           <remap from="joint_states" to="leg_joint_publisher/joint_states" />
         </node>
@@ -34,8 +31,6 @@
 
       <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
         <param name="publish_frequency" value="$(eval 2*arg('freq'))"/>
-        <param name="tf_prefix" value="$(arg id)"/>
-        <remap from="robot_description" to="leg_description" />
         <remap from="joint_states" to="leg_joint_publisher/joint_states" />
       </node>
 
@@ -45,6 +40,6 @@
       <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"/> 
   </group>
 
-  <node pkg="tf2_ros" type="static_transform_publisher" name="chair_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)/hip_base_link" />  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="chair_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)_hip_base_link" />  
 
 </launch>

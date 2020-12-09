@@ -58,31 +58,31 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        right/tool_base_link:
+        tool_base_link:
           Value: true
-        right/tool_main_link:
+        tool_main_link:
           Value: true
-        right/tool_pitch_link:
+        tool_pitch_link:
           Value: true
-        right/tool_roll_link:
+        tool_roll_link:
           Value: true
-        right/tool_tip_link:
+        tool_tip_link:
           Value: true
-        right/tool_tip_link_ee:
+        tool_tip_link_ee:
           Value: true
-        right/tool_wrist_forceps_link:
+        tool_wrist_forceps_link:
           Value: true
-        right/tool_wrist_forceps_link_2_left:
+        tool_wrist_forceps_link_2_left:
           Value: true
-        right/tool_wrist_forceps_link_2_right:
+        tool_wrist_forceps_link_2_right:
           Value: true
-        right/tool_wrist_forceps_link_shaft:
+        tool_wrist_forceps_link_shaft:
           Value: true
-        right/tool_wrist_link:
+        tool_wrist_link:
           Value: true
-        right/tool_wrist_shaft_link:
+        tool_wrist_shaft_link:
           Value: true
-        right/tool_yaw_link:
+        tool_yaw_link:
           Value: true
         world:
           Value: true
@@ -93,21 +93,21 @@ Visualization Manager:
       Show Names: false
       Tree:
         world:
-          right/tool_base_link:
-            right/tool_pitch_link:
-              right/tool_roll_link:
-                right/tool_yaw_link:
-                  right/tool_main_link:
-                    right/tool_wrist_link:
-                      right/tool_wrist_shaft_link:
-                        right/tool_wrist_forceps_link:
-                          right/tool_wrist_forceps_link_shaft:
-                            right/tool_tip_link:
-                              right/tool_tip_link_ee:
+          tool_base_link:
+            tool_pitch_link:
+              tool_roll_link:
+                tool_yaw_link:
+                  tool_main_link:
+                    tool_wrist_link:
+                      tool_wrist_shaft_link:
+                        tool_wrist_forceps_link:
+                          tool_wrist_forceps_link_shaft:
+                            tool_tip_link:
+                              tool_tip_link_ee:
                                 {}
-                            right/tool_wrist_forceps_link_2_left:
+                            tool_wrist_forceps_link_2_left:
                               {}
-                            right/tool_wrist_forceps_link_2_right:
+                            tool_wrist_forceps_link_2_right:
                               {}
       Update Interval: 0
       Value: true
@@ -116,6 +116,10 @@ Visualization Manager:
       Collision Enabled: false
       Enabled: true
       Links:
+        /world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
@@ -181,8 +185,8 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: /right/tool_description
-      TF Prefix: right
+      Robot Description: /right_tool/robot_description
+      TF Prefix: ""
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -211,16 +215,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.561842799
+      Distance: 0.650167465
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.0614596009
-        Y: 0.256622344
-        Z: -0.243848681
+        X: -0.0147798611
+        Y: 0.986040056
+        Z: 0.876815677
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false

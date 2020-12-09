@@ -134,12 +134,17 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   if (_flagSharedGrasp)
   cout<<"flag shared grasp enabled"<<endl;
 
-  if (!_legModel.initParam("leg_description")) {
-      ROS_ERROR("Failed to parse urdf of the leg");
+  if (_myInput==LEG_INPUT)
+  {
+    if (!_legModel.initParam("leg_description")) {
+        ROS_ERROR("Failed to parse urdf of the leg");
+    }
   }
-
-  if (!_platformModel.initParam("platform_description")) {
-      ROS_ERROR("Failed to parse urdf file");
+  else
+  {
+    if (!_platformModel.initParam("platform_description")) {
+        ROS_ERROR("Failed to parse urdf file");
+    }
   }
 
     if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
@@ -218,7 +223,8 @@ bool surgicalTool::init() //! Initialization of the node. Its datatype
                                 //! initialization
 { 
 
-  _pubToolJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
+  // _pubToolJointStates = _n.advertise<sensor_msgs::JointState>("joint_states", 1);
+  _pubToolJointCommands = _n.advertise<std_msgs::Float64MultiArray>("/"+std::string(Tool_Names[_tool_id])+"_tool/joint_position_controller/command", 1);
   
   _pubToolTipPose = _n.advertise<geometry_msgs::PoseStamped>("tool_tip_pose", 1);
  
@@ -273,7 +279,8 @@ void surgicalTool::run() {
     //  }
       calculateDesiredFrame();
       performInverseKinematics();
-      publishToolJointStates();
+      // publishToolJointStates();
+      publishToolJointCommands();
       _toolJointsAllSpeed = (_toolJointsAll - _toolJointsAllPrev) * (1.0/_dt);
       _toolJointsAllPrev = _toolJointsAll;
       // computeToolManipulability();
@@ -289,25 +296,40 @@ void surgicalTool::run() {
   ros::shutdown();
 }
 
-void surgicalTool::publishToolJointStates() {
+// void surgicalTool::publishToolJointStates() {
+//   // _mutex.lock();
+
+//   _msgJointStates.header.stamp = ros::Time::now();
+
+//   _msgJointStates.name.resize(NB_TOOL_AXIS_FULL);
+//   _msgJointStates.position.resize(NB_TOOL_AXIS_FULL);
+//   _msgJointStates.velocity.resize(NB_TOOL_AXIS_FULL);
+//   _msgJointStates.effort.resize(NB_TOOL_AXIS_FULL);
+
+//   for (int k = 0; k < NB_TOOL_AXIS_FULL; k++) {
+//     _msgJointStates.name[k] = Tool_Axis_Names[k];
+//     _msgJointStates.velocity[k] = _toolJointsAllSpeed(k);
+//     _msgJointStates.effort[k] = 0.0;
+//     _msgJointStates.position[k] = me->_toolJointsAll(k);
+//   }
+//   _pubToolJointStates.publish(_msgJointStates);
+//   // _mutex.unlock();
+// }
+
+void surgicalTool::publishToolJointCommands() {
   // _mutex.lock();
-
-  _msgJointStates.header.stamp = ros::Time::now();
-
-  _msgJointStates.name.resize(NB_TOOL_AXIS_FULL);
-  _msgJointStates.position.resize(NB_TOOL_AXIS_FULL);
-  _msgJointStates.velocity.resize(NB_TOOL_AXIS_FULL);
-  _msgJointStates.effort.resize(NB_TOOL_AXIS_FULL);
-
+ 
+  _msgJointCommands.data.resize(NB_TOOL_AXIS_FULL);
+  
   for (int k = 0; k < NB_TOOL_AXIS_FULL; k++) {
-    _msgJointStates.name[k] = Tool_Axis_Names[k];
-    _msgJointStates.velocity[k] = _toolJointsAllSpeed(k);
-    _msgJointStates.effort[k] = 0.0;
-    _msgJointStates.position[k] = me->_toolJointsAll(k);
+    _msgJointCommands.data[k] = me->_toolJointsAll(k);
   }
-  _pubToolJointStates.publish(_msgJointStates);
+  _pubToolJointCommands.publish(_msgJointCommands);
   // _mutex.unlock();
 }
+
+
+
 
 void surgicalTool::calculateDesiredFrame(){
   

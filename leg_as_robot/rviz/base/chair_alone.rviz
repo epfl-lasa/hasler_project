@@ -55,7 +55,7 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 1
+    - Alpha: 0.600000024
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -79,7 +79,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: chair_description
+      Robot Description: chair/robot_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
@@ -95,28 +95,6 @@ Visualization Manager:
           Value: true
         chair_intermediate_link2:
           Value: true
-        right/fSensor:
-          Value: true
-        right/foot_rest:
-          Value: true
-        right/pedal_tip:
-          Value: true
-        right/pitch:
-          Value: true
-        right/platform_base_link:
-          Value: true
-        right/roll:
-          Value: true
-        right/virtual_ankle:
-          Value: true
-        right/x:
-          Value: true
-        right/y:
-          Value: true
-        right/yaw:
-          Value: true
-        right/z_link:
-          Value: true
         world:
           Value: true
       Marker Scale: 1
@@ -130,19 +108,6 @@ Visualization Manager:
             chair_intermediate_link2:
               chair_base_link:
                 {}
-          right/platform_base_link:
-            right/y:
-              right/x:
-                right/z_link:
-                  right/pitch:
-                    right/roll:
-                      right/yaw:
-                        right/fSensor:
-                          right/foot_rest:
-                            right/pedal_tip:
-                              {}
-                            right/virtual_ankle:
-                              {}
       Update Interval: 0
       Value: true
   Enabled: true
@@ -170,25 +135,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.26968765
+      Distance: 2.70797944
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.064397417
-        Y: -0.380433619
-        Z: -0.137908563
+        X: -0.19814539
+        Y: -0.523218155
+        Z: 0.264851868
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.91479665
+      Pitch: 0.334796876
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.66040921
+      Yaw: 1.11540985
     Saved: ~
 Window Geometry:
   Displays:
@@ -206,5 +171,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1280
-  X: 1920
+  X: 1345
   Y: 52

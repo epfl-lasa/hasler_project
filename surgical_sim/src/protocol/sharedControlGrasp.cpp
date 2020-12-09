@@ -33,7 +33,8 @@ const float SAMPLING_TIME = 10; // 100Hz
 
 const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 
-const float scaleFoot[] = {Axis_Limits[0]/0.15f,Axis_Limits[1]/0.15f,(1.5f*Axis_Limits[2])/(2.0f*0.15f),35.0f*DEG_TO_RAD/(1.5f* (float) M_PI),20.5f*DEG_TO_RAD/30.0f*DEG_TO_RAD}; // X, Y, Z, YAW, ROLL;
+const float scaleFoot[] = {0.15f/Axis_Limits[0],0.15f/Axis_Limits[1],(2.0f*0.15f)/(1.5f*Axis_Limits[2]),(1.5f* (float) M_PI)/50.0f*DEG_TO_RAD,30.0f*DEG_TO_RAD/20.5f*DEG_TO_RAD}; // Y=1.66[m/m], X=1.54[m/m], Z=0.42[m/rad], YAW=5.41[rad/rad], ROLL(Grasping)=1.46[rad/rad];
+
 
 const int Axis_Pos[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_yaw,p_roll};
 
@@ -263,7 +264,7 @@ void sharedControlGrasp::estimateActionState()
   //_graspingAngle=_toolJointPosition(tool_wrist_open_angle);
   //_graspingAngleSpeed = _toolJointSpeed(tool_wrist_open_angle);
   _graspingAnglePrev = _graspingAngle;
-  _graspingAngle = Utils_math<double>::bound(_platformJointPosition(p_roll)-10.0*DEG_TO_RAD,0,30.0*DEG_TO_RAD) * 30.0 / 20.5;
+  _graspingAngle = Utils_math<double>::bound(_platformJointPosition(p_roll)-10.0*DEG_TO_RAD,0,20.5*DEG_TO_RAD);
   //cout<<_graspingAngle<<endl;
   // _graspingAngleSpeed = (_graspingAngle - _graspingAnglePrev) * (1.0 / _dt);
   _graspingAngleSpeed = _platformJointVelocity(p_roll);
