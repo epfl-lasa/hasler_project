@@ -166,7 +166,7 @@ class SurgicalTask
     Eigen::Matrix<float,6,1> _nullspaceWrench[NB_ROBOTS];
     Eigen::Matrix<float,7,1> _nullspaceCommand[NB_ROBOTS];
     int _sphericalTrocarId[NB_ROBOTS];
-    float _stiffness[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _stiffness[NB_ROBOTS];
     std::vector<int> _linearMapping;
     std::vector<int> _selfRotationMapping;
     RobotMode _robotMode[NB_ROBOTS];
@@ -185,7 +185,7 @@ class SurgicalTask
     float _trocarSpaceLinearDSGaussianWidth;
     float _trocarSpaceSelfRotationGain;
     float _trocarSpaceSelfRotationRange;
-    float _jointImpedanceStiffnessGain;
+    std::vector<float> _jointImpedanceStiffnessGain;
     bool _useSafetyLimits;
     float _safetyLimitsStiffnessGain;
     bool _allowTaskAdaptation;

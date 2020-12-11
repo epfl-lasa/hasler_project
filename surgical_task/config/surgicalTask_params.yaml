@@ -7,7 +7,7 @@ SurgicalTask/useFranka: true
 SurgicalTask/humanInputDevice: [0, 1]
 
 # Mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
-SurgicalTask/linearMapping: [0, 1]
+SurgicalTask/linearMapping: [1, 1]
 
 # Mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
 SurgicalTask/selfRotationMapping: [0, 0]
@@ -16,7 +16,7 @@ SurgicalTask/selfRotationMapping: [0, 0]
 SurgicalTask/controlStrategy: [1, 1]
 
 # Stiffness gain for joint impedance control strategy
-SurgicalTask/jointImpedanceStiffnessGain: 500
+SurgicalTask/jointImpedanceStiffnessGain: [700, 700, 700, 700, 500, 500, 300]
 
 # Use sim
 SurgicalTask/useSim: false

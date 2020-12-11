@@ -67,7 +67,7 @@ SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency):
     _desiredGripperPosition[r] = 0.0f;
     _dRCMTool[r] = 0.0f;
 
-    _stiffness[r] = 0.0f;
+    _stiffness[r].setConstant(0.0f);
     _selfRotationCommand[r] = 0.0f;
     _firstRobotPose[r] = false;
     _firstRobotBaseFrame[r] = false;
@@ -179,6 +179,8 @@ bool SurgicalTask::init()
     ROS_INFO("Ccontrol strategy: %d %d\n", (int) _controlStrategy[LEFT], (int)_controlStrategy[RIGHT]);
   }
 
+
+  _jointImpedanceStiffnessGain.resize(7);
   if (!_nh.getParam("SurgicalTask/jointImpedanceStiffnessGain", _jointImpedanceStiffnessGain))
   {
     ROS_ERROR("Couldn't retrieve the joint impedance stiffness gain");
@@ -186,7 +188,13 @@ bool SurgicalTask::init()
   }
   else
   {
-    ROS_INFO("Joint impedance stiffness gain %f\n", _jointImpedanceStiffnessGain);
+    ROS_INFO("Joint impedance stiffness gain: %f %f %f %f %f %f %f\n", _jointImpedanceStiffnessGain[0],
+                                                                       _jointImpedanceStiffnessGain[1],
+                                                                       _jointImpedanceStiffnessGain[2],
+                                                                       _jointImpedanceStiffnessGain[3],
+                                                                       _jointImpedanceStiffnessGain[4],
+                                                                       _jointImpedanceStiffnessGain[5],
+                                                                       _jointImpedanceStiffnessGain[6]);
   }
 
   if (!_nh.getParam("SurgicalTask/useSim", _useSim))
@@ -788,7 +796,7 @@ void SurgicalTask::run()
     _omegad[k].setConstant(0.0f);
     _qd[k] = _q[k];  
     _desiredFootWrench[k].setConstant(0.0f);  
-    _stiffness[k] = 0.0f;
+    _stiffness[k].setConstant(0.0f);
     _desiredGripperPosition[k] = 0.0f;
     for(int m = 0; m < 7; m++)
     {
@@ -1244,7 +1252,7 @@ void SurgicalTask::trocarSelection(int r)
   _nullspaceCommand[r].setConstant(0.0f);
 
   _ikJoints[r] = _currentJoints[r];
-  _stiffness[r] = 0.0f;
+  _stiffness[r].setConstant(0.0f);
   _desiredGripperPosition[r] = 0.0f;
 
 
@@ -1276,7 +1284,7 @@ void SurgicalTask::trocarInsertion(int r)
 
   if(_controlStrategy[r] == PASSIVE_DS)
   {
-    _stiffness[r] = 0.0f;
+    _stiffness[r].setConstant(0.0f);
     Eigen::Vector4f qe;
     qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r]));
 
@@ -1303,7 +1311,7 @@ void SurgicalTask::trocarInsertion(int r)
   {
     if(_linearMapping[r]==POSITION_VELOCITY || _useSim)
     {
-      _stiffness[r] = _jointImpedanceStiffnessGain;
+      _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
       // std::cerr << _xRobotBaseOrigin[r].transpose() << std::endl;
       // std::cerr << _trocarPosition[r].transpose() << " " << _xRCM[r].transpose() << std::endl;
       // std::cerr << _x[r].transpose() << std::endl;
@@ -1326,7 +1334,7 @@ void SurgicalTask::trocarInsertion(int r)
     }
     else
     {
-      _stiffness[r] = 0.0f;
+      _stiffness[r].setConstant(0.0f);
       _ikJoints[r] = _currentJoints[r];
     }
   }
@@ -1384,7 +1392,7 @@ void SurgicalTask::trocarSpace(int r)
 
   if (_controlStrategy[r] == PASSIVE_DS)
   {
-    _stiffness[r] = 0.0f;
+    _stiffness[r].setConstant(0.0f);
     Eigen::Matrix<float,6,6> A;
     A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
     A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
@@ -1439,8 +1447,8 @@ void SurgicalTask::trocarSpace(int r)
   else if(_controlStrategy[r] == JOINT_IMPEDANCE && _firstPublish[r])
   {
 
-    _stiffness[r] = _jointImpedanceStiffnessGain;
-   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     bool res = _qpSolverRCM[r].step3(_ikJoints[r], _ikJoints[r], _trocarPosition[r],
              _toolOffsetFromEE[r], _vdTool[r], _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f);
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -2277,7 +2285,7 @@ void SurgicalTask::publishData()
           for(int m = 0; m < 7; m++)
           {
             msg.data[m] = _ikJoints[r](m);
-            _msgStiffness.data[m] = _stiffness[r];
+            _msgStiffness.data[m] = _stiffness[r](m);
           }          
         }
 
