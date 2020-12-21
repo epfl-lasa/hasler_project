@@ -1,0 +1,145 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
+
+	<xacro:arg name="gazebo" default="true"/>
+	<xacro:arg name="robotName" default="panda"/>
+  <xacro:arg name="origin.x" default="0"/>
+  <xacro:arg name="origin.y" default="0"/>
+  <xacro:arg name="origin.z" default="0"/>
+  <xacro:arg name="origin.ax" default="0"/>
+  <xacro:arg name="origin.ay" default="0"/>
+  <xacro:arg name="origin.az" default="0"/>
+  <xacro:arg name="addFrame" default="0"/>
+  <xacro:arg name="addCamera" default="0"/>
+  <xacro:arg name="useInstrument" default="1"/>
+  <xacro:property name="toolMass" value="0.1"/>
+  <xacro:property name="toolLength" value="0.4"/>
+  <xacro:property name="toolRadius" value="0.005"/>
+  <xacro:property name="M_PI" value="3.14159265359" />
+
+  <gazebo reference="world">
+<!--     <static>true</static>
+    <turnGravityOff>true</turnGravityOff> -->
+  </gazebo>
+
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool_panda/tool_create.urdf.xacro">
+  	<xacro:arg name="bringup_solo" value="false"/>
+    <xacro:arg name="toolID" value="$(arg robotName)"/>
+  </xacro:include>  
+
+
+  <xacro:include filename="$(find surgical_sim)/models/urdf/franka/panda_arm.xacro" >
+  	<xacro:arg name="gazebo" value="${gazebo}"/>
+  </xacro:include>
+
+  <xacro:panda_arm connected_to='world' arm_id="$(arg robotName)" xyz='$(arg origin.x) $(arg origin.y) $(arg origin.z)' rpy='$(arg origin.ax) $(arg origin.ay) $(arg origin.az)'/>
+  
+
+ <xacro:if value="${$(arg useInstrument)==0}">  
+    <link name='$(arg robotName)_tool'>
+
+      <inertial>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0"/>
+        <mass value="${toolMass}"/>
+        <inertia ixx="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" ixy="0" ixz="0" iyy="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" iyz="0" izz="${toolMass*toolRadius*toolRadius/2}"/>
+      </inertial>
+
+      <collision name='collision'>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder length="${toolLength}" radius="${toolRadius}"/>
+        </geometry>
+      </collision>
+
+      <visual name='visual'>
+        <origin xyz="0 0 ${toolLength/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder length="${toolLength}" radius="${toolRadius}"/>
+        </geometry>
+        <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0"/>
+      </material>
+      </visual>
+    </link>
+
+    <joint name="$(arg robotName)_tool_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_link8"/>
+      <child link="$(arg robotName)_tool"/>
+    </joint>
+  </xacro:if>
+
+
+  <xacro:if value="${$(arg useInstrument)==1}">  
+    <xacro:add_tool connected_to="$(arg robotName)_link8" tool_name="$(arg robotName)"/>
+  </xacro:if>
+
+
+<xacro:if value="${$(arg addFrame)==1}">
+  <link name='$(arg robotName)_tipframe'>
+      <visual name='visual'>
+        <origin xyz="0 0 ${toolLength}" rpy="0 0 0" />
+          <geometry>
+           <mesh filename="package://surgical_simulator/models/meshes/dae/franka/frame.dae" scale="0.035 0.035 0.035"/>
+         </geometry>
+       </visual>   
+  </link>
+  <joint name="$(arg robotName)_frame_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="$(arg robotName)_tool"/>
+      <child link="$(arg robotName)_tipframe"/>
+  </joint>
+ </xacro:if>
+
+<xacro:if value="${$(arg addCamera)==1}">
+
+  <link name="$(arg robotName)_camera_link">
+    <inertial>
+      <mass value="0.001" />
+      <origin xyz="0 0 0" />
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
+    </inertial>
+  </link>
+
+  <joint name="$(arg robotName)_camera_joint" type="fixed">
+        <parent link="$(arg robotName)_tool"/>
+        <child link="$(arg robotName)_camera_link"/>
+        <origin xyz="0 0 ${toolLength}" rpy="0 0 0"/>
+  </joint>
+
+  <gazebo reference='$(arg robotName)_camera_link'>
+    <sensor type="camera" name="camera_camera_sensor">
+      <!-- <alwaysOn>true</alwaysOn> -->
+      <update_rate>30.0</update_rate>
+    <camera>
+        <pose>0 0 0 0 ${-M_PI/2} ${M_PI}</pose>
+        <horizontal_fov>${85 * M_PI/180.0}</horizontal_fov>
+        <image>
+          <format>R8G8B8</format>
+          <width>1020</width>
+          <height>1020</height>
+        </image>
+        <clip>
+          <near>0.01</near>
+          <far>100</far>
+        </clip>
+      </camera>
+      <plugin name="camera_camera_controller" filename="libgazebo_ros_camera.so">
+        <alwaysOn>true</alwaysOn>
+        <updateRate>30.0</updateRate>
+        <cameraName>camera</cameraName>
+        <imageTopicName>image_raw</imageTopicName>
+        <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+        <frameName>camera_link</frameName>
+        <hackBaseline>0.07</hackBaseline>
+        <distortionK1>0.0</distortionK1>
+        <distortionK2>0.0</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>0.0</distortionT2>
+      </plugin>
+    </sensor>
+  </gazebo>
+</xacro:if>
+
+</robot>

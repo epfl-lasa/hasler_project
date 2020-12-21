@@ -78,6 +78,10 @@
         "codecvt": "cpp",
         "condition_variable": "cpp",
         "future": "cpp",
-        "polytope": "cpp"
+        "polytope": "cpp",
+        "random": "cpp",
+        "graphicscontext": "cpp",
+        "viewport": "cpp",
+        "shape": "cpp"
     }
 }

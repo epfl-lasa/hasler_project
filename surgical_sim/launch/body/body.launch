@@ -1,13 +1,31 @@
 
 <launch>
-  <arg name="model" default="$(find surgical_sim)/urdf/body/body_create.urdf.xacro" />
+  <arg name="model" default="$(find surgical_sim)/models/urdf/body/body_create.urdf.xacro" />
   <arg name="gui" default="true" />
   <arg name="w_liver" default="true" />
+  <arg name="attached_to" default="world" />
   <arg name="rviz" default="true"/>
+  <arg name="gazebo" default="false"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/body_view.rviz"/>
+  <arg name="bodyOrigin.x" default="0.0"/>
+  <arg name="bodyOrigin.y" default="0.5"/>
+  <arg name="bodyOrigin.z" default="1.1"/>
+  <arg name="bodyOrigin.ax" default="0.0"/>
+  <arg name="bodyOrigin.ay" default="0.0"/>
+  <arg name="bodyOrigin.az" default="0.0"/> 
+  <arg name="spawn_delay" default="0"/>
+   
 
    <group ns="body">
-     <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver)"/>
+     <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver) 
+                                              attached_to:=$(arg attached_to)
+                                              bodyOrigin.x:=$(arg bodyOrigin.x)
+                                              bodyOrigin.y:=$(arg bodyOrigin.y)
+                                              bodyOrigin.z:=$(arg bodyOrigin.z)
+                                              bodyOrigin.ax:=$(arg bodyOrigin.ax)
+                                              bodyOrigin.ay:=$(arg bodyOrigin.ay)
+                                              bodyOrigin.az:=$(arg bodyOrigin.az)
+                                              "/>
      <param name="use_gui" value="$(arg gui)"/>
       <!-- <node name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" /> -->
       <node pkg="robot_state_publisher" type="robot_state_publisher"  name="body_state_publisher"/>
@@ -22,7 +40,8 @@
     <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
       <arg name="robot_description_name" value="/body/robot_description" />
       <arg name="robot_name" value="body" />
-      <arg name="w_world" value="true" if="$(arg rviz)"/>  
+      <arg name="spawn_delay" value="$(arg spawn_delay)"/>
+      <arg name="w_world" value="$(arg gazebo)"/>  
     </include> 
 
 

@@ -1,0 +1,20 @@
+<launch>
+  <arg name="id" default="right"/>
+  <arg name="control_input" default="platform"/>
+  <arg name="rosControl" default="true" />
+  <arg name="sharedGrasp" default="false"/>   
+  <arg name="freq" default="200"/>   
+
+<node name="panda_gripper_joint_state_publisher" pkg="surgical_sim" type="pandaSurgicalGripperSim" output="screen">
+			<param name="sharedGraspOn" value="$(arg sharedGrasp)"/>   
+			<param name="rosControl" value="$(arg rosControl)"/>   
+			<param name="toolID"            value="$(arg id)"/>
+			<param name="controlInput"      value="$(arg control_input)"/>
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
+			<remap from="robot_description" to="/$(arg id)_panda/robot_description"/>
+			<remap from="tool_tip_pose"      to="panda_gripper_joint_state_publisher/tool_tip_pose"/>
+</node>
+
+</launch>
+
+

@@ -4,7 +4,7 @@
 	<arg name="rviz_bringup" default="false"/> 
 	<arg name="headless" default="false"/>
 	<arg name="debug" default="false"/>	
-	<arg name="use_sim_time" default="false"/>
+	<!-- <arg name="use_sim_time" default="false"/> -->
 	<arg name="build_tower" default="false"/>	
 	<arg name="scale.c" default="0.9"/>
 	<arg name="scale.l" default="0.9"/>

@@ -76,6 +76,7 @@ private:
   // internal variables
   
   KDL::JntArray* _legJoints;
+  KDL::JntArray* _legJointsPrev;
   KDL::JntArray*_legJointsInit;
   KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _gravityTorques;

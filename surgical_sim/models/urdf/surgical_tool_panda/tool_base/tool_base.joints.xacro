@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="panda" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool_panda/templates/joint.transmissions.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool_panda/templates/gazebo.joints.xacro"/>
+  <xacro:macro name="create_tool_base_joints" params="parent_link xyz rpy tool_id">
+
+
+    <joint name="${tool_id}_tool_main_fixed" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${tool_id}_tool_main_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
+    </joint>
+
+    <joint name="${tool_id}_tool_wrist_fixed" type="fixed">
+      <parent link="${tool_id}_tool_main_link"/>
+      <child link="${tool_id}_tool_wrist_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 ${0.4162-0.041}"/>
+    </joint>
+
+
+    <!-- joint 4-1: tool roll shaft joint FIXED-->
+    <joint name="${tool_id}_tool_wrist_shaft_fixed" type="fixed">
+      <parent link="${tool_id}_tool_wrist_link"/>
+      <child link="${tool_id}_tool_wrist_shaft_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
+    </joint>
+  
+    <xacro:gazebo_joints name="${tool_id}_tool_wrist_fixed"/> 
+    <xacro:gazebo_joints name="${tool_id}_tool_wrist_shaft_fixed"/> 
+
+  </xacro:macro>
+</robot>

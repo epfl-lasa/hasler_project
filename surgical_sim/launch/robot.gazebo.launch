@@ -9,6 +9,7 @@
   <arg name="robot_description_name" default="robot_description" />
   <arg name="robot_name" default="robot" />
   <arg name="w_world" default="false" />
+  <arg name="spawn_delay" default="0" />
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <group if="$(arg w_world)">  
@@ -21,8 +22,9 @@
     </include>
   </group>
 
-  <node name="spawn_$(arg robot_name)" pkg="gazebo_ros" type="spawn_model"
+  <node name="spawn_$(arg robot_name)" pkg="gazebo_ros" type="spawn_model" launch-prefix="bash -c 'sleep $(arg spawn_delay); $0 $@'" 
         args="-urdf -model $(arg robot_name) -param $(arg robot_description_name) " respawn="false" output="screen" />
+        
    
 </launch>
 

@@ -352,7 +352,7 @@ void targetObject::readTFTool(unsigned int n_) {
     std::string original_frame;
     std::string destination_frame;
 
-    destination_frame = std::string(Tools_Names[n_]) + "/tool_tip_link_ee";
+    destination_frame = std::string(Tools_Names[n_]) + "_tool_tip_link_ee";
     original_frame = "torso_link";
 
     geometry_msgs::TransformStamped toolTipTransform_;
@@ -399,7 +399,7 @@ void targetObject::readTFTrocar(unsigned int n_) {
     std::string original_frame;
     std::string destination_frame;
 
-    destination_frame = std::string(Tools_Names[n_]) + "/trocar_link";
+    destination_frame = std::string(Tools_Names[n_]) + "_trocar_link";
     original_frame = "torso_link";
 
     geometry_msgs::TransformStamped trocarTransform_;

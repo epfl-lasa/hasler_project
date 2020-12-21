@@ -1,0 +1,123 @@
+
+<launch>
+ <arg name="id1" default="left"/>
+
+ <arg name="two_platforms" default="false"/>
+ <arg name="virtual_tool" default="false"/>
+ <arg name="virtual_leg" default="false"/>
+ <arg name="control_input" default="platform"/>
+ <arg name="rvizConfig" default="$(find surgical_sim)/rviz/scenario_franka_with_platforms.rviz" if="$(arg two_platforms)"/>
+ <arg name="rvizConfig" default="$(find surgical_sim)/rviz/$(arg id1)_scenario_franka_with_platform.rviz" unless="$(arg two_platforms)"/>
+ <arg name="subjectID" default="none"/>
+ <arg name="magnitudeVibration" default="2.5"/>
+ <arg name="decayRateVibration" default="2.0"/> 
+ <arg name="frequencyVibration" default="70.0"/>
+ <arg name="sharedGrasp" default="false"/>
+ <param name="use_sim_time" value="true"/>
+ <arg name="leftRobot" default="camera"/>
+ <arg name="rightRobot" default="gripper"/>
+
+
+ <group unless="$(arg two_platforms)">    
+
+ <include file="$(find surgical_sim)/launch/franka/franka.launch">
+        <arg name="robotName" value="left_panda"/>
+        <arg name="addCamera" value="1" if="$(eval arg('leftRobot')=='camera')"/>
+        <arg name="addCamera" value="0" if="$(eval arg('leftRobot')=='gripper')"/>
+        <arg name="useInstrument" value="1" if="$(eval arg('leftRobot')=='gripper')"/>
+        <arg name="useInstrument" value="0" if="$(eval arg('leftRobot')=='camera')"/>
+        <arg name="gazebo_bringup" value="true"/>
+        <arg name="rviz_bringup" value="true"/>
+        <arg name="rviz_config" value="$(arg rvizConfig)"/> 
+        <arg name="robotOrigin.x" default="-1.0"/>
+        <arg name="robotOrigin.y" default="1.0"/>
+        <arg name="robotOrigin.z" default="1.55"/>
+        <arg name="robotOrigin.ax" default="$(eval radians(50.0))"/>
+        <arg name="robotOrigin.ay" default="$(eval radians(45.0))"/>
+        <arg name="robotOrigin.az" default="$(eval radians(-90.0))"/>
+ </include> 
+
+ </group>
+
+ <group if="$(arg two_platforms)">
+    
+     <include file="$(find surgical_sim)/launch/franka/franka.launch">
+        <arg name="robotName" value="left_panda"/>
+        <arg name="addCamera" value="1" if="$(eval arg('leftRobot')=='camera')"/>
+        <arg name="addCamera" value="0" if="$(eval arg('leftRobot')=='gripper')"/>
+        <arg name="useInstrument" value="1" if="$(eval arg('leftRobot')=='gripper')"/>
+        <arg name="useInstrument" value="0" if="$(eval arg('leftRobot')=='camera')"/>
+        <arg name="gazebo_bringup" value="true"/>
+        <arg name="rviz_bringup" value="true"/>
+        <arg name="rviz_config" value="$(arg rvizConfig)"/> 
+        <arg name="robotOrigin.x" default="-0.10"/>
+        <arg name="robotOrigin.y" default="1.0"/>
+        <arg name="robotOrigin.z" default="1.55"/>
+        <arg name="robotOrigin.ax" default="$(eval radians(50.0))"/>
+        <arg name="robotOrigin.ay" default="$(eval radians(45.0))"/>
+        <arg name="robotOrigin.az" default="$(eval radians(-90.0))"/>
+     </include> 
+
+     <include file="$(find surgical_sim)/launch/franka/franka.launch">
+        <arg name="robotName" value="right_panda"/>
+        <arg name="addCamera" value="1" if="$(eval arg('rightRobot')=='camera')"/>
+        <arg name="addCamera" value="0" if="$(eval arg('rightRobot')=='gripper')"/>
+        <arg name="useInstrument" value="1" if="$(eval arg('rightRobot')=='gripper')"/>
+        <arg name="useInstrument" value="0" if="$(eval arg('rightRobot')=='camera')"/>
+        <arg name="gazebo_bringup" value="false"/>
+        <arg name="rviz_bringup" value="false"/>
+        <arg name="rviz_config" value="$(arg rvizConfig)"/> 
+        <arg name="robotOrigin.x" default="0.20"/>
+        <arg name="robotOrigin.y" default="1.0"/>
+        <arg name="robotOrigin.z" default="1.55"/>
+        <arg name="robotOrigin.ax" default="$(eval radians(-50.0))"/>
+        <arg name="robotOrigin.ay" default="$(eval radians(45.0))"/>
+        <arg name="robotOrigin.az" default="$(eval radians(-90.0))"/>
+     </include> 
+
+     <group if="$(eval arg('leftRobot')=='gripper')">
+         <group if="$(eval arg('rightRobot')=='gripper')">
+            <node pkg="surgical_sim" type="init_frankas_both_tools.sh" name="run_script" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'"/>
+         </group>
+         <group if="$(eval arg('rightRobot')=='camera')">
+            <node pkg="surgical_sim" type="init_frankas_tool_camera.sh" name="run_script" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'"/>
+         </group>
+     </group>          
+
+     <group if="$(eval arg('leftRobot')=='camera')">
+         <group if="$(eval arg('rightRobot')=='gripper')">
+            <node pkg="surgical_sim" type="init_frankas_camera_tool.sh" name="run_script" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'"/>
+         </group>
+         <group if="$(eval arg('rightRobot')=='camera')">
+            <node pkg="surgical_sim" type="init_frankas_both_cameras.sh" name="run_script" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'"/>
+         </group>
+     </group>          
+
+  </group>
+
+ <!-- <include file="$(find surgical_sim)/launch/body/target.launch">
+    <arg name="rviz" value="false"/>
+    <arg name="virtual_target" value="false"/> 
+    <arg name="target_name" value="needle"/>
+    <arg name="tracking_mode" value="right"/>
+    <arg name="subjectID" value="$(arg subjectID)"/>
+
+ </include> -->
+ 
+ <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="$(arg id1)_tool_fixed_joint" args="0 0 0 0 0 0 /$(arg id1)/trocar_link /$(arg id1)/tool_base_link" /> -->
+
+ <include file="$(find surgical_sim)/launch/body/body.launch">
+  <arg name="spawn_delay" value="10"/>
+  <arg name="w_liver" value="false" />
+  <arg name="rviz" value="false"/>
+  <arg name="bodyOrigin.x" default="0.0"/>
+  <arg name="bodyOrigin.y" default="0.5"/>
+  <arg name="bodyOrigin.z" default="1.1"/>
+  <arg name="bodyOrigin.ax" default="0.0"/>
+  <arg name="bodyOrigin.ay" default="0.0"/>
+  <arg name="bodyOrigin.az" default="$(eval pi/2)"/>  
+ </include> 
+
+</launch>
+
+

@@ -18,45 +18,82 @@
  <include file="$(find surgical_sim)/launch/body/body.launch">
   <arg name="w_liver" value="true" />
   <arg name="rviz" value="true"/>
+  <arg name="gazebo" value="false"/>
   <arg name="rvizConfig" value="$(arg rvizConfig)"/>
+  <arg name="spawn_delay" value="1"/>
+  <arg name="bodyOrigin.x" default="0.0"/>
+  <arg name="bodyOrigin.y" default="0.5"/>
+  <arg name="bodyOrigin.z" default="1.1"/>
+  <arg name="bodyOrigin.ax" default="0.0"/>
+  <arg name="bodyOrigin.ay" default="0.0"/>
+  <arg name="bodyOrigin.az" default="$(eval pi/2)"/> 
  </include> 
 
- <include file="$(find surgical_sim)/launch/tool/tool.launch">
-  <arg name="id" value="$(arg id1)"/>
-  <arg name="w_forceps" value="true" />
-  <arg name="rviz" value="false"/>
-  <arg name="virtual_tool" value="$(arg virtual_tool)"/>
-  <arg name="control_input" value="$(arg control_input)"/>
-  <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
-  <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
-  <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
-  <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
-  
- </include> 
+<group unless="$(arg two_platforms)">
+  <include file="$(find surgical_sim)/launch/tool/tool.launch">
+    <arg name="id" value="$(arg id1)"/>
+    <arg name="w_forceps" value="true" />
+    <arg name="w_gripper" default="false" />
+    <arg name="rosControl" value="true"/>
+    <arg name="rviz" value="false"/>
+    <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+    <arg name="control_input" value="$(arg control_input)"/>
+    <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
+    <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+    <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+    <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
+    <arg name="originTrocar_x" default="0.015"/>
+    <arg name="originTrocar_y" default="0.515"/>
+    <arg name="originTrocar_z" default="1.3"/>
+  </include> 
+</group>
+ 
+ <group if="$(arg two_platforms)">
+    <include file="$(find surgical_sim)/launch/tool/tool.launch">
+      <arg name="id" value="right"/>
+      <arg name="w_forceps" value="true" />
+      <arg name="w_gripper" default="false" />
+      <arg name="rosControl" value="true"/>
+      <arg name="rviz" value="false"/>
+      <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+      <arg name="control_input" value="$(arg control_input)"/>
+      <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
+      <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+      <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+      <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
+      <arg name="originTrocar_x" default="0.015"/>
+      <arg name="originTrocar_y" default="0.515"/>
+      <arg name="originTrocar_z" default="1.3"/>
+    </include> 
+    <include file="$(find surgical_sim)/launch/tool/tool.launch">
+      <arg name="id" value="left"/>
+      <arg name="w_forceps" value="true" />
+      <arg name="w_gripper" default="false" />
+      <arg name="rosControl" value="true"/>
+      <arg name="rviz" value="false"/>
+      <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+      <arg name="control_input" value="$(arg control_input)"/>
+      <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
+      <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+      <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+      <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
+      <arg name="originTrocar_x" default="0.015"/>
+      <arg name="originTrocar_y" default="0.515"/>
+      <arg name="originTrocar_z" default="1.3"/>
+    </include> 
+ </group>
 
- <include file="$(find surgical_sim)/launch/body/target.launch">
+ 
+
+ <!-- <include file="$(find surgical_sim)/launch/body/target.launch">
     <arg name="rviz" value="false"/>
     <arg name="virtual_target" value="false"/> 
     <arg name="target_name" value="needle"/>
     <arg name="tracking_mode" value="right"/>
     <arg name="subjectID" value="$(arg subjectID)"/>
 
- </include>
+ </include> -->
  
-  <group unless="$(arg two_platforms)">    
-    <include file="$(find leg_as_robot)/launch/single_leg.launch">
-        <arg name="id" value="$(arg id1)"/>
-        <arg name="rviz" value="false"/>
-        <arg name="virtual_leg" value="$(arg virtual_leg)"/>
-    </include>  
-  </group>
-
-   <group if="$(arg two_platforms)">
-    <include file="$(find leg_as_robot)/launch/both_legs.launch">
-        <arg name="rviz" value="false"/>
-        <arg name="virtual_legs" value="$(arg virtual_leg)"/>
-    </include> 
-   </group>
 
  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="$(arg id1)_tool_fixed_joint" args="0 0 0 0 0 0 /$(arg id1)/trocar_link /$(arg id1)/tool_base_link" /> -->
   

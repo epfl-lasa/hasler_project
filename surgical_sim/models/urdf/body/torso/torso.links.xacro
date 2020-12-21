@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="body" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+<xacro:include filename="$(find surgical_sim)/models/urdf/body/templates/gazebo.links.xacro"/>
+
+  <xacro:macro name="create_torso_links" params="parent_link xyz rpy">
+
+    <!-- link 1: torso_link -->
+    <link name="torso_link">
+      <visual>
+        <origin rpy="${-pi/2} 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://surgical_sim/models/meshes/dae/body/torso.dae"/>      
+        </geometry>
+      </visual>
+      <collision>
+        <origin rpy="${-pi/2} 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://surgical_sim/models/meshes/stl/body/torso_simp.stl"/>      
+        </geometry>
+      </collision>
+      <inertial>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<mass value="30"/>
+				<inertia ixx="0.5" ixy="0.0" ixz="0.0" iyy="0.5" iyz="0.0" izz="0.5"/>
+			</inertial> 
+    </link>
+
+   <link name="/left_trocar_link"/>
+   <link name="/right_trocar_link"/>
+
+   <xacro:gazebo_links name="torso_link"/>
+   <xacro:gazebo_links name="/left_trocar_link"/>
+   <xacro:gazebo_links name="/right_trocar_link"/>
+   
+  </xacro:macro>
+  
+
+</robot>

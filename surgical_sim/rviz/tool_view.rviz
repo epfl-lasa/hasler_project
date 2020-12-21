@@ -58,31 +58,53 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        tool_base_link:
+        right_platform_base_link:
           Value: true
-        tool_main_link:
+        right_platform_fSensor:
           Value: true
-        tool_pitch_link:
+        right_platform_foot_rest:
           Value: true
-        tool_roll_link:
+        right_platform_pedal_tip:
           Value: true
-        tool_tip_link:
+        right_platform_pitch:
           Value: true
-        tool_tip_link_ee:
+        right_platform_roll:
           Value: true
-        tool_wrist_forceps_link:
+        right_platform_virtual_ankle:
           Value: true
-        tool_wrist_forceps_link_2_left:
+        right_platform_x:
           Value: true
-        tool_wrist_forceps_link_2_right:
+        right_platform_y:
           Value: true
-        tool_wrist_forceps_link_shaft:
+        right_platform_yaw:
           Value: true
-        tool_wrist_link:
+        right_platform_z_link:
           Value: true
-        tool_wrist_shaft_link:
+        right_tool_base_link:
           Value: true
-        tool_yaw_link:
+        right_tool_main_link:
+          Value: true
+        right_tool_pitch_link:
+          Value: true
+        right_tool_roll_link:
+          Value: true
+        right_tool_tip_link:
+          Value: true
+        right_tool_tip_link_ee:
+          Value: true
+        right_tool_wrist_forceps_link:
+          Value: true
+        right_tool_wrist_forceps_link_2_left:
+          Value: true
+        right_tool_wrist_forceps_link_2_right:
+          Value: true
+        right_tool_wrist_forceps_link_shaft:
+          Value: true
+        right_tool_wrist_link:
+          Value: true
+        right_tool_wrist_shaft_link:
+          Value: true
+        right_tool_yaw_link:
           Value: true
         world:
           Value: true
@@ -93,21 +115,34 @@ Visualization Manager:
       Show Names: false
       Tree:
         world:
-          tool_base_link:
-            tool_pitch_link:
-              tool_roll_link:
-                tool_yaw_link:
-                  tool_main_link:
-                    tool_wrist_link:
-                      tool_wrist_shaft_link:
-                        tool_wrist_forceps_link:
-                          tool_wrist_forceps_link_shaft:
-                            tool_tip_link:
-                              tool_tip_link_ee:
-                                {}
-                            tool_wrist_forceps_link_2_left:
+          right_platform_base_link:
+            right_platform_y:
+              right_platform_x:
+                right_platform_z_link:
+                  right_platform_pitch:
+                    right_platform_roll:
+                      right_platform_yaw:
+                        right_platform_fSensor:
+                          right_platform_foot_rest:
+                            right_platform_pedal_tip:
                               {}
-                            tool_wrist_forceps_link_2_right:
+                            right_platform_virtual_ankle:
+                              {}
+          right_tool_base_link:
+            right_tool_pitch_link:
+              right_tool_roll_link:
+                right_tool_yaw_link:
+                  right_tool_main_link:
+                    right_tool_wrist_link:
+                      right_tool_wrist_shaft_link:
+                        right_tool_wrist_forceps_link:
+                          right_tool_wrist_forceps_link_shaft:
+                            right_tool_tip_link:
+                              right_tool_tip_link_ee:
+                                {}
+                            right_tool_wrist_forceps_link_2_left:
+                              {}
+                            right_tool_wrist_forceps_link_2_right:
                               {}
       Update Interval: 0
       Value: true
@@ -116,71 +151,71 @@ Visualization Manager:
       Collision Enabled: false
       Enabled: true
       Links:
-        /world:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        tool_base_link:
+        right_tool_base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        tool_main_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        tool_pitch_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_roll_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_tip_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_tip_link_ee:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_wrist_forceps_link:
+        right_tool_main_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_forceps_link_2_left:
+        right_tool_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_tip_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_tip_link_ee:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_wrist_forceps_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_forceps_link_2_right:
+        right_tool_wrist_forceps_link_2_left:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_forceps_link_shaft:
+        right_tool_wrist_forceps_link_2_right:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_link:
+        right_tool_wrist_forceps_link_shaft:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_shaft_link:
+        right_tool_wrist_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_yaw_link:
+        right_tool_wrist_shaft_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -215,25 +250,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.650167465
+      Distance: 1.16999674
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.0147798611
-        Y: 0.986040056
-        Z: 0.876815677
+        X: -0.198844105
+        Y: 0.75601697
+        Z: 1.11478567
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.57539773
+      Pitch: 0.435397983
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.75359678
+      Yaw: 5.48360586
     Saved:
       - Class: rviz/Orbit
         Distance: 1.1899302
@@ -271,5 +306,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1215
-  X: 65
-  Y: 131
+  X: 705
+  Y: 48

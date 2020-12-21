@@ -1,5 +1,5 @@
 <launch>
-  <arg name="model" default="$(find surgical_sim)/urdf/target_object/target_object.urdf.xacro" />
+  <arg name="model" default="$(find surgical_sim)/models/urdf/target_object/target_object.urdf.xacro" />
   <arg name="gui" default="true" />
   <arg name="rviz" default="true"/>
   <arg name="virtual_target" default="true"/>

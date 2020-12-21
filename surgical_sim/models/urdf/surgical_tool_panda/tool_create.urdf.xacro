@@ -1,0 +1,111 @@
+<?xml version="1.0" ?>
+<robot name="panda" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Macros -->
+  <!-- Macros -->
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool_panda/tool_base/tool_base.urdf.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool_panda/tool_forceps/tool_t_forceps.urdf.xacro"/>
+
+
+  <xacro:arg name="bringup_solo" default="false"/>
+  <xacro:arg name="with_forceps" default="true"/>
+  <xacro:arg name="with_gripper" default="false"/>
+  <xacro:arg name="toolID" default="right"/>
+  <xacro:arg name="toolDOF" default="1"/>
+  <xacro:arg name="originTrocar.x" default="${0+0.015}"/>
+  <xacro:arg name="originTrocar.y" default="${0.5 + 0.015}"/>
+  <xacro:arg name="originTrocar.z" default="${1.1 + 0.2}"/>
+
+  <xacro:if value="$(arg bringup_solo)">
+
+      <xacro:macro name="attach_gripper" params="parent_link xyz rpy tool_id">
+        <xacro:create_tool_base
+            parent_link="${parent_link}"
+            xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
+        <xacro:create_gripper/>
+      </xacro:macro>
+
+      <xacro:macro name="attach_forceps" params="parent_link xyz rpy tool_id dof">
+        <xacro:create_tool_base
+            parent_link="${parent_link}"
+            xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
+        <xacro:create_forceps tool_id="${tool_id}" connected_to="${tool_id}_tool_wrist_shaft_link" dof="${dof}"/> 
+      </xacro:macro>
+
+    <!--  -->
+      <link name="world"/>
+
+      <link name="$(arg toolID)_tool_base_link">
+        <inertial>
+          <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+          <mass value="0.001"/>
+          <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+        </inertial>   
+      </link>
+
+      <xacro:if value="$(arg with_forceps)">
+        <xacro:attach_forceps
+            parent_link="$(arg toolID)_tool_base_link"
+            xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" tool_id="$(arg toolID)" dof="$(arg toolDOF)"/>
+      </xacro:if>
+
+
+      <joint name="world_fixed" type="fixed">
+          <parent link="world"/>
+          <child link="$(arg toolID)_tool_base_link"/>
+          <origin rpy="0 0 0" xyz="${originTrocar.x} ${originTrocar.y} ${originTrocar.z}"/>
+      </joint> 
+
+        <gazebo>
+            <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+            <robotNamespace>$(arg toolID)_tool</robotNamespace>
+            <robotParam>/$(arg toolID)_tool/robot_description</robotParam>
+            <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+            <legacyModeNS>false</legacyModeNS>
+            </plugin>
+        </gazebo>
+  </xacro:if>
+
+  <xacro:unless value="$(arg bringup_solo)">
+
+   <xacro:macro name="add_tool" params="connected_to tool_name">
+
+      <xacro:macro name="attach_gripper" params="parent_link xyz rpy tool_id">
+        <xacro:create_tool_base
+            parent_link="${parent_link}"
+            xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
+        <xacro:create_gripper/>
+      </xacro:macro>
+
+      <xacro:macro name="attach_forceps" params="parent_link xyz rpy tool_id dof">
+        <xacro:create_tool_base
+            parent_link="${parent_link}"
+            xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
+        <xacro:create_forceps tool_id="${tool_id}" connected_to="${tool_id}_tool_wrist_shaft_link" dof="${dof}" /> 
+      </xacro:macro>    
+
+      <link name="${tool_name}_tool_base_link">
+        <inertial>
+          <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+          <mass value="0.001"/>
+          <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+        </inertial>   
+      </link>
+
+      <xacro:if value="$(arg with_forceps)">
+        <xacro:attach_forceps
+            parent_link="${tool_name}_tool_base_link"
+            xyz="0.0 0.0 0.0" rpy="0.0 0.0 3.1415926" tool_id="${tool_name}" dof="$(arg toolDOF)"/>
+      </xacro:if>
+
+
+      <joint name="${tool_name}_base_fixed" type="fixed">
+          <parent link="${connected_to}"/>
+          <child link="${tool_name}_tool_base_link"/>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+      </joint> 
+
+  </xacro:macro>
+
+  </xacro:unless>
+</robot>

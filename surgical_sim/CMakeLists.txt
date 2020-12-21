@@ -62,12 +62,20 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 
 add_executable(surgicalToolSim src/surgicalTool.cpp src/surgicalTool_node.cpp)
 target_link_libraries(surgicalToolSim ${catkin_LIBRARIES})
+
+add_executable(pandaSurgicalGripperSim src/pandaSurgicalGripper.cpp src/pandaSurgicalGripper_node.cpp)
+target_link_libraries(pandaSurgicalGripperSim ${catkin_LIBRARIES})
+
 add_executable(targetObject src/protocol/targetObject.cpp src/protocol/targetObject_node.cpp)
 target_link_libraries(targetObject ${catkin_LIBRARIES})
 
 add_executable(sharedGrasp src/protocol/sharedControlGrasp.cpp src/protocol/sharedControlGrasp_node.cpp src/protocol/vibrator.cpp src/protocol/smoothSignals.cpp)
 target_link_libraries(sharedGrasp ${catkin_LIBRARIES})
 
+install(PROGRAMS scripts/init_frankas_both_tools.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_frankas_camera_tool.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_frankas_tool_camera.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_frankas_both_cameras.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)
 target_link_libraries(gzTfUpdate 

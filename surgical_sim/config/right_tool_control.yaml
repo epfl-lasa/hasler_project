@@ -1,0 +1,27 @@
+# /right_tool:
+  # Publish all joint states -----------------------------------
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 100
+  joint_position_controller:
+    type: position_controllers/JointGroupPositionController
+    joints:
+      - right_tool_insertion
+      - right_tool_pitch
+      - right_tool_roll
+      - right_tool_wrist_open_angle
+      - right_tool_wrist_open_angle_mimic
+      - right_tool_wrist_pitch
+      - right_tool_wrist_yaw
+      - right_tool_yaw
+  # gazebo_ros_control:
+  #   pid_gains:
+  #     right_tool_yaw: {p: 200, i: 0, d: 60}
+  #     right_tool_pitch: {p: 200, i: 0, d: 60}
+  #     right_tool_insertion: {p: 200, i: 0, d: 60}
+  #     right_tool_roll: {p: 200, i: 0, d: 60}
+  #     right_tool_wrist_pitch: {p: 200, i: 0, d: 60}
+  #     right_tool_wrist_yaw: {p: 200, i: 0, d: 60}
+  #     right_tool_wrist_open_angle: {p: 200, i: 0, d: 60}
+  #     right_tool_wrist_open_angle_mimic: {p: 200, i: 0, d: 60}
+  # Position Controllers ---------------------------------------

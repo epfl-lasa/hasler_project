@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 
   std::string tool_name;
 
-  double frequency = 1000.0f;
+  double frequency = 200.0f;
 
   ros::NodeHandle nh_("~");
   nh_.getParam("toolID", tool_name);
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     
     return -1;
   } else {
-    surgicalTool.run();
+   surgicalTool.run();
   }
   return 0;
 }

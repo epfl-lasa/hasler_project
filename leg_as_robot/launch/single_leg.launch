@@ -13,7 +13,7 @@
   <group if="$(arg inc_chair)">
     <include file="$(find leg_as_robot)/launch/chair.launch" >
       <arg name="rviz"        value="false"/>
-      <arg name="offset_x"    value="0.12"/>
+      <arg name="offset_x"    value="0.0"/>
       <arg name="offset_y"    value="0.0"/>
       <arg name="offset_z"    value="0.0"/>
     </include>

@@ -150,8 +150,10 @@ private:
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,NB_TOOL_AXIS_RED> _weightedJointSpaceMassMatrix;
   Eigen::Matrix<double,NB_AXIS_WRENCH,NB_AXIS_WRENCH> _weightedTaskSpaceMassMatrix;
   
+  bool _flagRosControl;
   bool _mySolutionFound;
   bool _flagSharedGrasp;
+  bool _flagCurrentToolJointsRead;
   bool _flagToolJointLimitsOffsetCalculated;
   bool _flagLegJointLimitsOffsetCalculated;
   bool _flagPlatformJointLimitsOffsetCalculated;
@@ -186,16 +188,18 @@ private:
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJointsOffset;
 
   // Publisher declaration
-  //ros::Publisher _pubToolJointStates;
+  ros::Publisher _pubToolJointStates;
   ros::Publisher _pubToolJointCommands;
   ros::Publisher _pubToolTipPose;
   ros::Subscriber _subLegJointStates;
   ros::Subscriber _subPlatformJointStates;
+  ros::Subscriber _subCurrentToolJointStates;
   ros::Subscriber _subSharedGrasp;
 
   // Messages
   std_msgs::Float64MultiArray _msgJointCommands;
   sensor_msgs::JointState _msgJointStates;
+  sensor_msgs::JointState _msgToolCurrentJointStates;
   geometry_msgs::PoseStamped _msgToolTipPose;
   //! boolean variables
 
@@ -225,7 +229,7 @@ private:
   //! ROS METHODS
 
   // bool allSubscribersOK();
-  //void publishToolJointStates();
+  void publishToolJointStates();
   void publishToolJointCommands();
   void publishToolTipPose();
   void readFootTipBasePose();
@@ -238,6 +242,7 @@ private:
   void calculateDesiredFrame();
   void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg);
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
+  void readCurrentToolJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
   //! OTHER METHODS
   static void stopNode(int sig);

@@ -21,6 +21,8 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
   _flagFootPoseConnected = false;
   _legJoints = new KDL::JntArray(NB_LEG_AXIS);
   _legJoints->data.setZero();
+  _legJointsPrev = new KDL::JntArray(NB_LEG_AXIS);
+  _legJointsPrev->data.setZero();
   _legJointsInit = new KDL::JntArray(NB_LEG_AXIS);
   _legJointsInit->data.setZero();
   _gravityTorques = new KDL::JntArray(NB_LEG_AXIS);
@@ -228,11 +230,14 @@ void legRobot::readHipBasePose() {
 
 
 void legRobot::performInverseKinematics(){
+  *_legJointsPrev = *_legJoints;
   int ret = _myPosIkSolver->CartToJnt(*me->_legJointsInit,_footPosFrame,*me->_legJoints);
   *_legJointsInit = *_legJoints;
   if (ret<0)
-  {
-    if (_mySolutionFound) 
+  {   
+    *_legJoints = *_legJointsPrev;
+    *_legJointsInit = *_legJointsPrev;
+    if(_mySolutionFound)
     {
       ROS_ERROR("No leg IK solutions found yet... move around to find one");
       _mySolutionFound=false;
