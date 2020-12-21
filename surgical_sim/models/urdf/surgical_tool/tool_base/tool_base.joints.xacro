@@ -4,7 +4,7 @@
   
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/joint.transmissions.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/gazebo.joints.xacro"/>
-  <xacro:macro name="create_tool_base_joints" params="parent_link xyz rpy tool_id:=right">
+  <xacro:macro name="create_tool_base_joints" params="parent_link xyz rpy tool_id">
 
     <!-- joint 1: tool_yaw -->
     <joint name="${tool_id}_tool_pitch" type="revolute">

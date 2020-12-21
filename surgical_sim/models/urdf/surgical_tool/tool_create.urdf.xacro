@@ -26,7 +26,7 @@
     <xacro:create_tool_base
         parent_link="${parent_link}"
         xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
-     <xacro:create_forceps connected_to="${tool_id}_tool_wrist_shaft_link"/> 
+     <xacro:create_forceps tool_id="${tool_id}" connected_to="$(arg toolID)_tool_wrist_shaft_link"/> 
   </xacro:macro>
 
  <!--  -->

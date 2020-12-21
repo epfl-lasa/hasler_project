@@ -4,7 +4,7 @@
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_base/tool_base.links.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_base/tool_base.joints.xacro"/>  
   
-  <xacro:macro name="create_tool_base" params="parent_link xyz rpy tool_id:=right">
+  <xacro:macro name="create_tool_base" params="parent_link xyz rpy tool_id">
     <xacro:create_tool_base_links
           parent_link="${parent_link}"
           xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>

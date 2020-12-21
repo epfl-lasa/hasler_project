@@ -5,7 +5,7 @@
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/joint.transmissions.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/gazebo.joints.xacro"/>
 
-  <xacro:macro name="create_forceps_joints" params="tool_id:=right connected_to">
+  <xacro:macro name="create_forceps_joints" params="tool_id connected_to">
     
     <!-- joint 5: tool wrist pitch joint -->
     <joint name="${tool_id}_tool_wrist_pitch" type="revolute">

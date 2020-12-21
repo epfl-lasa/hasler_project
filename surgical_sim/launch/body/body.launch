@@ -5,7 +5,6 @@
   <arg name="w_liver" default="true" />
   <arg name="attached_to" default="world" />
   <arg name="rviz" default="true"/>
-  <arg name="gazebo" default="false"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/body_view.rviz"/>
   <arg name="bodyOrigin.x" default="0.0"/>
   <arg name="bodyOrigin.y" default="0.5"/>
@@ -40,8 +39,9 @@
     <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
       <arg name="robot_description_name" value="/body/robot_description" />
       <arg name="robot_name" value="body" />
+      <arg name="gui" value="$(arg gui)"/>
       <arg name="spawn_delay" value="$(arg spawn_delay)"/>
-      <arg name="w_world" value="$(arg gazebo)"/>  
+      <arg name="w_world" value="$(arg rviz)"/>  
     </include> 
 
 

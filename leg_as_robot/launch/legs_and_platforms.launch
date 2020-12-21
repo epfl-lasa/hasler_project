@@ -1,5 +1,5 @@
 <launch>
-  <param name="use_sim_time" value="true"/>
+  <!-- <param name="use_sim_time" value="true"/> -->
   <arg name="id1"                 default="right" />
   <arg name="id2"                 default="left" />
   <arg name="virtual_legs"        default="false"/>

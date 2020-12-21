@@ -4,7 +4,7 @@
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_forceps/tool_t_forceps.links.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_forceps/tool_t_forceps.joints.xacro"/>
   
-  <xacro:macro name="create_forceps" params="tool_id:=right connected_to">
+  <xacro:macro name="create_forceps" params="tool_id connected_to">
     <xacro:create_forceps_links tool_id="${tool_id}"/>
     <xacro:create_forceps_joints tool_id="${tool_id}" connected_to="${connected_to}" />       
   </xacro:macro>

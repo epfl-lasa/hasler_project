@@ -107,6 +107,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _flagRosControl=false;
   _flagCurrentToolJointsRead=false;
 
+  _mySolutionFound = true;
+
   _flagToolJointLimitsOffsetCalculated = false;
   _flagLegJointLimitsOffsetCalculated = false;
   _flagPlatformJointLimitsOffsetCalculated = false;
@@ -296,13 +298,16 @@ bool surgicalTool::init() //! Initialization of the node. Its datatype
 void surgicalTool::stopNode(int sig) { me->_stop = true; }
 
 void surgicalTool::run() {
-  
+  static int count = 0;
   while (!_stop) {
     
     if ((_subPlatformJointStates.getNumPublishers()==0 && _myInput==PLATFORM_INPUT) || 
         (_subLegJointStates.getNumPublishers()==0 && _myInput==LEG_INPUT))
         {
-          ROS_ERROR_ONCE("No control input for the tool connected");
+          if (count>5)
+          {
+            ROS_ERROR_ONCE("No control input for the tool connected");
+          }
         }
     else {
         performChainForwardKinematics();
@@ -399,8 +404,8 @@ void surgicalTool::calculateDesiredFrame(){
                                                           -0.15,0.15);
   _desiredTargetFrame.p.data[2] = -0.12 + Utils_math<double>::map( _platformJoints(p_pitch),
                                                           -_platformJointLimsDelta->data(p_pitch), 0.5*_platformJointLimsDelta->data(p_pitch), 
-                                                          -0.15,0.15) ;
-                                                     
+                                                          -0.15,0.15);
+  _desiredTargetFrame.p.data[2] =       Utils_math<double>::bound(_desiredTargetFrame.p.data[2],-0.24,-0.06);                                         
   Eigen::Vector3d p_;
   tf::vectorKDLToEigen(_desiredTargetFrame.p,p_);  
   Quaterniond q_ = Quaterniond::FromTwoVectors(Eigen::Vector3d(0.0, 0.0, 1.0), p_);
@@ -502,8 +507,8 @@ void surgicalTool::performInverseKinematics(){
                                            _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle)));
   _toolJointsAll(tool_wrist_open_angle_mimic) = _toolJointsAll(tool_wrist_open_angle) ;
  
-  //_toolJointsPosFiltered =  _hAxisFilterPos->update(_toolJoints->data.segment(0,NB_TOOL_AXIS_RED));
-  _toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJoints->data.segment(0,NB_TOOL_AXIS_RED);
+  _toolJointsPosFiltered =  _hAxisFilterPos->update(_toolJoints->data.segment(0,NB_TOOL_AXIS_RED));
+  _toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJointsPosFiltered;
   _toolJointsAll.cwiseMin(_toolJointLimsAll[L_MAX]->data).cwiseMax(_toolJointLimsAll[L_MIN]->data);
 
   if (ret<0)
@@ -754,18 +759,18 @@ void surgicalTool::readCurrentToolJoints(const sensor_msgs::JointState::ConstPtr
 
   if (!_flagCurrentToolJointsRead) {
     ROS_INFO("Current Tools joints received by the tool");
-      for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
-      { 
-        for (size_t j = 0; j < NB_TOOL_AXIS_RED; j++)
-        { 
-          if (msg->name[i].compare(std::string(Tool_Names[_tool_id]) + "_" + std::string(Tool_Axis_Names[j])) == 0) //! == 0 is compare equal
-          {
-            _toolJointsInit->data[j] = msg->position[i];
-            break;
-          }
+      // for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
+      // { 
+      //   for (size_t j = 0; j < NB_TOOL_AXIS_RED; j++)
+      //   { 
+      //     if (msg->name[i].compare(std::string(Tool_Names[_tool_id]) + "_" + std::string(Tool_Axis_Names[j])) == 0) //! == 0 is compare equal
+      //     {
+      //       _toolJointsInit->data[j] = msg->position[i];
+      //       break;
+      //     }
           
-        }
-      }
+      //   }
+      // }
     _flagCurrentToolJointsRead = true;
   }
 

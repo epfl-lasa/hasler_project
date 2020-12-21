@@ -6,7 +6,7 @@
   <arg name="w_forceps" default="true" />
   <arg name="w_gripper" default="false" />
   <arg name="rviz" default="true"/>
-  <arg name="use_gui" default="true"/>
+  <arg name="use_gui" default="false"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/tool_view.rviz"/>
   <arg name="magnitudeVibration" default="50.0"/>
 	<arg name="decayRateVibration" default="60.0"/>
@@ -33,16 +33,19 @@
           <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
           <arg name="rosControl" value="$(arg rosControl)"/> 
       </include> 
-    
+
+
   </group>
 
-  <group if="$(arg rosControl)">
+      
+      <group if="$(arg rosControl)">
         <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
           <arg name="robot_description_name" value="/$(arg id)_tool/robot_description" />
-          <arg name="robot_name" value="tool" />
+          <arg name="robot_name" value="$(arg id)_tool" />
           <arg name="gui" value="$(arg use_gui)"/>
-          <arg name="w_world" value="$(arg use_gui)"/>  
+          <arg name="w_world" value="$(arg rviz)"/>  
       </include> 
+
 
   
   

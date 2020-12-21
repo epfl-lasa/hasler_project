@@ -4,7 +4,7 @@
   
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/gazebo.links.xacro"/>
   
-  <xacro:macro name="create_forceps_links" params="tool_id:=right">
+  <xacro:macro name="create_forceps_links" params="tool_id">
     
     <!-- link 5: tool_wrist_forceps_link -->
     <link name="${tool_id}_tool_wrist_forceps_link">

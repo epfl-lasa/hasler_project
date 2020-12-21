@@ -4,7 +4,7 @@
 
 <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/gazebo.links.xacro"/>
 
-  <xacro:macro name="create_tool_base_links" params="parent_link xyz rpy tool_id:=right">
+  <xacro:macro name="create_tool_base_links" params="parent_link xyz rpy tool_id">
 
     <!-- link 1: tool_yaw -->
     <link name="${tool_id}_tool_yaw_link">
