@@ -15,7 +15,7 @@
       <origin rpy="${rpy}" xyz="${xyz}"/>
     </joint>
 
-    <joint name="right_trocar_joint" type="fixed">
+    <!-- <joint name="right_trocar_joint" type="fixed">
       <parent link="torso_link"/>
       <child link="/right_trocar_link"/>
       <axis xyz="0 0 1"/>
@@ -27,7 +27,7 @@
       <child link="/left_trocar_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 ${pi/2}" xyz="0.0 0.0 0.2"/>
-    </joint>
+    </joint> -->
 
     <xacro:gazebo_joints name="torso_joint"/>
     

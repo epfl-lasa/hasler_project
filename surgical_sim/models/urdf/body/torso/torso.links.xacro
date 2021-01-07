@@ -27,13 +27,13 @@
 			</inertial> 
     </link>
 
-   <link name="/left_trocar_link"/>
-   <link name="/right_trocar_link"/>
+   <!-- <link name="/left_trocar_link"/>
+   <link name="/right_trocar_link"/> -->
 
    <xacro:gazebo_links name="torso_link"/>
-   <xacro:gazebo_links name="/left_trocar_link"/>
+   <!-- <xacro:gazebo_links name="/left_trocar_link"/>
    <xacro:gazebo_links name="/right_trocar_link"/>
-   
+    -->
   </xacro:macro>
   
 

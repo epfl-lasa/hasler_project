@@ -23,7 +23,7 @@
         <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) with_gripper:=$(arg w_gripper) toolID:=$(arg id) originTrocar.x:=$(arg originTrocar_x) originTrocar.y:=$(arg originTrocar_y) originTrocar.z:=$(arg originTrocar_z)"/>
 
 
-      <include file="$(find surgical_sim)/launch/tool/tool.control.launch">
+      <include file="$(find surgical_sim)/launch/tool/tool.controller.launch">
           <arg name="id" value="$(arg id)"/>
           <arg name="virtual_tool" value="$(arg virtual_tool)"/>
           <arg name="control_input" value="$(arg control_input)"/>
@@ -46,7 +46,7 @@
           <arg name="w_world" value="$(arg rviz)"/>  
       </include> 
 
-
+  
   
   
   </group>

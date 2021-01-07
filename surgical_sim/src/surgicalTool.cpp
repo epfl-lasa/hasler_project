@@ -57,6 +57,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     _myInput=PLATFORM_INPUT;
   }
   //std::cout<<_myInput<<endl;
+  _nDOF=1;
   _toolJoints = new KDL::JntArray(NB_TOOL_AXIS_RED);
   _toolJoints->data.setZero();
   _toolJointsFull = new KDL::JntArray(NB_TOOL_AXIS_FULL);
@@ -379,7 +380,7 @@ void surgicalTool::publishToolJointCommands() {
         if (_msgToolCurrentJointStates.name[i].compare(std::string(Tool_Names[_tool_id]) + "_" + std::string(Tool_Axis_Names[j])) == 0) //! == 0 is compare equal
         {
           _msgJointCommands.data[i] = me->_toolJointsAll(j);
-          //cout<<i<<"  "<<j<<endl;
+        // cout<<i<<"  "<<j<<endl;
           break;
         }
         
@@ -484,7 +485,7 @@ void surgicalTool::publishToolTipPose(){
 
 
 void surgicalTool::performInverseKinematics(){
-
+  *me->_toolJointsInit = *me->_toolJoints;
   int ret = _myPosIkSolver_wrist->CartToJnt(*me->_toolJointsInit,_desiredTargetFrame,*me->_toolJoints);
   
 
@@ -500,7 +501,7 @@ void surgicalTool::performInverseKinematics(){
   
   _toolJoints->data(tool_yaw) = -Utils_math<double>::map( (_platformJoints(p_yaw) - _platformJointsOffset(p_yaw)) , 
                                     -25*DEG_TO_RAD, 25*DEG_TO_RAD, 
-                                    _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw)) + M_PI_2;
+                                    -1.5*M_PI, 1.5*M_PI) + M_PI_2;
 
   _toolJointsAll(tool_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map( (-(_platformJoints(p_roll) - _platformJointsOffset(p_roll))),
                                           0*_platformJointLimsDelta->data(p_roll), 1.0*_platformJointLimsDelta->data(p_roll), 
@@ -515,10 +516,11 @@ void surgicalTool::performInverseKinematics(){
   {
     if (_mySolutionFound) 
     {
-      for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
-      {
-        _toolJoints->data[i] =_toolJointsInit->data[i];
-      }
+      // for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
+      // {
+      //   _toolJoints->data[i] =_toolJointsInit->data[i];
+      // }
+      *me->_toolJoints = *me->_toolJointsInit;
       
         ROS_ERROR("No tool IK solutions for the tool found yet... move around to find one");
       _mySolutionFound=false;
@@ -527,10 +529,11 @@ void surgicalTool::performInverseKinematics(){
   else{
     if(!_mySolutionFound)
     {
-      for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
-      {
-        _toolJointsInit->data[i] =_toolJoints->data[i];
-      }
+      // for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
+      // {
+      //   _toolJointsInit->data[i] =_toolJoints->data[i];
+      // }
+      *me->_toolJointsInit = *me->_toolJoints;
       ROS_INFO("Solutions of tool IK found again!");
       _mySolutionFound=true;
     }

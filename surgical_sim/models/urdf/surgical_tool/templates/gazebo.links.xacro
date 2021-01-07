@@ -13,7 +13,7 @@
 			<mu2>${fricCoeff2}</mu2>
 			<kp>${kpCollision}</kp>
 			<kd>${kdCollision}</kd>
-			<selfCollide>true</selfCollide>
+			<selfCollide>false</selfCollide>
 			<maxVel>0.01</maxVel>
 			<minDepth>0.003</minDepth>
 		</gazebo>

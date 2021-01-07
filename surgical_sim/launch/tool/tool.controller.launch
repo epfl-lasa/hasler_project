@@ -1,0 +1,31 @@
+<launch>
+	<arg name="id" default="right"/>
+	<arg name="control_input" default="platform"/>
+	<arg name="virtual_tool" default="false"/>
+	<arg name="freq" default="10000.0"/>
+
+	<arg name="magnitudeVibration" default="50.0"/>
+	<arg name="decayRateVibration" default="60.0"/>
+	<arg name="frequencyVibration" default="32.6"/>
+	<arg name="sharedGrasp" default="false"/>
+	<arg name="rosControl" default="true"/>
+	
+	<group if="$(arg rosControl)">
+		<rosparam file="$(find surgical_sim)/config/right_tool_control.yaml" command="load" if="$(eval arg('id')=='right')" />
+		<rosparam file="$(find surgical_sim)/config/left_tool_control.yaml" command="load" if="$(eval arg('id')=='left')" />
+	    <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_position_controller joint_state_controller"/>
+	</group>
+	
+	<group if="$(arg virtual_tool)">
+		<node name="tool_joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
+		</node>		
+	</group>
+
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"  output="screen">
+		<param name="publish_frequency" type="double" value="$(eval 2*arg('freq'))"/>
+		<remap from="robot_description" to="/$(arg id)_tool/robot_description"/>
+		<remap from="joint_states" to="/$(arg id)_tool/joint_states"/>
+	</node>
+
+</launch>

@@ -70,13 +70,27 @@ extern const char *Leg_Axis_Names[];
 
 const uint8_t NB_AXIS_POSITIONING = 4;
 
+// #define TOOL_AXES                                                                   \
+//   ListofToolAxes(tool_pitch, "tool_pitch")    \
+//   ListofToolAxes(tool_roll, "tool_roll")              \
+//   ListofToolAxes(tool_yaw, "tool_yaw")    \
+//   ListofToolAxes(tool_insertion, "tool_insertion")  \
+//   ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
+//   ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
+//   ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
+//   ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
+//   ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
+// #define ListofToolAxes(enumeration, names) enumeration,
+// enum Tool_Axis : size_t { TOOL_AXES };
+// #undef ListofToolAxes
+// extern const char *Tool_Axis_Names[];
+
+
 #define TOOL_AXES                                                                   \
   ListofToolAxes(tool_pitch, "tool_pitch")    \
   ListofToolAxes(tool_roll, "tool_roll")              \
   ListofToolAxes(tool_yaw, "tool_yaw")    \
   ListofToolAxes(tool_insertion, "tool_insertion")  \
-  ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
-  ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
   ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
   ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
   ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
@@ -85,7 +99,8 @@ enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
-#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
+
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 2)
 
 
 using namespace std;
@@ -157,7 +172,7 @@ private:
   bool _flagToolJointLimitsOffsetCalculated;
   bool _flagLegJointLimitsOffsetCalculated;
   bool _flagPlatformJointLimitsOffsetCalculated;
-  
+  int _nDOF;
   
   Eigen::Vector4d _hAxisFilterPosValue;
   double _hAxisFilterGraspValue;

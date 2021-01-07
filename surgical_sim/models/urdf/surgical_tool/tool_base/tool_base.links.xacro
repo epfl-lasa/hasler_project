@@ -3,7 +3,9 @@
 
 
 <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/templates/gazebo.links.xacro"/>
-
+  <xacro:property name="toolMass" value="0.1"/>
+  <xacro:property name="toolLength" value="0.4"/>
+  <xacro:property name="toolRadius" value="0.005"/>
   <xacro:macro name="create_tool_base_links" params="parent_link xyz rpy tool_id">
 
     <!-- link 1: tool_yaw -->
@@ -48,8 +50,8 @@
       </collision> -->
       <inertial>
 				<origin xyz="0 0 0" rpy="0 0 0"/>
-				<mass value="0.05"/>
-				<inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
+			<mass value="${toolMass}"/>
+        <inertia ixx="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" ixy="0" ixz="0" iyy="${toolMass*(3*toolRadius*toolRadius+toolLength*toolLength)/12}" iyz="0" izz="${toolMass*toolRadius*toolRadius/2}"/>
 			</inertial> 
     </link>
     
@@ -96,12 +98,12 @@
     </link>
 
 
-    <xacro:gazebo_links name="tool_yaw_link"/>
-    <xacro:gazebo_links name="tool_pitch_link"/> 
-    <xacro:gazebo_links name="tool_roll_link"/> 
-    <xacro:gazebo_links name="tool_main_link"/> 
-    <xacro:gazebo_links name="tool_wrist_link"/>
-    <xacro:gazebo_links name="tool_wrist_shaft_link"/>
+    <xacro:gazebo_links name="${tool_id}_tool_yaw_link"/>
+    <xacro:gazebo_links name="${tool_id}_tool_pitch_link"/> 
+    <xacro:gazebo_links name="${tool_id}_tool_roll_link"/> 
+    <xacro:gazebo_links name="${tool_id}_tool_main_link"/> 
+    <xacro:gazebo_links name="${tool_id}_tool_wrist_link"/>
+    <xacro:gazebo_links name="${tool_id}_tool_wrist_shaft_link"/>
  
   </xacro:macro>
   

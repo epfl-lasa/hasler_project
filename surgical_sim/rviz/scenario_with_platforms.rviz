@@ -6,12 +6,14 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1
         - /TF1/Frames1
         - /Body1
         - /Right_Tool1
         - /Right_Leg1
         - /target1/Links1
         - /target_reached1
+        - /Left_Tool1
       Splitter Ratio: 0.715415001
     Tree Height: 769
   - Class: rviz/Selection
@@ -64,151 +66,159 @@ Visualization Manager:
       Frames:
         All Enabled: false
         chair_base_link:
-          Value: true
+          Value: false
         chair_intermediate_link1:
-          Value: true
+          Value: false
         chair_intermediate_link2:
-          Value: true
+          Value: false
         left_ankle_pitch_link:
-          Value: true
+          Value: false
         left_ankle_roll_link:
-          Value: true
+          Value: false
         left_ankle_yaw_link:
-          Value: true
+          Value: false
         left_foot_base:
-          Value: true
+          Value: false
         left_foot_tip:
-          Value: true
+          Value: false
         left_hip_adduction_link:
-          Value: true
+          Value: false
         left_hip_base_link:
-          Value: true
+          Value: false
         left_hip_extension_link:
-          Value: true
+          Value: false
         left_hip_roll_link:
-          Value: true
+          Value: false
         left_knee_extension_link:
-          Value: true
-        left_panda_camera_link:
-          Value: true
-        left_panda_link0:
-          Value: true
-        left_panda_link1:
-          Value: true
-        left_panda_link2:
-          Value: true
-        left_panda_link3:
-          Value: true
-        left_panda_link4:
-          Value: true
-        left_panda_link5:
-          Value: true
-        left_panda_link6:
-          Value: true
-        left_panda_link7:
-          Value: true
-        left_panda_link8:
-          Value: true
-        left_panda_tool:
-          Value: true
+          Value: false
         left_platform_base_link:
-          Value: true
+          Value: false
         left_platform_fSensor:
-          Value: true
+          Value: false
         left_platform_foot_rest:
-          Value: true
+          Value: false
         left_platform_pedal_tip:
-          Value: true
+          Value: false
         left_platform_pitch:
-          Value: true
+          Value: false
         left_platform_roll:
-          Value: true
+          Value: false
         left_platform_virtual_ankle:
-          Value: true
+          Value: false
         left_platform_x:
-          Value: true
+          Value: false
         left_platform_y:
-          Value: true
+          Value: false
         left_platform_yaw:
-          Value: true
+          Value: false
         left_platform_z_link:
+          Value: false
+        left_tool_base_link:
+          Value: false
+        left_tool_main_link:
+          Value: false
+        left_tool_pitch_link:
+          Value: false
+        left_tool_roll_link:
+          Value: false
+        left_tool_tip_link:
+          Value: false
+        left_tool_tip_link_ee:
           Value: true
+        left_tool_wrist_forceps_link:
+          Value: false
+        left_tool_wrist_forceps_link_2_left:
+          Value: false
+        left_tool_wrist_forceps_link_2_right:
+          Value: false
+        left_tool_wrist_forceps_link_shaft:
+          Value: false
+        left_tool_wrist_link:
+          Value: false
+        left_tool_wrist_shaft_link:
+          Value: false
+        left_tool_yaw_link:
+          Value: false
         left_trocar_link:
-          Value: true
+          Value: false
         left_virtual_pedal_tip:
-          Value: true
+          Value: false
         right_ankle_pitch_link:
-          Value: true
+          Value: false
         right_ankle_roll_link:
-          Value: true
+          Value: false
         right_ankle_yaw_link:
-          Value: true
+          Value: false
         right_foot_base:
-          Value: true
+          Value: false
         right_foot_tip:
-          Value: true
+          Value: false
         right_hip_adduction_link:
-          Value: true
+          Value: false
         right_hip_base_link:
-          Value: true
+          Value: false
         right_hip_extension_link:
-          Value: true
+          Value: false
         right_hip_roll_link:
-          Value: true
+          Value: false
         right_knee_extension_link:
-          Value: true
-        right_panda_camera_link:
-          Value: true
-        right_panda_link0:
-          Value: true
-        right_panda_link1:
-          Value: true
-        right_panda_link2:
-          Value: true
-        right_panda_link3:
-          Value: true
-        right_panda_link4:
-          Value: true
-        right_panda_link5:
-          Value: true
-        right_panda_link6:
-          Value: true
-        right_panda_link7:
-          Value: true
-        right_panda_link8:
-          Value: true
-        right_panda_tool:
-          Value: true
+          Value: false
         right_platform_base_link:
-          Value: true
+          Value: false
         right_platform_fSensor:
-          Value: true
+          Value: false
         right_platform_foot_rest:
-          Value: true
+          Value: false
         right_platform_pedal_tip:
-          Value: true
+          Value: false
         right_platform_pitch:
-          Value: true
+          Value: false
         right_platform_roll:
-          Value: true
+          Value: false
         right_platform_virtual_ankle:
-          Value: true
+          Value: false
         right_platform_x:
-          Value: true
+          Value: false
         right_platform_y:
-          Value: true
+          Value: false
         right_platform_yaw:
-          Value: true
+          Value: false
         right_platform_z_link:
+          Value: false
+        right_tool_base_link:
+          Value: false
+        right_tool_main_link:
+          Value: false
+        right_tool_pitch_link:
+          Value: false
+        right_tool_roll_link:
+          Value: false
+        right_tool_tip_link:
+          Value: false
+        right_tool_tip_link_ee:
           Value: true
+        right_tool_wrist_forceps_link:
+          Value: false
+        right_tool_wrist_forceps_link_2_left:
+          Value: false
+        right_tool_wrist_forceps_link_2_right:
+          Value: false
+        right_tool_wrist_forceps_link_shaft:
+          Value: false
+        right_tool_wrist_link:
+          Value: false
+        right_tool_wrist_shaft_link:
+          Value: false
+        right_tool_yaw_link:
+          Value: false
         right_trocar_link:
-          Value: true
+          Value: false
         right_virtual_pedal_tip:
-          Value: true
+          Value: false
         torso_link:
-          Value: true
+          Value: false
         world:
-          Value: true
+          Value: false
       Marker Scale: 0.100000001
       Name: TF
       Show Arrows: false
@@ -243,18 +253,6 @@ Visualization Manager:
                                   right_foot_tip:
                                     right_virtual_pedal_tip:
                                       {}
-          left_panda_link0:
-            left_panda_link1:
-              left_panda_link2:
-                left_panda_link3:
-                  left_panda_link4:
-                    left_panda_link5:
-                      left_panda_link6:
-                        left_panda_link7:
-                          left_panda_link8:
-                            left_panda_tool:
-                              left_panda_camera_link:
-                                {}
           left_platform_base_link:
             left_platform_y:
               left_platform_x:
@@ -268,18 +266,22 @@ Visualization Manager:
                               {}
                             left_platform_virtual_ankle:
                               {}
-          right_panda_link0:
-            right_panda_link1:
-              right_panda_link2:
-                right_panda_link3:
-                  right_panda_link4:
-                    right_panda_link5:
-                      right_panda_link6:
-                        right_panda_link7:
-                          right_panda_link8:
-                            right_panda_tool:
-                              right_panda_camera_link:
+          left_tool_base_link:
+            left_tool_pitch_link:
+              left_tool_roll_link:
+                left_tool_yaw_link:
+                  left_tool_main_link:
+                    left_tool_wrist_link:
+                      left_tool_wrist_shaft_link:
+                        left_tool_wrist_forceps_link:
+                          left_tool_wrist_forceps_link_shaft:
+                            left_tool_tip_link:
+                              left_tool_tip_link_ee:
                                 {}
+                            left_tool_wrist_forceps_link_2_left:
+                              {}
+                            left_tool_wrist_forceps_link_2_right:
+                              {}
           right_platform_base_link:
             right_platform_y:
               right_platform_x:
@@ -292,6 +294,22 @@ Visualization Manager:
                             right_platform_pedal_tip:
                               {}
                             right_platform_virtual_ankle:
+                              {}
+          right_tool_base_link:
+            right_tool_pitch_link:
+              right_tool_roll_link:
+                right_tool_yaw_link:
+                  right_tool_main_link:
+                    right_tool_wrist_link:
+                      right_tool_wrist_shaft_link:
+                        right_tool_wrist_forceps_link:
+                          right_tool_wrist_forceps_link_shaft:
+                            right_tool_tip_link:
+                              right_tool_tip_link_ee:
+                                {}
+                            right_tool_wrist_forceps_link_2_left:
+                              {}
+                            right_tool_wrist_forceps_link_2_right:
                               {}
           torso_link:
             left_trocar_link:
@@ -343,6 +361,69 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        right_tool_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_main_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_tip_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_tip_link_ee:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_wrist_forceps_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_wrist_forceps_link_2_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_wrist_forceps_link_2_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_wrist_forceps_link_shaft:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_wrist_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_wrist_shaft_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Name: Right_Tool
       Robot Description: /right_tool/robot_description
       TF Prefix: ""
@@ -672,6 +753,85 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        left_tool_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_tool_main_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_tool_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_tool_tip_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_tool_tip_link_ee:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_tool_wrist_forceps_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_forceps_link_2_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_forceps_link_2_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_forceps_link_shaft:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_shaft_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: Left_Tool
+      Robot Description: /left_tool/robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -697,25 +857,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.0412397
+      Distance: 3.12360144
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.015165179
-        Y: 0.0935746804
-        Z: -0.448392779
+        X: 0.0696913749
+        Y: 0.912172556
+        Z: -0.119142681
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.19976008
+      Pitch: 0.989760399
       Target Frame: right/tool_tip_link_ee
       Value: Orbit (rviz)
-      Yaw: 4.69221973
+      Yaw: 4.78221941
     Saved:
       - Class: rviz/Orbit
         Distance: 1.1899302
