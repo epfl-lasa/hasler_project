@@ -7,10 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /RobotModel1
-        - /RobotModel1/Links1
-        - /RobotModel1/Links1/base_object_link1
-        - /RobotModel1/Links1/target_object_link1
-        - /RobotModel1/Links1/world1
         - /TF1
       Splitter Ratio: 0.610497236
     Tree Height: 547
@@ -80,7 +76,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: target_object_description
+      Robot Description: right_target/robot_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
@@ -92,7 +88,7 @@ Visualization Manager:
         All Enabled: true
         base_object_link:
           Value: true
-        world:
+        target_object_link:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -100,9 +96,7 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        world:
-          base_object_link:
-            {}
+        {}
       Update Interval: 0
       Value: true
   Enabled: true

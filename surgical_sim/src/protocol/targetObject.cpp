@@ -25,32 +25,6 @@ char const *Tools_Names2[]{"Right","Left"};
 #define DELAY_SEC 3.0
 
 
-
-  // _desiredTargetFrame.p.data[0] = Utils_math<double>::map( _platformJoints(p_x),
-  //                                                         -_platformJointLimsDelta->data(p_x), _platformJointLimsDelta->data(p_x), 
-  //                                                         -0.15,0.15);
-
-
-
-  // _desiredTargetFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y),
-  //                                                         -_platformJointLimsDelta->data(p_y), _platformJointLimsDelta->data(p_y), 
-  //                                                         -0.15,0.15);
-  
-  // _desiredTargetFrame.p.data[2] = -0.12 + Utils_math<double>::map( _platformJoints(p_pitch),
-  //                                                         -_platformJointLimsDelta->data(p_pitch), 0.5*_platformJointLimsDelta->data(p_pitch), 
-  //                                                         -0.15,0.15) ;
-
-  //  _toolJoints->data(tool_yaw) = -Utils_math<double>::map( (_platformJoints(p_yaw) - _platformJointsOffset(p_yaw)) , 
-  //                                 -35*DEG_TO_RAD, 35*DEG_TO_RAD, 
-  //                                 _toolJointLimsAll[L_MIN]->data(tool_yaw), _toolJointLimsAll[L_MAX]->data(tool_yaw));
-
-
-  //  _toolJointsAll(tool_wrist_open_angle) = Utils_math<double>::map( (-_platformJoints(p_roll) - _platformJointsOffset(p_roll)),
-  //                                         -0.5*_platformJointLimsDelta->data(p_roll), 0.5*_platformJointLimsDelta->data(p_roll), 
-  //                                          _toolJointLimsAll[L_MIN]->data(tool_wrist_open_angle), _toolJointLimsAll[L_MAX]->data(tool_wrist_open_angle));
-
-
-
 const float Axis_Limits[] =  {0.090,0.0975,27.5*DEG_TO_RAD,120.0*DEG_TO_RAD};
 
 const float SAMPLING_TIME = 10; // 100Hz
@@ -86,22 +60,19 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   Eigen::Vector3d alphaJerk;
   alphaJerk.setConstant(0.95);
 
-
-  for (size_t i = 0; i < NB_TOOLS; i++)
-  {
-  _toolTipPositionFilter[i] = new MatLP_Filterd(alphaPosition);
-  _toolTipSpeedFilter[i] = new MatLP_Filterd(alphaSpeed);
-  _toolTipAccFilter[i] = new MatLP_Filterd (alphaAcc);
-  _toolTipJerkFilter[i]= new MatLP_Filterd (alphaJerk);
-  _myThreshold[i]=0.0;
-  _vibrationGrasping[i] = 0.0;
-  _impedanceGrasping[i] = 0.0;
-  _hapticTorques[i].setZero();
-  _precisionAng[i]=0.0;
-  _precisionPos[i]=0.0;  
-  _precisionGrasp[i]=0.0; 
-  _hapticAxisFilterPos[i]=1.0; 
-  }
+  _toolTipPositionFilter = new MatLP_Filterd(alphaPosition);
+  _toolTipSpeedFilter = new MatLP_Filterd(alphaSpeed);
+  _toolTipAccFilter = new MatLP_Filterd (alphaAcc);
+  _toolTipJerkFilter= new MatLP_Filterd (alphaJerk);
+  _myThreshold=0.0;
+  _vibrationGrasping = 0.0;
+  _impedanceGrasping = 0.0;
+  _hapticTorques.setZero();
+  _precisionAng=0.0;
+  _precisionPos=0.0;  
+  _precisionGrasp=0.0; 
+  _hapticAxisFilterPos=1.0; 
+ 
 
   _myRandomAngle=0.0;
 
@@ -110,48 +81,51 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   _xTarget=0;  _nTarget=0;
 
   
-  for (unsigned int tool=0; tool<NB_TOOLS; tool++)
-  {
-    _toolTipPosition[tool].setZero();
-    _toolTipPositionWRTTorso[tool].setZero();
-    _toolTipPositionPrev[tool].setZero();
-    _trocarPosition[tool].setZero();
+    _toolTipPosition.setZero();
+    _toolTipPositionWRTTorso.setZero();
+    _toolTipPositionPrev.setZero();
+    _trocarPosition.setZero();
 
-    _toolJointPosition[tool].setZero();  
-    _toolJointSpeed[tool].setZero();  
-    _platformJointPosition[tool].setZero();
-    _platformJointVelocity[tool].setZero();
-    _platformJointEffortD[tool].setZero();
-    _platformJointEffortRef[tool].setZero();
-    _legGravityCompTorques[tool].setZero();
-    _platformJointEffortM[tool].setZero();
-    // _platformJointStates[tool].setZero();
-    // _platformJointStates_prev[tool].setZero(); 
-    _toolTipQuaternion[tool].setIdentity();
-    _toolTipQuaternionWRTTorso[tool].setIdentity();
-    _toolTipQuaternionPrev[tool].setIdentity();
-    _trocarQuaternion[tool].setIdentity();
+    _toolJointPosition.setZero();  
+    _toolJointSpeed.setZero();  
+    _platformJointPosition.setZero();
+    _platformJointVelocity.setZero();
+    _platformJointEffortD.setZero();
+    _platformJointEffortRef.setZero();
+    _legGravityCompTorques.setZero();
+    _platformJointEffortM.setZero();
+    // _platformJointStates.setZero();
+    // _platformJointStates_prev.setZero(); 
+    _toolTipQuaternion.setIdentity();
+    _toolTipQuaternionWRTTorso.setIdentity();
+    _toolTipQuaternionPrev.setIdentity();
+    _trocarQuaternion.setIdentity();
    
-    _toolTipRotationMatrix[tool].setIdentity();
-    _trocarRotationMatrix[tool].setIdentity();
-
-    _flagTargetReached[tool] = false;
-    _flagTargetReachedOpen[tool] = false;
-    _flagTargetGrasped[tool] = false;
-    _flagTrocarTFConnected[tool] = false;
-    _flagToolTipTFConnected[tool] = false;
-    _flagFootBaseForceConnected[tool]=false;
-    _flagToolJointsConnected[tool]=false;
-    _flagLegGravityTorquesConnected[tool]=false;
-    _aState[tool]=A_POSITIONING;
-  }
+    _toolTipRotationMatrix.setIdentity();
+    _trocarRotationMatrix.setIdentity();
+    
+    _flagGazeboLinkStateRead = false;
+    _flagTargetReached = false;
+    _flagTargetReachedOpen = false;
+    _flagTargetGrasped = false;
+    _flagTargetSpawned = false;
+    _flagTrocarTFConnected = false;
+    _flagToolTipTFConnected = false;
+    _flagFootBaseForceConnected=false;
+    _flagToolJointsConnected=false;
+    _flagLegGravityTorquesConnected=false;
+    _aState=A_POSITIONING;
+  
 
 
     _flagRecordingStarted=false;
 
-  _myPosition.setZero();
-  _myQuaternion.setIdentity();
-  _myRotationMatrix.setIdentity();
+  _myPositionSpawn.setZero();
+  _myQuaternionSpawn.setIdentity();
+  _myRotationMatrixSpawn.setIdentity();
+  _myPositionCurrent.setZero();
+  _myQuaternionCurrent.setIdentity();
+  _myRotationMatrixCurrent.setIdentity();
   _maxLimsTarget.setZero();
   
   std::string trackingMode;
@@ -163,6 +137,12 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
       ROS_ERROR("No indicaton of tracking mode (right, left, both) was done"); 
   }
 
+   if (!_n.getParam("targetName", _myName))
+  { 
+      ROS_ERROR("No indicaton of target name (e.g. 1, etc) was done"); 
+      _myName="t1";
+  }
+
    
   if (!_n.getParam("subjectID", _subjectID))
   { 
@@ -170,17 +150,14 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
       _subjectID = "s0";
   }
 
-    _myTrackMode = RIGHT_TOOL;
   
 
   if (trackingMode.compare("right") == 0) {
-      _myTrackMode = RIGHT_TOOL;
+      _myTrackID = RIGHT_TOOL;
     } else if (trackingMode.compare("left") == 0) {
-      _myTrackMode = LEFT_TOOL;
-    } else if (trackingMode.compare("all") == 0) {
-      _myTrackMode = ALL_TOOLS;
+       _myTrackID = LEFT_TOOL;
     } else {
-      ROS_ERROR("You didn't enter a tracking Mode");
+      ROS_ERROR("You didn't enter a tracking id: left or right");
       _stop=true;
     }
 
@@ -215,69 +192,37 @@ bool targetObject::init() //! Initialization of the node. Its datatype
 
 {
 
+  _hapticTorques.setZero();
+  
   _pubTargetReachedSphere = _n.advertise<visualization_msgs::Marker>("target_reached_sphere", 0);
-  
+  _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
+  _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[_myTrackID])+"/sharedGrasping",0);
 
-  switch (_myTrackMode)
-  {
-  case ALL_TOOLS:
-    
-    for (unsigned int i=0; i<NB_TOOLS; i++)
-    {
-      _hapticTorques[i].setZero();
-      _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
-      _subSharedGrasp[i] = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>(
-                  "/"+std::string(Tools_Names[i])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1, i),
+  _subGazeboLinkStates = _n.subscribe<gazebo_msgs::LinkStates>("/gazebo/link_states", 1,boost::bind(&targetObject::readGazeboLinkStates, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-      _subLegGravityCompTorques[i] = _n.subscribe<custom_msgs::FootInputMsg_v5>(
-                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1, i),
+
+  _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[_myTrackID])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-      _subForceFootRestWorld[i] = _n.subscribe<geometry_msgs::WrenchStamped>(
-                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1, i),
+  _subLegGravityCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>(
+                  "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-      _subUnbiasedJointTorques[i] = _n.subscribe<custom_msgs::FootOutputMsg_v3>(
-                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1, i),
+  _subForceFootRestWorld = _n.subscribe<geometry_msgs::WrenchStamped>(
+                  "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1),
+                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _subUnbiasedJointTorques = _n.subscribe<custom_msgs::FootOutputMsg_v3>(
+                  "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
-      _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
-      , 1, boost::bind(&targetObject::readToolState, this, _1, i),
-      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay()); 
-       _subFootPlatform[i] = _n.subscribe<custom_msgs::FootOutputMsg_v3>( "/FI_Output/"+std::string(Tools_Names2[i])
-       , 1, boost::bind(&targetObject::readFIOutput, this, _1, i),
-       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());                  
-      _subPlatformJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/platform_joint_publisher/joint_states"
-      , 1, boost::bind(&targetObject::readPlatformState, this, _1, i),
-      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());                  
-                     
-    }
-    break;
-  
-  default:
-    unsigned int i = 0;
-    _hapticTorques[i].setZero();
-    _pubFootInput[i] = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[i])+"/target_fi_publisher/foot_input",0);
-    _pubSharedGrasp[i] = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[i])+"/sharedGrasping",0);
-    _subSharedGrasp[i] = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[i])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1, i),
-                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-    _subLegGravityCompTorques[i] = _n.subscribe<custom_msgs::FootInputMsg_v5>(
-                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1, i),
-                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-    _subForceFootRestWorld[i] = _n.subscribe<geometry_msgs::WrenchStamped>(
-                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1, i),
-                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-    _subUnbiasedJointTorques[i] = _n.subscribe<custom_msgs::FootOutputMsg_v3>(
-                  "/"+std::string(Tools_Names[i])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1, i),
-                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
-     _subToolJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/tool_joint_state_publisher/joint_states"
-      , 1, boost::bind(&targetObject::readToolState, this, _1, i),
+  _subToolJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[_myTrackID])+"_tool/joint_states"
+      , 1, boost::bind(&targetObject::readToolState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());    
-      _subFootPlatform[i] = _n.subscribe<custom_msgs::FootOutputMsg_v3>( "/FI_Output/"+std::string(Tools_Names2[i])
-       , 1, boost::bind(&targetObject::readFIOutput, this, _1, i),
+  _subFootPlatform = _n.subscribe<custom_msgs::FootOutputMsg_v3>( "/FI_Output/"+std::string(Tools_Names2[_myTrackID])
+       , 1, boost::bind(&targetObject::readFIOutput, this, _1),
        ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());     
-     _subPlatformJointStates[i] = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[i])+"/platform_joint_publisher/joint_states"
-      , 1, boost::bind(&targetObject::readPlatformState, this, _1, i),
-      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-  }
- 
+  _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[_myTrackID])+"/platform_joint_publisher/joint_states"
+      , 1, boost::bind(&targetObject::readPlatformState, this, _1),
+      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
+
+  _clientSetTargetPose = _n.serviceClient<gazebo_msgs::SetLinkState>("/gazebo/set_link_state");
 
   //boost::posix_time::ptime thistime = ros::Time::now().toBoost();
   boost::posix_time::ptime thistime = boost::posix_time::second_clock::local_time();
@@ -315,17 +260,21 @@ void targetObject::stopNode(int sig) { me->_stop = true;  }
 void targetObject::run() {
 
   while (!_stop) {
-    for (size_t i = 0; i < NB_TOOLS; i++)
-    {
-      _hapticTorques[i].setZero();
-    }
+    _hapticTorques.setZero();
        
-    readTFTool(_myTrackMode);
-    computeToolTipDerivatives(_myTrackMode);
-    readTFTrocar(_myTrackMode); 
-
-    evaluateTarget(_myTrackMode);
-    computetargetObjectPose(_myTrackMode);
+    readTFTool();
+    computeToolTipDerivatives();
+    readTFTrocar(); 
+    if (_flagToolJointsConnected && _flagToolTipTFConnected)
+    {
+      evaluateTarget();
+      ROS_INFO_ONCE("It is possible to evaluate the target now!");
+    }
+    else
+    {
+      ROS_WARN("Not possible to evaluate target, possible the tool is not present in the scenario");
+    }
+    computetargetObjectPose();
     writeTFtargetObject();
     recordStatistics();
     ros::spinOnce();
@@ -338,41 +287,33 @@ void targetObject::run() {
   ros::shutdown();
 }
 
-void targetObject::readTFTool(unsigned int n_) {
+void targetObject::readTFTool() {
 
-  if (n_==ALL_TOOLS)
-  {
-    for (unsigned int i = 0; i < NB_TOOLS; i++) {
-      readTFTool(i);
-    }
-  }
-  else
-  {
-    static int count = 0;
-    std::string original_frame;
-    std::string destination_frame;
+  static int count = 0;
+  std::string original_frame;
+  std::string destination_frame;
 
-    destination_frame = std::string(Tools_Names[n_]) + "_tool_tip_link_ee";
+    destination_frame = std::string(Tools_Names[_myTrackID]) + "_tool_tip_link_ee";
     original_frame = "torso_link";
 
     geometry_msgs::TransformStamped toolTipTransform_;
 
-    try 
-    {
-      toolTipTransform_ = _tfBuffer.lookupTransform(
-          original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
+  try 
+  {
+    toolTipTransform_ = _tfBuffer.lookupTransform(
+        original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
 
-      if (_flagToolTipTFConnected[n_]) {
-        _toolTipPositionPrev[n_] = _toolTipPosition[n_];
+      if (_flagToolTipTFConnected) {
+        _toolTipPositionPrev = _toolTipPosition;
         tf::vectorMsgToEigen(toolTipTransform_.transform.translation,
-                             _toolTipPosition[n_]);
-        _toolTipQuaternionPrev[n_] = _toolTipQuaternion[n_];
+                             _toolTipPosition);
+        _toolTipQuaternionPrev = _toolTipQuaternion;
         tf::quaternionMsgToEigen(toolTipTransform_.transform.rotation,
-                                 _toolTipQuaternion[n_]);
-        _toolTipRotationMatrix[n_] =
-            _toolTipQuaternion[n_].normalized().toRotationMatrix();
+                                 _toolTipQuaternion);
+        _toolTipRotationMatrix =
+            _toolTipQuaternion.normalized().toRotationMatrix();
       }
-      _flagToolTipTFConnected[n_] = true;
+      _flagToolTipTFConnected = true;
 
     } 
     catch (tf2::TransformException ex) 
@@ -385,21 +326,16 @@ void targetObject::readTFTool(unsigned int n_) {
       }
       //ros::Duration(1.0).sleep();
     }
-  }
 }
 
-void targetObject::readTFTrocar(unsigned int n_) {
+void targetObject::readTFTrocar() {
 
-  if (n_ == ALL_TOOLS) {
-    for (unsigned int i = 0; i < NB_TOOLS; i++) {
-      readTFTrocar(i);
-    }
-  } else {
+
     static int count = 0;
     std::string original_frame;
     std::string destination_frame;
 
-    destination_frame = std::string(Tools_Names[n_]) + "_trocar_link";
+    destination_frame = std::string(Tools_Names[_myTrackID]) + "_tool_base_link";
     original_frame = "torso_link";
 
     geometry_msgs::TransformStamped trocarTransform_;
@@ -408,17 +344,17 @@ void targetObject::readTFTrocar(unsigned int n_) {
       trocarTransform_ = _tfBuffer.lookupTransform(
           original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
 
-      if (_flagTrocarTFConnected[n_]) {
+      if (_flagTrocarTFConnected) {
 
         tf::vectorMsgToEigen(trocarTransform_.transform.translation,
-                             _trocarPosition[n_]);
+                             _trocarPosition);
         tf::quaternionMsgToEigen(trocarTransform_.transform.rotation,
-                                 _trocarQuaternion[n_]);
-        _trocarRotationMatrix[n_] =
-            _trocarQuaternion[n_].normalized().toRotationMatrix();
+                                 _trocarQuaternion);
+        _trocarRotationMatrix =
+            _trocarQuaternion.normalized().toRotationMatrix();
       }
-      // cout<<_trocarRotationMatrix[n_]<<endl;
-      _flagTrocarTFConnected[n_] = true;
+      // cout<<_trocarRotationMatrix<<endl;
+      _flagTrocarTFConnected = true;
 
     } catch (tf2::TransformException ex) {
       if (count > 2) {
@@ -429,29 +365,37 @@ void targetObject::readTFTrocar(unsigned int n_) {
       }
       ros::Duration(1.0).sleep();
     }
-  }
+  
 }
 
 
-void targetObject::computetargetObjectPose(unsigned int n_){
+void targetObject::computetargetObjectPose(){
   if (_targetsXYZ[0].second[_xTarget]!=0.0f)
   {
-      _myPosition << _targetsXYZ[0].second[_xTarget], _targetsXYZ[2].second[_xTarget], -_targetsXYZ[1].second[_xTarget]+0.01;
-
-  //  cout<<_myPosition.transpose()<<endl; 
-    Eigen::Vector3d targetTrocarDistance = _trocarPosition[n_]-_myPosition;
-    
-    if (targetTrocarDistance.norm() > FLT_EPSILON) {
-      _myRotationMatrix = Utils_math<double>::rodriguesRotation(
-      Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+    if(!_flagTargetSpawned)
+    {
+      _myPositionSpawn << _targetsXYZ[0].second[_xTarget], _targetsXYZ[2].second[_xTarget], -_targetsXYZ[1].second[_xTarget]+0.01;
+      //cout<<_myPosition.transpose()<<endl; 
+      Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
+      if (targetTrocarDistance.norm() > FLT_EPSILON) 
+      {
+        _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(
+        Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+      }
+      _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
+      _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
+      _flagTargetSpawned = setGazeboTargetSpawnPose();
     }
-    _myRotationMatrix =  _myRotationMatrix * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
-    _myQuaternion = Eigen::Quaternion<double>(_myRotationMatrix);
+    else
+    {
+      getGazeboTargetCurrentPos();
+    }
   }
   else
   {
+    _flagTargetSpawned = false;
     _xTarget++;
-    computetargetObjectPose(_myTrackMode);
+    computetargetObjectPose();
     if (_xTarget>=NB_TARGETS)
     {
       ROS_ERROR("Error generating target");
@@ -461,45 +405,47 @@ void targetObject::computetargetObjectPose(unsigned int n_){
 }
 
 
-void targetObject::evaluateTarget(unsigned int n_)
+void targetObject::evaluateTarget()
 {  
-  _precisionGrasp[n_] = 17.0*DEG_TO_RAD - _toolJointPosition[n_](tool_wrist_open_angle);
-  _precisionPos[n_] = (_myPosition - _toolTipPosition[n_]).norm();
-  _precisionAng[n_] = _myQuaternion.angularDistance(_toolTipQuaternion[n_]);
-  double errorAng = 1.0-cos(_precisionAng[n_]);
-  if (_precisionPos[n_] < 0.007 && errorAng < (1-cos(7.0*DEG_TO_RAD)))
+  _precisionGrasp = 15.0*DEG_TO_RAD - _toolJointPosition(tool_wrist_open_angle);
+  _precisionPos = (_myPositionCurrent - _toolTipPosition).norm();
+  // std::cout<<"Precision in position:" << _precisionPos<<std::endl;
+  _precisionAng = _myQuaternionCurrent.angularDistance(_toolTipQuaternion);
+  double errorAng = 1.0-cos(_precisionAng);
+  // std::cout<<"Precision in angle:" << errorAng<<std::endl;
+  if (_precisionPos < 0.007 && errorAng < (1-cos(7.0*DEG_TO_RAD)))
   {
-     _flagTargetReached[n_]=true;
+     _flagTargetReached=true;
      _myStatus=TARGET_REACHED;
-     if (_flagTargetReachedOpen[n_] || (_toolJointPosition[n_](tool_wrist_open_angle)>20.0*DEG_TO_RAD))
+     if (_flagTargetReachedOpen || (_toolJointPosition(tool_wrist_open_angle)>20.0*DEG_TO_RAD))
      {
-      _flagTargetReachedOpen[n_]=true; 
+      _flagTargetReachedOpen=true; 
       publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
         
-      if (_toolJointPosition[n_](tool_wrist_open_angle)<=17.0*DEG_TO_RAD)
+      if (_toolJointPosition(tool_wrist_open_angle)<=17.0*DEG_TO_RAD)
       {
           publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
-          if (!_flagTargetGrasped[n_])
+          if (!_flagTargetGrasped)
           {
             _startDelayForCorrection = ros::Time::now(); 
             std::cout<<"grasped"<<std::endl;
           }
-          _flagTargetGrasped[n_]=true;
+          _flagTargetGrasped=true;
           _myStatus=TARGET_GRASPED;
       }
       else
       {
         _startDelayForCorrection = ros::Time::now(); 
-        _flagTargetGrasped[n_]=false;
+        _flagTargetGrasped=false;
       }
      }
   }
   else
   {
     _startDelayForCorrection = ros::Time::now(); 
-    _flagTargetReached[n_]=false; 
-    _flagTargetReachedOpen[n_]=false;
-    _flagTargetGrasped[n_]=false; 
+    _flagTargetReached=false; 
+    _flagTargetReachedOpen=false;
+    _flagTargetGrasped=false; 
     _myStatus=TARGET_NOT_REACHED;
      publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
   }
@@ -530,7 +476,7 @@ void targetObject::evaluateTarget(unsigned int n_)
         }
     }
     _myRandomAngle = randomAngleNew;
-    _flagTargetReached[n_] =false;
+    _flagTargetReached =false;
     _startDelayForCorrection=ros::Time::now();
     ROS_INFO("New target generated!. # %i",_nTarget);
     _myStatus = TARGET_CHANGED;
@@ -549,12 +495,12 @@ void targetObject::evaluateTarget(unsigned int n_)
 
 
 void targetObject::writeTFtargetObject(){
-  _msgtargetObjectTransform.child_frame_id="target_object_link";
+  _msgtargetObjectTransform.child_frame_id=std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_base_link";
   _msgtargetObjectTransform.header.frame_id="torso_link";
   _msgtargetObjectTransform.header.stamp = ros::Time::now();
 
-  tf::vectorEigenToMsg(_myPosition,_msgtargetObjectTransform.transform.translation);
-  tf::quaternionEigenToMsg(_myQuaternion,_msgtargetObjectTransform.transform.rotation); 
+  tf::vectorEigenToMsg(_myPositionCurrent,_msgtargetObjectTransform.transform.translation);
+  tf::quaternionEigenToMsg(_myQuaternionCurrent,_msgtargetObjectTransform.transform.rotation); 
 
   _tfBroadcaster->sendTransform(_msgtargetObjectTransform);
 }
@@ -627,7 +573,7 @@ std::vector<std::pair<std::string, std::vector<float>>> targetObject::readTarget
 
 void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color_, double delay_){
   
-  _msgTargetReachedSphere.header.frame_id = "target_object_link";
+  _msgTargetReachedSphere.header.frame_id = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_base_link";
   _msgTargetReachedSphere.header.stamp = ros::Time::now();
   _msgTargetReachedSphere.ns = "";
   _msgTargetReachedSphere.id = 0;
@@ -682,56 +628,61 @@ void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color
 void targetObject::recordStatistics(){
 
   // ros::Duration deltaTime = ros::Time::now() - _startingTime;
-  // double precisionPOS_on = _myStatus != TARGET_NOT_REACHED ? _precisionPos[RIGHT_TOOL] : 0.0;
-  // double precisionANG_on = _myStatus != TARGET_NOT_REACHED ? _precisionAng[RIGHT_TOOL] * RAD_TO_DEG : 0.0;
+  // double precisionPOS_on = _myStatus != TARGET_NOT_REACHED ? _precisionPos : 0.0;
+  // double precisionANG_on = _myStatus != TARGET_NOT_REACHED ? _precisionAng * RAD_TO_DEG : 0.0;
   
   if (_subjectID != std::string("none"))
 	{
 	ros::Duration deltaTime = ros::Time::now() - _startingTime;
-  double precisionPOS_on = _flagTargetReached[RIGHT_TOOL] ? _precisionPos[RIGHT_TOOL] : 0.0;
-  double precisionANG_on = _flagTargetReached[RIGHT_TOOL] ? _precisionAng[RIGHT_TOOL] * RAD_TO_DEG : 0.0;
-  double precisionGRASP_on = _flagTargetGrasped[RIGHT_TOOL] ? _precisionGrasp[RIGHT_TOOL] * RAD_TO_DEG : 0.0;
+  double precisionPOS_on = _flagTargetReached ? _precisionPos : 0.0;
+  double precisionANG_on = _flagTargetReached ? _precisionAng * RAD_TO_DEG : 0.0;
+  double precisionGRASP_on = _flagTargetGrasped ? _precisionGrasp * RAD_TO_DEG : 0.0;
   
     if (_flagRecordingStarted)
     {
 		_statsOutputFile << deltaTime<< " "
 					<< _nTarget<< " "
           << _myStatus<< " "
-          << _myPosition.transpose()<<" "
-          << _myQuaternion.x()<<" "
-          << _myQuaternion.y()<<" "
-          << _myQuaternion.z()<<" "
-          << _myQuaternion.w()<<" "
-          << _toolJointPosition[RIGHT_TOOL](tool_wrist_open_angle)<<" "
-          << _toolJointSpeed[RIGHT_TOOL](tool_wrist_open_angle)<<" "
-          << _toolTipPosition[RIGHT_TOOL].transpose() << " "
-          << _toolTipSpeed[RIGHT_TOOL].transpose() << " "
-          << _toolTipAcc[RIGHT_TOOL].transpose() << " "
-          << _toolTipJerk[RIGHT_TOOL].transpose() << " "
-          << _toolTipQuaternion[RIGHT_TOOL].x()<<" "
-          << _toolTipQuaternion[RIGHT_TOOL].y()<<" "
-          << _toolTipQuaternion[RIGHT_TOOL].z()<<" "
-          << _toolTipQuaternion[RIGHT_TOOL].w()<<" "
-          << _toolJointPosition[RIGHT_TOOL](tool_yaw)<<" "
+          << _myPositionSpawn.transpose()<<" "
+          << _myQuaternionSpawn.x()<<" "
+          << _myQuaternionSpawn.y()<<" "
+          << _myQuaternionSpawn.z()<<" "
+          << _myQuaternionSpawn.w()<<" "
+          << _myPositionCurrent.transpose()<<" "
+          << _myQuaternionCurrent.x()<<" "
+          << _myQuaternionCurrent.y()<<" "
+          << _myQuaternionCurrent.z()<<" "
+          << _myQuaternionCurrent.w()<<" "
+          << _toolJointPosition(tool_wrist_open_angle)<<" "
+          << _toolJointSpeed(tool_wrist_open_angle)<<" "
+          << _toolTipPosition.transpose() << " "
+          << _toolTipSpeed.transpose() << " "
+          << _toolTipAcc.transpose() << " "
+          << _toolTipJerk.transpose() << " "
+          << _toolTipQuaternion.x()<<" "
+          << _toolTipQuaternion.y()<<" "
+          << _toolTipQuaternion.z()<<" "
+          << _toolTipQuaternion.w()<<" "
+          << _toolJointPosition(tool_yaw)<<" "
           <<  precisionPOS_on<<" "
           <<  precisionANG_on<<" "
           <<  precisionGRASP_on<<" "
-          << _footBaseWorldForce->force.x<<" "
-          << _footBaseWorldForce->force.y<<" "
-          << _footBaseWorldForce->force.z<<" "
-          << _footBaseWorldForce->torque.x<<" "
-          << _footBaseWorldForce->torque.y<<" "
-          << _footBaseWorldForce->torque.z<<" "
-          << _platformJointPosition[RIGHT_TOOL].transpose()<<" "
-          << _platformJointVelocity[RIGHT_TOOL].transpose()<<" "
-          << _platformJointEffortD[RIGHT_TOOL].transpose()<<" "
-          << _platformJointEffortM[RIGHT_TOOL].transpose()<<" "
-          << _platformJointEffortRef[RIGHT_TOOL].transpose()<<" "
-          << _legGravityCompTorques[RIGHT_TOOL].transpose()<<" "
-          << _hapticTorques[RIGHT_TOOL].transpose()<<" "
-          << _hapticAxisFilterPos[RIGHT_TOOL]<<" "
-          << _hapticAxisFilterGrasp[RIGHT_TOOL]<<" "
-          << _myThreshold[RIGHT_TOOL]<<" "
+          << _footBaseWorldForce.force.x<<" "
+          << _footBaseWorldForce.force.y<<" "
+          << _footBaseWorldForce.force.z<<" "
+          << _footBaseWorldForce.torque.x<<" "
+          << _footBaseWorldForce.torque.y<<" "
+          << _footBaseWorldForce.torque.z<<" "
+          << _platformJointPosition.transpose()<<" "
+          << _platformJointVelocity.transpose()<<" "
+          << _platformJointEffortD.transpose()<<" "
+          << _platformJointEffortM.transpose()<<" "
+          << _platformJointEffortRef.transpose()<<" "
+          << _legGravityCompTorques.transpose()<<" "
+          << _hapticTorques.transpose()<<" "
+          << _hapticAxisFilterPos<<" "
+          << _hapticAxisFilterGrasp<<" "
+          << _myThreshold<<" "
           << std::endl;
     }
     else
@@ -739,13 +690,20 @@ void targetObject::recordStatistics(){
       _statsOutputFile << "t"<< " "
 					<< "nT"<< " "
           << "stat"<< " "
-          << "posTX"<<" "
-          << "posTY"<<" "
-          << "posTZ"<<" "
-          << "quatTX"<<" "
-          << "quatTY"<<" "
-          << "quatTZ"<<" "
-          << "quatTW"<<" "
+          << "posTXSpawn"<<" "
+          << "posTYSpawn"<<" "
+          << "posTZSpawn"<<" "
+          << "quatTXSpawn"<<" "
+          << "quatTYSpawn"<<" "
+          << "quatTZSpawn"<<" "
+          << "quatTWSpawn"<<" "
+          << "posTXCurrent"<<" "
+          << "posTYCurrent"<<" "
+          << "posTZCurrent"<<" "
+          << "quatTXCurrent"<<" "
+          << "quatTYCurrent"<<" "
+          << "quatTZCurrent"<<" "
+          << "quatTWCurrent"<<" "
           << "graspAngle"<<" "
           << "graspAngSpeed"<<" "
           << "posTipX" << " "
@@ -818,116 +776,182 @@ void targetObject::recordStatistics(){
 	}
 }
 
-  void targetObject::readToolState(const sensor_msgs::JointState::ConstPtr &msg, unsigned int n_) {
+  void targetObject::readToolState(const sensor_msgs::JointState::ConstPtr &msg) {
 
   for (unsigned int i = 0; i < NB_TOOL_AXIS_FULL; i++) {
-    me->_toolJointPosition[n_](i) = msg->position[i];
-    me->_toolJointSpeed[n_](i) = msg->velocity[i];
+    me->_toolJointPosition(i) = msg->position[i];
+    me->_toolJointSpeed(i) = msg->velocity[i];
   }
 
-  if (!_flagToolJointsConnected[n_]) {
-    ROS_INFO("Joints received from tool %i", n_);
+  if (!_flagToolJointsConnected) {
+    ROS_INFO("Joints received from tool %s", Tools_Names[_myTrackID]);
   }
-  _flagToolJointsConnected[n_] = true;
+  _flagToolJointsConnected = true;
 }
 
-  void targetObject::readPlatformState(const sensor_msgs::JointState::ConstPtr &msg, unsigned int n_) {
+  void targetObject::readPlatformState(const sensor_msgs::JointState::ConstPtr &msg) {
 
   for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
-    // me->_platformJointStates_prev[n_](i) = me->_platformJointStates[n_](i);
-    me->_platformJointPosition[n_](i) = msg->position[i];
-    me->_platformJointVelocity[n_](i) = msg->velocity[i];
-    me->_platformJointEffortD[n_](i) = msg->effort[i];
+    // me->_platformJointStates_prev(i) = me->_platformJointStates(i);
+    me->_platformJointPosition(i) = msg->position[i];
+    me->_platformJointVelocity(i) = msg->velocity[i];
+    me->_platformJointEffortD(i) = msg->effort[i];
   }
 
-  if (!_flagPlatformJointsConnected[n_]) {
-    ROS_INFO("Joints received from platform %i", n_);
+  if (!_flagPlatformJointsConnected) {
+    ROS_INFO("Joints received from platform %s", Tools_Names[_myTrackID]);
   }
-  _flagPlatformJointsConnected[n_] = true;
-  }
-
-  void targetObject::readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg, unsigned int n_) {
-
-  for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
-    // me->_platformJointStates_prev[n_](i) = me->_platformJointStates[n_](i);
-    me->_legGravityCompTorques[n_](i) = msg->ros_effort[i];
+  _flagPlatformJointsConnected = true;
   }
 
-  if (!_flagLegGravityTorquesConnected[n_]) {
-    ROS_INFO("Platform  %i Input Connected", n_);
-  }
-  _flagLegGravityTorquesConnected[n_] = true;
-  }
-
-  void targetObject::readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_) {
+  void targetObject::readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg) {
 
   for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
-    // me->_platformJointStates_prev[n_](i) = me->_platformJointStates[n_](i);
-    me->_platformJointPosition[n_](i) = msg->platform_position[Axis_Mod[i]] * conversion_factor[i];
-    me->_platformJointVelocity[n_](i) = msg->platform_speed[Axis_Mod[i]] * conversion_factor[i];
-    me->_platformJointEffortD[n_](i) = msg->platform_effortD[Axis_Mod[i]];
-    me->_platformJointEffortRef[n_](i) = msg->platform_effortRef[Axis_Mod[i]];
-    // me->_platformJointEffortM[n_](i) = msg->platform_effortM[Axis_Mod[i]];
+    // me->_platformJointStates_prev(i) = me->_platformJointStates(i);
+    me->_legGravityCompTorques(i) = msg->ros_effort[i];
   }
 
-  if (!_flagPlatformJointsConnected[n_]) {
-    ROS_INFO("Joints received from platform %i", n_);
+  if (!_flagLegGravityTorquesConnected) {
+    ROS_INFO("Platform %s Input Connected", Tools_Names[_myTrackID]);
   }
-  _flagPlatformJointsConnected[n_] = true;
+  _flagLegGravityTorquesConnected = true;
+  }
+
+  void targetObject::readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg) {
+
+  for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
+    // me->_platformJointStates_prev(i) = me->_platformJointStates(i);
+    me->_platformJointPosition(i) = msg->platform_position[Axis_Mod[i]] * conversion_factor[i];
+    me->_platformJointVelocity(i) = msg->platform_speed[Axis_Mod[i]] * conversion_factor[i];
+    me->_platformJointEffortD(i) = msg->platform_effortD[Axis_Mod[i]];
+    me->_platformJointEffortRef(i) = msg->platform_effortRef[Axis_Mod[i]];
+    // me->_platformJointEffortM(i) = msg->platform_effortM[Axis_Mod[i]];
+  }
+
+  if (!_flagPlatformJointsConnected) {
+    ROS_INFO("Joints received from platform %s", Tools_Names[_myTrackID]);
+  }
+  _flagPlatformJointsConnected = true;
 }
 
 
 
-void targetObject::computeToolTipDerivatives(unsigned int n_){
-   if (n_==ALL_TOOLS)
-  {
-    for (unsigned int i=0; i<ALL_TOOLS; i++)
-    {
-      computeToolTipDerivatives(i);
-    }
-  }
-  else
-  {
+void targetObject::computeToolTipDerivatives(){
     double freq = 1.0/_dt;
-    _toolTipSpeedPrev[n_] = _toolTipSpeed[n_];
-    _toolTipSpeed[n_]= _toolTipSpeedFilter[n_]->update((_toolTipPosition[n_] - _toolTipPositionPrev[n_]) * freq);
-    _toolTipAccPrev[n_] = _toolTipAcc[n_];
-    _toolTipAcc[n_]= _toolTipAccFilter[n_]->update((_toolTipSpeed[n_] - _toolTipSpeedPrev[n_]) * freq);
-    _toolTipJerk[n_]= _toolTipJerkFilter[n_]->update((_toolTipAcc[n_] - _toolTipAccPrev[n_]) * freq);
-  }
+    _toolTipSpeedPrev = _toolTipSpeed;
+    _toolTipSpeed= _toolTipSpeedFilter->update((_toolTipPosition - _toolTipPositionPrev) * freq);
+    _toolTipAccPrev = _toolTipAcc;
+    _toolTipAcc= _toolTipAccFilter->update((_toolTipSpeed - _toolTipSpeedPrev) * freq);
+    _toolTipJerk= _toolTipJerkFilter->update((_toolTipAcc - _toolTipAccPrev) * freq);
 }
 
 
-void targetObject::readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg, unsigned int n_){
-    _footBaseWorldForce[n_] = msg->wrench;
-    if (!_flagFootBaseForceConnected[n_])
+void targetObject::readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg){
+    _footBaseWorldForce = msg->wrench;
+  if (!_flagFootBaseForceConnected)
 	 {
-		ROS_INFO("Reading forces in the foot %i base w.r.t. world",n_);
-    _flagFootBaseForceConnected[n_] = true;
+		ROS_INFO("Reading forces in the foot %s base w.r.t. world",Tools_Names[_myTrackID]);
+    _flagFootBaseForceConnected = true;
 	 }
 }
 
-void targetObject::readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg, unsigned int n_){
+void targetObject::readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg){
     for (size_t i = 0; i < NB_AXIS; i++)
     {
-      _platformJointEffortM[n_](i) = msg->platform_effortM[i];
+      _platformJointEffortM(i) = msg->platform_effortM[i];
     }    
 }
 
-void targetObject::readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg, unsigned int n_)
+void targetObject::readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg)
 {
-    _hapticAxisFilterPos[n_] = msg->sGrasp_hFilters[p_x];  
-    _hapticAxisFilterGrasp[n_] = msg->sGrasp_hFilters[p_roll];
-    _myThreshold[n_] = msg->sGrasp_threshold;   
-    _aState[n_] = (targetObject::Action_State) msg->sGrasp_aState;
+    _hapticAxisFilterPos = msg->sGrasp_hFilters[p_x];  
+    _hapticAxisFilterGrasp = msg->sGrasp_hFilters[p_roll];
+    _myThreshold = msg->sGrasp_threshold;   
+    _aState = (targetObject::Action_State) msg->sGrasp_aState;
     for (size_t i = 0; i < NB_AXIS; i++)
     {
-      _hapticTorques[n_](i) = msg->sGrasp_hapticTorques[i];
+      _hapticTorques(i) = msg->sGrasp_hapticTorques[i];
     }
 }
   
   
+void targetObject::readGazeboLinkStates(const gazebo_msgs::LinkStates::ConstPtr &msg){
   
+  _msgGazeboLinkStates = *msg;
+  if (!_flagGazeboLinkStateRead)
+  {
+    _flagGazeboLinkStateRead=true;
+  }
+  
+}
+
+void targetObject::getGazeboTargetCurrentPos()
+{
+  Eigen::Vector3d torsoPosition; 
+  Eigen::Vector3d targetWorldPosition;
+  torsoPosition.setZero(); targetWorldPosition.setZero();
+
+  if (_flagGazeboLinkStateRead)
+  {
+    for (size_t i = 0; i < _msgGazeboLinkStates.name.size() ; i++)
+    {
+      if (_msgGazeboLinkStates.name[i].compare("body::torso_link")==0)
+      {
+        tf::pointMsgToEigen(_msgGazeboLinkStates.pose[i].position,
+                              torsoPosition);
+        //std::cout<<"torso position"<<torsoPosition.transpose()<<std::endl;
+      }
+      else if (_msgGazeboLinkStates.name[i].compare(std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_base_link")==0)
+      {
+        tf::pointMsgToEigen(_msgGazeboLinkStates.pose[i].position,
+                              targetWorldPosition);
+        _myPositionCurrent=targetWorldPosition - torsoPosition;
+       // std::cout<<"target position"<<_myPositionCurrent.transpose()<<std::endl;
+
+        // tf::quaternionMsgToEigen(_msgGazeboLinkStates.pose[i].orientation,
+        //                            _myQuaternionCurrent);
+        // _myRotationMatrixCurrent = _myQuaternionCurrent.normalized().toRotationMatrix();
+      }
+    }
+
+     Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionCurrent;
+      if (targetTrocarDistance.norm() > FLT_EPSILON) 
+      {
+        _myRotationMatrixCurrent = Utils_math<double>::rodriguesRotation(
+        Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+      }
+      _myRotationMatrixCurrent =  _myRotationMatrixCurrent * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
+      _myQuaternionCurrent = Eigen::Quaternion<double>(_myRotationMatrixCurrent);
+
+
+    _flagGazeboLinkStateRead = false;
+  }
+}
+
+bool targetObject::setGazeboTargetSpawnPose(){
+
+  _srvSetGzLinkState.request.link_state.link_name = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_base_link";
+  _srvSetGzLinkState.request.link_state.reference_frame = "body::torso_link";
+  geometry_msgs::Point positionToSpawn;
+  tf::pointEigenToMsg(_myPositionSpawn,positionToSpawn);
+  _srvSetGzLinkState.request.link_state.pose.position = positionToSpawn;
+  geometry_msgs::Quaternion quaternionToSpawn;
+  tf::quaternionEigenToMsg(_myQuaternionSpawn,quaternionToSpawn);
+  _srvSetGzLinkState.request.link_state.pose.orientation = quaternionToSpawn;
+
+  if (_clientSetTargetPose.call(_srvSetGzLinkState))
+  {
+    ROS_INFO("Target (re-)spawned to a new position");
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Error in (re-)spawning the target to a new position");
+    return false;
+  }
+}
+
+
   
   
   

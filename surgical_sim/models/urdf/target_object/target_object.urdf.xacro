@@ -1,20 +1,55 @@
 <?xml version="1.0" ?>
 <robot name="target_object" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+
+  <xacro:include filename="$(find surgical_sim)/models/urdf/target_object/templates/gazebo.links.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/models/urdf/target_object/templates/gazebo.joints.xacro"/>
+
+
   <xacro:arg name="parent_link" default="world"/>
+  <xacro:property name="sphere_radius" value="0.005"/>
   
-  <xacro:include filename="$(find surgical_sim)/models/urdf/target_object/base_object/base_object.urdf.xacro"/>
+  <xacro:arg name="targetID" default="right"/>
+   
+  <link name="$(arg parent_link)"/>
 
-    
-  <link name="world"/>
+  <link name="$(arg targetID)_target_base_link">
+    <visual>
+        <origin rpy="${-pi/2} 0 0" xyz="0 0 0"/>
+        <geometry>
+          <sphere radius="0.007"/>
+        </geometry>
+      <material name="Cyan">
+       <color rgba="0 1.0 1.0 0.5"/>
+     </material>  
+    </visual>
+    <collision>
+        <origin rpy="${-pi/2} 0 0" xyz="0 0 0"/>
+        <geometry>
+          <sphere radius="0.007"/>
+        </geometry>
+    </collision>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="10"/>
+        <inertia ixx="${2/5 * 1 * sphere_radius * sphere_radius }" ixy="0.0" ixz="0.0" iyy="${2/5 * 1 * sphere_radius * sphere_radius }" iyz="0.0" izz="${2/5 * 1 * sphere_radius * sphere_radius }"/>
+      </inertial> 
+  </link>
 
-  <xacro:create_base_object
-        parent_link="world"
-        xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  <joint name="$(arg targetID)_target_base_joint" type="floating">
+     <origin xyz="0.0 0.0 0.0" rpy="0.0 0 0"/>
+     <parent link="$(arg parent_link)"/>
+     <child link="$(arg targetID)_target_base_link"/>
+  </joint>
+
+    <xacro:gazebo_links name="$(arg parent_link)"/>
+    <xacro:gazebo_links name="$(arg targetID)_base_link"/>
+    <xacro:gazebo_joints name="$(arg targetID)_base_joint"/>
+
   
     <gazebo>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
-        <robotNamespace>/target_object</robotNamespace>
+        <robotNamespace>/$(arg targetID)_target</robotNamespace>
         <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
         <legacyModeNS>true</legacyModeNS>
         </plugin>

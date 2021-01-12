@@ -32,7 +32,7 @@
       <child link="${tool_id}_tool_wrist_forceps_link_2_left"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity="3.0" effort="10"/>
+      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity="3.0" effort="20"/>
     </joint>
 
   <!-- joint 6-2: tool open angle 2  -->
@@ -41,7 +41,7 @@
       <child link="${tool_id}_tool_wrist_forceps_link_2_right"/>
       <axis xyz="0 0 1"/>
       <origin rpy="3.1415926 0 0" xyz="0 0 0"/>
-      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity="3.0" effort="10"/>
+      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity="3.0" effort="20"/>
       <mimic joint="${tool_id}_tool_wrist_open_angle" multiplier="1"/>
     </joint>
 

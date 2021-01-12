@@ -1,0 +1,21 @@
+<launch>
+  <arg name="model" default="$(find surgical_sim)/models/urdf/target_object/target_object.urdf.xacro" />
+  <arg name="id" default="right" />
+  <arg name="targetName" default="t1"/>
+  <arg name="subjectID" default="s0"/>
+  <arg name="spawn_delay" default="0"/>
+
+  <arg name="freq" default="300.0"/>  
+  
+  <group ns="$(arg id)_$(arg targetName)_target">
+    <node name="target_state_publisher" pkg="surgical_sim" type="targetObject" output="screen">
+    <param name="trackingMode" value="$(arg id)"/>
+    <param name="targetName" value="$(arg targetName)"/>
+    <param name="subjectID" value="$(arg subjectID)"/>
+    <param name="publish_frequency" type="double" value="$(arg freq)" />
+    <remap from="joint_states" to="target_state_publisher/joint_states"/>
+  </node>
+  </group>
+  
+</launch>
+

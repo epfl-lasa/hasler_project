@@ -13,6 +13,9 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 
+#include <gazebo_msgs/LinkStates.h>   //! to read the current state of the base link of the target sphere
+#include <gazebo_msgs/SetLinkState.h> //! to re-spawn the the target sphere
+
 #include "Eigen/Eigen"
 #include <signal.h>
 #include "nav_msgs/Path.h"
@@ -55,9 +58,8 @@ using namespace Eigen;
   ListofTools(LEFT_TOOL, "left")   \
   ListofTools(ALL_TOOLS,"~")
 #define ListofTools(enumeration, names) enumeration,
-enum TrackMode : size_t { TOOL_NAMES };
+enum TrackID : size_t { TOOL_NAMES };
 #undef ListofTools
-#define NB_TOOLS ALL_TOOLS
 
 
 #define TOOL_AXES                                                                   \
@@ -65,8 +67,6 @@ enum TrackMode : size_t { TOOL_NAMES };
   ListofToolAxes(tool_roll, "tool_roll")              \
   ListofToolAxes(tool_yaw, "tool_yaw")    \
   ListofToolAxes(tool_insertion, "tool_insertion")  \
-  ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
-  ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
   ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
   ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
   ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
@@ -75,7 +75,7 @@ enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
-#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 2)
 const float SCALE_GAINS_LINEAR_POSITION  = 1.0f;
 const float SCALE_GAINS_ANGULAR_POSITION = 1e-4f * RAD_TO_DEG;
 
@@ -91,65 +91,68 @@ private:
 
   Target_Status _myStatus;
   
-  Action_State _aState[NB_TOOLS];
+  Action_State _aState;
 
-  TrackMode _myTrackMode; 
+  TrackID _myTrackID; 
   // Eigen and Geometry
 
-  Eigen::Vector3d    _toolTipPosition[NB_TOOLS];
-  Eigen::Vector3d    _toolTipPositionPrev[NB_TOOLS];
-  Eigen::Vector3d    _toolTipSpeed[NB_TOOLS];
-  Eigen::Vector3d    _toolTipSpeedPrev[NB_TOOLS];
-  Eigen::Vector3d    _toolTipAcc[NB_TOOLS];
-  Eigen::Vector3d    _toolTipAccPrev[NB_TOOLS];
+  Eigen::Vector3d    _toolTipPosition;
+  Eigen::Vector3d    _toolTipPositionPrev;
+  Eigen::Vector3d    _toolTipSpeed;
+  Eigen::Vector3d    _toolTipSpeedPrev;
+  Eigen::Vector3d    _toolTipAcc;
+  Eigen::Vector3d    _toolTipAccPrev;
 
-  Eigen::Vector3d    _toolTipJerk[NB_TOOLS];
-  Eigen::Vector3d    _toolTipPositionWRTTorso[NB_TOOLS];
-  Eigen::Quaterniond _toolTipQuaternion[NB_TOOLS];
-  Eigen::Quaterniond _toolTipQuaternionWRTTorso[NB_TOOLS];
-  Eigen::Quaterniond _toolTipQuaternionPrev[NB_TOOLS];
-  Eigen::Matrix3d    _toolTipRotationMatrix[NB_TOOLS];
-  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointSpeed[NB_TOOLS];
-  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointPosition[NB_TOOLS];
-  geometry_msgs::Wrench _footBaseWorldForce[NB_TOOLS];
+  Eigen::Vector3d    _toolTipJerk;
+  Eigen::Vector3d    _toolTipPositionWRTTorso;
+  Eigen::Quaterniond _toolTipQuaternion;
+  Eigen::Quaterniond _toolTipQuaternionWRTTorso;
+  Eigen::Quaterniond _toolTipQuaternionPrev;
+  Eigen::Matrix3d    _toolTipRotationMatrix;
+  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointSpeed;
+  Eigen::Matrix<double, NB_TOOL_AXIS_FULL,1> _toolJointPosition;
+  geometry_msgs::Wrench _footBaseWorldForce;
 
-  double _hapticAxisFilterPos[NB_TOOLS];
-  double _hapticAxisFilterGrasp[NB_TOOLS];
+  double _hapticAxisFilterPos;
+  double _hapticAxisFilterGrasp;
   
-  MatLP_Filterd* _toolTipPositionFilter[NB_TOOLS];
-  MatLP_Filterd* _toolTipSpeedFilter[NB_TOOLS];
-  MatLP_Filterd* _toolTipAccFilter[NB_TOOLS];
-  MatLP_Filterd* _toolTipJerkFilter[NB_TOOLS];
+  MatLP_Filterd* _toolTipPositionFilter;
+  MatLP_Filterd* _toolTipSpeedFilter;
+  MatLP_Filterd* _toolTipAccFilter;
+  MatLP_Filterd* _toolTipJerkFilter;
 
    
-  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointPosition[NB_TOOLS];
-  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointVelocity[NB_TOOLS];
-  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortD[NB_TOOLS];
-  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortRef[NB_TOOLS];
-  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortM[NB_TOOLS];
-  // Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates_prev[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointPosition;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointVelocity;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortD;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortRef;
+  Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointEffortM;
+  // Eigen::Matrix<double, NB_PLATFORM_AXIS,1> _platformJointStates_prev;
   
-  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _legGravityCompTorques[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _legGravityCompTorques;
 
-  Eigen::Vector3d    _trocarPosition[NB_TOOLS];
-  Eigen::Quaterniond _trocarQuaternion[NB_TOOLS];
-  Eigen::Matrix3d    _trocarRotationMatrix[NB_TOOLS];
+  Eigen::Vector3d    _trocarPosition;
+  Eigen::Quaterniond _trocarQuaternion;
+  Eigen::Matrix3d    _trocarRotationMatrix;
 
 
-  Eigen::Vector3d    _myPosition;
-  Eigen::Quaterniond _myQuaternion;
-  Eigen::Matrix3d    _myRotationMatrix;
+  Eigen::Vector3d    _myPositionSpawn;
+  Eigen::Quaterniond _myQuaternionSpawn;
+  Eigen::Matrix3d    _myRotationMatrixSpawn;
 
+  Eigen::Vector3d    _myPositionCurrent;
+  Eigen::Quaterniond _myQuaternionCurrent;
+  Eigen::Matrix3d    _myRotationMatrixCurrent;
   Eigen::Vector3d _maxLimsTarget;
 
-  double _vibrationGrasping[NB_TOOLS];
-  double _impedanceGrasping[NB_TOOLS];
+  double _vibrationGrasping;
+  double _impedanceGrasping;
 
-  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques[NB_TOOLS];
+  Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques;
 
-  double _precisionPos[NB_TOOLS], _precisionAng[NB_TOOLS],_precisionGrasp[NB_TOOLS];
+  double _precisionPos, _precisionAng,_precisionGrasp;
   
-  double _myThreshold[NB_TOOLS];
+  double _myThreshold;
 
   double _myRandomAngle;
   // std variables
@@ -179,31 +182,37 @@ private:
   tf2_ros::TransformBroadcaster* _tfBroadcaster;
   geometry_msgs::TransformStamped _msgtargetObjectTransform;
   
-  ros::Publisher _pubSharedGrasp[NB_TOOLS];
-  custom_msgs_gripper::SharedGraspingMsg _msgSharedGrasp[NB_TOOLS];
+  custom_msgs_gripper::SharedGraspingMsg _msgSharedGrasp;
 
+  gazebo_msgs::SetLinkState _srvSetGzLinkState;
   
+  ros::Publisher _pubSharedGrasp;
   ros::Publisher _pubTargetReachedSphere;
-  ros::Publisher _pubFootInput[NB_TOOLS];
+  ros::Publisher _pubFootInput;
+
+  ros::ServiceClient _clientSetTargetPose;
 
 
-  custom_msgs::FootInputMsg_v5 _msgFootInput[NB_TOOLS];
+  custom_msgs::FootInputMsg_v5 _msgFootInput;
 
   visualization_msgs::Marker _msgTargetReachedSphere;
 
+  gazebo_msgs::LinkStates _msgGazeboLinkStates;
 
-  ros::Subscriber _subSharedGrasp[NB_TOOLS];
-  ros::Subscriber _subLegGravityCompTorques[NB_TOOLS];
-  ros::Subscriber _subToolTipPose[NB_TOOLS];
-  ros::Subscriber _subToolJointStates[NB_TOOLS];
-  ros::Subscriber _subPlatformJointStates[NB_TOOLS];
-  ros::Subscriber _subFootPlatform[NB_TOOLS];
-  ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
-  ros::Subscriber _subPlatformROSInput[NB_TOOLS];
-  ros::Subscriber _subUnbiasedJointTorques[NB_TOOLS];
 
-  vibrator* _myVibrator[NB_TOOLS];
-  smoothSignals* _mySmoothSignals[NB_TOOLS];
+  ros::Subscriber _subGazeboLinkStates;
+  ros::Subscriber _subSharedGrasp;
+  ros::Subscriber _subLegGravityCompTorques;
+  ros::Subscriber _subToolTipPose;
+  ros::Subscriber _subToolJointStates;
+  ros::Subscriber _subPlatformJointStates;
+  ros::Subscriber _subFootPlatform;
+  ros::Subscriber _subForceFootRestWorld;
+  ros::Subscriber _subPlatformROSInput;
+  ros::Subscriber _subUnbiasedJointTorques;
+
+  vibrator* _myVibrator;
+  smoothSignals* _mySmoothSignals;
   
   //KDL 
 
@@ -213,17 +222,20 @@ private:
   // KDL::Frame _myFrame;
   
   //! boolean variables
-  bool  _flagFootBaseForceConnected[NB_TOOLS];
-  bool  _flagLegGravityTorquesConnected[NB_TOOLS];
-  bool  _flagPlatformJointsConnected[NB_TOOLS];
-  bool  _flagToolJointsConnected[NB_TOOLS];
-  bool  _flagToolTipTFConnected[NB_TOOLS];
-  bool  _flagTrocarTFConnected[NB_TOOLS];
-  bool  _flagTargetReached[NB_TOOLS];
-  bool  _flagTargetReachedOpen[NB_TOOLS];
-  bool  _flagTargetGrasped[NB_TOOLS];
+  bool  _flagFootBaseForceConnected;
+  bool  _flagLegGravityTorquesConnected;
+  bool  _flagPlatformJointsConnected;
+  bool  _flagToolJointsConnected;
+  bool  _flagToolTipTFConnected;
+  bool  _flagTrocarTFConnected;
+  bool  _flagTargetReached;
+  bool  _flagTargetReachedOpen;
+  bool  _flagTargetGrasped;
+  bool  _flagTargetSpawned;
   bool  _flagRecordingStarted;
   bool  _stop;
+
+  volatile bool _flagGazeboLinkStateRead;
 
 
   // METHODS
@@ -248,33 +260,41 @@ private:
   int NB_TARGETS;
   int _nTarget, _xTarget;
 
-  void readToolState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
+
+  void readGazeboLinkStates(const gazebo_msgs::LinkStates::ConstPtr &msg);
+
+  void readToolState(const sensor_msgs::JointState::ConstPtr &msg);
   
-  void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg,unsigned int n_);
+  void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg);
 
-  void readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg, unsigned int n_);
+  void readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg);
 
-  void readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
+  void readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg);
 
-  void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg,unsigned int n_);
+  void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg);
 
-  void readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
+  void readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg);
   
-  void readGtraTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg,unsigned int n_);
+  void readGtraTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg);
   
-  void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg, unsigned int n_);
+  void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg);
   
-  void computeToolTipDerivatives(unsigned int n_);
+  void computeToolTipDerivatives();
 
-  void readTFTool(unsigned int n_);
-  void readTFTrocar(unsigned int n_);
+  void readTFTool();
+  void readTFTrocar();
   void writeTFtargetObject();
 
-  void computetargetObjectPose(unsigned int n_);
-  void evaluateTarget(unsigned int n_);
+  void computetargetObjectPose();
+  void evaluateTarget();
 
   void publishTargetReachedSphere(int32_t action_, Marker_Color color_, double delay_);
   void recordStatistics();
+
+  bool setGazeboTargetSpawnPose();
+  void getGazeboTargetCurrentPos();
+
+
 
 
   //! OTHER METHODS
