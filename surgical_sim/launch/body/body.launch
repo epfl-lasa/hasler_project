@@ -36,7 +36,7 @@
     
     <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
       <arg name="gui" value="$(arg gazebo_gui)"/>
-      <arg name="w_world" value="$(arg rviz)"/>  
+      <arg name="gazeboBringUp" value="$(arg rviz)"/>  
     </include> 
 
     <node name="spawn_body" pkg="gazebo_ros" type="spawn_model" launch-prefix="bash -c 'sleep $(arg spawn_delay); $0 $@'" 

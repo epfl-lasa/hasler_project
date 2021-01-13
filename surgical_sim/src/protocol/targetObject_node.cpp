@@ -16,6 +16,7 @@ int main(int argc, char **argv) {
   nh_.getParam("publish_frequency", frequency);
 
   urdf::Model modelLoad;
+  
   if (!modelLoad.initParam("robot_description")) {
     ROS_ERROR("Failed to parse urdf file");
     return -1;

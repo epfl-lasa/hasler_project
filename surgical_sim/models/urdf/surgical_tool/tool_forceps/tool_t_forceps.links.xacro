@@ -32,6 +32,13 @@
         </geometry>
         <material name="gray"><color rgba="0.5 0.5 0.9 1.0"/></material>
       </visual>
+      <collision>
+        <origin rpy="0.00 1.5708 0.0" xyz="0.0 -0.0002 0.000"/>
+        <geometry>
+          <mesh filename="package://surgical_sim/models/meshes/stl/tool/tool_wrist_forceps_link_1_shaft.stl"/>
+        </geometry>
+        <material name="gray"><color rgba="0.5 0.5 0.9 1.0"/></material>
+      </collision>
       <inertial>
 				<origin xyz="0 0 0" rpy="0 0 0"/>
 				<mass value="0.1"/>

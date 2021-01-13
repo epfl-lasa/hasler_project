@@ -14,13 +14,22 @@
  <arg name="frequencyVibration" default="70.0"/>
  <arg name="sharedGrasp" default="false"/>
  <arg name="gazeboGUI" default="false"/>
+ <arg name="w_name" default="$(find surgical_sim)/worlds/surgical_sim.world"/>
 
+
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" />
+  
+    <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
+      <arg name="gazeboBringUp" default="true"/>
+      <arg name="gui" default="$(arg gazeboGUI)"/>
+      <arg name="w_name" value="$(arg w_name)"/>
+    </include> 
 
  <include file="$(find surgical_sim)/launch/body/body.launch">
   <arg name="w_liver" value="true" />
-  <arg name="rviz" value="true"/>
-  <arg name="gazebo_gui" value="$(arg gazeboGUI)"/>
-  <arg name="rvizConfig" value="$(arg rvizConfig)"/>
+  <arg name="rviz" value="false"/>
+  <arg name="gazebo_gui" value="false"/>
   <arg name="spawn_delay" value="0"/>
   <arg name="bodyOrigin.x" value="0.0"/>
   <arg name="bodyOrigin.y" value="0.5"/>

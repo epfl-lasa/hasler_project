@@ -13,7 +13,7 @@
       <child link="${tool_id}_tool_pitch_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 -${pi/2} ${pi}" xyz="0.0 0.0 0.0"/>
-      <limit lower="-1.5707" upper="1.5707" velocity="100" effort="30"/>
+      <limit lower="-1.5707" upper="1.5707" velocity="10" effort="1000"/>
     </joint>
 
     <!-- joint 2: tool_pitch -->
@@ -23,7 +23,7 @@
       <child link="${tool_id}_tool_roll_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="-${pi/2} -${pi/2} 0" xyz="0 0 0"/>
-      <limit lower="-1.5707" upper="1.5707" velocity="100" effort="30"/>
+      <limit lower="-1.5707" upper="1.5707" velocity="10" effort="1000"/>
     </joint>
   
 
@@ -35,7 +35,7 @@
       <child link="${tool_id}_tool_yaw_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="${pi/2} 0 0" xyz="0 0 0"/>
-      <limit velocity="2" effort="10"/>
+      <limit velocity="10" effort="1000"/>
       <!-- <limit lower="-${1.5 * pi}" upper="${1.5 * pi}" velocity="2" effort="2"/> -->
     </joint>
 
@@ -46,7 +46,7 @@
       <child link="${tool_id}_tool_main_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 0" xyz="0 0 -${0.4318-0.041}"/>
-      <limit lower="0.0" upper="0.240" velocity="100" effort="30"/>
+      <limit lower="0.0" upper="0.240" velocity="10" effort="1000"/>
     </joint>
 
     <joint name="${tool_id}_tool_wrist_fixed" type="fixed">

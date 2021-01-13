@@ -14,7 +14,10 @@
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <gazebo_msgs/LinkStates.h>   //! to read the current state of the base link of the target sphere
-#include <gazebo_msgs/SetLinkState.h> //! to re-spawn the the target sphere
+
+
+#include <gazebo_msgs/SpawnModel.h> //! to re-spawn the the target sphere
+#include <gazebo_msgs/DeleteModel.h>
 
 #include "Eigen/Eigen"
 #include <signal.h>
@@ -85,7 +88,7 @@ private:
   
   static targetObject *me;
 
-  enum Marker_Color {NONE, RED, YELLOW, CYAN};
+  enum Marker_Color {NONE, RED, YELLOW, CYAN, WHITE};
   enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_GRASPED, TARGET_CHANGED};
   enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
 
@@ -170,6 +173,7 @@ private:
   
   // urdf
   urdf::Model _myModel;
+  std::string _myModelXml;
   // ros variables
   ros::NodeHandle _n;
   ros::Rate _loopRate;
@@ -184,18 +188,21 @@ private:
   
   custom_msgs_gripper::SharedGraspingMsg _msgSharedGrasp;
 
-  gazebo_msgs::SetLinkState _srvSetGzLinkState;
+  gazebo_msgs::SpawnModel _srvGzSpawnModel;
+  gazebo_msgs::DeleteModel _srvGzDeleteModel;
   
   ros::Publisher _pubSharedGrasp;
   ros::Publisher _pubTargetReachedSphere;
+  ros::Publisher _pubRvizTargetMarker;
   ros::Publisher _pubFootInput;
-
-  ros::ServiceClient _clientSetTargetPose;
+  ros::ServiceClient _clientSpawnNewTargetAtPos;
+  ros::ServiceClient _clientDeleteOldTarget;
 
 
   custom_msgs::FootInputMsg_v5 _msgFootInput;
 
   visualization_msgs::Marker _msgTargetReachedSphere;
+  visualization_msgs::Marker _msgRvizTarget;
 
   gazebo_msgs::LinkStates _msgGazeboLinkStates;
 
@@ -233,6 +240,7 @@ private:
   bool  _flagTargetGrasped;
   bool  _flagTargetSpawned;
   bool  _flagRecordingStarted;
+
   bool  _stop;
 
   volatile bool _flagGazeboLinkStateRead;
@@ -289,11 +297,14 @@ private:
   void evaluateTarget();
 
   void publishTargetReachedSphere(int32_t action_, Marker_Color color_, double delay_);
+  void publishMarkerTargetRviz(int32_t action_, Marker_Color color_, double delay_);
   void recordStatistics();
-
-  bool setGazeboTargetSpawnPose();
+  
+  
   void getGazeboTargetCurrentPos();
-
+  
+  bool gazeboDeleteModel();
+  bool gazeboSpawnModel();
 
 
 

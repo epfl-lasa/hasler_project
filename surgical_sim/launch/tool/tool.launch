@@ -23,6 +23,15 @@
     <group ns="$(arg id)_tool">
         <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) with_gripper:=$(arg w_gripper) toolID:=$(arg id) originTrocar.x:=$(arg originTrocar_x) originTrocar.y:=$(arg originTrocar_y) originTrocar.z:=$(arg originTrocar_z)"/>
 
+      <group if="$(arg rosControl)">
+        <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
+          <arg name="gui" value="$(arg gazebo_gui)"/>
+          <arg name="gazeboBringUp" value="$(arg rviz)"/>  
+        </include> 
+
+      <node name="spawn_$(arg id)_tool" pkg="gazebo_ros" type="spawn_model" launch-prefix="bash -c 'sleep $(arg spawn_delay); $0 $@'" 
+            args="-urdf -model $(arg id)_tool -param /$(arg id)_tool/robot_description " respawn="false" output="screen" />
+      </group>
 
       <include file="$(find surgical_sim)/launch/tool/tool.controller.launch">
           <arg name="id" value="$(arg id)"/>
@@ -41,15 +50,7 @@
 
    
       
-      <group if="$(arg rosControl)">
-        <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
-          <arg name="gui" value="$(arg gazebo_gui)"/>
-          <arg name="w_world" value="$(arg rviz)"/>  
-        </include> 
-
-        <node name="spawn_$(arg id)_tool" pkg="gazebo_ros" type="spawn_model" launch-prefix="bash -c 'sleep $(arg spawn_delay); $0 $@'" 
-            args="-urdf -model $(arg id)_tool -param /$(arg id)_tool/robot_description " respawn="false" output="screen" />
-      </group>
+      
 
   <group if="$(arg rviz)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" required="true" />

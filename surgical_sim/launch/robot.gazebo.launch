@@ -6,19 +6,18 @@
   <arg name="gui" default="true"/>
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/>
-  <arg name="w_world" default="false" />
-  <!-- <arg name="robot_description_name" default="robot_description" />
-  <arg name="robot_name" default="robot" /> -->
-  <!-- <arg name="spawn_delay" default="0" /> -->
+  <arg name="gazeboBringUp" default="true" />
+  <arg name="w_name" default="worlds/empty.world"/>
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
-  <group if="$(arg w_world)">  
+  <group if="$(arg gazeboBringUp)">  
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
       <arg name="debug" value="$(arg debug)" />
       <arg name="gui" value="$(arg gui)" />
       <arg name="paused" value="$(arg paused)"/>
       <arg name="use_sim_time" value="$(arg use_sim_time)"/>
       <arg name="headless" value="$(arg headless)"/>
+      <arg name="world_name" value="w_name"/>
     </include>
   </group>
 

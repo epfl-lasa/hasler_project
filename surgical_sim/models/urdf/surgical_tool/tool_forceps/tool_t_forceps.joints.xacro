@@ -14,7 +14,7 @@
       <child link="${tool_id}_tool_wrist_forceps_link"/>
       <axis xyz="0 0 1"/>
       <origin rpy="-1.5708 -1.5708 ${pi}" xyz="0 0 0"/>
-      <limit lower="-${pi/2}" upper="${pi/2}" velocity="3.0" effort="2"/>
+      <!-- <limit lower="-${pi/2}" upper="${pi/2}" velocity="3.0" effort="2"/> -->
     </joint>
     
     <!-- joint 6: Tool wrist yaw joint -->
@@ -23,7 +23,7 @@
       <child link="${tool_id}_tool_wrist_forceps_link_shaft"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0.00 -1.5708 -1.5708" xyz="0.0091 0 0"/>
-      <limit lower="-${pi/2}" upper="${pi/2}" velocity="3.0" effort="2"/>
+      <!-- <limit lower="-${pi/2}" upper="${pi/2}" velocity="3.0" effort="2"/> -->
     </joint>
     
     <!-- joint 6-1: tool open angle 1 -->
@@ -32,7 +32,7 @@
       <child link="${tool_id}_tool_wrist_forceps_link_2_left"/>
       <axis xyz="0 0 1"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity="3.0" effort="20"/>
+      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity=".4" effort="1000"/>
     </joint>
 
   <!-- joint 6-2: tool open angle 2  -->
@@ -41,7 +41,7 @@
       <child link="${tool_id}_tool_wrist_forceps_link_2_right"/>
       <axis xyz="0 0 1"/>
       <origin rpy="3.1415926 0 0" xyz="0 0 0"/>
-      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity="3.0" effort="20"/>
+      <limit lower="${radians(0.0)}" upper="${radians(30.0)}" velocity=".4" effort="1000"/>
       <mimic joint="${tool_id}_tool_wrist_open_angle" multiplier="1"/>
     </joint>
 

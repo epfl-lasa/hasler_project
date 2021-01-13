@@ -182,6 +182,15 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
       }
     }
    // cout<<_maxLimsTarget.transpose()<<endl;
+
+  if (!_n.getParam("/"+std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target/robot_description",_myModelXml)) {
+    ROS_ERROR("Failed to get model xml file");
+  }
+  else
+  {
+    ROS_INFO("Successfully got xml file");
+  }
+
 }
 
 targetObject::~targetObject() { me->_n.shutdown(); }
@@ -195,6 +204,8 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   _hapticTorques.setZero();
   
   _pubTargetReachedSphere = _n.advertise<visualization_msgs::Marker>("target_reached_sphere", 0);
+  _pubRvizTargetMarker = _n.advertise<visualization_msgs::Marker>("marker_target_rviz", 0);
+
   _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
   _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[_myTrackID])+"/sharedGrasping",0);
 
@@ -203,12 +214,18 @@ bool targetObject::init() //! Initialization of the node. Its datatype
 
   _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[_myTrackID])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  
+  
   _subLegGravityCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>(
                   "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  
+  
+  
   _subForceFootRestWorld = _n.subscribe<geometry_msgs::WrenchStamped>(
                   "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  
   _subUnbiasedJointTorques = _n.subscribe<custom_msgs::FootOutputMsg_v3>(
                   "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
@@ -222,7 +239,8 @@ bool targetObject::init() //! Initialization of the node. Its datatype
       , 1, boost::bind(&targetObject::readPlatformState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
 
-  _clientSetTargetPose = _n.serviceClient<gazebo_msgs::SetLinkState>("/gazebo/set_link_state");
+  _clientSpawnNewTargetAtPos = _n.serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_urdf_model");
+  _clientDeleteOldTarget = _n.serviceClient<gazebo_msgs::DeleteModel>("/gazebo/delete_model");
 
   //boost::posix_time::ptime thistime = ros::Time::now().toBoost();
   boost::posix_time::ptime thistime = boost::posix_time::second_clock::local_time();
@@ -265,17 +283,26 @@ void targetObject::run() {
     readTFTool();
     computeToolTipDerivatives();
     readTFTrocar(); 
+    
+    
+    
+    if (_flagTrocarTFConnected)
+    {
+      computetargetObjectPose();
+    }
+
     if (_flagToolJointsConnected && _flagToolTipTFConnected)
     {
       evaluateTarget();
+      writeTFtargetObject();
       ROS_INFO_ONCE("It is possible to evaluate the target now!");
     }
     else
     {
       ROS_WARN("Not possible to evaluate target, possible the tool is not present in the scenario");
     }
-    computetargetObjectPose();
-    writeTFtargetObject();
+    publishMarkerTargetRviz(visualization_msgs::Marker::ADD, WHITE,0.0);
+    
     recordStatistics();
     ros::spinOnce();
     _loopRate.sleep();
@@ -372,11 +399,13 @@ void targetObject::readTFTrocar() {
 void targetObject::computetargetObjectPose(){
   if (_targetsXYZ[0].second[_xTarget]!=0.0f)
   {
-    if(!_flagTargetSpawned)
+    if(!_flagTargetSpawned && _trocarPosition.norm()!=0.0)
     {
       _myPositionSpawn << _targetsXYZ[0].second[_xTarget], _targetsXYZ[2].second[_xTarget], -_targetsXYZ[1].second[_xTarget]+0.01;
-      //cout<<_myPosition.transpose()<<endl; 
+      cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
       Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
+      // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
+      _myRotationMatrixSpawn.setIdentity();
       if (targetTrocarDistance.norm() > FLT_EPSILON) 
       {
         _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(
@@ -384,7 +413,14 @@ void targetObject::computetargetObjectPose(){
       }
       _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
       _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
-      _flagTargetSpawned = setGazeboTargetSpawnPose();
+      if (gazeboDeleteModel())
+      {
+        _flagTargetSpawned = gazeboSpawnModel();
+      }
+      else
+      {
+        _flagTargetSpawned = false;
+      }
     }
     else
     {
@@ -480,6 +516,7 @@ void targetObject::evaluateTarget()
     _startDelayForCorrection=ros::Time::now();
     ROS_INFO("New target generated!. # %i",_nTarget);
     _myStatus = TARGET_CHANGED;
+    _flagTargetSpawned=false;
     publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
     }
   }
@@ -495,7 +532,7 @@ void targetObject::evaluateTarget()
 
 
 void targetObject::writeTFtargetObject(){
-  _msgtargetObjectTransform.child_frame_id=std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_base_link";
+  _msgtargetObjectTransform.child_frame_id=std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_main_link";
   _msgtargetObjectTransform.header.frame_id="torso_link";
   _msgtargetObjectTransform.header.stamp = ros::Time::now();
 
@@ -573,7 +610,7 @@ std::vector<std::pair<std::string, std::vector<float>>> targetObject::readTarget
 
 void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color_, double delay_){
   
-  _msgTargetReachedSphere.header.frame_id = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_base_link";
+  _msgTargetReachedSphere.header.frame_id = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link";
   _msgTargetReachedSphere.header.stamp = ros::Time::now();
   _msgTargetReachedSphere.ns = "";
   _msgTargetReachedSphere.id = 0;
@@ -622,6 +659,70 @@ void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color
   // only if using a MESH_RESOURCE marker type:
   // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
   _pubTargetReachedSphere.publish(_msgTargetReachedSphere);
+  // _mutex.unlock();
+}
+
+void targetObject::publishMarkerTargetRviz (int32_t action_,Marker_Color color_, double delay_){
+  
+
+
+  _msgRvizTarget.header.frame_id = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+  _msgRvizTarget.header.stamp = ros::Time::now();
+  _msgRvizTarget.ns = "";
+  _msgRvizTarget.id = 1;
+  _msgRvizTarget.type = visualization_msgs::Marker::MESH_RESOURCE;
+  _msgRvizTarget.mesh_resource = "package://surgical_sim/models/meshes/stl/target/target.STL";
+  _msgRvizTarget.action = action_;
+  _msgRvizTarget.pose.position.x = 0.0;
+  _msgRvizTarget.pose.position.y = 0.0;
+  _msgRvizTarget.pose.position.z = 0.0;
+  _msgRvizTarget.pose.orientation.x = 0.0;
+  _msgRvizTarget.pose.orientation.y = 0.0;
+  _msgRvizTarget.pose.orientation.z = 0.0;
+  _msgRvizTarget.pose.orientation.w = 1;
+  _msgRvizTarget.scale.x = 1.00;
+  _msgRvizTarget.scale.y = 1.00;
+  _msgRvizTarget.scale.z = 1.00;
+  _msgRvizTarget.color.a = 1.0; // Don't forget to set the alpha!
+  switch (color_)
+  {
+  case WHITE:
+  {
+    _msgRvizTarget.color.r = 1;
+    _msgRvizTarget.color.g = 1;
+    _msgRvizTarget.color.b = 1;  
+    break;
+  }  
+  case YELLOW:
+  {
+    _msgRvizTarget.color.r = 1;
+    _msgRvizTarget.color.g = 1;
+    _msgRvizTarget.color.b = 0;  
+    break;
+  }
+  case RED:
+  {
+    _msgRvizTarget.color.r = 1;
+    _msgRvizTarget.color.g = 0;
+    _msgRvizTarget.color.b = 0;  
+    break;
+  }
+  case CYAN:
+  {
+    _msgRvizTarget.color.r = 0;
+    _msgRvizTarget.color.g = 1;
+    _msgRvizTarget.color.b = 1;  
+    break;
+  }
+  default:
+  {
+    break;
+  }
+  }
+  _msgRvizTarget.lifetime= ros::Duration(delay_);
+  // only if using a MESH_RESOURCE marker type:
+  // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
+  _pubTargetReachedSphere.publish(_msgRvizTarget);
   // _mutex.unlock();
 }
 
@@ -888,8 +989,11 @@ void targetObject::readGazeboLinkStates(const gazebo_msgs::LinkStates::ConstPtr 
 void targetObject::getGazeboTargetCurrentPos()
 {
   Eigen::Vector3d torsoPosition; 
+  Eigen::Quaterniond torsoQuaternion; 
   Eigen::Vector3d targetWorldPosition;
-  torsoPosition.setZero(); targetWorldPosition.setZero();
+  Eigen::Quaterniond targetWorldQuaternion; 
+
+  torsoPosition.setZero(); targetWorldPosition.setZero(); torsoQuaternion.setIdentity(); targetWorldQuaternion.setIdentity();
 
   if (_flagGazeboLinkStateRead)
   {
@@ -899,47 +1003,56 @@ void targetObject::getGazeboTargetCurrentPos()
       {
         tf::pointMsgToEigen(_msgGazeboLinkStates.pose[i].position,
                               torsoPosition);
+        tf::quaternionMsgToEigen(_msgGazeboLinkStates.pose[i].orientation,
+                              torsoQuaternion);
         //std::cout<<"torso position"<<torsoPosition.transpose()<<std::endl;
       }
-      else if (_msgGazeboLinkStates.name[i].compare(std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_base_link")==0)
+      else if (_msgGazeboLinkStates.name[i].compare(std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link")==0)
       {
         tf::pointMsgToEigen(_msgGazeboLinkStates.pose[i].position,
                               targetWorldPosition);
-        _myPositionCurrent=targetWorldPosition - torsoPosition;
-       // std::cout<<"target position"<<_myPositionCurrent.transpose()<<std::endl;
+        _myPositionCurrent=torsoQuaternion.inverse()._transformVector(targetWorldPosition - torsoPosition);
+       //std::cout<<"target position"<<_myPositionCurrent.transpose()<<std::endl;
 
-        // tf::quaternionMsgToEigen(_msgGazeboLinkStates.pose[i].orientation,
-        //                            _myQuaternionCurrent);
-        // _myRotationMatrixCurrent = _myQuaternionCurrent.normalized().toRotationMatrix();
+        tf::quaternionMsgToEigen(_msgGazeboLinkStates.pose[i].orientation,
+                                   targetWorldQuaternion);
+        _myQuaternionCurrent = torsoQuaternion.inverse()*targetWorldQuaternion ;
+        _myRotationMatrixCurrent = _myQuaternionCurrent.normalized().toRotationMatrix();
       }
     }
 
-     Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionCurrent;
-      if (targetTrocarDistance.norm() > FLT_EPSILON) 
-      {
-        _myRotationMatrixCurrent = Utils_math<double>::rodriguesRotation(
-        Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
-      }
-      _myRotationMatrixCurrent =  _myRotationMatrixCurrent * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
-      _myQuaternionCurrent = Eigen::Quaternion<double>(_myRotationMatrixCurrent);
+    // Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionCurrent;
+    // cout<<"targetTrocarDistanceCurrent: "<<targetTrocarDistance.transpose()<<endl; 
+    //   if (targetTrocarDistance.norm() > FLT_EPSILON) 
+    //   {
+    //     _myRotationMatrixCurrent = Utils_math<double>::rodriguesRotation(
+    //     Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+    //   }
+    //   _myRotationMatrixCurrent =  _myRotationMatrixCurrent * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
+    //   _myQuaternionCurrent = Eigen::Quaternion<double>(_myRotationMatrixCurrent);
 
 
     _flagGazeboLinkStateRead = false;
   }
 }
 
-bool targetObject::setGazeboTargetSpawnPose(){
+bool targetObject::gazeboSpawnModel(){
 
-  _srvSetGzLinkState.request.link_state.link_name = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_base_link";
-  _srvSetGzLinkState.request.link_state.reference_frame = "body::torso_link";
+
+  _srvGzSpawnModel.request.model_xml = _myModelXml.c_str();
+  // _srvGzSpawnModel.request.model_xml = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target/robot_description";
+  _srvGzSpawnModel.request.model_name =  std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target";
+  // _srvGzSpawnModel.request.link_state.link_name = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+  _srvGzSpawnModel.request.robot_namespace = "/" + std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target";
+  _srvGzSpawnModel.request.reference_frame = "body::torso_link";
   geometry_msgs::Point positionToSpawn;
   tf::pointEigenToMsg(_myPositionSpawn,positionToSpawn);
-  _srvSetGzLinkState.request.link_state.pose.position = positionToSpawn;
+  _srvGzSpawnModel.request.initial_pose.position = positionToSpawn;
   geometry_msgs::Quaternion quaternionToSpawn;
   tf::quaternionEigenToMsg(_myQuaternionSpawn,quaternionToSpawn);
-  _srvSetGzLinkState.request.link_state.pose.orientation = quaternionToSpawn;
+  _srvGzSpawnModel.request.initial_pose.orientation = quaternionToSpawn;
 
-  if (_clientSetTargetPose.call(_srvSetGzLinkState))
+  if (_clientSpawnNewTargetAtPos.call(_srvGzSpawnModel))
   {
     ROS_INFO("Target (re-)spawned to a new position");
     return true;
@@ -951,6 +1064,21 @@ bool targetObject::setGazeboTargetSpawnPose(){
   }
 }
 
+bool targetObject::gazeboDeleteModel(){
+
+  _srvGzDeleteModel.request.model_name = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target";
+
+  if (_clientDeleteOldTarget.call(_srvGzDeleteModel))
+  {
+    ROS_INFO("Target ready to change position");
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Error in changing target position");
+    return false;
+  }
+}
 
   
   
