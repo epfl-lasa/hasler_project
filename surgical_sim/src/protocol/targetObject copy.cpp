@@ -300,9 +300,9 @@ void targetObject::run() {
 
     if (_flagToolJointsConnected && _flagToolTipTFConnected && _flagTargetSpawned)
     {
-     evaluateTarget();
+     // evaluateTarget();
       writeTFtargetObject();
-      _tfBroadcaster->sendTransform(_msgAllTransforms);
+      //_tfBroadcaster->sendTransform(_msgAllTransforms);
       ROS_INFO_ONCE("It is possible to evaluate the target now!");
     }
     else
@@ -420,18 +420,19 @@ void targetObject::computetargetObjectPose(){
       }
       _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
       _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
-       static double lim = _myModel.getJoint(std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_z_joint")->limits->upper;
-       _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*lim);
-       double randomAngleNew = _myRandomAngle;
-       while(_myRandomAngle == randomAngleNew)
-       {
-         randomAngleNew = Utils_math<double>::bound(- 1.5 * M_PI + ((rand()%(NB_TARGETS-1)) * 3.0 * M_PI)/((NB_TARGETS-1)), -1.5 * M_PI, 1.5 * M_PI ) ;
-         if (_myRandomAngle!=randomAngleNew)
-           {
-             break;
-           }
-       }
-       _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleNew, Vector3d::UnitZ()).toRotationMatrix();
+      // static double lim = _myModel.getJoint(std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_z_joint")->limits->upper;
+      // _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*lim);
+
+      // double randomAngleNew = _myRandomAngle;
+      // while(_myRandomAngle == randomAngleNew)
+      // {
+      //   randomAngleNew = Utils_math<double>::bound(- 1.5 * M_PI + ((rand()%(NB_TARGETS-1)) * 3.0 * M_PI)/((NB_TARGETS-1)), -1.5 * M_PI, 1.5 * M_PI ) ;
+      //   if (_myRandomAngle!=randomAngleNew)
+      //     {
+      //       break;
+      //     }
+      // }
+      // _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleNew, Vector3d::UnitZ()).toRotationMatrix();
       if (gazeboDeleteModel())
       {
         _flagTargetSpawned = gazeboSpawnModel();

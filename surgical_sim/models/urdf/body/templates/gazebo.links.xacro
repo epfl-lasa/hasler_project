@@ -10,7 +10,7 @@
 			<turnGravityOff>true</turnGravityOff>
 			<mu1>${fricCoeff1}</mu1>
 			<mu2>${fricCoeff2}</mu2>
-			<kd>${kdCollision}</kd>
+			<!-- <kd>${kdCollision}</kd> -->
 			<selfCollide>true</selfCollide>
 			<maxVel>0.01</maxVel>
 			<minDepth>0.001</minDepth>

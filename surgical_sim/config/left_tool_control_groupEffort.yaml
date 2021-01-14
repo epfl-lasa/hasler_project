@@ -22,17 +22,17 @@
       - left_tool_wrist_open_angle_mimic
       - left_tool_yaw
     left_tool_insertion: 
-      pid: {p: 10000, i: 0, d: 1000}
+      pid: {p: 10000, i: 0 , d: 100, i_clamp_min: -10.0, i_clamp_max: 10.0 }
     left_tool_pitch: 
-      pid: {p: 10000, i: 0, d: 1000}
+      pid: {p: 10000, i: 0 , d: 100, i_clamp_min: -10.0, i_clamp_max: 10.0 }
     left_tool_roll: 
-      pid: {p: 10000, i: 0, d: 1000}
+      pid: {p: 5000, i: 0 , d: 50, i_clamp_min: -10.0, i_clamp_max: 10.0 }
     left_tool_wrist_open_angle: 
-      pid: {p: 1000, i: 0, d: 30}
+      pid: {p: 5000, i: 0 , d: 1 , i_clamp_min: -10.0, i_clamp_max: 10.0 }
     left_tool_wrist_open_angle_mimic: 
-      pid: {p: 1000, i: 0, d: 30}
+      pid: {p: 5000, i: 0 , d: 1, i_clamp_min: -10.0, i_clamp_max: 10.0 }
     left_tool_yaw:
-      pid: {p: 1000, i: 0, d: 500}
+      pid: {p: 1000, i: 0, d: 10, i_clamp_min: -10.0, i_clamp_max: 10.0 }
   # gazebo_ros_control:
   #   pid_gains:
   #     left_tool_insertion: {p: 10000, i: 0, d: 1000}

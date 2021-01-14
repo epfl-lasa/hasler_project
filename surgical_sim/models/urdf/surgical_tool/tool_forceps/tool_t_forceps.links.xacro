@@ -18,8 +18,8 @@
       
       <inertial>
           <origin xyz="0 0 0" rpy="0 0 0"/>
-          <mass value="0.1"/>
-          <inertia ixx="1" ixy="0.0" ixz="0.0" iyy="1" iyz="0.0" izz="0.05"/>
+          <mass value="0.05"/>
+				  <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
 			</inertial> 
     </link>
 
@@ -41,8 +41,8 @@
       </collision>
       <inertial>
 				<origin xyz="0 0 0" rpy="0 0 0"/>
-				<mass value="0.1"/>
-        <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.005"/>
+				<mass value="0.05"/>
+				<inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
 			</inertial> 
     </link>
     
@@ -93,8 +93,8 @@
 
     <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link"/>
     <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_shaft"/>
-    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_left"/>
-    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_right"/>
+    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_left" frictCoeff="10.0"/>
+    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_right" frictCoeff="10.0"/>
     <xacro:gazebo_links name="${tool_id}_tool_tip_link"/>
     <xacro:gazebo_links name="${tool_id}_tool_tip_link_ee"/>
   </xacro:macro>
