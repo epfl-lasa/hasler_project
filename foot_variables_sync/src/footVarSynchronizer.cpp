@@ -150,12 +150,12 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
 		
-		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/left/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
+		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/left_platform/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>("/left/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
+		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>("/left_platform/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());							
-    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/left/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/left_leg/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
@@ -164,13 +164,13 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
 		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
-		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/right/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
+		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/right_platform/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>("/right/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
+		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>("/right_platform/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());	
 
-		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/right/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/right_leg/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
 		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
@@ -412,11 +412,11 @@ void footVarSynchronizer::changeParamCheck()
 	}
 
 	// Check Desired Position
-	if (fabs(_config.desired_Position_X - _configPrev.desired_Position_X) *
-		fabs(_config.desired_Position_Y - _configPrev.desired_Position_Y) *
-		fabs(_config.desired_Position_PITCH - _configPrev.desired_Position_PITCH) *
-		fabs(_config.desired_Position_ROLL - _configPrev.desired_Position_ROLL) *
-		fabs(_config.desired_Position_YAW - _configPrev.desired_Position_YAW) < FLT_EPSILON)
+	if (fabs(_config.desired_Position_X - _configPrev.desired_Position_X) +
+		fabs(_config.desired_Position_Y - _configPrev.desired_Position_Y) +
+		fabs(_config.desired_Position_PITCH - _configPrev.desired_Position_PITCH) +
+		fabs(_config.desired_Position_ROLL - _configPrev.desired_Position_ROLL) +
+		fabs(_config.desired_Position_YAW - _configPrev.desired_Position_YAW) <= FLT_EPSILON)
 		{ _flagIsParamStillSame[Params_Category::DES_POS] = true; }
 	
 	else { _flagIsParamStillSame[Params_Category::DES_POS] = false;	}
@@ -449,22 +449,22 @@ void footVarSynchronizer::changeParamCheck()
 	// 	(_config.kd_Position_ROLL == _configPrev.kd_Position_ROLL) &&
 	// 	(_config.kd_Position_YAW == _configPrev.kd_Position_YAW) )
 		
-	if (fabs(_config.kp_Position_X - _configPrev.kp_Position_X) *
-		fabs(_config.kp_Position_Y - _configPrev.kp_Position_Y) *
-		fabs(_config.kp_Position_PITCH - _configPrev.kp_Position_PITCH) *
-		fabs(_config.kp_Position_ROLL - _configPrev.kp_Position_ROLL) *
-		fabs(_config.kp_Position_YAW - _configPrev.kp_Position_YAW) *
-		fabs(_config.kp_Position_Y - _configPrev.kp_Position_Y) *
-		fabs(_config.ki_Position_X - _configPrev.ki_Position_X) *
-		fabs(_config.ki_Position_Y - _configPrev.ki_Position_Y) *
-		fabs(_config.ki_Position_PITCH - _configPrev.ki_Position_PITCH) *
-		fabs(_config.ki_Position_ROLL - _configPrev.ki_Position_ROLL) *
-		fabs(_config.ki_Position_YAW - _configPrev.ki_Position_YAW) *
-		fabs(_config.kd_Position_X - _configPrev.kd_Position_X) *
-		fabs(_config.kd_Position_Y - _configPrev.kd_Position_Y) *
-		fabs(_config.kd_Position_PITCH - _configPrev.kd_Position_PITCH) *
-		fabs(_config.kd_Position_ROLL - _configPrev.kd_Position_ROLL) *
-		fabs(_config.kd_Position_YAW - _configPrev.kd_Position_YAW) < FLT_EPSILON)
+	if (fabs(_config.kp_Position_X - _configPrev.kp_Position_X) +
+		fabs(_config.kp_Position_Y - _configPrev.kp_Position_Y) +
+		fabs(_config.kp_Position_PITCH - _configPrev.kp_Position_PITCH) +
+		fabs(_config.kp_Position_ROLL - _configPrev.kp_Position_ROLL) +
+		fabs(_config.kp_Position_YAW - _configPrev.kp_Position_YAW) +
+		fabs(_config.kp_Position_Y - _configPrev.kp_Position_Y) +
+		fabs(_config.ki_Position_X - _configPrev.ki_Position_X) +
+		fabs(_config.ki_Position_Y - _configPrev.ki_Position_Y) +
+		fabs(_config.ki_Position_PITCH - _configPrev.ki_Position_PITCH) +
+		fabs(_config.ki_Position_ROLL - _configPrev.ki_Position_ROLL) +
+		fabs(_config.ki_Position_YAW - _configPrev.ki_Position_YAW) +
+		fabs(_config.kd_Position_X - _configPrev.kd_Position_X) +
+		fabs(_config.kd_Position_Y - _configPrev.kd_Position_Y) +
+		fabs(_config.kd_Position_PITCH - _configPrev.kd_Position_PITCH) +
+		fabs(_config.kd_Position_ROLL - _configPrev.kd_Position_ROLL) +
+		fabs(_config.kd_Position_YAW - _configPrev.kd_Position_YAW) <= FLT_EPSILON)
 
 	{
 		_flagIsParamStillSame[Params_Category::PID_POS] = true;
@@ -472,27 +472,28 @@ void footVarSynchronizer::changeParamCheck()
 
 	else
 	{
+		std::cout<<"boo"<<std::endl;
 		_flagIsParamStillSame[Params_Category::PID_POS] = false;
 	}
 
 	// Check PID Gains Speed
 
-	if (fabs(_config.kp_Speed_X - _configPrev.kp_Speed_X) *
-		fabs(_config.kp_Speed_Y - _configPrev.kp_Speed_Y) *
-		fabs(_config.kp_Speed_PITCH - _configPrev.kp_Speed_PITCH) *
-		fabs(_config.kp_Speed_ROLL - _configPrev.kp_Speed_ROLL) *
-		fabs(_config.kp_Speed_YAW - _configPrev.kp_Speed_YAW) *
-		fabs(_config.kp_Speed_Y - _configPrev.kp_Speed_Y) *
-		fabs(_config.ki_Speed_X - _configPrev.ki_Speed_X) *
-		fabs(_config.ki_Speed_Y - _configPrev.ki_Speed_Y) *
-		fabs(_config.ki_Speed_PITCH - _configPrev.ki_Speed_PITCH) *
-		fabs(_config.ki_Speed_ROLL - _configPrev.ki_Speed_ROLL) *
-		fabs(_config.ki_Speed_YAW - _configPrev.ki_Speed_YAW) *
-		fabs(_config.kd_Speed_X - _configPrev.kd_Speed_X) *
-		fabs(_config.kd_Speed_Y - _configPrev.kd_Speed_Y) *
-		fabs(_config.kd_Speed_PITCH - _configPrev.kd_Speed_PITCH) *
-		fabs(_config.kd_Speed_ROLL - _configPrev.kd_Speed_ROLL) *
-		fabs(_config.kd_Speed_YAW - _configPrev.kd_Speed_YAW) < FLT_EPSILON)
+	if (fabs(_config.kp_Speed_X - _configPrev.kp_Speed_X) +
+		fabs(_config.kp_Speed_Y - _configPrev.kp_Speed_Y) +
+		fabs(_config.kp_Speed_PITCH - _configPrev.kp_Speed_PITCH) +
+		fabs(_config.kp_Speed_ROLL - _configPrev.kp_Speed_ROLL) +
+		fabs(_config.kp_Speed_YAW - _configPrev.kp_Speed_YAW) +
+		fabs(_config.kp_Speed_Y - _configPrev.kp_Speed_Y) +
+		fabs(_config.ki_Speed_X - _configPrev.ki_Speed_X) +
+		fabs(_config.ki_Speed_Y - _configPrev.ki_Speed_Y) +
+		fabs(_config.ki_Speed_PITCH - _configPrev.ki_Speed_PITCH) +
+		fabs(_config.ki_Speed_ROLL - _configPrev.ki_Speed_ROLL) +
+		fabs(_config.ki_Speed_YAW - _configPrev.ki_Speed_YAW) +
+		fabs(_config.kd_Speed_X - _configPrev.kd_Speed_X) +
+		fabs(_config.kd_Speed_Y - _configPrev.kd_Speed_Y) +
+		fabs(_config.kd_Speed_PITCH - _configPrev.kd_Speed_PITCH) +
+		fabs(_config.kd_Speed_ROLL - _configPrev.kd_Speed_ROLL) +
+		fabs(_config.kd_Speed_YAW - _configPrev.kd_Speed_YAW) <= FLT_EPSILON)
 
 	{
 		_flagIsParamStillSame[Params_Category::PID_SPEED] = true;
@@ -517,11 +518,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check Position
 
-	if (fabs(_msgFootOutput.platform_position[0] - _msgFootOutputPrev.platform_position[0]) *
-		fabs(_msgFootOutput.platform_position[1] - _msgFootOutputPrev.platform_position[1]) *
-		fabs(_msgFootOutput.platform_position[2] - _msgFootOutputPrev.platform_position[2]) * 
-		fabs(_msgFootOutput.platform_position[3] - _msgFootOutputPrev.platform_position[3]) *
-		fabs(_msgFootOutput.platform_position[4] - _msgFootOutputPrev.platform_position[4]) <FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_position[0] - _msgFootOutputPrev.platform_position[0]) +
+		fabs(_msgFootOutput.platform_position[1] - _msgFootOutputPrev.platform_position[1]) +
+		fabs(_msgFootOutput.platform_position[2] - _msgFootOutputPrev.platform_position[2]) + 
+		fabs(_msgFootOutput.platform_position[3] - _msgFootOutputPrev.platform_position[3]) +
+		fabs(_msgFootOutput.platform_position[4] - _msgFootOutputPrev.platform_position[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_POS] = true;
 	}
@@ -532,11 +533,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check Speed
 
-	if (fabs(_msgFootOutput.platform_speed[0] - _msgFootOutputPrev.platform_speed[0]) *
-		fabs(_msgFootOutput.platform_speed[1] - _msgFootOutputPrev.platform_speed[1]) *
-		fabs(_msgFootOutput.platform_speed[2] - _msgFootOutputPrev.platform_speed[2]) * 
-		fabs(_msgFootOutput.platform_speed[3] - _msgFootOutputPrev.platform_speed[3]) *
-		fabs(_msgFootOutput.platform_speed[4] - _msgFootOutputPrev.platform_speed[4]) < FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_speed[0] - _msgFootOutputPrev.platform_speed[0]) +
+		fabs(_msgFootOutput.platform_speed[1] - _msgFootOutputPrev.platform_speed[1]) +
+		fabs(_msgFootOutput.platform_speed[2] - _msgFootOutputPrev.platform_speed[2]) + 
+		fabs(_msgFootOutput.platform_speed[3] - _msgFootOutputPrev.platform_speed[3]) +
+		fabs(_msgFootOutput.platform_speed[4] - _msgFootOutputPrev.platform_speed[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_SPEED] = true;
 	}
@@ -547,11 +548,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check EffortD
 
-	if (fabs(_msgFootOutput.platform_effortD[0] - _msgFootOutputPrev.platform_effortD[0]) *
-		fabs(_msgFootOutput.platform_effortD[1] - _msgFootOutputPrev.platform_effortD[1]) *
-		fabs(_msgFootOutput.platform_effortD[2] - _msgFootOutputPrev.platform_effortD[2]) * 
-		fabs(_msgFootOutput.platform_effortD[3] - _msgFootOutputPrev.platform_effortD[3]) *
-		fabs(_msgFootOutput.platform_effortD[4] - _msgFootOutputPrev.platform_effortD[4]) <FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_effortD[0] - _msgFootOutputPrev.platform_effortD[0]) +
+		fabs(_msgFootOutput.platform_effortD[1] - _msgFootOutputPrev.platform_effortD[1]) +
+		fabs(_msgFootOutput.platform_effortD[2] - _msgFootOutputPrev.platform_effortD[2]) + 
+		fabs(_msgFootOutput.platform_effortD[3] - _msgFootOutputPrev.platform_effortD[3]) +
+		fabs(_msgFootOutput.platform_effortD[4] - _msgFootOutputPrev.platform_effortD[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTD] = true;
 	}
@@ -562,11 +563,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check EffortM
 
-	if (fabs(_msgFootOutput.platform_effortM[0] - _msgFootOutputPrev.platform_effortM[0]) *
-		fabs(_msgFootOutput.platform_effortM[1] - _msgFootOutputPrev.platform_effortM[1]) *
-		fabs(_msgFootOutput.platform_effortM[2] - _msgFootOutputPrev.platform_effortM[2]) * 
-		fabs(_msgFootOutput.platform_effortM[3] - _msgFootOutputPrev.platform_effortM[3]) *
-		fabs(_msgFootOutput.platform_effortM[4] - _msgFootOutputPrev.platform_effortM[4]) <FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_effortM[0] - _msgFootOutputPrev.platform_effortM[0]) +
+		fabs(_msgFootOutput.platform_effortM[1] - _msgFootOutputPrev.platform_effortM[1]) +
+		fabs(_msgFootOutput.platform_effortM[2] - _msgFootOutputPrev.platform_effortM[2]) + 
+		fabs(_msgFootOutput.platform_effortM[3] - _msgFootOutputPrev.platform_effortM[3]) +
+		fabs(_msgFootOutput.platform_effortM[4] - _msgFootOutputPrev.platform_effortM[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTM] = true;
 	}

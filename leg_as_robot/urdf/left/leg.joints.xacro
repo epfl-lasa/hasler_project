@@ -3,89 +3,89 @@
 
   <xacro:macro name="define_leg_joints" params="leg_id:=left">
   
-    <joint name="${leg_id}_hip_adduction" type="revolute">
+    <joint name="${leg_id}_leg_hip_adduction" type="revolute">
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <parent link="${leg_id}_hip_base_link"/>
-      <child link="${leg_id}_hip_adduction_link"/>
+      <parent link="${leg_id}_leg_hip_base_link"/>
+      <child link="${leg_id}_leg_hip_adduction_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(0)}" upper="${radians(44)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
-    <joint name="${leg_id}_hip_extension" type="revolute">
+    <joint name="${leg_id}_leg_hip_extension" type="revolute">
       <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
-      <parent link="${leg_id}_hip_adduction_link"/>
-      <child link="${leg_id}_hip_extension_link"/>
+      <parent link="${leg_id}_leg_hip_adduction_link"/>
+      <child link="${leg_id}_leg_hip_extension_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-30)}" upper="${radians(32)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
-    <joint name="${leg_id}_hip_roll" type="revolute">
+    <joint name="${leg_id}_leg_hip_roll" type="revolute">
       <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
-      <parent link="${leg_id}_hip_extension_link"/>
-      <child link="${leg_id}_hip_roll_link"/>
+      <parent link="${leg_id}_leg_hip_extension_link"/>
+      <child link="${leg_id}_leg_hip_roll_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-33)}" upper="${radians(33)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
-    <joint name="${leg_id}_knee_extension" type="revolute">
+    <joint name="${leg_id}_leg_knee_extension" type="revolute">
       <origin xyz="0 0 ${d3_leg}" rpy="${-pi/2} 0 ${pi}"/> 
-      <parent link="${leg_id}_hip_roll_link"/>
-      <child link="${leg_id}_knee_extension_link"/>
+      <parent link="${leg_id}_leg_hip_roll_link"/>
+      <child link="${leg_id}_leg_knee_extension_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-90)}" upper="${radians(30)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
 
-    <joint name="${leg_id}_ankle_pitch" type="revolute">
+    <joint name="${leg_id}_leg_ankle_pitch" type="revolute">
       <origin xyz="${r4_leg} 0 0" rpy="${pi} 0 ${pi}"/>
-      <parent link="${leg_id}_knee_extension_link"/>
-      <child link="${leg_id}_ankle_pitch_link"/>
+      <parent link="${leg_id}_leg_knee_extension_link"/>
+      <child link="${leg_id}_leg_ankle_pitch_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-45.8)}" upper="${radians(29.8)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
-    <joint name="${leg_id}_ankle_roll" type="revolute">
+    <joint name="${leg_id}_leg_ankle_roll" type="revolute">
       <origin xyz="0 0 0" rpy="${pi/2} 0 0"/> 
-      <parent link="${leg_id}_ankle_pitch_link"/>
-      <child link="${leg_id}_ankle_roll_link"/>
+      <parent link="${leg_id}_leg_ankle_pitch_link"/>
+      <child link="${leg_id}_leg_ankle_roll_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-22)}" upper="${radians(17)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
-    <!-- <joint name="${leg_id}_ankle_yaw" type="revolute">
+    <!-- <joint name="${leg_id}_leg_ankle_yaw" type="revolute">
       <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/> 
-      <parent link="${leg_id}_ankle_roll_link"/>
-      <child link="${leg_id}_ankle_yaw_link"/>
+      <parent link="${leg_id}_leg_ankle_roll_link"/>
+      <child link="${leg_id}_leg_ankle_yaw_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-36)}" upper="${radians(25.9)}"/>
       <axis xyz="0 0 1"/> 
     </joint> -->
 
     
     
-    <joint name="${leg_id}_ankle_yaw" type="revolute">
+    <joint name="${leg_id}_leg_ankle_yaw" type="revolute">
       <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/> 
-      <parent link="${leg_id}_ankle_roll_link"/>
-      <child link="${leg_id}_ankle_yaw_link"/>
+      <parent link="${leg_id}_leg_ankle_roll_link"/>
+      <child link="${leg_id}_leg_ankle_yaw_link"/>
       <limit effort="30" velocity="10.0" lower="${radians(-10)}" upper="${radians(5)}"/>
       <axis xyz="0 0 1"/> 
     </joint>
 
-      <joint name="${leg_id}_fixed_foot_base" type="fixed">
+      <joint name="${leg_id}_leg_fixed_foot_base" type="fixed">
           <origin xyz="0 ${-r7_leg} ${-d7_leg}" rpy="0 0 ${-pi/2}"/> 
-          <parent link="${leg_id}_ankle_yaw_link"/>
-          <child link="${leg_id}_foot_base"/>
+          <parent link="${leg_id}_leg_ankle_yaw_link"/>
+          <child link="${leg_id}_leg_foot_base"/>
       </joint>
 
-      <joint name="${leg_id}_fixed_foot_tip" type="fixed">
+      <joint name="${leg_id}_leg_fixed_foot_tip" type="fixed">
           <origin xyz="${r8_leg} 0 0" rpy="0 0 0"/> 
-          <parent link="${leg_id}_foot_base"/>
-          <child link="${leg_id}_foot_tip"/>
+          <parent link="${leg_id}_leg_foot_base"/>
+          <child link="${leg_id}_leg_foot_tip"/>
       </joint>
       
-      <joint name="${leg_id}_fixed_pedal_tip" type="fixed">
+      <joint name="${leg_id}_leg_fixed_pedal_tip" type="fixed">
           <origin xyz="${r8_leg_extra} 0 0" rpy="0 0 0"/> 
-          <parent link="${leg_id}_foot_tip"/>
-          <child link="${leg_id}_virtual_pedal_tip"/>
+          <parent link="${leg_id}_leg_foot_tip"/>
+          <child link="${leg_id}_leg_virtual_pedal_tip"/>
       </joint>
   </xacro:macro>
 </robot>
