@@ -36,6 +36,8 @@ const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 
 const int Axis_Pos[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_yaw,p_roll};
 
+const float LimitsX[2][2] = {{-0.15,0.05},{-0.05,0.15}};
+
 
 
 surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
@@ -396,10 +398,10 @@ void surgicalTool::publishToolJointCommands() {
 
 
 void surgicalTool::calculateDesiredFrame(){
-  
-  _desiredTargetFrame.p.data[0] = Utils_math<double>::map( _platformJoints(p_x),
+
+  _desiredTargetFrame.p.data[0] =Utils_math<double>::map( _platformJoints(p_x),
                                                           -_platformJointLimsDelta->data(p_x), _platformJointLimsDelta->data(p_x), 
-                                                          -0.15,0.15);
+                                                          LimitsX[_tool_id-1][0],LimitsX[_tool_id-1][1]);
   _desiredTargetFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y),
                                                           -_platformJointLimsDelta->data(p_y), _platformJointLimsDelta->data(p_y), 
                                                           -0.15,0.15);

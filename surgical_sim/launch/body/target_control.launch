@@ -13,7 +13,6 @@
 
   <group ns="$(arg id)_$(arg targetName)_target">
     <node name="target_state_publisher" pkg="surgical_sim" type="targetObject" output="screen">
-    <!-- <remap from="robot_description" to="/$(arg id)_$(arg targetName)_target/robot_description"/> -->
     <param name="trackingMode" value="$(arg id)"/>
     <param name="targetName" value="$(arg targetName)"/>
     <param name="subjectID" value="$(arg subjectID)"/>

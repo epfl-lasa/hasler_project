@@ -13,7 +13,8 @@ Panels:
         - /Right_Leg1
         - /Chair1
         - /target1/Links1
-        - /RobotModel1
+        - /right_platform1
+        - /right_panda1
       Splitter Ratio: 0.715415001
     Tree Height: 825
   - Class: rviz/Selection
@@ -71,27 +72,45 @@ Visualization Manager:
           Value: true
         chair_intermediate_link2:
           Value: true
-        left_trocar_link:
+        right_leg_ankle_pitch_link:
           Value: true
-        right_ankle_pitch_link:
+        right_leg_ankle_roll_link:
           Value: true
-        right_ankle_roll_link:
+        right_leg_ankle_yaw_link:
           Value: true
-        right_ankle_yaw_link:
+        right_leg_foot_base:
           Value: true
-        right_foot_base:
+        right_leg_foot_tip:
           Value: true
-        right_foot_tip:
+        right_leg_hip_adduction_link:
           Value: true
-        right_hip_adduction_link:
+        right_leg_hip_base_link:
           Value: true
-        right_hip_base_link:
+        right_leg_hip_extension_link:
           Value: true
-        right_hip_extension_link:
+        right_leg_hip_roll_link:
           Value: true
-        right_hip_roll_link:
+        right_leg_knee_extension_link:
           Value: true
-        right_knee_extension_link:
+        right_leg_virtual_pedal_tip:
+          Value: true
+        right_panda_link0:
+          Value: true
+        right_panda_link1:
+          Value: true
+        right_panda_link2:
+          Value: true
+        right_panda_link3:
+          Value: true
+        right_panda_link4:
+          Value: true
+        right_panda_link5:
+          Value: true
+        right_panda_link6:
+          Value: true
+        right_panda_link7:
+          Value: true
+        right_panda_link8:
           Value: true
         right_platform_base_link:
           Value: true
@@ -119,9 +138,19 @@ Visualization Manager:
           Value: true
         right_tool_main_link:
           Value: true
+        right_tool_pitch_link:
+          Value: true
+        right_tool_roll_link:
+          Value: true
         right_tool_tip_link:
           Value: true
         right_tool_tip_link_ee:
+          Value: true
+        right_tool_wrist_forceps_link:
+          Value: true
+        right_tool_wrist_forceps_link_2_left:
+          Value: true
+        right_tool_wrist_forceps_link_2_right:
           Value: true
         right_tool_wrist_forceps_link_shaft:
           Value: true
@@ -129,9 +158,7 @@ Visualization Manager:
           Value: true
         right_tool_wrist_shaft_link:
           Value: true
-        right_trocar_link:
-          Value: true
-        right_virtual_pedal_tip:
+        right_tool_yaw_link:
           Value: true
         torso_link:
           Value: true
@@ -147,18 +174,28 @@ Visualization Manager:
           chair_intermediate_link1:
             chair_intermediate_link2:
               chair_base_link:
-                right_hip_base_link:
-                  right_hip_adduction_link:
-                    right_hip_extension_link:
-                      right_hip_roll_link:
-                        right_knee_extension_link:
-                          right_ankle_pitch_link:
-                            right_ankle_roll_link:
-                              right_ankle_yaw_link:
-                                right_foot_base:
-                                  right_foot_tip:
-                                    right_virtual_pedal_tip:
+                right_leg_hip_base_link:
+                  right_leg_hip_adduction_link:
+                    right_leg_hip_extension_link:
+                      right_leg_hip_roll_link:
+                        right_leg_knee_extension_link:
+                          right_leg_ankle_pitch_link:
+                            right_leg_ankle_roll_link:
+                              right_leg_ankle_yaw_link:
+                                right_leg_foot_base:
+                                  right_leg_foot_tip:
+                                    right_leg_virtual_pedal_tip:
                                       {}
+          right_panda_link0:
+            right_panda_link1:
+              right_panda_link2:
+                right_panda_link3:
+                  right_panda_link4:
+                    right_panda_link5:
+                      right_panda_link6:
+                        right_panda_link7:
+                          right_panda_link8:
+                            {}
           right_platform_base_link:
             right_platform_y:
               right_platform_x:
@@ -173,12 +210,23 @@ Visualization Manager:
                             right_platform_virtual_ankle:
                               {}
           right_tool_base_link:
-            {}
+            right_tool_pitch_link:
+              right_tool_roll_link:
+                right_tool_yaw_link:
+                  right_tool_main_link:
+                    right_tool_wrist_link:
+                      right_tool_wrist_shaft_link:
+                        right_tool_wrist_forceps_link:
+                          right_tool_wrist_forceps_link_shaft:
+                            right_tool_tip_link:
+                              right_tool_tip_link_ee:
+                                {}
+                            right_tool_wrist_forceps_link_2_left:
+                              {}
+                            right_tool_wrist_forceps_link_2_right:
+                              {}
           torso_link:
-            left_trocar_link:
-              {}
-            right_trocar_link:
-              {}
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -186,14 +234,6 @@ Visualization Manager:
       Collision Enabled: false
       Enabled: true
       Links:
-        /left_trocar_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        /right_trocar_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
@@ -319,50 +359,50 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        right_ankle_pitch_link:
+        right_leg_ankle_pitch_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        right_ankle_roll_link:
+        right_leg_ankle_roll_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        right_ankle_yaw_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_foot_base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        right_foot_tip:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        right_hip_adduction_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        right_hip_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        right_hip_extension_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        right_hip_roll_link:
+        right_leg_ankle_yaw_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_knee_extension_link:
+        right_leg_foot_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_leg_foot_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_leg_hip_adduction_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_leg_hip_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_leg_hip_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_leg_hip_roll_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_virtual_pedal_tip:
+        right_leg_knee_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_leg_virtual_pedal_tip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -496,8 +536,72 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-      Name: RobotModel
+      Name: right_platform
       Robot Description: right_platform/robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        right_panda_link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link6:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link7:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_panda_link8:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Name: right_panda
+      Robot Description: /right_panda/robot_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
@@ -527,7 +631,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 4.93529224
+      Distance: 4.03923368
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -542,10 +646,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.779760242
+      Pitch: 1.10976028
       Target Frame: right/tool_tip_link_ee
       Value: Orbit (rviz)
-      Yaw: 5.17540455
+      Yaw: 4.57539606
     Saved:
       - Class: rviz/Orbit
         Distance: 1.1899302

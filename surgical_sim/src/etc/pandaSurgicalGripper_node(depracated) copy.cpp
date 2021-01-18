@@ -1,4 +1,4 @@
-#include "pandaSurgicalGripper.h"
+#include ".h"
 #include <urdf/model.h>
 #include "iostream"
 using namespace std;

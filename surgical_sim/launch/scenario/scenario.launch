@@ -36,7 +36,7 @@
   <arg name="bodyOrigin.z" value="1.1"/>
   <arg name="bodyOrigin.ax" value="0.0"/>
   <arg name="bodyOrigin.ay" value="0.0"/>
-  <arg name="bodyOrigin.az" value="$(eval pi/2)"/> 
+  <arg name="bodyOrigin.az" value="$(eval pi/2 + pi )"/> 
  </include> 
 
 <group unless="$(arg two_platforms)">
@@ -52,14 +52,47 @@
     <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
     <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
     <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
-    <arg name="originTrocar_x" value="0.045"/>
+    <arg name="originTrocar_x" value="0.065"/>
     <arg name="originTrocar_y" value="0.515"/>
     <arg name="originTrocar_z" value="1.4"/>
     <arg name="spawn_delay" value="0"/>
   </include> 
+
+    <include file="$(find surgical_sim)/launch/franka/franka.launch">
+        <arg name="id" value="$(arg id1)"/>
+        <arg name="gazebo_bringup" value="false"/>
+        <arg name="rviz_bringup" value="false"/>
+        <arg name="rviz_config" value="$(arg rvizConfig)"/> 
+        <arg name="robotOrigin.x" default="0.10"/>
+        <arg name="robotOrigin.y" default="0.9"/>
+        <arg name="robotOrigin.z" default="1.55"/>
+        <arg name="robotOrigin.ax" default="$(eval radians(-45.0))"/>
+        <arg name="robotOrigin.ay" default="$(eval radians(30.0))"/>
+        <arg name="robotOrigin.az" default="$(eval radians(-90.0))"/>
+     </include> 
+  
 </group>
  
  <group if="$(arg two_platforms)">
+
+     <include file="$(find surgical_sim)/launch/tool/tool.launch">
+      <arg name="id" value="left"/>
+      <arg name="w_forceps" value="true" />
+      <arg name="w_gripper" value="false" />
+      <arg name="rosControl" value="true"/>
+      <arg name="rviz" value="false"/>
+      <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+      <arg name="control_input" value="$(arg control_input)"/>
+      <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
+      <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+      <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+      <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
+      <arg name="originTrocar_x" value="-0.20"/>
+      <arg name="originTrocar_y" value="0.500"/>
+      <arg name="originTrocar_z" value="1.4"/>
+      <arg name="spawn_delay" value="0"/>
+    </include> 
+
     <include file="$(find surgical_sim)/launch/tool/tool.launch">
       <arg name="id" value="right"/>
       <arg name="w_forceps" value="true" />
@@ -72,44 +105,44 @@
       <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
       <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
       <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
-      <arg name="originTrocar_x" value="0.045"/>
-      <arg name="originTrocar_y" value="0.515"/>
+      <arg name="originTrocar_x" value="-0.045"/>
+      <arg name="originTrocar_y" value="0.550"/>
       <arg name="originTrocar_z" value="1.4"/>
       <arg name="spawn_delay" value="0"/>
     </include> 
-    <include file="$(find surgical_sim)/launch/tool/tool.launch">
-      <arg name="id" value="left"/>
-      <arg name="w_forceps" value="true" />
-      <arg name="w_gripper" value="false" />
-      <arg name="rosControl" value="true"/>
-      <arg name="rviz" value="false"/>
-      <arg name="virtual_tool" value="$(arg virtual_tool)"/>
-      <arg name="control_input" value="$(arg control_input)"/>
-      <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
-      <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
-      <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
-      <arg name="frequencyVibration" value="$(arg frequencyVibration)"/> 
-      <arg name="originTrocar_x" value="-0.015"/>
-      <arg name="originTrocar_y" value="0.515"/>
-      <arg name="originTrocar_z" value="1.4"/>
-      <arg name="spawn_delay" value="0"/>
-    </include> 
+
+    <include file="$(find surgical_sim)/launch/franka/franka.launch">
+        <arg name="id" value="left"/>
+        <arg name="gazebo_bringup" value="false"/>
+        <arg name="rviz_bringup" value="false"/>
+        <arg name="rviz_config" value="$(arg rvizConfig)"/> 
+        <arg name="robotOrigin.x" default="-0.20"/>
+        <arg name="robotOrigin.y" default="1.1"/>
+        <arg name="robotOrigin.z" default="1.50"/>
+        <arg name="robotOrigin.ax" default="$(eval radians(35.0))"/>
+        <arg name="robotOrigin.ay" default="$(eval radians(0.0))"/>
+        <arg name="robotOrigin.az" default="$(eval radians(-100.0))"/>
+     </include> 
+
+     <include file="$(find surgical_sim)/launch/franka/franka.launch">
+        <arg name="id" value="right"/>
+        <arg name="gazebo_bringup" value="false"/>
+        <arg name="rviz_bringup" value="false"/>
+        <arg name="rviz_config" value="$(arg rvizConfig)"/> 
+        <arg name="robotOrigin.x" default="0.20"/>
+        <arg name="robotOrigin.y" default="1.1"/>
+        <arg name="robotOrigin.z" default="1.50"/>
+        <arg name="robotOrigin.ax" default="$(eval radians(-35.0))"/>
+        <arg name="robotOrigin.ay" default="$(eval radians(0.0))"/>
+        <arg name="robotOrigin.az" default="$(eval radians(-100.0))"/>
+     </include> 
+
  </group>
 
- 
-
- <!-- <include file="$(find surgical_sim)/launch/body/target.launch">
-    <arg name="rviz" value="false"/>
-    <arg name="gazebo_gui" value="false"/>
-    <arg name="virtual_target" value="false"/> 
-    <arg name="pos.x" value="0.0"/>
-    <arg name="pos.y" value="0.5"/>
-    <arg name="pos.z" value="1.6"/>
-    <arg name="spawn_delay" value="5"/>
- </include>
-  -->
-
- <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="$(arg id1)_tool_fixed_joint" args="0 0 0 0 0 0 /$(arg id1)/trocar_link /$(arg id1)/tool_base_link" /> -->
+  <!-- <include file="$(find surgical_sim)/launch/franka/franka_control.launch">
+    <arg name="id" value="$(arg id1)"/>
+    <arg name="two_robots" value="$(arg two_platforms)"/>
+  </include> -->
   
 </launch>
 

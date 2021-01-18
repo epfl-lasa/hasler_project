@@ -93,8 +93,8 @@
 
     <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link"/>
     <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_shaft"/>
-    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_left" frictCoeff="10.0"/>
-    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_right" frictCoeff="10.0"/>
+    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_left" frictCoeff="0.2"/>
+    <xacro:gazebo_links name="${tool_id}_tool_wrist_forceps_link_2_right" frictCoeff="0.2"/>
     <xacro:gazebo_links name="${tool_id}_tool_tip_link"/>
     <xacro:gazebo_links name="${tool_id}_tool_tip_link_ee"/>
   </xacro:macro>
