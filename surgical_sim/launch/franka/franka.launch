@@ -59,6 +59,6 @@
         output="screen"
         if="$(arg rviz_bringup)"/>
         
-  <!-- <node pkg="surgical_sim" type="init_franka_$(arg id).sh" name="run_script_$(arg id)" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'"/> -->
+  
 
 </launch>

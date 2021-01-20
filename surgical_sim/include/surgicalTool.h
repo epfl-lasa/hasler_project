@@ -70,37 +70,22 @@ extern const char *Leg_Axis_Names[];
 
 const uint8_t NB_AXIS_POSITIONING = 4;
 
-// #define TOOL_AXES                                                                   \
-//   ListofToolAxes(tool_pitch, "tool_pitch")    \
-//   ListofToolAxes(tool_roll, "tool_roll")              \
-//   ListofToolAxes(tool_yaw, "tool_yaw")    \
-//   ListofToolAxes(tool_insertion, "tool_insertion")  \
-//   ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
-//   ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
-//   ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
-//   ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
-//   ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
-// #define ListofToolAxes(enumeration, names) enumeration,
-// enum Tool_Axis : size_t { TOOL_AXES };
-// #undef ListofToolAxes
-// extern const char *Tool_Axis_Names[];
-
-
 #define TOOL_AXES                                                                   \
-  ListofToolAxes(tool_pitch, "tool_pitch")    \
-  ListofToolAxes(tool_roll, "tool_roll")              \
-  ListofToolAxes(tool_yaw, "tool_yaw")    \
-  ListofToolAxes(tool_insertion, "tool_insertion")  \
-  ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
-  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
-  ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
+  ListofToolAxes(tool_joint1_pitch, "tool_joint1_pitch")    \
+  ListofToolAxes(tool_joint2_roll, "tool_joint2_roll")              \
+  ListofToolAxes(tool_joint3_yaw, "tool_joint3_yaw")    \
+  ListofToolAxes(tool_joint4_insertion, "tool_joint4_insertion")  \
+  ListofToolAxes(tool_joint5_wrist_open_angle, "tool_joint5_wrist_open_angle")  \
+  ListofToolAxes(tool_joint5_wrist_open_angle_mimic, "tool_joint5_wrist_open_angle_mimic")  \
+  ListofToolAxes(NB_TOOL_AXIS, "total_tool_joints") 
 #define ListofToolAxes(enumeration, names) enumeration,
 enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
+#define NB_TOOL_AXIS_FULL NB_TOOL_AXIS
 
-#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 2)
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS - 2)
 
 
 using namespace std;
@@ -110,7 +95,8 @@ class surgicalTool {
 
 public:
   enum Tool_Name { UNKNOWN = 0, RIGHT = 1, LEFT = 2};
-
+  enum Tool_Type { FORCEPS, CAMERA};
+  enum Self_Rotation_Type {R_SPEED, R_POSITION};
 
 private:
   enum Control_Input { LEG_INPUT = 1, PLATFORM_INPUT = 2 };
@@ -118,14 +104,24 @@ private:
   Control_Input _myInput;
   
   Tool_Name _tool_id;
+  Tool_Type _tool_type;
 
+  Self_Rotation_Type _tool_selfRotation;
   // internal variables
 
+  // Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsPosFiltered;
+  // Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
+  // Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllPrev;
+  // Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllSpeed;
+  // Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
+
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsPosFiltered;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllPrev;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllSpeed;
-  Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
+  Eigen::VectorXd _toolJointsAll;
+  Eigen::VectorXd _toolJointsAllPrev;
+  Eigen::VectorXd _toolJointsAllSpeed;
+  Eigen::VectorXd _toolJointsAllOffset;
+
+
   KDL::JntArray* _toolJoints;
   KDL::JntArray* _toolJointsFull;
   KDL::JntArray* _toolJointsInit;
@@ -173,6 +169,7 @@ private:
   bool _flagLegJointLimitsOffsetCalculated;
   bool _flagPlatformJointLimitsOffsetCalculated;
   int _nDOF;
+  
   
   Eigen::Vector4d _hAxisFilterPosValue;
   double _hAxisFilterGraspValue;

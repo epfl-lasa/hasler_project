@@ -3,20 +3,20 @@
 	
 	<xacro:property name="fricCoeff1" value="10.0"/>
 	<xacro:property name="fricCoeff2" value="10.0"/>
-	<xacro:property name="kpCollision" value="10000.0"/>
-	<xacro:property name="kdCollision" value="100000000.0"/>
+	<xacro:property name="kpCollision" value="10000000.0"/>
+	<xacro:property name="kdCollision" value="1000000000000.0"/>
 
 	<xacro:macro name="gazebo_links" params="name">
 		<gazebo reference="${name}">
 			<turnGravityOff>false</turnGravityOff> 
 			<mu1>${fricCoeff1}</mu1>
 			<mu2>${fricCoeff2}</mu2>
-			<kp>${kpCollision}</kp>
+			<!-- <kp>${kpCollision}</kp>  -->
 			<kd>${kdCollision}</kd>
 			<selfCollide>true</selfCollide>
-			<maxVel>0.00001</maxVel>
-			<minDepth>0.00001</minDepth>
-			<dampingFactor>0.1</dampingFactor> 
+			<maxVel>0.00000001</maxVel>
+			<minDepth>0.0000001</minDepth>
+			<dampingFactor>0.05</dampingFactor> 
 		</gazebo>
 	</xacro:macro>	
 	

@@ -15,7 +15,7 @@
 			<mu2>${frictCoeff}</mu2>
 			<!-- <kp>${kpCollision}</kp> -->
 			<!-- <kd>${kdCollision}</kd> -->
-			<!-- <selfCollide>false</selfCollide> -->
+			<selfCollide>false</selfCollide>
 			<maxVel>0.01</maxVel>
 			<minDepth>0.001</minDepth>
 		</gazebo>

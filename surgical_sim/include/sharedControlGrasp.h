@@ -53,20 +53,19 @@ using namespace std;
 using namespace Eigen;
 
 #define TOOL_AXES                                                                   \
-  ListofToolAxes(tool_pitch, "tool_pitch")    \
-  ListofToolAxes(tool_roll, "tool_roll")              \
-  ListofToolAxes(tool_yaw, "tool_yaw")    \
-  ListofToolAxes(tool_insertion, "tool_insertion")  \
-  ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
-  ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
-  ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
-  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
-  ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
+  ListofToolAxes(tool_pitch, "tool_joint1_pitch")    \
+  ListofToolAxes(tool_roll, "tool_joint2_roll")              \
+  ListofToolAxes(tool_yaw, "tool_joint3_yaw")    \
+  ListofToolAxes(tool_insertion, "tool_joint4_insertion")  \
+  ListofToolAxes(tool_wrist_open_angle, "tool_joint5_wrist_open_angle")  \
+  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_joint5_wrist_open_angle_mimic")  \
+  ListofToolAxes(NB_TOOL_AXIS, "total_tool_joints") 
 #define ListofToolAxes(enumeration, names) enumeration,
 enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
+#define NB_TOOL_AXIS_FULL NB_TOOL_AXIS
 #define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
 
 const float SCALE_GAINS_LINEAR_POSITION  = 1.0f;

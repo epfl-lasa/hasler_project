@@ -8,7 +8,7 @@
   <xacro:macro name="create_forceps_joints" params="tool_id connected_to">
     
     <!-- joint 5: tool wrist pitch joint -->
-    <joint name="${tool_id}_tool_wrist_pitch" type="fixed">
+    <joint name="${tool_id}_tool_jointf_wrist_pitch" type="fixed">
       <parent link="${connected_to}"/> 
       <!-- <parent link="${tool_id}_world"/> -->
       <child link="${tool_id}_tool_wrist_forceps_link"/>
@@ -18,7 +18,7 @@
     </joint>
     
     <!-- joint 6: Tool wrist yaw joint -->
-    <joint name="${tool_id}_tool_wrist_yaw" type="fixed">
+    <joint name="${tool_id}_tool_jointf_wrist_yaw" type="fixed">
       <parent link="${tool_id}_tool_wrist_forceps_link"/>
       <child link="${tool_id}_tool_wrist_forceps_link_shaft"/>
       <axis xyz="0 0 1"/>
@@ -27,7 +27,7 @@
     </joint>
     
     <!-- joint 6-1: tool open angle 1 -->
-    <joint name="${tool_id}_tool_wrist_open_angle" type="revolute">
+    <joint name="${tool_id}_tool_joint5_wrist_open_angle" type="revolute">
       <parent link="${tool_id}_tool_wrist_forceps_link_shaft"/>
       <child link="${tool_id}_tool_wrist_forceps_link_2_left"/>
       <axis xyz="0 0 1"/>
@@ -36,7 +36,7 @@
     </joint>
 
   <!-- joint 6-2: tool open angle 2  -->
-    <joint name="${tool_id}_tool_wrist_open_angle_mimic" type="revolute">
+    <joint name="${tool_id}_tool_joint5_wrist_open_angle_mimic" type="revolute">
       <parent link="${tool_id}_tool_wrist_forceps_link_shaft"/>
       <child link="${tool_id}_tool_wrist_forceps_link_2_right"/>
       <axis xyz="0 0 1"/>
@@ -46,13 +46,13 @@
     </joint>
 
          <!-- tool tip -->
-    <joint name="${tool_id}_tool_tip_" type="fixed">
+    <joint name="${tool_id}_tool_jointf_tip_" type="fixed">
       <parent link="${tool_id}_tool_wrist_forceps_link_shaft"/>
       <child link="${tool_id}_tool_tip_link"/>
       <origin rpy="0 ${pi/2} ${pi/2}" xyz="0 0.0202 0"/>
     </joint>
     
-    <joint name="${tool_id}_tool_tip_ee" type="fixed">
+    <joint name="${tool_id}_tool_jointf_tip_ee" type="fixed">
       <parent link="${tool_id}_tool_tip_link"/>
       <child link="${tool_id}_tool_tip_link_ee"/>
       <origin rpy="${pi} 0 ${-pi/2}" xyz="0 0 0"/>
@@ -60,15 +60,15 @@
 
     <!-- <xacro:joint_trans name="${tool_id}_tool_wrist_pitch" reduction="1"/>
     <xacro:joint_trans name="${tool_id}_tool_wrist_yaw" reduction="1"/> -->
-    <xacro:joint_trans name="${tool_id}_tool_wrist_open_angle" reduction="1"/>
-    <xacro:joint_trans name="${tool_id}_tool_wrist_open_angle_mimic" reduction="1"/>
+    <xacro:joint_trans name="${tool_id}_tool_joint5_wrist_open_angle" reduction="1"/>
+    <xacro:joint_trans name="${tool_id}_tool_joint5_wrist_open_angle_mimic" reduction="1"/>
 
-    <xacro:gazebo_joints name="${tool_id}_tool_wrist_pitch"/>
-    <xacro:gazebo_joints name="${tool_id}_tool_wrist_yaw"/>
-    <xacro:gazebo_joints name="${tool_id}_tool_wrist_open_angle"/>
-    <xacro:gazebo_joints name="${tool_id}_tool_wrist_open_angle_mimic"/>
-    <xacro:gazebo_joints name="${tool_id}_tool_tip_"/>
-    <xacro:gazebo_joints name="${tool_id}_tool_tip_ee"/>
+    <xacro:gazebo_joints name="${tool_id}_tool_jointf_wrist_pitch"/>
+    <xacro:gazebo_joints name="${tool_id}_tool_jointf_wrist_yaw"/>
+    <xacro:gazebo_joints name="${tool_id}_tool_joint5_wrist_open_angle"/>
+    <xacro:gazebo_joints name="${tool_id}_tool_joint5_wrist_open_angle_mimic"/>
+    <xacro:gazebo_joints name="${tool_id}_tool_jointf_tip_"/>
+    <xacro:gazebo_joints name="${tool_id}_tool_jointf_tip_ee"/>
 
   </xacro:macro>
 

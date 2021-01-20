@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="surgical_tool" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/camera_base/camera_base.links.xacro"/>
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/camera_base/camera_base.joints.xacro"/>  
+  
+  <xacro:macro name="create_camera_base" params="parent_link xyz rpy tool_id">
+    <xacro:create_camera_base_links
+          parent_link="${parent_link}"
+          xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
+    <xacro:create_camera_base_joints
+          parent_link="${parent_link}"
+          xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
+
+    <gazebo reference='${tool_id}_tool_tip_link_ee'>
+      <turnGravityOff>true</turnGravityOff>
+      <sensor type="camera" name="camera_camera_sensor">
+        <always_on>true</always_on>
+        <update_rate>30.0</update_rate>
+      <camera>
+          <pose>0 0 0 0 ${-pi/2} ${pi}</pose>
+          <horizontal_fov>${85 * pi/180.0}</horizontal_fov>
+          <image>
+            <format>R8G8B8</format>
+            <width>1020</width>
+            <height>1020</height>
+          </image>
+          <clip>
+            <near>0.01</near>
+            <far>100</far>
+          </clip>
+        </camera>
+        <plugin name="camera_camera_controller" filename="libgazebo_ros_camera.so">
+          <alwaysOn>true</alwaysOn>
+          <updateRate>30.0</updateRate>
+          <cameraName>camera</cameraName>
+          <imageTopicName>image_raw</imageTopicName>
+          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+          <frameName>${tool_id}_tool_tip_link_ee</frameName>
+          <hackBaseline>0.07</hackBaseline>
+          <distortionK1>0.0</distortionK1>
+          <distortionK2>0.0</distortionK2>
+          <distortionK3>0.0</distortionK3>
+          <distortionT1>0.0</distortionT1>
+          <distortionT2>0.0</distortionT2>
+        </plugin>
+      </sensor>
+  </gazebo>
+
+
+  </xacro:macro>
+
+
+
+  
+
+
+  
+</robot>

@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-	<xacro:macro name="joint_trans" params="name reduction">
+	<xacro:macro name="joint_trans" params="name reduction type:='EffortJointInterface'">
 		<transmission name="${name}_trans">
 			<type>transmission_interface/SimpleTransmission</type>
 			<joint name="${name}">
-				<hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+				<hardwareInterface>hardware_interface/${type}</hardwareInterface>
 			</joint>
 			<actuator name="${name}_motor">
-				<hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+				<hardwareInterface>hardware_interface/${type}</hardwareInterface>
 				<mechanicalReduction>${reduction}</mechanicalReduction>
 			</actuator>
 		</transmission>

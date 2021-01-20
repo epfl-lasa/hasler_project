@@ -1,0 +1,48 @@
+/left_tool:
+  # Publish all joint states -----------------------------------
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 100
+    joints_names:
+      - left_tool_joint1_pitch
+      - left_tool_joint2_roll
+      - left_tool_joint3_yaw
+      - left_tool_joint4_insertion
+      - left_tool_joint5_wrist_open_angle
+      - left_tool_joint5_wrist_open_angle_mimic
+
+  joint_position_controller:
+    type: effort_controllers/JointGroupPositionController
+    robot_description: /left_tool/robot_description
+    joints:
+      - left_tool_joint1_pitch
+      - left_tool_joint2_roll
+      - left_tool_joint3_yaw
+      - left_tool_joint4_insertion
+      - left_tool_joint5_wrist_open_angle
+      - left_tool_joint5_wrist_open_angle_mimic
+   
+    left_tool_joint1_pitch: 
+      pid: {p: 10000, i: 0 , d: 50, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+    left_tool_joint2_roll: 
+      pid: {p: 10000, i: 0 , d: 50, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+    left_tool_joint3_yaw:
+      pid: {p: 500, i: 0, d: 5, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+    left_tool_joint4_insertion: 
+      pid: {p: 10000, i: 0 , d: 500, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+    left_tool_joint5_wrist_open_angle: 
+      pid: {p: 10000, i: 10.0 , d: 1.0 , i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+    left_tool_joint5_wrist_open_angle_mimic: 
+      pid: {p: 10000, i: 10.0 , d: 1.0, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+
+  # gazebo_ros_control:
+  #   pid_gains:
+  #     left_tool_joint4_insertion: {p: 10000, i: 0, d: 1000}
+  #     left_tool_joint1_pitch: {p: 10000, i: 0, d: 1000}
+  #     left_tool_joint2_roll: {p: 10000, i: 0, d: 1000}
+  #     left_tool_joint5_wrist_open_angle: {p: 1000, i: 0, d: 30}
+  #     left_tool_joint5_wrist_open_angle_mimic: {p: 1000, i: 0, d: 30}
+  #     left_tool_joint3_yaw: {p: 1000, i: 0, d: 500}
+      #left_tool_joint_wrist_pitch: {p: 0, i: 0, d: 60}
+      #left_tool_joint_wrist_yaw: {p: 0, i: 0, d: 60}
+  # Position Controllers ---------------------------------------

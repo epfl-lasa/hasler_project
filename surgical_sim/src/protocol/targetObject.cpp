@@ -256,7 +256,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   std::replace( datefilename.begin(), datefilename.end(), '-', '_');
 
  // cout<<_statsfilename<<endl;
- if (_subjectID!="none")
+ if (_subjectID.compare("none")!=0)
   {
     _statsOutputFile.open(ros::package::getPath(std::string("surgical_sim")) + "/data/log/"+ _subjectID + "_" + datefilename + ".txt");
   }
@@ -784,7 +784,7 @@ void targetObject::publishMarkerTargetRviz (int32_t action_,Marker_Color color_,
   _msgRvizTarget.ns = "";
   _msgRvizTarget.id = 1;
   _msgRvizTarget.type = visualization_msgs::Marker::MESH_RESOURCE;
-  _msgRvizTarget.mesh_resource = "package://surgical_sim/models/meshes/stl/target/target.STL";
+  _msgRvizTarget.mesh_resource = "package://surgical_sim/models/meshes/stl/target/target_translated.STL";
   _msgRvizTarget.action = action_;
   _msgRvizTarget.pose.position.x = 0.0;
   _msgRvizTarget.pose.position.y = 0.0;
@@ -845,7 +845,7 @@ void targetObject::recordStatistics(){
   // double precisionPOS_on = _myStatus != TARGET_NOT_REACHED ? _precisionPos : 0.0;
   // double precisionANG_on = _myStatus != TARGET_NOT_REACHED ? _precisionAng * RAD_TO_DEG : 0.0;
   
-  if (_subjectID != std::string("none"))
+  if (_subjectID.compare("none")!=0)
 	{
 	ros::Duration deltaTime = ros::Time::now() - _startingTime;
   double precisionPOS_on = _flagTargetReached ? _precisionPos : 0.0;

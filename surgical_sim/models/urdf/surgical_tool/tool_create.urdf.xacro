@@ -3,32 +3,20 @@
 
   <!-- Macros -->
   <!-- Macros -->
+
+
+
+  <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/camera_base/camera_base.urdf.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_base/tool_base.urdf.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_gripper/tool_t_gripper.urdf.xacro"/>
   <xacro:include filename="$(find surgical_sim)/models/urdf/surgical_tool/tool_forceps/tool_t_forceps.urdf.xacro"/>
 
   <xacro:arg name="with_forceps" default="true"/>
-  <xacro:arg name="with_gripper" default="false"/>
   <xacro:arg name="toolID" default="right"/>
   <xacro:arg name="originTrocar.x" default="0.015"/>
   <xacro:arg name="originTrocar.y" default="0.515"/>
   <xacro:arg name="originTrocar.z" default="1.3"/>
   
-  
-  <xacro:macro name="attach_gripper" params="parent_link xyz rpy tool_id">
-    <xacro:create_tool_base
-        parent_link="${parent_link}"
-        xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
-    <xacro:create_gripper/>
-  </xacro:macro>
-
-  <xacro:macro name="attach_forceps" params="parent_link xyz rpy tool_id">
-    <xacro:create_tool_base
-        parent_link="${parent_link}"
-        xyz="${xyz}" rpy="${rpy}" tool_id="${tool_id}"/>
-     <xacro:create_forceps tool_id="${tool_id}" connected_to="$(arg toolID)_tool_wrist_shaft_link"/> 
-  </xacro:macro>
-
  <!--  -->
   <link name="world"/>
 
@@ -39,21 +27,21 @@
       <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.001"/>
     </inertial>   
   </link>
-
+  
+  
   <xacro:if value="$(arg with_forceps)">
-    <xacro:attach_forceps
-        parent_link="$(arg toolID)_tool_base_link"
-        xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" tool_id="$(arg toolID)"/>
-  </xacro:if>
+    <xacro:create_tool_base
+          parent_link="$(arg toolID)_tool_base_link"
+          xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" tool_id="$(arg toolID)"/>
+    <xacro:create_forceps tool_id="$(arg toolID)" connected_to="$(arg toolID)_tool_wrist_shaft_link"/>
+  </xacro:if>  
 
   <xacro:unless value="$(arg with_forceps)">
-    <xacro:if value="$(arg with_gripper)">
-        <xacro:attach_gripper
-        parent_link="$(arg toolID)_tool_base_link"
-        xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" tool_id="$(arg toolID)"/>
-    </xacro:if>
-  </xacro:unless>
-  
+    <xacro:create_camera_base
+          parent_link="$(arg toolID)_tool_base_link"
+          xyz="-0.25 0.0 0.5" rpy="0.0 0.0 3.1415926" tool_id="$(arg toolID)"/>
+  </xacro:unless>  
+
 
   <joint name="world_fixed" type="fixed">
       <parent link="world"/>

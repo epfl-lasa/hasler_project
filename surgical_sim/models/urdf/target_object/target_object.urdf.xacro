@@ -83,19 +83,19 @@
 
   <link name="$(arg targetID)_target_main_link">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
         <geometry>
           <!-- <box size="${sphere_radius} ${2*sphere_radius} ${2*sphere_radius}"/> -->
           <!-- <sphere radius="${sphere_radius}"/> -->
-          <mesh filename="package://surgical_sim/models/meshes/stl/target/target.STL"/>
+          <mesh filename="package://surgical_sim/models/meshes/stl/target/target_translated.STL"/>
         </geometry>
     </visual>
     <collision>
-        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
         <geometry>
           <!-- <box size="${2*sphere_radius} ${2*sphere_radius} ${2*sphere_radius}"/> -->
           <!-- <sphere radius="${sphere_radius}"/> -->
-          <mesh filename="package://surgical_sim/models/meshes/stl/target/target_2.STL" scale="1.0 1.2 1.0"/>
+          <mesh filename="package://surgical_sim/models/meshes/stl/target/target_translated_collision.STL" scale="1.1 1.1 1.1"/>
         </geometry>
     </collision>
     <inertial>

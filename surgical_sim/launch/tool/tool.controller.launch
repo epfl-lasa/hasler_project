@@ -3,7 +3,7 @@
 	<arg name="control_input" default="platform"/>
 	<arg name="virtual_tool" default="false"/>
 	<arg name="freq" default="10000.0"/>
-
+	<arg name="w_forceps" default="true"/>
 	<arg name="magnitudeVibration" default="50.0"/>
 	<arg name="decayRateVibration" default="60.0"/>
 	<arg name="frequencyVibration" default="32.6"/>
@@ -11,8 +11,13 @@
 	<arg name="rosControl" default="true"/>
 	
 	<group if="$(arg rosControl)">
-		<rosparam file="$(find surgical_sim)/config/right_tool_control_groupEffort.yaml" command="load" if="$(eval arg('id')=='right')" />
-		<rosparam file="$(find surgical_sim)/config/left_tool_control_groupEffort.yaml" command="load" if="$(eval arg('id')=='left')" />
+		<group if="$(arg w_forceps)">		
+			 <rosparam file="$(find surgical_sim)/config/$(arg id)_tool_controller.yaml" command="load"/> 
+		</group>
+		<group unless="$(arg w_forceps)">		
+			<rosparam file="$(find surgical_sim)/config/$(arg id)_camera_controller.yaml" command="load" />
+		</group>
+		
 	    <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_position_controller joint_state_controller"/>
 		<!-- <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_position_controller_insertion joint_position_controller_pitch joint_position_controller_roll joint_position_controller_wrist_open_angle joint_position_controller_wrist_open_angle_mimic joint_position_controller_yaw joint_state_controller"/> -->
 	</group>

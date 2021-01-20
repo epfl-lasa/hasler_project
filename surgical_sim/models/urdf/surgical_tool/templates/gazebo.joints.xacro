@@ -4,7 +4,7 @@
 	<xacro:macro name="gazebo_joints" params="name">
 		<gazebo reference="${name}">
 			<!-- <implicitSpringDamper>1</implicitSpringDamper> -->
-			<provideFeedback>1</provideFeedback>
+			<!-- <provideFeedback>1</provideFeedback> -->
 		</gazebo>
 	</xacro:macro>	
 	
