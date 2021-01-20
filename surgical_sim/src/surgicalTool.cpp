@@ -224,7 +224,46 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
         _platformJointLimsDelta->data(i) = min(abs(_platformJointLims[L_MIN]->data(i)),abs(_platformJointLims[L_MAX]->data(i)));
       }
     }
+    
+    
+  _tool_selfRotation = R_SPEED;
+  std::string toolSelfRotationControlStr;
+  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"toolSelfRotationControl", toolSelfRotationControlStr))
+  { 
+      ROS_ERROR("No toolSelfRotationControl (position,speed) param"); 
+  }
+  if( toolSelfRotationControlStr.compare("position")==0)
+  {
+    _tool_selfRotation = R_POSITION;
+  }
+  
+  _speedControlGainCamera = 0.5;
+  
+  
+  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"speedControlGainCamera", _speedControlGainCamera))
+  { 
+      ROS_ERROR("No speedControlGainCamera  param"); 
+  }
+  _speedControlGainSelfRotation=50.0; 
+  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"speedControlGainSelfRotation", _speedControlGainSelfRotation))
+  { 
+      ROS_ERROR("No speedControlGainSelfRotation  param"); 
+  }
+  
 
+
+  _deadZoneValues = 0.2*_platformJointLimsDelta->data.segment(0,NB_PLATFORM_AXIS);
+  _deadZoneValues(p_yaw) =2.5*DEG_TO_RAD;
+  //cout<<_deadZoneValues.transpose()<<endl;
+
+  std::vector<double> deadZoneValuesPlatform;
+  deadZoneValuesPlatform.resize(NB_PLATFORM_AXIS);
+  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"deadZoneValuesPlatform", deadZoneValuesPlatform))
+  { 
+      ROS_ERROR("No deadZoneValuesPlatform  param"); 
+  }
+
+  new (&_deadZoneValues) Map<Matrix<double,NB_PLATFORM_AXIS,1>>(deadZoneValuesPlatform.data());
     
   }
 
@@ -247,8 +286,6 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
   _mySegments = _myToolBaseToWristChain.segments;
   _mySegmentsTip = _myToolBaseToTipChain.segments;
-
-  _tool_selfRotation = R_SPEED;
 
 
   // double test = Utils_math<double>::map(2.5,-5,5,-1,1);
@@ -450,28 +487,34 @@ void surgicalTool::calculateDesiredFrame(){
   }else { //! _tool_type=CAMERA
 
     Eigen::Vector3d relativeFrame;
+    relativeFrame.setZero();
     Eigen::Vector3d desiredNewFrame;
+    desiredNewFrame.setZero();
     Eigen::Quaterniond prevDesiredTargetRot;
+    prevDesiredTargetRot.setIdentity();
     Eigen::Vector3d prevDesiredTargetPos;
+    prevDesiredTargetPos.setZero();
 
     
-      relativeFrame(0) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x),-0.1*_platformJointLimsDelta->data(p_x), 0.1*_platformJointLimsDelta->data(p_x)),
+      relativeFrame(0) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x),-_deadZoneValues(p_x), _deadZoneValues(p_x)),
                                                             -_platformJointLimsDelta->data(p_x), _platformJointLimsDelta->data(p_x), 
                                                             -1.0,1.0);                                                            
-      relativeFrame(1) = Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y),-0.1*_platformJointLimsDelta->data(p_y), 0.1*_platformJointLimsDelta->data(p_y)),
+      relativeFrame(1) = Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y),-_deadZoneValues(p_y), _deadZoneValues(p_y)),
                                                               -_platformJointLimsDelta->data(p_y), _platformJointLimsDelta->data(p_y), 
                                                               -1.0,1.0);
-      relativeFrame(2) = Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch),-0.1*_platformJointLimsDelta->data(p_pitch), 0.05*_platformJointLimsDelta->data(p_pitch)),
-                                                              -_platformJointLimsDelta->data(p_pitch), 0.5*_platformJointLimsDelta->data(p_pitch), 
+      relativeFrame(2) = Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch),-_deadZoneValues(p_pitch), _deadZoneValues(p_pitch)),
+                                                              -_platformJointLimsDelta->data(p_pitch), _platformJointLimsDelta->data(p_pitch), 
                                                               -1.0,1.0);
      
-     tf::quaternionKDLToEigen(_myFrames[_mySegments.size()].M,prevDesiredTargetRot);
-     tf::vectorKDLToEigen(_myFrames[_mySegments.size()].p,prevDesiredTargetPos);
+     tf::quaternionKDLToEigen(_myFrames[_mySegments.size()-1].M,prevDesiredTargetRot);
+     tf::vectorKDLToEigen(_myFrames[_mySegments.size()-1].p,prevDesiredTargetPos);
 
       
-      desiredNewFrame = prevDesiredTargetRot._transformVector(prevDesiredTargetRot.inverse()._transformVector(prevDesiredTargetPos) + relativeFrame*0.025*_dt);
-      desiredNewFrame = Utils_math<double>::bound(desiredNewFrame,0.15);
+      desiredNewFrame = prevDesiredTargetRot._transformVector(prevDesiredTargetRot.inverse()._transformVector(prevDesiredTargetPos) + relativeFrame*_speedControlGainCamera*_dt);
+      desiredNewFrame = Utils_math<double>::bound(desiredNewFrame,0.27);
+     // std::cout<<desiredNewFrame.transpose()<<std::endl;
       tf::vectorEigenToKDL(desiredNewFrame,_desiredTargetFrame.p);
+      _desiredTargetFrame.p.data[2] = Utils_math<double>::bound(_desiredTargetFrame.p.data[2],-0.24,-0.06);      
   }
 
   Eigen::Vector3d p_;
@@ -562,8 +605,8 @@ void surgicalTool::performInverseKinematics(){
                                     -1.5*M_PI, 1.5*M_PI) + M_PI_2;
   } else
   // {
-     _toolJoints->data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw),-2.5*DEG_TO_RAD, 2.5*DEG_TO_RAD), 
-                                    -25*DEG_TO_RAD, 25*DEG_TO_RAD, -1.0, 1.0) * 50.0 * _dt ;
+     _toolJoints->data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw),-_deadZoneValues(p_yaw),_deadZoneValues(p_yaw)), 
+                                    -25*DEG_TO_RAD, 25*DEG_TO_RAD, -1.0, 1.0) * _speedControlGainSelfRotation * _dt ;
     // cout<<_toolJoints->data(tool_joint3_yaw)<<endl;                                  
     _toolJoints->data(tool_joint3_yaw) = Utils_math<double>::bound(_toolJoints->data(tool_joint3_yaw),M_PI_2-1.5*M_PI,M_PI_2+1.5*M_PI);
 

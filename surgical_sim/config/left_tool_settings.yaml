@@ -1,0 +1,4 @@
+/right_tool:
+  toolSelfRotationControl: 'speed'
+  speedControlGainCamera: 0.5
+  speedControlGainSelfRotation: 50.0

@@ -120,6 +120,10 @@ private:
   Eigen::VectorXd _toolJointsAllPrev;
   Eigen::VectorXd _toolJointsAllSpeed;
   Eigen::VectorXd _toolJointsAllOffset;
+  
+  
+  double _speedControlGainCamera,_speedControlGainSelfRotation;
+  Eigen::Matrix<double,NB_PLATFORM_AXIS,1> _deadZoneValues;
 
 
   KDL::JntArray* _toolJoints;

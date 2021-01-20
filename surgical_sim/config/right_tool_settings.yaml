@@ -1,0 +1,5 @@
+/right_tool:
+  toolSelfRotationControl: 'speed'
+  speedControlGainCamera: 0.5
+  speedControlGainSelfRotation: 50.0
+  deadZoneValuesPlatform: [0.018, 0.0195, 0.0959931, 0.0715585, 0.0436332]
