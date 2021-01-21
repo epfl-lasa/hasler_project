@@ -18,9 +18,9 @@ char const *Platform_Axis_Names[]{PLATFORM_AXES};
 #undef ListofPlatformAxes
 
 
-char const *Tool_Names[]{"none", "right", "left"};
-char const *Leg_Names[]{"none", "right", "left"};
-char const *Platform_Names[]{"none", "right", "left"};
+char const *Tool_Names[]{"right", "left"};
+char const *Leg_Names[]{"right", "left"};
+char const *Platform_Names[]{"right", "left"};
 
 surgicalTool *surgicalTool::me = NULL;
 
@@ -36,7 +36,9 @@ const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 
 const int Axis_Pos[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_yaw,p_roll};
 
-const float LimitsX[2][2] = {{-0.15,0.05},{-0.05,0.15}};
+const float LimitsX[surgicalTool::NB_TOOLS][NB_LIMS] = {{-0.15,0.05},{0.05,0.15}}; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+const float LimitsY[surgicalTool::NB_TOOLS][NB_LIMS] =  {{-0.15,0.15},{-0.15,0.15}}; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+const float LimitsZ[surgicalTool::NB_TOOLS][NB_LIMS] =  {{-0.24,-0.06},{-0.24,-0.06}}; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
 
 
 
@@ -61,7 +63,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
   std::string toolTypeStr_;
 
-  if (!_n.getParam("toolType", toolTypeStr_))
+  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"toolType", toolTypeStr_))
     { ROS_ERROR("No toolType param"); }
 
   if (toolTypeStr_.compare("camera") == 0)
@@ -262,8 +264,10 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   { 
       ROS_ERROR("No deadZoneValuesPlatform  param"); 
   }
-
-  new (&_deadZoneValues) Map<Matrix<double,NB_PLATFORM_AXIS,1>>(deadZoneValuesPlatform.data());
+    for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+    {
+      _deadZoneValues(i)=deadZoneValuesPlatform[i];
+    }
     
   }
 
@@ -476,14 +480,14 @@ void surgicalTool::calculateDesiredFrame(){
   if(_tool_type==FORCEPS){
     _desiredTargetFrame.p.data[0] =Utils_math<double>::map( _platformJoints(p_x),
                                                             -_platformJointLimsDelta->data(p_x), _platformJointLimsDelta->data(p_x), 
-                                                            LimitsX[_tool_id-1][0],LimitsX[_tool_id-1][1]);
+                                                            LimitsX[_tool_id][L_MIN],LimitsX[_tool_id][L_MAX]);
     _desiredTargetFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y),
                                                             -_platformJointLimsDelta->data(p_y), _platformJointLimsDelta->data(p_y), 
-                                                            -0.15,0.15);
+                                                            LimitsY[_tool_id][L_MIN],LimitsY[_tool_id][L_MAX]);
     _desiredTargetFrame.p.data[2] = -0.12 + Utils_math<double>::map( _platformJoints(p_pitch),
                                                             -_platformJointLimsDelta->data(p_pitch), 0.5*_platformJointLimsDelta->data(p_pitch), 
                                                             -0.15,0.15);
-    _desiredTargetFrame.p.data[2] =       Utils_math<double>::bound(_desiredTargetFrame.p.data[2],-0.24,-0.06);      
+    _desiredTargetFrame.p.data[2] =  Utils_math<double>::bound(_desiredTargetFrame.p.data[2],LimitsZ[_tool_id][L_MIN],LimitsZ[_tool_id][L_MAX]);      
   }else { //! _tool_type=CAMERA
 
     Eigen::Vector3d relativeFrame;
@@ -499,9 +503,9 @@ void surgicalTool::calculateDesiredFrame(){
       relativeFrame(0) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x),-_deadZoneValues(p_x), _deadZoneValues(p_x)),
                                                             -_platformJointLimsDelta->data(p_x), _platformJointLimsDelta->data(p_x), 
                                                             -1.0,1.0);                                                            
-      relativeFrame(1) = Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y),-_deadZoneValues(p_y), _deadZoneValues(p_y)),
+      relativeFrame(1) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y),-_deadZoneValues(p_y), _deadZoneValues(p_y)),
                                                               -_platformJointLimsDelta->data(p_y), _platformJointLimsDelta->data(p_y), 
-                                                              -1.0,1.0);
+                                                              -1.0,1.0); //! The minus sign, is because from the point of view of the camera Up is -Y
       relativeFrame(2) = Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch),-_deadZoneValues(p_pitch), _deadZoneValues(p_pitch)),
                                                               -_platformJointLimsDelta->data(p_pitch), _platformJointLimsDelta->data(p_pitch), 
                                                               -1.0,1.0);
@@ -511,10 +515,11 @@ void surgicalTool::calculateDesiredFrame(){
 
       
       desiredNewFrame = prevDesiredTargetRot._transformVector(prevDesiredTargetRot.inverse()._transformVector(prevDesiredTargetPos) + relativeFrame*_speedControlGainCamera*_dt);
-      desiredNewFrame = Utils_math<double>::bound(desiredNewFrame,0.27);
-     // std::cout<<desiredNewFrame.transpose()<<std::endl;
+      
+      desiredNewFrame(CART_X) =  Utils_math<double>::bound(desiredNewFrame(CART_X),LimitsX[_tool_id][L_MIN],LimitsX[_tool_id][L_MAX]);
+      desiredNewFrame(CART_Y) =  Utils_math<double>::bound(desiredNewFrame(CART_Y),LimitsY[_tool_id][L_MIN],LimitsY[_tool_id][L_MAX]);
+      desiredNewFrame(CART_Z) =  Utils_math<double>::bound(desiredNewFrame(CART_Z),LimitsZ[_tool_id][L_MIN],LimitsZ[_tool_id][L_MAX]);
       tf::vectorEigenToKDL(desiredNewFrame,_desiredTargetFrame.p);
-      _desiredTargetFrame.p.data[2] = Utils_math<double>::bound(_desiredTargetFrame.p.data[2],-0.24,-0.06);      
   }
 
   Eigen::Vector3d p_;
@@ -630,7 +635,7 @@ void surgicalTool::performInverseKinematics(){
     {
       *me->_toolJoints = *me->_toolJointsInit;
       
-        ROS_ERROR("No tool IK solutions for the tool found yet... move around to find one");
+        ROS_ERROR("No tool IK solutions for the %s tool  found yet... move around to find one", Tool_Names[_tool_id]);
       _mySolutionFound=false;
     }
   }
@@ -638,7 +643,7 @@ void surgicalTool::performInverseKinematics(){
     if(!_mySolutionFound)
     {
       *me->_toolJointsInit = *me->_toolJoints;
-      ROS_INFO("Solutions of tool IK found again!");
+      ROS_INFO("Solutions of %s tool  IK found again!", Tool_Names[_tool_id]);
       _mySolutionFound=true;
     }
   }

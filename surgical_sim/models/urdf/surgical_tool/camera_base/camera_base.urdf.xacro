@@ -18,7 +18,7 @@
         <always_on>true</always_on>
         <update_rate>30.0</update_rate>
       <camera>
-          <pose>0 0 0 0 ${-pi/2} ${pi}</pose>
+          <pose>0 0 0 0 ${-pi/2} ${pi/2}</pose>
           <horizontal_fov>${85 * pi/180.0}</horizontal_fov>
           <image>
             <format>R8G8B8</format>

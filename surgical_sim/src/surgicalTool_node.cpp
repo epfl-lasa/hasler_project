@@ -18,9 +18,9 @@ int main(int argc, char **argv) {
   nh_.getParam("publish_frequency", frequency);
 
     if (tool_name.compare("right") == 0) {
-      tool_id_ = surgicalTool::RIGHT;
+      tool_id_ = surgicalTool::RIGHT_TOOL;
     } else if (tool_name.compare("left") == 0) {
-      tool_id_ = surgicalTool::LEFT;
+      tool_id_ = surgicalTool::LEFT_TOOL;
     } else {
       ROS_ERROR("You didn't enter a toolID left or right");
       return -1;

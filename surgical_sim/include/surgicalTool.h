@@ -94,7 +94,7 @@ using namespace Eigen;
 class surgicalTool {
 
 public:
-  enum Tool_Name { UNKNOWN = 0, RIGHT = 1, LEFT = 2};
+  enum Tool_Name { RIGHT_TOOL, LEFT_TOOL, NB_TOOLS};
   enum Tool_Type { FORCEPS, CAMERA};
   enum Self_Rotation_Type {R_SPEED, R_POSITION};
 

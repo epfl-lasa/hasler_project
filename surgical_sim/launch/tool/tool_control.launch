@@ -9,18 +9,16 @@
 	<arg name="frequencyVibration" default="32.6"/>
 	<arg name="sharedGrasp" default="false"/>
 	<arg name="rosControl" default="true"/>
-	<arg name="toolType" default="forceps"/>
-    <arg name="leftToolType" default="camera"/>
-
 	<arg name="selfRotationType" default="speed"/>
 	
-	<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load"/>
+	
+
 	
 	<group unless="$(arg two_platforms)">
+		<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load"/>
 		<node name="$(arg id)_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
 			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   
 			<param name="rosControl"        value="$(arg rosControl)"/>   
-			<param name="toolType"          value="$(arg toolType)"/>   
 			<param name="toolID"            value="$(arg id)"/>
 			<param name="controlInput"      value="$(arg control_input)"/>
 			<param name="publish_frequency" type="double" value="$(arg freq)"/>
@@ -31,28 +29,27 @@
 	
 	<group if="$(arg two_platforms)">
 
+		<rosparam file="$(find surgical_sim)/config/left_tool_settings.yaml" command="load"/>
+		<rosparam file="$(find surgical_sim)/config/right_tool_settings.yaml" command="load"/>
+
 		<node name="left_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
 			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   
 			<param name="rosControl"        value="$(arg rosControl)"/> 
-			<param name="toolType"          value="$(arg leftToolType)"/>   
 			<param name="toolID"            value="left"/>
 			<param name="controlInput"      value="$(arg control_input)"/>
 			<param name="publish_frequency" type="double" value="$(arg freq)"/>
 			<remap from="robot_description" to="/left_tool/robot_description"/>
 			<remap from="tool_tip_pose"     to="tool_joint_state_publisher/tool_tip_pose"/>
 		</node>	
-
 		<node name="right_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
 			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   
 			<param name="rosControl"        value="$(arg rosControl)"/>   
-			<param name="toolType"          value="$(arg toolType)"/>   
 			<param name="toolID"            value="right"/>
 			<param name="controlInput"      value="$(arg control_input)"/>
 			<param name="publish_frequency" type="double" value="$(arg freq)"/>
 			<remap from="robot_description" to="/right_tool/robot_description"/>
 			<remap from="tool_tip_pose"     to="tool_joint_state_publisher/tool_tip_pose"/>
 		</node>	
-
 
 	</group>
 	<!-- 
