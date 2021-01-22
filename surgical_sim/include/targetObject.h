@@ -56,14 +56,16 @@ const uint8_t NB_AXIS_POSITIONING = 4;
 using namespace std;
 using namespace Eigen;
 
+
 #define TOOL_NAMES \
+  ListofTools(NO_TOOL, "none") \
   ListofTools(RIGHT_TOOL, "right") \
-  ListofTools(LEFT_TOOL, "left")   \
-  ListofTools(ALL_TOOLS,"~")
+  ListofTools(LEFT_TOOL, "left")   
 #define ListofTools(enumeration, names) enumeration,
 enum TrackID : size_t { TOOL_NAMES };
 #undef ListofTools
 
+#define NB_TOOLS 2
 
 #define TOOL_AXES                                                                   \
   ListofToolAxes(tool_pitch, "tool_pitch")    \
@@ -155,13 +157,16 @@ private:
   Eigen::Matrix3d    _myRotationMatrixCurrent;
   Eigen::Vector3d _maxLimsTarget;
 
+
+  Eigen::Matrix<double,NB_CART_AXIS,NB_LIMS> _cartesianLimsTools;
+  
   double _vibrationGrasping;
   double _impedanceGrasping;
 
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _hapticTorques;
 
   double _precisionPos, _precisionAng,_precisionGrasp;
-  
+  Eigen::Matrix<double, NB_CART_AXIS,NB_LIMS> _myVirtualJointLims;
   double _myThreshold;
 
   double _myRandomAngle;
@@ -307,6 +312,7 @@ private:
 
   void computetargetObjectPose();
   void evaluateTarget();
+  void generateRandomTarget(int* xTarget_,double* randomAngle_);
 
   void publishTargetReachedSphere(int32_t action_, Marker_Color color_, double delay_);
   void publishMarkerTargetRviz(int32_t action_, Marker_Color color_, double delay_);

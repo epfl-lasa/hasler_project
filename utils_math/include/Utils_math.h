@@ -51,6 +51,8 @@ class Utils_math
 
 	static T bound(T x, T a, T b);
 
+	static bool isInRange(T x, T a, T b);
+
 	static T map(T x, T a, T b, T c, T d);
 
 	static Eigen::Matrix<T,Eigen::Dynamic,1> bound(Eigen::Matrix<T,Eigen::Dynamic,1> x, T limit);

@@ -86,7 +86,7 @@ extern const char *Tool_Axis_Names[];
 #define NB_TOOL_AXIS_FULL NB_TOOL_AXIS
 
 #define NB_TOOL_AXIS_RED (NB_TOOL_AXIS - 2)
-
+#define NB_TOOLS 2
 
 using namespace std;
 using namespace Eigen;
@@ -94,7 +94,7 @@ using namespace Eigen;
 class surgicalTool {
 
 public:
-  enum Tool_Name { RIGHT_TOOL, LEFT_TOOL, NB_TOOLS};
+  enum Tool_Name { NO_TOOL= 0, RIGHT_TOOL=1, LEFT_TOOL=2};
   enum Tool_Type { FORCEPS, CAMERA};
   enum Self_Rotation_Type {R_SPEED, R_POSITION};
 
@@ -109,22 +109,16 @@ private:
   Self_Rotation_Type _tool_selfRotation;
   // internal variables
 
-  // Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsPosFiltered;
-  // Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
-  // Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllPrev;
-  // Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllSpeed;
-  // Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
-
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsPosFiltered;
   Eigen::VectorXd _toolJointsAll;
   Eigen::VectorXd _toolJointsAllPrev;
   Eigen::VectorXd _toolJointsAllSpeed;
-  Eigen::VectorXd _toolJointsAllOffset;
   
   
   double _speedControlGainCamera,_speedControlGainSelfRotation;
-  Eigen::Matrix<double,NB_PLATFORM_AXIS,1> _deadZoneValues;
-
+  Eigen::Matrix<double,NB_PLATFORM_AXIS,NB_LIMS> _desiredPlatformWSLims;
+  Eigen::Matrix<double,NB_PLATFORM_AXIS,NB_LIMS> _deadZoneValues;
+  Eigen::Matrix<double,NB_CART_AXIS,NB_LIMS> _cartesianLimits;
 
   KDL::JntArray* _toolJoints;
   KDL::JntArray* _toolJointsFull;
@@ -133,8 +127,7 @@ private:
   KDL::JntArray* _toolJointLimsAll[NB_LIMS];
   KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _platformJointLims[NB_LIMS];
-  KDL::JntArray* _platformJointLimsDelta;
-
+  //KDL::JntArray* _platformJointLimsDelta;
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   Eigen::Matrix<double,NB_AXIS_POSITIONING,1> _thresholds;
   
@@ -168,10 +161,7 @@ private:
   bool _flagRosControl;
   bool _mySolutionFound;
   bool _flagSharedGrasp;
-  bool _flagCurrentToolJointsRead;
-  bool _flagToolJointLimitsOffsetCalculated;
-  bool _flagLegJointLimitsOffsetCalculated;
-  bool _flagPlatformJointLimitsOffsetCalculated;
+  volatile bool _flagCurrentToolJointsRead;
   int _nDOF;
   
   
@@ -187,7 +177,7 @@ private:
   // Subscribers declarations
   tf2_ros::Buffer _tfBuffer;
   tf2_ros::TransformListener* _tfListener;
-  KDL::Frame _desiredTargetFrame;
+  KDL::Frame _desiredToolEEFrame;
   KDL::Frame _footTipPosFrame;
   KDL::Frame _footTipPosFrameInit;
 

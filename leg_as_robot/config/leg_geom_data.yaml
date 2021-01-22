@@ -13,7 +13,7 @@ shin_length:  0.380
 ankle_to_foot_base_z: 0.100
 ankle_to_foot_base_x: 0.020
 foot_base_to_foot_tip: 0.15621
-body_weight: 86
+body_weight: 80
 hip_width: 0.24
 hip_height: 1.035 
 

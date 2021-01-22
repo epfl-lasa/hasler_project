@@ -53,7 +53,7 @@ pandaController::pandaController(ros::NodeHandle &n_1, double frequency,
   _msgJointCommands.data.resize(NB_PANDA_AXIS);
 
     if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
-      ROS_ERROR("Failed to construct kdl tree");
+      ROS_ERROR("[%s panda]: Failed to construct kdl tree",Panda_Names[_panda_id]);
       _stop = true;
     }
 
@@ -104,11 +104,10 @@ bool pandaController::init() //! Initialization of the node. Its datatype
 
   if (_n.ok()) {
     ros::spinOnce();
-    ROS_INFO("The panda controller "
-             "is about to start ");
+    ROS_INFO("[%s panda]: The panda controller is about to start ",Panda_Names[_panda_id]);
     return true;
   } else {
-    ROS_ERROR("The ros node has a problem.");
+    ROS_ERROR("[%s panda]: The ros node has a problem.",Panda_Names[_panda_id]);
     return false;
   }
 }
@@ -122,7 +121,7 @@ void pandaController::run() {
       readToolBaseFrame();
       if (_flagToolFrameRetrieved && _flagPandaJointInitRetrieved)
       {  
-        ROS_INFO_ONCE("The tool found!");
+        ROS_INFO_ONCE("[%s panda]: The tool found!", Panda_Names[_panda_id]);
         performInverseKinematics();
         publishPandaJointCommands();  
        // performChainForwardKinematics();
@@ -131,14 +130,14 @@ void pandaController::run() {
       else
       {
        // readToolBaseFrame();
-       ROS_WARN_ONCE("The tool is not found yet");
+       ROS_WARN_ONCE("[%s panda]: The tool is not found yet",Panda_Names[_panda_id]);
       }
     
     ros::spinOnce();
     _loopRate.sleep();
   }
 
-  ROS_INFO("Panda controller stopped");
+  ROS_INFO("[%s panda]: Panda controller stopped",Panda_Names[_panda_id]);
   ros::spinOnce();
   _loopRate.sleep();
   ros::shutdown();
@@ -165,7 +164,7 @@ void pandaController::performInverseKinematics(){
         *_pandaJoints=*_pandaJointsInit;
         if (_mySolutionFound)
         {
-          ROS_ERROR("No panda IK solutions for the panda found yet... move around to find one");
+          ROS_ERROR("[%s panda]: No panda IK solutions for the panda found yet... move around to find one",Panda_Names[_panda_id]);
           _mySolutionFound=false;
         }
     }
@@ -173,7 +172,7 @@ void pandaController::performInverseKinematics(){
         *_pandaJointsInit = *_pandaJoints;
         if (!_mySolutionFound)
         {
-          ROS_INFO("Solutions of panda IK found again!");
+          ROS_INFO("[%s panda]: Solutions of panda IK found again!",Panda_Names[_panda_id]);
           _mySolutionFound=true;
         }
     }
@@ -233,7 +232,7 @@ void pandaController::readToolBaseFrame()
   
   catch (tf2::TransformException ex) {
     if (count>2)
-    { ROS_ERROR("%s", ex.what());
+    { ROS_ERROR("[%s panda]: %s",Panda_Names[_panda_id], ex.what());
       count = 0;
     }
     else
@@ -276,7 +275,7 @@ void pandaController::readPandaLink0Frame()
   
   catch (tf2::TransformException ex) {
     if (count>2)
-    { ROS_ERROR("%s", ex.what());
+    { ROS_ERROR("[%s panda]: %s",Panda_Names[_panda_id], ex.what());
       count = 0;
     }
     else
@@ -300,7 +299,7 @@ void pandaController::readPandaJoints(const sensor_msgs::JointState::ConstPtr &m
   
   
   if (!_flagPandaJointInitRetrieved) {
-    ROS_INFO("Panda tool joints received by the tool");
+    ROS_INFO("[%s panda]: Panda tool joints received by the tool",Panda_Names[_panda_id]);
     for (unsigned int i = 0; i < NB_PANDA_AXIS; i++) {
       me->_pandaJointsInit->data[i] = msg->position[i];
       // cout<<_pandaJointsInit->data[i]<<endl;

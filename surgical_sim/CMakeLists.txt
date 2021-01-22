@@ -74,7 +74,7 @@ target_link_libraries(sharedGrasp ${catkin_LIBRARIES})
 
 install(PROGRAMS scripts/init_franka_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(PROGRAMS scripts/init_franka_left.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-install(PROGRAMS scripts/init_tool_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_forceps_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(PROGRAMS scripts/init_camera_left.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)

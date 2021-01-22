@@ -17,12 +17,12 @@ char const *Tool_Axis_Names[]{TOOL_AXES};
 #undef ListofToolAxes
 
 #define ListofTools(enumeration, names) names,
-char const *Tools_Names[]{TOOL_NAMES};
+char const *Tool_Names[]{TOOL_NAMES};
 #undef ListofTools
 
-char const *Tools_Names2[]{"Right","Left"};
+char const *Tool_Names2[]{"None","Right","Left"};
 
-#define DELAY_SEC 3.0
+#define DELAY_SEC 0.01 // Its so low because of the gazebo timeout to spawn (~3s)
 
 
 const float Axis_Limits[] =  {0.090,0.0975,27.5*DEG_TO_RAD,120.0*DEG_TO_RAD};
@@ -32,6 +32,11 @@ const float SAMPLING_TIME = 10; // 100Hz
 const int Axis_Mod[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_roll,p_yaw};
 
 const double scaleFoot[] = {Axis_Limits[0]/0.15,Axis_Limits[1]/0.15,(1.5*Axis_Limits[2])/(2*0.15),35.0*DEG_TO_RAD/(1.5*M_PI),20.5*DEG_TO_RAD/30*DEG_TO_RAD}; // X, Y, Z, YAW, ROLL;
+
+const double LimitsCart[NB_CART_AXIS][NB_TOOLS][NB_LIMS] = {{{-0.15,0.05},{0.05,0.15}},  //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+                                                                        {{-0.15,0.15},{-0.15,0.15}}, //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+                                                                        {{-0.26,-0.06},{-0.26,-0.06}} }; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+
 
 
 targetObject *targetObject::me = NULL;
@@ -135,24 +140,66 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   _startDelayForCorrection = ros::Time::now();
   _startingTime = ros::Time::now();
   
+
+
+  for (size_t i = 0; i < NB_CART_AXIS; i++)
+  {
+    for (size_t j = 0; j < NB_LIMS; j++)
+    {
+      _cartesianLimsTools(i,j) = LimitsCart[i][_myTrackID-1][j];
+    }
+  }
+
+   std::vector<double> cartLimsX;
+   std::vector<double> cartLimsY;
+   std::vector<double> cartLimsZ;
+  
+    cartLimsX.resize(NB_LIMS);     cartLimsY.resize(NB_LIMS);    cartLimsZ.resize(NB_LIMS);
+
+
+    if (!_n.getParam("/"+std::string(Tool_Names[_myTrackID])+"_tool/"+"cartLimsX", cartLimsX))
+    { 
+        ROS_ERROR("[%s target]: No cartLimsX param", Tool_Names[_myTrackID]); 
+    }
+
+     if (!_n.getParam("/"+std::string(Tool_Names[_myTrackID])+"_tool/"+"cartLimsY", cartLimsY))
+    { 
+        ROS_ERROR("[%s target]: No cartLimsY param", Tool_Names[_myTrackID]); 
+    }
+
+     if (!_n.getParam("/"+std::string(Tool_Names[_myTrackID])+"_tool/"+"cartLimsZ", cartLimsZ))
+    { 
+        ROS_ERROR("[%s target]: No cartLimsZ param", Tool_Names[_myTrackID]); 
+    }
+      
+      
+      for (size_t i = 0; i < NB_LIMS; i++)
+      {
+        _cartesianLimsTools(CART_X,i) = cartLimsX[i];
+        _cartesianLimsTools(CART_Y,i) = cartLimsY[i];
+        _cartesianLimsTools(CART_Z,i) = cartLimsZ[i];
+      }
+  
+
   if (!_n.getParam("trackingMode", trackingMode))
   { 
-      ROS_ERROR("No indicaton of tracking mode (right, left, both) was done"); 
+        ROS_ERROR("[%s target]: No indicaton of tracking mode (right, left, both) was done", Tool_Names[_myTrackID]); 
   }
 
    if (!_n.getParam("targetName", _myName))
   { 
-      ROS_ERROR("No indicaton of target name (e.g. 1, etc) was done"); 
+      ROS_ERROR("[%s target]: No indicaton of target name (e.g. 1, etc) was done", Tool_Names[_myTrackID]); 
       _myName="t1";
   }
 
    
   if (!_n.getParam("subjectID", _subjectID))
   { 
-      ROS_ERROR("No indicaton of the subject ID (e.g. sXX) was done"); 
+      ROS_ERROR("[%s target]: No indicaton of the subject ID (e.g. sXX) was done", Tool_Names[_myTrackID]); 
       _subjectID = "s0";
   }
 
+  
   
 
   if (trackingMode.compare("right") == 0) {
@@ -160,7 +207,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     } else if (trackingMode.compare("left") == 0) {
        _myTrackID = LEFT_TOOL;
     } else {
-      ROS_ERROR("You didn't enter a tracking id: left or right");
+      ROS_ERROR("[%s target]: You didn't enter a tracking id: left or right", Tool_Names[_myTrackID]);
       _stop=true;
     }
 
@@ -168,7 +215,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   _myStatus = TARGET_NOT_REACHED;
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
-    ROS_ERROR("Failed to construct kdl tree");
+    ROS_ERROR("[%s target]: Failed to construct kdl tree", Tool_Names[_myTrackID]);
     _stop = true;
   }
     KDL::Vector grav_vector(0.0, 0.0, GRAVITY);
@@ -186,14 +233,20 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     }
    // cout<<_maxLimsTarget.transpose()<<endl;
 
-  if (!_n.getParam("/"+std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target/robot_description",_myModelXml)) {
-    ROS_ERROR("Failed to get model xml file");
+  if (!_n.getParam("/"+std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target/robot_description",_myModelXml)) {
+    ROS_ERROR("[%s target]: Failed to get model xml file", Tool_Names[_myTrackID]);
   }
   else
   {
-    ROS_INFO("Successfully got xml file");
+    ROS_INFO("[%s target]: Successfully got xml file", Tool_Names[_myTrackID]);
   }
 
+_myVirtualJointLims(CART_X,L_MIN) = _myModel.getJoint(std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_x_joint")->limits->lower;
+_myVirtualJointLims(CART_X,L_MAX) = _myModel.getJoint(std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_x_joint")->limits->upper;
+_myVirtualJointLims(CART_Y,L_MIN) = _myModel.getJoint(std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_y_joint")->limits->lower;
+_myVirtualJointLims(CART_Y,L_MAX) = _myModel.getJoint(std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_y_joint")->limits->upper;
+_myVirtualJointLims(CART_Z,L_MIN) = _myModel.getJoint(std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_z_joint")->limits->lower;
+_myVirtualJointLims(CART_Z,L_MAX) = _myModel.getJoint(std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_z_joint")->limits->upper;
 }
 
 targetObject::~targetObject() { me->_n.shutdown(); }
@@ -209,36 +262,36 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   _pubTargetReachedSphere = _n.advertise<visualization_msgs::Marker>("target_reached_sphere", 0);
   _pubRvizTargetMarker = _n.advertise<visualization_msgs::Marker>("marker_target_rviz", 0);
 
-  _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tools_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
-  _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[_myTrackID])+"/sharedGrasping",0);
+  _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tool_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
+  _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myTrackID])+"/sharedGrasping",0);
 
   _subGazeboLinkStates = _n.subscribe<gazebo_msgs::LinkStates>("/gazebo/link_states", 1,boost::bind(&targetObject::readGazeboLinkStates, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-  _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tools_Names[_myTrackID])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1),
+  _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myTrackID])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
   
   _subLegGravityCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>(
-                  "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1),
+                  "/"+std::string(Tool_Names[_myTrackID])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
   
   
   _subForceFootRestWorld = _n.subscribe<geometry_msgs::WrenchStamped>(
-                  "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1),
+                  "/"+std::string(Tool_Names[_myTrackID])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
   _subUnbiasedJointTorques = _n.subscribe<custom_msgs::FootOutputMsg_v3>(
-                  "/"+std::string(Tools_Names[_myTrackID])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1),
+                  "/"+std::string(Tool_Names[_myTrackID])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
-  _subToolJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[_myTrackID])+"_tool/joint_states"
+  _subToolJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myTrackID])+"_tool/joint_states"
       , 1, boost::bind(&targetObject::readToolState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());    
-  _subFootPlatform = _n.subscribe<custom_msgs::FootOutputMsg_v3>( "/FI_Output/"+std::string(Tools_Names2[_myTrackID])
+  _subFootPlatform = _n.subscribe<custom_msgs::FootOutputMsg_v3>( "/FI_Output/"+std::string(Tool_Names2[_myTrackID])
        , 1, boost::bind(&targetObject::readFIOutput, this, _1),
        ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());     
-  _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tools_Names[_myTrackID])+"/platform_joint_publisher/joint_states"
+  _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myTrackID])+"/platform_joint_publisher/joint_states"
       , 1, boost::bind(&targetObject::readPlatformState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
 
@@ -267,11 +320,11 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   if (_n.ok()) {
     srand(ros::Time::now().toNSec());
     ros::spinOnce();
-    ROS_INFO("The target spawner is about to start ");
+    ROS_INFO("[%s target]: The target spawner is about to start ", Tool_Names[_myTrackID]);
     return true;
   }
   else {
-    ROS_ERROR("The ros node has a problem.");
+    ROS_ERROR("[%s target]: The ros node has a problem.", Tool_Names[_myTrackID]);
     return false;
   }
 }
@@ -286,36 +339,36 @@ void targetObject::run() {
     readTFTool();
     computeToolTipDerivatives();
     readTFTrocar(); 
-    
-    
-    
     if (_flagTrocarTFConnected)
-    {
-      computetargetObjectPose();
-      if(_flagTargetSpawned)
+    {   
+      if (!_flagTargetSpawned)
       {
-          writeTFtargetAim();
+        computetargetObjectPose();  
       }
+      else
+      {
+        if (_flagToolJointsConnected && _flagGazeboLinkStateRead)
+        { 
+          getGazeboTargetCurrentPos();
+          writeTFtargetObject();
+          publishMarkerTargetRviz(visualization_msgs::Marker::ADD, WHITE,0.0);
+          writeTFtargetAim();
+          evaluateTarget();
+          _tfBroadcaster->sendTransform(_msgAllTransforms);
+          ROS_INFO_ONCE("[%s target]: It is possible to evaluate the target now",Tool_Names[_myTrackID]);
+        }
+        else
+        {
+          ROS_WARN("[%s target]: Not possible to evaluate target, possible the tool is not present in the scenario", Tool_Names[_myTrackID]);
+        }
+      }
+      recordStatistics();
     }
-
-    if (_flagToolJointsConnected && _flagToolTipTFConnected && _flagTargetSpawned)
-    {
-     evaluateTarget();
-      writeTFtargetObject();
-      _tfBroadcaster->sendTransform(_msgAllTransforms);
-      ROS_INFO_ONCE("It is possible to evaluate the target now!");
-    }
-    else
-    {
-      ROS_WARN("Not possible to evaluate target, possible the tool is not present in the scenario");
-    }
-    publishMarkerTargetRviz(visualization_msgs::Marker::ADD, WHITE,0.0);
-    recordStatistics();
     ros::spinOnce();
     _loopRate.sleep();
   }
   me->_statsOutputFile.close();
-  ROS_INFO("The target spawner stopped");
+  ROS_INFO("[%s target]: The target spawner stopped", Tool_Names[_myTrackID]);
   ros::spinOnce();
   _loopRate.sleep();
   ros::shutdown();
@@ -327,7 +380,7 @@ void targetObject::readTFTool() {
   std::string original_frame;
   std::string destination_frame;
 
-    destination_frame = std::string(Tools_Names[_myTrackID]) + "_tool_tip_link_ee";
+    destination_frame = std::string(Tool_Names[_myTrackID]) + "_tool_tip_link_ee";
     original_frame = "torso_link";
 
     geometry_msgs::TransformStamped toolTipTransform_;
@@ -353,7 +406,7 @@ void targetObject::readTFTool() {
     catch (tf2::TransformException ex) 
     {
       if (count > 2) {
-        ROS_ERROR("%s", ex.what());
+        ROS_ERROR("[%s target]: %s", Tool_Names[_myTrackID], ex.what());
         count = 0;
       } else {
         count++;
@@ -369,7 +422,7 @@ void targetObject::readTFTrocar() {
     std::string original_frame;
     std::string destination_frame;
 
-    destination_frame = std::string(Tools_Names[_myTrackID]) + "_tool_base_link";
+    destination_frame = std::string(Tool_Names[_myTrackID]) + "_tool_base_link";
     original_frame = "torso_link";
 
     geometry_msgs::TransformStamped trocarTransform_;
@@ -392,7 +445,7 @@ void targetObject::readTFTrocar() {
 
     } catch (tf2::TransformException ex) {
       if (count > 2) {
-        ROS_ERROR("%s", ex.what());
+        ROS_ERROR("[%s target]: %s", ex.what(), Tool_Names[_myTrackID]);
         count = 0;
       } else {
         count++;
@@ -404,11 +457,13 @@ void targetObject::readTFTrocar() {
 
 
 void targetObject::computetargetObjectPose(){
-  if (_targetsXYZ[0].second[_xTarget]!=0.0f)
+  if( Utils_math<double>::isInRange(-_trocarPosition(CART_X) + _targetsXYZ[CART_X].second[_xTarget], _cartesianLimsTools(CART_X,L_MIN) +_myVirtualJointLims(CART_X,L_MIN), _cartesianLimsTools(CART_X,L_MAX)- _myVirtualJointLims(CART_X,L_MAX)) 
+      && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)+ _myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- _myVirtualJointLims(CART_Y,L_MAX))    
+    ) 
   {
-    if(!_flagTargetSpawned && _trocarPosition.norm()!=0.0)
+    if(!_flagTargetSpawned && _flagTrocarTFConnected)
     {
-      _myPositionSpawn << _targetsXYZ[0].second[_xTarget], _targetsXYZ[2].second[_xTarget], -_targetsXYZ[1].second[_xTarget]+0.01;
+      _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.01;
       cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
       Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
       // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
@@ -420,18 +475,6 @@ void targetObject::computetargetObjectPose(){
       }
       _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
       _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
-       static double lim = _myModel.getJoint(std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_z_joint")->limits->upper;
-       _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*lim);
-       double randomAngleNew = _myRandomAngle;
-       while(_myRandomAngle == randomAngleNew)
-       {
-         randomAngleNew = Utils_math<double>::bound(- 1.5 * M_PI + ((rand()%(NB_TARGETS-1)) * 3.0 * M_PI)/((NB_TARGETS-1)), -1.5 * M_PI, 1.5 * M_PI ) ;
-         if (_myRandomAngle!=randomAngleNew)
-           {
-             break;
-           }
-       }
-       _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleNew, Vector3d::UnitZ()).toRotationMatrix();
       if (gazeboDeleteModel())
       {
         _flagTargetSpawned = gazeboSpawnModel();
@@ -440,22 +483,19 @@ void targetObject::computetargetObjectPose(){
       {
         _flagTargetSpawned = false;
       }
-    }
-    else
-    {
-      getGazeboTargetCurrentPos();
+      // Generate Aim Frame
+      
+       _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*_myVirtualJointLims(CART_Z,L_MAX));
+       double randomAngleAim = _myRandomAngle;
+       generateRandomTarget(NULL,&randomAngleAim); // Generate an aim orientation different than that in which we spawned the target
+       _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleAim, Vector3d::UnitZ()).toRotationMatrix();
     }
   }
   else
   {
+    ROS_WARN_ONCE("[%s target]: Spawning not succesful, trying another target ", Tool_Names[_myTrackID] );
     _flagTargetSpawned = false;
-    _xTarget++;
-    computetargetObjectPose();
-    if (_xTarget>=NB_TARGETS)
-    {
-      ROS_ERROR("Error generating target");
-      _stop = true;
-    }    
+    generateRandomTarget(&_xTarget,&_myRandomAngle);
   }
 }
 
@@ -472,18 +512,19 @@ void targetObject::evaluateTarget()
      _myStatus=TARGET_GRASPED;
      _flagTargetReachedOpen=true; 
      publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
-        
+     ROS_INFO_ONCE("[%s target]: YOU MANAGED THE POSITIONING", Tool_Names[_myTrackID]);   
       if (errorAng < (1-cos(7.0*DEG_TO_RAD)))
       {
           publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
           if (!_flagTargetGrasped)
           {
             _startDelayForCorrection = ros::Time::now(); 
-            std::cout<<"grasped"<<std::endl;
+            ROS_INFO("[%s target]: YOU MANAGED THE ALIGNMENT", Tool_Names[_myTrackID]);
           }
           _flagTargetGrasped=true;
           _myStatus=TARGET_GRASPED;
       } else{
+        ROS_WARN_ONCE("[%s target]: YOU MISSED THE ALIGNMENT", Tool_Names[_myTrackID]);
         _startDelayForCorrection = ros::Time::now(); 
         _flagTargetGrasped=false;
         }
@@ -500,30 +541,10 @@ void targetObject::evaluateTarget()
   if (_myStatus==TARGET_GRASPED && _nTarget < NB_TARGETS) {
     if ((ros::Time::now() - _startDelayForCorrection).toSec() >= DELAY_SEC){ 
     _nTarget++;
-    int newTargetNum = _xTarget;
-    while (_xTarget==newTargetNum)
-    {
-       newTargetNum = rand() % (NB_TARGETS-1);
-      std::cout<<newTargetNum<<std::endl;
-      if (_xTarget!=newTargetNum)
-        {
-          break;
-        }
-    }
-    _xTarget = newTargetNum; // Generate new target randomly
-    double randomAngleNew = _myRandomAngle;
-    while(_myRandomAngle == randomAngleNew)
-    {
-      randomAngleNew = Utils_math<double>::bound(- 1.5 * M_PI + ((rand()%(NB_TARGETS-1)) * 3.0 * M_PI)/((NB_TARGETS-1)), -1.5 * M_PI, 1.5 * M_PI ) ;
-       if (_myRandomAngle!=randomAngleNew)
-        {
-          break;
-        }
-    }
-    _myRandomAngle = randomAngleNew;
+    generateRandomTarget(&_xTarget, &_myRandomAngle);
     _flagTargetReached =false;
     _startDelayForCorrection=ros::Time::now();
-    ROS_INFO("New target generated!. # %i",_nTarget);
+    ROS_INFO("[%s target]: New target generated!. # %i",_nTarget, Tool_Names[_myTrackID]);
     _myStatus = TARGET_CHANGED;
     _flagTargetSpawned=false;
     publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
@@ -532,7 +553,7 @@ void targetObject::evaluateTarget()
 
   if (_nTarget>=NB_TARGETS)
   {
-    ROS_INFO("Protocol finished");
+    ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
     publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
     _stop=true;
   }
@@ -614,7 +635,7 @@ void targetObject::evaluateTarget()
     _myRandomAngle = randomAngleNew;
     _flagTargetReached =false;
     _startDelayForCorrection=ros::Time::now();
-    ROS_INFO("New target generated!. # %i",_nTarget);
+    ROS_INFO("[%s target]: New target generated!. # %i",_nTarget, Tool_Names[_myTrackID]);
     _myStatus = TARGET_CHANGED;
     _flagTargetSpawned=false;
     publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
@@ -623,7 +644,7 @@ void targetObject::evaluateTarget()
 
   if (_nTarget>=NB_TARGETS)
   {
-    ROS_INFO("Protocol finished");
+    ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
     publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
     _stop=true;
   }
@@ -633,7 +654,7 @@ void targetObject::evaluateTarget()
 
 
 void targetObject::writeTFtargetObject(){
-  _msgAllTransforms[TF_TARGET_OBJECT].child_frame_id=std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_main_link";
+  _msgAllTransforms[TF_TARGET_OBJECT].child_frame_id=std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_main_link";
   _msgAllTransforms[TF_TARGET_OBJECT].header.frame_id="torso_link";
   _msgAllTransforms[TF_TARGET_OBJECT].header.stamp = ros::Time::now();
 
@@ -645,7 +666,7 @@ void targetObject::writeTFtargetObject(){
 }
 
 void targetObject::writeTFtargetAim(){
-  _msgAllTransforms[TF_TARGET_AIM].child_frame_id=std::string(Tools_Names[_myTrackID])+"_"+_myName+"_target_aim";
+  _msgAllTransforms[TF_TARGET_AIM].child_frame_id=std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_aim";
   _msgAllTransforms[TF_TARGET_AIM].header.frame_id="torso_link";
   _msgAllTransforms[TF_TARGET_AIM].header.stamp = ros::Time::now();
 
@@ -723,7 +744,7 @@ std::vector<std::pair<std::string, std::vector<float>>> targetObject::readTarget
 
 void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color_, double delay_){
   
-  _msgTargetReachedSphere.header.frame_id = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+  _msgTargetReachedSphere.header.frame_id = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link";
   _msgTargetReachedSphere.header.stamp = ros::Time::now();
   _msgTargetReachedSphere.ns = "";
   _msgTargetReachedSphere.id = 0;
@@ -779,7 +800,7 @@ void targetObject::publishMarkerTargetRviz (int32_t action_,Marker_Color color_,
   
 
 
-  _msgRvizTarget.header.frame_id = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+  _msgRvizTarget.header.frame_id = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link";
   _msgRvizTarget.header.stamp = ros::Time::now();
   _msgRvizTarget.ns = "";
   _msgRvizTarget.id = 1;
@@ -998,7 +1019,7 @@ void targetObject::recordStatistics(){
   }
 
   if (!_flagToolJointsConnected) {
-    ROS_INFO("Joints received from tool %s", Tools_Names[_myTrackID]);
+    ROS_INFO("[%s target]: Joints received from tool", Tool_Names[_myTrackID]);
   }
   _flagToolJointsConnected = true;
 }
@@ -1013,7 +1034,7 @@ void targetObject::recordStatistics(){
   }
 
   if (!_flagPlatformJointsConnected) {
-    ROS_INFO("Joints received from platform %s", Tools_Names[_myTrackID]);
+    ROS_INFO("[%s target]: Joints received from platform", Tool_Names[_myTrackID]);
   }
   _flagPlatformJointsConnected = true;
   }
@@ -1026,7 +1047,7 @@ void targetObject::recordStatistics(){
   }
 
   if (!_flagLegGravityTorquesConnected) {
-    ROS_INFO("Platform %s Input Connected", Tools_Names[_myTrackID]);
+    ROS_INFO("[%s target]: Platform Input Connected", Tool_Names[_myTrackID]);
   }
   _flagLegGravityTorquesConnected = true;
   }
@@ -1043,7 +1064,7 @@ void targetObject::recordStatistics(){
   }
 
   if (!_flagPlatformJointsConnected) {
-    ROS_INFO("Joints received from platform %s", Tools_Names[_myTrackID]);
+    ROS_INFO("[%s target]: Joints received from platform", Tool_Names[_myTrackID]);
   }
   _flagPlatformJointsConnected = true;
 }
@@ -1064,7 +1085,7 @@ void targetObject::readForceFootRestWorld(const geometry_msgs::WrenchStamped::Co
     _footBaseWorldForce = msg->wrench;
   if (!_flagFootBaseForceConnected)
 	 {
-		ROS_INFO("Reading forces in the foot %s base w.r.t. world",Tools_Names[_myTrackID]);
+		ROS_INFO("[%s target]: Reading forces in the foot base w.r.t. world", Tool_Names[_myTrackID]);
     _flagFootBaseForceConnected = true;
 	 }
 }
@@ -1092,11 +1113,7 @@ void targetObject::readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg:
 void targetObject::readGazeboLinkStates(const gazebo_msgs::LinkStates::ConstPtr &msg){
   
   _msgGazeboLinkStates = *msg;
-  if (!_flagGazeboLinkStateRead)
-  {
-    _flagGazeboLinkStateRead=true;
-  }
-  
+  _flagGazeboLinkStateRead=true;
 }
 
 void targetObject::getGazeboTargetCurrentPos()
@@ -1120,7 +1137,7 @@ void targetObject::getGazeboTargetCurrentPos()
                               torsoQuaternion);
         //std::cout<<"torso position"<<torsoPosition.transpose()<<std::endl;
       }
-      else if (_msgGazeboLinkStates.name[i].compare(std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link")==0)
+      else if (_msgGazeboLinkStates.name[i].compare(std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link")==0)
       {
         tf::pointMsgToEigen(_msgGazeboLinkStates.pose[i].position,
                               targetWorldPosition);
@@ -1133,19 +1150,6 @@ void targetObject::getGazeboTargetCurrentPos()
         _myRotationMatrixCurrent = _myQuaternionCurrent.normalized().toRotationMatrix();
       }
     }
-
-    // Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionCurrent;
-    // cout<<"targetTrocarDistanceCurrent: "<<targetTrocarDistance.transpose()<<endl; 
-    //   if (targetTrocarDistance.norm() > FLT_EPSILON) 
-    //   {
-    //     _myRotationMatrixCurrent = Utils_math<double>::rodriguesRotation(
-    //     Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
-    //   }
-    //   _myRotationMatrixCurrent =  _myRotationMatrixCurrent * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
-    //   _myQuaternionCurrent = Eigen::Quaternion<double>(_myRotationMatrixCurrent);
-
-
-    _flagGazeboLinkStateRead = false;
   }
 }
 
@@ -1153,13 +1157,13 @@ bool targetObject::gazeboSpawnModel(){
 
 
   _srvGzSpawnModel.request.model_xml = _myModelXml.c_str();
-  // _srvGzSpawnModel.request.model_xml = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target/robot_description";
-  _srvGzSpawnModel.request.model_name =  std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target";
-  // _srvGzSpawnModel.request.link_state.link_name = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target_main_link";
-  _srvGzSpawnModel.request.robot_namespace = "/" + std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target";
+  // _srvGzSpawnModel.request.model_xml = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target/robot_description";
+  _srvGzSpawnModel.request.model_name =  std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target";
+  // _srvGzSpawnModel.request.link_state.link_name = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target::"+std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+  _srvGzSpawnModel.request.robot_namespace = "/" + std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target";
   _srvGzSpawnModel.request.reference_frame = "body::torso_link";
   geometry_msgs::Point positionToSpawn;
-  std::cout<<_myPositionSpawn.transpose()<<std::endl;
+  std::cout<<"Spawning Position: "<<_myPositionSpawn.transpose()<<std::endl;
   tf::pointEigenToMsg(_myPositionSpawn,positionToSpawn);
   _srvGzSpawnModel.request.initial_pose.position = positionToSpawn;
   geometry_msgs::Quaternion quaternionToSpawn;
@@ -1168,12 +1172,12 @@ bool targetObject::gazeboSpawnModel(){
 
   if (_clientSpawnNewTargetAtPos.call(_srvGzSpawnModel))
   {
-    ROS_INFO("Target (re-)spawned to a new position");
+    ROS_INFO("[%s target]: Target (re-)spawned to a new position", Tool_Names[_myTrackID]);
     return true;
   }
   else
   {
-    ROS_ERROR("Error in (re-)spawning the target to a new position");
+    ROS_ERROR("[%s target]: Error in (re-)spawning the target to a new position", Tool_Names[_myTrackID]);
     return false;
   }
 }
@@ -1181,16 +1185,16 @@ bool targetObject::gazeboSpawnModel(){
 bool targetObject::gazeboDeleteModel(){
   // try
   // {
-    _srvGzDeleteModel.request.model_name = std::string(Tools_Names[_myTrackID])+"_" + _myName +"_target";
+    _srvGzDeleteModel.request.model_name = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target";
 
     if (_clientDeleteOldTarget.call(_srvGzDeleteModel))
     {
-      ROS_INFO("Target ready to change position");
+      ROS_INFO("[%s target]: Target ready to change position", Tool_Names[_myTrackID]);
       return true;
     }
     else
     {
-      ROS_ERROR("Error in changing target position");
+      ROS_ERROR("[%s target]: Error in changing target position", Tool_Names[_myTrackID]);
       return false;
     }
   // }
@@ -1199,14 +1203,43 @@ bool targetObject::gazeboDeleteModel(){
   // {
   //   if (_xTarget>0)
   //   {
-  //     ROS_ERROR("%s", ex.what());
+  //     ROS_ERROR("[%s target]: %s", ex.what(, Tool_Names[_myTrackID]));
   //   }
 
   // }
 
 }
 
-  
+void targetObject::generateRandomTarget(int* xTarget_,double* randomAngle_)
+{
+  if (xTarget_!=NULL)
+  {
+    int newTargetNum = *xTarget_;
+      while (*xTarget_==newTargetNum)
+      {
+         newTargetNum = rand() % (NB_TARGETS-1);
+        //std::cout<<newTargetNum<<std::endl;
+        if (*xTarget_!=newTargetNum)
+          {
+            break;
+          }
+      }
+      *xTarget_ = newTargetNum; // Generate new target randomly
+  }
+  if (randomAngle_!=NULL)
+  {
+    double randomAngleNew = *randomAngle_;
+    while(*randomAngle_ == randomAngleNew)
+    {
+      randomAngleNew = Utils_math<double>::bound(- 1.5 * M_PI + ((rand()%(NB_TARGETS-1)) * 3.0 * M_PI)/((NB_TARGETS-1)), -1.5 * M_PI, 1.5 * M_PI ) ;
+       if (*randomAngle_!=randomAngleNew)
+        {
+          break;
+        }
+    }
+    *randomAngle_ = randomAngleNew;
+  }
+}
   
   
   

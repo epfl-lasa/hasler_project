@@ -45,7 +45,7 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
   _flagHipPoseConnected =  false;
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
-    ROS_ERROR("Failed to construct kdl tree");
+    ROS_ERROR("[%s leg]: Failed to construct kdl tree",Leg_Names[_leg_id]);
     _stop=true;
   }
 
@@ -97,11 +97,10 @@ bool legRobot::init() //! Initialization of the node. Its datatype
 
   if (_n.ok()) {
     ros::spinOnce();
-    ROS_INFO("The leg joint state publisher "
-             "is about to start ");
+    ROS_INFO("[%s leg]: The leg joint state publisher is about to start ",Leg_Names[_leg_id]);
     return true;
   } else {
-    ROS_ERROR("The ros node has a problem.");
+    ROS_ERROR("[%s leg]: The ros node has a problem.",Leg_Names[_leg_id]);
     return false;
   }
 }
@@ -129,7 +128,7 @@ void legRobot::run() {
     _loopRate.sleep();
   }
 
-  ROS_INFO("Leg state variables stopped");
+  ROS_INFO("[%s leg]: Leg state variables stopped",Leg_Names[_leg_id]);
   ros::spinOnce();
   _loopRate.sleep();
   ros::shutdown();
@@ -184,7 +183,7 @@ void legRobot::readFootBasePose()
     
   } catch (tf2::TransformException ex) {
     if (count>2)
-    { ROS_ERROR("%s", ex.what());
+    { ROS_ERROR("[%s leg]: %s",Leg_Names[_leg_id], ex.what());
       count = 0;
     }
     else
@@ -219,7 +218,7 @@ void legRobot::readHipBasePose() {
 
   } catch (tf2::TransformException ex) {
     if (count > 2) {
-      ROS_ERROR("%s", ex.what());
+      ROS_ERROR("[%s leg]: %s",Leg_Names[_leg_id], ex.what());
       count = 0;
     } else {
       count++;
@@ -239,14 +238,14 @@ void legRobot::performInverseKinematics(){
     *_legJointsInit = *_legJointsPrev;
     if(_mySolutionFound)
     {
-      ROS_ERROR("No leg IK solutions found yet... move around to find one");
+      ROS_ERROR("[%s leg]: No leg IK solutions found yet... move around to find one",Leg_Names[_leg_id]);
       _mySolutionFound=false;
     }
   }
   else{
     if(!_mySolutionFound)
     {
-      ROS_INFO("Solutions of leg IK found again!");
+      ROS_INFO("[%s leg]: Solutions of leg IK found again!",Leg_Names[_leg_id]);
       _mySolutionFound=true;
     }
   }

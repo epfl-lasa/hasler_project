@@ -31,8 +31,10 @@
 
 		<rosparam file="$(find surgical_sim)/config/left_tool_settings.yaml" command="load"/>
 		<rosparam file="$(find surgical_sim)/config/right_tool_settings.yaml" command="load"/>
-
-		<node name="left_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
+    	<node pkg="surgical_sim" type="init_forceps_right.sh" name="run_script_right" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+		<node pkg="surgical_sim" type="init_camera_left.sh" name="run_script_left" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+		
+		<node name="left_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen" launch-prefix="bash -c 'sleep 3; $0 $@'">
 			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   
 			<param name="rosControl"        value="$(arg rosControl)"/> 
 			<param name="toolID"            value="left"/>
@@ -41,7 +43,7 @@
 			<remap from="robot_description" to="/left_tool/robot_description"/>
 			<remap from="tool_tip_pose"     to="tool_joint_state_publisher/tool_tip_pose"/>
 		</node>	
-		<node name="right_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
+		<node name="right_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen" launch-prefix="bash -c 'sleep 3; $0 $@'">
 			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   
 			<param name="rosControl"        value="$(arg rosControl)"/>   
 			<param name="toolID"            value="right"/>

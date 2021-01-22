@@ -2,5 +2,12 @@
   toolType: 'camera'
   toolSelfRotationControl: 'speed'
   speedControlGainCamera: 0.5
-  speedControlGainSelfRotation: 50.0
-  deadZoneValuesPlatform: [0.0180, 0.0195, 0.0959931, 0.0715585, 0.0436332]
+  speedControlGainSelfRotation: 10.0
+  desiredPlatformWorkspaceLimsMin: [-0.090, -0.0975, -0.200, -0.261799, -0.349066] # Y,X,PITCH,ROLL,YAW
+  desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, 0.00000 , 0.349066]
+  deadZoneValuesPlatformMin: [-0.05, -0.05, -0.18, -0.15, -0.08]
+  deadZoneValuesPlatformMax: [0.05, 0.05, 0.0, 0.15, 0.08]
+  platformJointOffsets: [0.0, 0.0, 0.0, 0.0, 0.0]
+  cartLimsX: [-0.05, 0.15] # [m]
+  cartLimsY: [-0.15,0.15]  # [m]
+  cartLimsZ: [-0.26,-0.06] # [m]
