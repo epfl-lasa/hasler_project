@@ -17,7 +17,7 @@
 			<!-- <kd>${kdCollision}</kd> -->
 			<selfCollide>false</selfCollide>
 			<maxVel>0.01</maxVel>
-			<minDepth>0.001</minDepth>
+			<minDepth>0.0000001</minDepth>
 		</gazebo>
 	</xacro:macro>	
 	

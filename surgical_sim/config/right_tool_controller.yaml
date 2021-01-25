@@ -29,7 +29,7 @@
     right_tool_joint3_yaw:
       pid: {p: 500, i: 0, d: 5, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
     right_tool_joint4_insertion: 
-      pid: {p: 10000, i: 0 , d: 500, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
+      pid: {p: 10000, i: 0 , d: 100, i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
     right_tool_joint5_wrist_open_angle: 
       pid: {p: 10000, i: 10.0 , d: 1.0 , i_clamp_min: -1000.0, i_clamp_max: 1000.0, antiwindup: true }
     right_tool_joint5_wrist_open_angle_mimic: 

@@ -91,12 +91,13 @@ private:
   static targetObject *me;
 
   enum Marker_Color {NONE, RED, YELLOW, CYAN, WHITE};
-  enum Target_Status {TARGET_NOT_REACHED, TARGET_REACHED, TARGET_GRASPED, TARGET_CHANGED};
+  enum Target_Status {TARGET_REACHED, TARGET_ALIGNED, TARGET_CHANGED,NB_TARGET_STATUS};
   enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
   enum TF_List {TF_TARGET_OBJECT, TF_TARGET_AIM, NB_TF_LIST};
 
-  Target_Status _myStatus;
+  bool _myStatus[NB_TARGET_STATUS];
   
+
   Action_State _aState;
 
   TrackID _myTrackID; 
@@ -280,7 +281,7 @@ private:
   _targetsXYZ;
 
   int NB_TARGETS;
-  int _nTarget, _xTarget;
+  int _nTarget, _xTarget, _xTargetPrev;
 
 
   void readGazeboLinkStates(const gazebo_msgs::LinkStates::ConstPtr &msg);

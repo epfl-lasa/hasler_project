@@ -22,7 +22,7 @@ char const *Tool_Names[]{TOOL_NAMES};
 
 char const *Tool_Names2[]{"None","Right","Left"};
 
-#define DELAY_SEC 0.01 // Its so low because of the gazebo timeout to spawn (~3s)
+#define DELAY_SEC 1 // Its so low because of the gazebo timeout to spawn (~3s)
 
 
 const float Axis_Limits[] =  {0.090,0.0975,27.5*DEG_TO_RAD,120.0*DEG_TO_RAD};
@@ -83,7 +83,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
 
   NB_TARGETS=0;
   
-  _xTarget=0;  _nTarget=0;
+  _xTarget=0;  _nTarget=0; _xTargetPrev=_xTarget;
 
   
     
@@ -114,7 +114,7 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     
     _flagGazeboLinkStateRead = false;
     _flagTargetReached = false;
-    _flagTargetReachedOpen = false;
+    // _flagTargetReachedOpen = false;
     _flagTargetGrasped = false;
     _flagTargetSpawned = false;
     _flagTrocarTFConnected = false;
@@ -212,7 +212,12 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     }
 
 
-  _myStatus = TARGET_NOT_REACHED;
+  for (size_t i = 0; i < NB_TARGET_STATUS; i++)
+  {
+    _myStatus[i]=0;
+  }
+  
+
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
     ROS_ERROR("[%s target]: Failed to construct kdl tree", Tool_Names[_myTrackID]);
@@ -318,7 +323,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   signal(SIGINT, targetObject::stopNode);
 
   if (_n.ok()) {
-    srand(ros::Time::now().toNSec());
+    srand(time(NULL));
     ros::spinOnce();
     ROS_INFO("[%s target]: The target spawner is about to start ", Tool_Names[_myTrackID]);
     return true;
@@ -353,8 +358,8 @@ void targetObject::run() {
           writeTFtargetObject();
           publishMarkerTargetRviz(visualization_msgs::Marker::ADD, WHITE,0.0);
           writeTFtargetAim();
-          evaluateTarget();
           _tfBroadcaster->sendTransform(_msgAllTransforms);
+          evaluateTarget();
           ROS_INFO_ONCE("[%s target]: It is possible to evaluate the target now",Tool_Names[_myTrackID]);
         }
         else
@@ -390,7 +395,7 @@ void targetObject::readTFTool() {
     toolTipTransform_ = _tfBuffer.lookupTransform(
         original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
 
-      if (_flagToolTipTFConnected) {
+      if (!_flagToolTipTFConnected) {
         _toolTipPositionPrev = _toolTipPosition;
         tf::vectorMsgToEigen(toolTipTransform_.transform.translation,
                              _toolTipPosition);
@@ -431,7 +436,7 @@ void targetObject::readTFTrocar() {
       trocarTransform_ = _tfBuffer.lookupTransform(
           original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
 
-      if (_flagTrocarTFConnected) {
+      if (!_flagTrocarTFConnected) {
 
         tf::vectorMsgToEigen(trocarTransform_.transform.translation,
                              _trocarPosition);
@@ -457,45 +462,60 @@ void targetObject::readTFTrocar() {
 
 
 void targetObject::computetargetObjectPose(){
-  if( Utils_math<double>::isInRange(-_trocarPosition(CART_X) + _targetsXYZ[CART_X].second[_xTarget], _cartesianLimsTools(CART_X,L_MIN) +_myVirtualJointLims(CART_X,L_MIN), _cartesianLimsTools(CART_X,L_MAX)- _myVirtualJointLims(CART_X,L_MAX)) 
-      && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)+ _myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- _myVirtualJointLims(CART_Y,L_MAX))    
-    ) 
-  {
-    if(!_flagTargetSpawned && _flagTrocarTFConnected)
+    if(_flagTrocarTFConnected)
     {
-      _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.01;
-      cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
-      Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
-      // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
-      _myRotationMatrixSpawn.setIdentity();
-      if (targetTrocarDistance.norm() > FLT_EPSILON) 
+      while (_xTargetPrev==_xTarget)
       {
-        _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(
-        Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+          generateRandomTarget(&_xTarget,&_myRandomAngle);
       }
-      _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
-      _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
-      if (gazeboDeleteModel())
+      // if( Utils_math<double>::isInRange(-_trocarPosition(CART_X) + _targetsXYZ[CART_X].second[_xTarget], _cartesianLimsTools(CART_X,L_MIN) - 1.5*_myVirtualJointLims(CART_X,L_MIN), _cartesianLimsTools(CART_X,L_MAX)- 1.5*_myVirtualJointLims(CART_X,L_MAX)) 
+      //     && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)- 1.5*_myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- 1.5*_myVirtualJointLims(CART_Y,L_MAX))    
+      //   ) 
+      if(true)
       {
-        _flagTargetSpawned = gazeboSpawnModel();
-      }
+        _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
+        // cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
+        Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
+        // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
+        _myRotationMatrixSpawn.setIdentity();
+        if (targetTrocarDistance.norm() > FLT_EPSILON) 
+        {
+          _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+        }
+        _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
+        _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
+        if (gazeboDeleteModel())
+        {
+          _flagTargetSpawned = gazeboSpawnModel();
+        if (_flagTargetSpawned)
+          {
+            _nTarget++;
+            ROS_INFO("[%s target]: New target generated!. # %i",Tool_Names[_myTrackID],_nTarget);
+            _myStatus[TARGET_CHANGED]=0;
+            _xTargetPrev=_xTarget;
+            if (_nTarget>=NB_TARGETS)
+            {
+              ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
+              publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
+              _stop=true;
+            }
+          }
+        }
       else
       {
         _flagTargetSpawned = false;
       }
-      // Generate Aim Frame
+        // Generate Aim Frame
+        
+        _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*_myVirtualJointLims(CART_Z,L_MAX));
+        double randomAngleAim = _myRandomAngle;
+        generateRandomTarget(NULL,&randomAngleAim); // Generate an aim orientation different than that in which we spawned the target
+        _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleAim, Vector3d::UnitZ()).toRotationMatrix();
+    } else {
       
-       _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*_myVirtualJointLims(CART_Z,L_MAX));
-       double randomAngleAim = _myRandomAngle;
-       generateRandomTarget(NULL,&randomAngleAim); // Generate an aim orientation different than that in which we spawned the target
-       _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleAim, Vector3d::UnitZ()).toRotationMatrix();
+      ROS_INFO_ONCE("[%s target]: Looking for a target inside the workspace of the tool...", Tool_Names[_myTrackID] );
+      _flagTargetSpawned = false;    
     }
-  }
-  else
-  {
-    ROS_WARN_ONCE("[%s target]: Spawning not succesful, trying another target ", Tool_Names[_myTrackID] );
-    _flagTargetSpawned = false;
-    generateRandomTarget(&_xTarget,&_myRandomAngle);
   }
 }
 
@@ -508,56 +528,65 @@ void targetObject::evaluateTarget()
   // std::cout<<"Precision in angle:" << errorAng<<std::endl;
   if (_precisionPos < 0.007)
   {
-     _flagTargetReached=true;
-     _myStatus=TARGET_GRASPED;
-     _flagTargetReachedOpen=true; 
-     publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
-     ROS_INFO_ONCE("[%s target]: YOU MANAGED THE POSITIONING", Tool_Names[_myTrackID]);   
-      if (errorAng < (1-cos(7.0*DEG_TO_RAD)))
-      {
-          publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
-          if (!_flagTargetGrasped)
-          {
-            _startDelayForCorrection = ros::Time::now(); 
-            ROS_INFO("[%s target]: YOU MANAGED THE ALIGNMENT", Tool_Names[_myTrackID]);
-          }
-          _flagTargetGrasped=true;
-          _myStatus=TARGET_GRASPED;
-      } else{
-        ROS_WARN_ONCE("[%s target]: YOU MISSED THE ALIGNMENT", Tool_Names[_myTrackID]);
-        _startDelayForCorrection = ros::Time::now(); 
-        _flagTargetGrasped=false;
-        }
-
+    _myStatus[TARGET_REACHED]=true;
+   
   } else {
-    _startDelayForCorrection = ros::Time::now(); 
     _flagTargetReached=false; 
-    _flagTargetReachedOpen=false;
-    _flagTargetGrasped=false; 
-    _myStatus=TARGET_NOT_REACHED;
-     publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
-    }
-
-  if (_myStatus==TARGET_GRASPED && _nTarget < NB_TARGETS) {
-    if ((ros::Time::now() - _startDelayForCorrection).toSec() >= DELAY_SEC){ 
-    _nTarget++;
-    generateRandomTarget(&_xTarget, &_myRandomAngle);
-    _flagTargetReached =false;
-    _startDelayForCorrection=ros::Time::now();
-    ROS_INFO("[%s target]: New target generated!. # %i",_nTarget, Tool_Names[_myTrackID]);
-    _myStatus = TARGET_CHANGED;
-    _flagTargetSpawned=false;
-    publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
-    }
+    // _flagTargetReachedOpen=false;
+     _myStatus[TARGET_REACHED]=false;
   }
-
-  if (_nTarget>=NB_TARGETS)
+  if (errorAng < (1-cos(7.0*DEG_TO_RAD)))
   {
-    ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
-    publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
-    _stop=true;
+    _myStatus[TARGET_ALIGNED]=true;
+    
+  } else{
+    _myStatus[TARGET_ALIGNED]=false;
+  }  
+
+  if ( _myStatus[TARGET_REACHED] && !_myStatus[TARGET_ALIGNED])
+  {
+     if(!_flagTargetReached)
+    {
+       _flagTargetReached=true;
+      //  _flagTargetReachedOpen=true; 
+       ROS_INFO_ONCE("[%s target]: YOU MANAGED THE POSITIONING", Tool_Names[_myTrackID]);   
+    }
+    publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
   }
 
+  if ( _myStatus[TARGET_REACHED] && _myStatus[TARGET_ALIGNED])
+  {
+    if (!_flagTargetGrasped)
+    {
+          _startDelayForCorrection = ros::Time::now(); 
+          // cout<<"startDelay: "<<_startDelayForCorrection.toNSec()<<endl;
+          ROS_INFO_ONCE("[%s target]: YOU MANAGED THE ALIGNMENT", Tool_Names[_myTrackID]);
+          _flagTargetGrasped=true;
+    }  
+    publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
+  }
+
+  if ( !_myStatus[TARGET_REACHED] && !_myStatus[TARGET_ALIGNED])
+  {
+    _startDelayForCorrection = ros::Time::now(); 
+    publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+    _flagTargetGrasped=false;
+  }
+
+
+
+  if (_myStatus[TARGET_REACHED] && _myStatus[TARGET_ALIGNED] && _nTarget < NB_TARGETS) {
+    
+    if ((ros::Time::now() - _startDelayForCorrection).toSec() > DELAY_SEC){ 
+      // generateRandomTarget(&_xTarget, &_myRandomAngle);
+      // _startDelayForCorrection=ros::Time::now();
+      _myStatus[TARGET_CHANGED]=true;
+      _myStatus[TARGET_REACHED]=false;
+      _myStatus[TARGET_ALIGNED]=false;
+      _flagTargetSpawned=false;
+      publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+    }
+  }
 }
 
 
@@ -574,9 +603,9 @@ void targetObject::evaluateTarget()
   {
      _flagTargetReached=true;
      _myStatus=TARGET_REACHED;
-     if (_flagTargetReachedOpen || (_toolJointPosition(tool_wrist_open_angle)>20.0*DEG_TO_RAD))
+    //  if (_flagTargetReachedOpen || (_toolJointPosition(tool_wrist_open_angle)>20.0*DEG_TO_RAD))
      {
-      _flagTargetReachedOpen=true; 
+      // _flagTargetReachedOpen=true; 
       publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
         
       if (_toolJointPosition(tool_wrist_open_angle)<=17.0*DEG_TO_RAD)
@@ -588,7 +617,7 @@ void targetObject::evaluateTarget()
             std::cout<<"grasped"<<std::endl;
           }
           _flagTargetGrasped=true;
-          _myStatus=TARGET_GRASPED;
+          _myStatus=TARGET_ALIGNED;
       }
       else
       {
@@ -601,13 +630,13 @@ void targetObject::evaluateTarget()
   {
     _startDelayForCorrection = ros::Time::now(); 
     _flagTargetReached=false; 
-    _flagTargetReachedOpen=false;
+    // _flagTargetReachedOpen=false;
     _flagTargetGrasped=false; 
     _myStatus=TARGET_NOT_REACHED;
      publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
   }
 
-  if (_myStatus==TARGET_GRASPED && _nTarget < NB_TARGETS)
+  if (_myStatus==TARGET_ALIGNED && _nTarget < NB_TARGETS)
   {
     if ((ros::Time::now() - _startDelayForCorrection).toSec() >= DELAY_SEC)
     { 
@@ -877,7 +906,9 @@ void targetObject::recordStatistics(){
     {
 		_statsOutputFile << deltaTime<< " "
 					<< _nTarget<< " "
-          << _myStatus<< " "
+          << _myStatus[TARGET_REACHED]<< " "
+          << _myStatus[TARGET_ALIGNED]<< " "
+          << _myStatus[TARGET_CHANGED]<< " "
           << _myPositionSpawn.transpose()<<" "
           << _myQuaternionSpawn.x()<<" "
           << _myQuaternionSpawn.y()<<" "
@@ -924,7 +955,9 @@ void targetObject::recordStatistics(){
     {
       _statsOutputFile << "t"<< " "
 					<< "nT"<< " "
-          << "stat"<< " "
+          << "statReached"<< " "
+          << "statGrasped"<< " "
+          << "statChanged"<< " "
           << "posTXSpawn"<<" "
           << "posTYSpawn"<<" "
           << "posTZSpawn"<<" "

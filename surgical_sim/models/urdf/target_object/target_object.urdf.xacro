@@ -8,12 +8,13 @@
 
   <xacro:property name="linear_lim" value="0.02"/>
   
-  <xacro:property name="mass_x" value="0.0001"/>  
-  <xacro:property name="mass_y" value="0.0001"/>
+  <xacro:property name="mass_x" value="0.001"/>  
+  <xacro:property name="mass_y" value="0.001"/>
  
   
   <xacro:property name="mass_z" value="0.001"/>
-  <xacro:property name="mass_main" value="0.00037311"/>
+  <xacro:property name="mass_main" value="0.000337311"/>
+  <xacro:property name="mass_" value="0.01"/>
 
   
   <xacro:arg name="targetID" default="right_t1"/>
@@ -90,12 +91,12 @@
           <mesh filename="package://surgical_sim/models/meshes/stl/target/target_translated.STL"/>
         </geometry>
     </visual>
-    <collision>
+    <collision name="$(arg targetID)_target_main_link_collision">
         <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
         <geometry>
           <!-- <box size="${2*sphere_radius} ${2*sphere_radius} ${2*sphere_radius}"/> -->
           <!-- <sphere radius="${sphere_radius}"/> -->
-          <mesh filename="package://surgical_sim/models/meshes/stl/target/target_translated_collision.STL" scale="1.1 1.1 1.1"/>
+          <mesh filename="package://surgical_sim/models/meshes/stl/target/target_translated_collision.STL" scale="1.2 1.1 1.1"/>
         </geometry>
     </collision>
     <inertial>
@@ -103,14 +104,14 @@
         xyz="-0.0027704 -0.00060187 -1.79059999999631E-08"
         rpy="0 0 0" />
       <mass
-        value="${mass_main}" />
-      <inertia
-        ixx="2.99391393770835E-08"
-        ixy="-1.99518680567514E-09"
-        ixz="2.72589485952597E-15"
-        iyy="8.27991394391801E-09"
-        iyz="3.38023650313121E-14"
-        izz="3.77117809466761E-08" />
+        value="${mass_}" />
+              <inertia
+        ixx="${2.99391393770835E-08 * mass_/mass_main}"
+        ixy="${-1.99518680567514E-09 * mass_/mass_main}"
+        ixz="${2.72589485952597E-15 * mass_/mass_main}"
+        iyy="${8.27991394391801E-09 * mass_/mass_main}"
+        iyz="${3.38023650313121E-14 * mass_/mass_main}"
+        izz="${3.77117809466761E-08 * mass_/mass_main}" />
     </inertial>
   </link>
 
@@ -120,12 +121,13 @@
      <child link="$(arg targetID)_target_base_link"/>
   </joint>
 
+  
   <joint name="$(arg targetID)_target_x_joint" type="prismatic">
      <origin xyz="0.0 0.0 0.0" rpy="0.0 0 0"/>
      <axis xyz="1.0 0.0 0.0"/>
      <parent link="$(arg targetID)_target_base_link"/>
      <child link="$(arg targetID)_target_y_link"/>
-     <limit lower="-${linear_lim}" upper="${linear_lim}" effort="1000.0" velocity=".4"/>
+     <limit lower="-${linear_lim}" upper="${linear_lim}" effort="1000.0" velocity="10.0"/>
   </joint>
 
 
@@ -134,7 +136,7 @@
      <axis xyz="0.0 1.0 0.0"/>
      <parent link="$(arg targetID)_target_y_link"/>
      <child link="$(arg targetID)_target_z_link"/>
-     <limit lower="-${linear_lim}" upper="${linear_lim}" effort="1000.0" velocity=".4"/>
+     <limit lower="-${linear_lim}" upper="${linear_lim}" effort="1000.0" velocity="10.0"/>
   </joint>
 
 
@@ -143,7 +145,7 @@
      <axis xyz="0.0 0.0 1.0"/>
      <parent link="$(arg targetID)_target_z_link"/>
      <child link="$(arg targetID)_target_z2_link"/>
-     <limit lower="-${0.5*linear_lim}" upper="${2*linear_lim}" effort="1000.0" velocity=".4"/>
+     <limit lower="-${0.05*linear_lim}" upper="${2*linear_lim}" effort="1000.0" velocity="10.0"/>
   </joint>
 
    <joint name="$(arg targetID)_target_z2_joint" type="continuous">
@@ -151,8 +153,11 @@
      <axis xyz="0.0 0.0 1.0"/>
      <parent link="$(arg targetID)_target_z2_link"/>
      <child link="$(arg targetID)_target_main_link"/>
-     <limit effort="1000.0" velocity=".4"/>
+     <limit effort="1000.0" velocity="10.0"/>
   </joint>
+
+
+
 
   <xacro:gazebo_links name="$(arg parent_link)"/>
   <xacro:gazebo_links name="$(arg targetID)_target_base_link"/>
@@ -160,15 +165,42 @@
   
   
   <xacro:gazebo_links name="$(arg targetID)_target_z_link"/>
-  <xacro:gazebo_links name="$(arg targetID)_target_main_link"/>
+  <!-- <xacro:gazebo_links name="$(arg targetID)_target_main_link"/> -->
     
-    
+  	
+	<gazebo reference="$(arg targetID)_target_main_link">
+			<turnGravityOff>false</turnGravityOff> 
+			<mu1>200</mu1>
+			<mu2>200</mu2>
+			<kd>10000000000000000000000.0</kd>
+			<selfCollide>true</selfCollide>
+			<maxVel>0.000001</maxVel>
+			<minDepth>1</minDepth>
+			<dampingFactor>0.05</dampingFactor> 
+      <collision name="$(arg targetID)_target_main_link_collision">
+      <surface>
+        <friction>
+          <torsional>
+            <coefficient>1.0</coefficient>
+            <use_patch_radius>true</use_patch_radius>
+            <patch_radius>0.05</patch_radius>
+          </torsional>
+        </friction>
+      </surface>
+    </collision>
+	</gazebo>
+
+	
+
+
   <xacro:gazebo_joints name="$(arg targetID)_target_base_joint"/>
   <xacro:gazebo_joints name="$(arg targetID)_target_x_joint"/>
   <xacro:gazebo_joints name="$(arg targetID)_target_y_joint"/>
   <xacro:gazebo_joints name="$(arg targetID)_target_z_joint"/>
   <xacro:gazebo_joints name="$(arg targetID)_target_z2_joint"/>
   
+
+
     <gazebo>
         <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
         <robotNamespace>/$(arg targetID)_target</robotNamespace>
