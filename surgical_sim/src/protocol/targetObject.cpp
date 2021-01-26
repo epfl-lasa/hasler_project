@@ -340,7 +340,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
  // cout<<_statsfilename<<endl;
  if (_subjectID.compare("none")!=0)
   {
-    _statsOutputFile.open(ros::package::getPath(std::string("surgical_sim")) + "/data/log/"+ _subjectID + "_" + datefilename + ".txt");
+    _statsOutputFile.open(ros::package::getPath(std::string("surgical_sim")) + "/data/log/"+ _subjectID + "_" +Tool_Names[_myTrackID]+"_"+ datefilename + ".txt");
   }
 
   // Subscriber definitions

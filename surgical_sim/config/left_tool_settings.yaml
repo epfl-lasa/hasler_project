@@ -21,6 +21,6 @@
   deadZoneValuesPlatformMin: [-0.030, -0.030, -0.18, -0.15, -0.08]
   deadZoneValuesPlatformMax: [0.030, 0.030, 0.03, 0.15, 0.08]
   platformJointOffsets: [0.0, 0.0, 0.0, 0.0, 0.0]
-  cartLimsX: [-0.15, 0.15] # [m]
+  cartLimsX: [-0.05, 0.15] # [m]
   cartLimsY: [-0.15,0.15]  # [m]
   cartLimsZ: [-0.26,-0.06] # [m]
