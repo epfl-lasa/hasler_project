@@ -22,7 +22,7 @@ char const *Tool_Names[]{TOOL_NAMES};
 
 char const *Tool_Names2[]{"None","Right","Left"};
 
-#define DELAY_SEC 1 // Its so low because of the gazebo timeout to spawn (~3s)
+#define DELAY_SEC 2 // Its so low because of the gazebo timeout to spawn (~3s)
 
 
 const float Axis_Limits[] =  {0.090,0.0975,27.5*DEG_TO_RAD,120.0*DEG_TO_RAD};
@@ -31,12 +31,12 @@ const float SAMPLING_TIME = 10; // 100Hz
 
 const int Axis_Mod[NB_PLATFORM_AXIS] = {p_x,p_y,p_pitch,p_roll,p_yaw};
 
-const double scaleFoot[] = {Axis_Limits[0]/0.15,Axis_Limits[1]/0.15,(1.5*Axis_Limits[2])/(2*0.15),35.0*DEG_TO_RAD/(1.5*M_PI),20.5*DEG_TO_RAD/30*DEG_TO_RAD}; // X, Y, Z, YAW, ROLL;
+const double Scale_Foot[] = {Axis_Limits[0]/0.15,Axis_Limits[1]/0.15,(1.5*Axis_Limits[2])/(2*0.15),35.0*DEG_TO_RAD/(1.5*M_PI),20.5*DEG_TO_RAD/30*DEG_TO_RAD}; // X, Y, Z, YAW, ROLL;
 
-const double LimitsCart[NB_CART_AXIS][NB_TOOLS][NB_LIMS] = {{{-0.15,0.05},{0.05,0.15}},  //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
-                                                                        {{-0.15,0.15},{-0.15,0.15}}, //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
-                                                                        {{-0.26,-0.06},{-0.26,-0.06}} }; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
-
+const double Limits_Cart[NB_CART_AXIS][NB_TOOLS][NB_LIMS] = {{{-0.15,0.05},{0.05,0.15}},  //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+                                                            {{-0.15,0.15},{-0.15,0.15}}, //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+                                                            {{-0.26,-0.06},{-0.26,-0.06}} }; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
+const double Max_Angle = 17.0 * DEG_TO_RAD;
 
 
 targetObject *targetObject::me = NULL;
@@ -77,6 +77,9 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   _precisionPos=0.0;  
   _precisionGrasp=0.0; 
   _hapticAxisFilterPos=1.0; 
+
+  _mySize=0.0; 
+  _myOpeningAngle=0.0;
  
 
   _myRandomAngle=0.0;
@@ -111,11 +114,11 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
    
     _toolTipRotationMatrix.setIdentity();
     _trocarRotationMatrix.setIdentity();
-    
     _flagGazeboLinkStateRead = false;
     _flagTargetReached = false;
-    // _flagTargetReachedOpen = false;
     _flagTargetGrasped = false;
+    _flagTargetReachedAndAligned = false;
+    _flagTargetInAimSuccess = false;
     _flagTargetSpawned = false;
     _flagTrocarTFConnected = false;
     _flagToolTipTFConnected = false;
@@ -125,30 +128,44 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
     _aState=A_POSITIONING;
   
 
-
     _flagRecordingStarted=false;
+    _myPositionSpawn.setZero();
+    _myQuaternionSpawn.setIdentity();
+    _myRotationMatrixSpawn.setIdentity();
+    _myPositionCurrent.setZero();
+    _myQuaternionCurrent.setIdentity();
+    _myRotationMatrixCurrent.setIdentity();
+    _maxLimsTarget.setZero();
+    _startDelayForCorrection = ros::Time::now();
+    _startingTime = ros::Time::now();
+    
 
-  _myPositionSpawn.setZero();
-  _myQuaternionSpawn.setIdentity();
-  _myRotationMatrixSpawn.setIdentity();
-  _myPositionCurrent.setZero();
-  _myQuaternionCurrent.setIdentity();
-  _myRotationMatrixCurrent.setIdentity();
-  _maxLimsTarget.setZero();
-  
-  std::string trackingMode;
-  _startDelayForCorrection = ros::Time::now();
-  _startingTime = ros::Time::now();
-  
-
-
-  for (size_t i = 0; i < NB_CART_AXIS; i++)
-  {
-    for (size_t j = 0; j < NB_LIMS; j++)
-    {
-      _cartesianLimsTools(i,j) = LimitsCart[i][_myTrackID-1][j];
+    std::string trackingMode = "none";
+    
+    if (!_n.getParam("trackingMode", trackingMode))
+    { 
+          ROS_ERROR("[%s target]: No indicaton of tracking mode (right, left, both) was done", Tool_Names[_myTrackID]); 
     }
-  }
+
+    if (trackingMode.compare("right") == 0) {
+        _myTrackID = RIGHT_TOOL;
+        _myTargetColor = ORANGE;
+        ROS_INFO("[%s target]: This target is tracking the right tool", Tool_Names[_myTrackID]);
+      } else if (trackingMode.compare("left") == 0) {
+        _myTrackID = LEFT_TOOL;
+        _myTargetColor = PURPLE;
+        ROS_INFO("[%s target]: This target is tracking the left tool", Tool_Names[_myTrackID]);
+      } else {
+        ROS_ERROR("[%s target]: You didn't enter a tracking id: left or right", Tool_Names[_myTrackID]);
+        _stop=true;
+      }
+    for (size_t i = 0; i < NB_CART_AXIS; i++)
+    {
+      for (size_t j = 0; j < NB_LIMS; j++)
+      {
+        _cartesianLimsTools(i,j) = Limits_Cart[i][_myTrackID-1][j];
+      }
+    }
 
    std::vector<double> cartLimsX;
    std::vector<double> cartLimsY;
@@ -181,10 +198,6 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
       }
   
 
-  if (!_n.getParam("trackingMode", trackingMode))
-  { 
-        ROS_ERROR("[%s target]: No indicaton of tracking mode (right, left, both) was done", Tool_Names[_myTrackID]); 
-  }
 
    if (!_n.getParam("targetName", _myName))
   { 
@@ -200,23 +213,32 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
   }
 
   
+
   
-
-  if (trackingMode.compare("right") == 0) {
-      _myTrackID = RIGHT_TOOL;
-    } else if (trackingMode.compare("left") == 0) {
-       _myTrackID = LEFT_TOOL;
-    } else {
-      ROS_ERROR("[%s target]: You didn't enter a tracking id: left or right", Tool_Names[_myTrackID]);
-      _stop=true;
-    }
-
-
   for (size_t i = 0; i < NB_TARGET_STATUS; i++)
   {
-    _myStatus[i]=0;
+    _myStatus[i]=false;
   }
   
+  _mySimulationMode=KINEMATIC_SIMULATION;
+  string simMode;
+  if (!_n.getParam("simMode", simMode))
+  { 
+      ROS_ERROR("[%s target]: No indicaton of the simMode (e.g. kinematic, dynamic) was done", Tool_Names[_myTrackID]); 
+  } else {
+    
+    if (simMode.compare("kinematic") == 0) {
+      _mySimulationMode = KINEMATIC_SIMULATION;
+      ROS_INFO("[%s target]: This is a kinematic simulation", Tool_Names[_myTrackID]);
+    } else if (simMode.compare("dynamic") == 0) {
+      _mySimulationMode = DYNAMIC_SIMULATION;
+      ROS_INFO("[%s target]: This is a dynamic simulation", Tool_Names[_myTrackID]);
+    } else {
+      ROS_ERROR("[%s target]: You didn't enter a simulation mode: kinematic or dynamic", Tool_Names[_myTrackID]);
+      _stop=true;
+    }
+  }
+
 
 
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
@@ -261,7 +283,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
                           //! initialization
 
 {
-
+  
   _hapticTorques.setZero();
   
   _pubTargetReachedSphere = _n.advertise<visualization_msgs::Marker>("target_reached_sphere", 0);
@@ -270,8 +292,6 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tool_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
   _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myTrackID])+"/sharedGrasping",0);
 
-  _subGazeboLinkStates = _n.subscribe<gazebo_msgs::LinkStates>("/gazebo/link_states", 1,boost::bind(&targetObject::readGazeboLinkStates, this, _1),
-                  ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
   _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myTrackID])+"/sharedGrasping", 1,boost::bind(&targetObject::readSharedGrasp, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -300,9 +320,13 @@ bool targetObject::init() //! Initialization of the node. Its datatype
       , 1, boost::bind(&targetObject::readPlatformState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
 
-  _clientSpawnNewTargetAtPos = _n.serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_urdf_model");
-  _clientDeleteOldTarget = _n.serviceClient<gazebo_msgs::DeleteModel>("/gazebo/delete_model");
-
+  if (_mySimulationMode==DYNAMIC_SIMULATION){
+    _subGazeboLinkStates = _n.subscribe<gazebo_msgs::LinkStates>("/gazebo/link_states", 1,boost::bind(&targetObject::readGazeboLinkStates, this, _1),
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    _clientSpawnNewTargetAtPos = _n.serviceClient<gazebo_msgs::SpawnModel>("/gazebo/spawn_urdf_model");
+    _clientDeleteOldTarget = _n.serviceClient<gazebo_msgs::DeleteModel>("/gazebo/delete_model");
+  }   
+  
   //boost::posix_time::ptime thistime = ros::Time::now().toBoost();
   boost::posix_time::ptime thistime = boost::posix_time::second_clock::local_time();
   
@@ -324,7 +348,6 @@ bool targetObject::init() //! Initialization of the node. Its datatype
 
   if (_n.ok()) {
     srand(time(NULL));
-    ros::spinOnce();
     ROS_INFO("[%s target]: The target spawner is about to start ", Tool_Names[_myTrackID]);
     return true;
   }
@@ -352,13 +375,32 @@ void targetObject::run() {
       }
       else
       {
-        if (_flagToolJointsConnected && _flagGazeboLinkStateRead)
+        if (_flagToolJointsConnected)
         { 
-          getGazeboTargetCurrentPos();
-          writeTFtargetObject();
-          publishMarkerTargetRviz(visualization_msgs::Marker::ADD, WHITE,0.0);
-          writeTFtargetAim();
-          _tfBroadcaster->sendTransform(_msgAllTransforms);
+          switch (_mySimulationMode)
+          {
+            case DYNAMIC_SIMULATION:
+            {
+              if(_flagGazeboLinkStateRead){
+                getGazeboTargetCurrentPos();
+                writeTFtargetObject();
+                publishMarkerTargetRviz(visualization_msgs::Marker::ADD, _myTargetColor,0.0);
+                writeTFtargetAim();
+                _tfBroadcaster->sendTransform(_msgAllTransforms);
+              }
+              break;
+            }
+            case KINEMATIC_SIMULATION:
+            {
+              writeTFtargetObject();
+              publishMarkerTargetRviz(visualization_msgs::Marker::ADD, _myTargetColor,0.0);
+              _tfBroadcaster->sendTransform(_msgtargetObjectTransform);
+              break;
+            }          
+            default:
+              break;
+          }
+
           evaluateTarget();
           ROS_INFO_ONCE("[%s target]: It is possible to evaluate the target now",Tool_Names[_myTrackID]);
         }
@@ -395,7 +437,7 @@ void targetObject::readTFTool() {
     toolTipTransform_ = _tfBuffer.lookupTransform(
         original_frame.c_str(), destination_frame.c_str(), ros::Time(0));
 
-      if (!_flagToolTipTFConnected) {
+      if (_flagToolTipTFConnected) {
         _toolTipPositionPrev = _toolTipPosition;
         tf::vectorMsgToEigen(toolTipTransform_.transform.translation,
                              _toolTipPosition);
@@ -462,59 +504,92 @@ void targetObject::readTFTrocar() {
 
 
 void targetObject::computetargetObjectPose(){
-    if(_flagTrocarTFConnected)
-    {
+  if(_flagTrocarTFConnected)
+  {
       while (_xTargetPrev==_xTarget)
       {
           generateRandomTarget(&_xTarget,&_myRandomAngle);
       }
-      // if( Utils_math<double>::isInRange(-_trocarPosition(CART_X) + _targetsXYZ[CART_X].second[_xTarget], _cartesianLimsTools(CART_X,L_MIN) - 1.5*_myVirtualJointLims(CART_X,L_MIN), _cartesianLimsTools(CART_X,L_MAX)- 1.5*_myVirtualJointLims(CART_X,L_MAX)) 
-      //     && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)- 1.5*_myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- 1.5*_myVirtualJointLims(CART_Y,L_MAX))    
-      //   ) 
-      if(true)
+
+    switch (_mySimulationMode)
+    {
+      case DYNAMIC_SIMULATION:
       {
-        _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
-        // cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
-        Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
-        // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
-        _myRotationMatrixSpawn.setIdentity();
-        if (targetTrocarDistance.norm() > FLT_EPSILON) 
-        {
-          _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
-        }
-        _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
-        _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
-        if (gazeboDeleteModel())
-        {
-          _flagTargetSpawned = gazeboSpawnModel();
-        if (_flagTargetSpawned)
+        if( Utils_math<double>::isInRange(-_trocarPosition(CART_X) + _targetsXYZ[CART_X].second[_xTarget], _cartesianLimsTools(CART_X,L_MIN) - 0.5*_myVirtualJointLims(CART_X,L_MIN), _cartesianLimsTools(CART_X,L_MAX)- 0.5*_myVirtualJointLims(CART_X,L_MAX)) 
+              && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)- 0.5*_myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- 0.5*_myVirtualJointLims(CART_Y,L_MAX))    
+            ) 
           {
-            _nTarget++;
-            ROS_INFO("[%s target]: New target generated!. # %i",Tool_Names[_myTrackID],_nTarget);
-            _myStatus[TARGET_CHANGED]=0;
-            _xTargetPrev=_xTarget;
-            if (_nTarget>=NB_TARGETS)
+            _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
+            // cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
+            Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
+            // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
+            _myRotationMatrixSpawn.setIdentity();
+            if (targetTrocarDistance.norm() > FLT_EPSILON) 
             {
-              ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
-              publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
-              _stop=true;
+              _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
             }
+            _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
+            _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
+            if (gazeboDeleteModel()){
+              _flagTargetSpawned = gazeboSpawnModel();
+            } else {
+            _flagTargetSpawned = false;
+            }
+            // Generate Aim Frame
+            _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*_myVirtualJointLims(CART_Z,L_MAX));
+            double randomAngleAim = _myRandomAngle;
+            generateRandomTarget(NULL,&randomAngleAim); // Generate an aim orientation different than that in which we spawned the target
+            _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleAim, Vector3d::UnitZ()).toRotationMatrix();
+          } else {
+            ROS_INFO_ONCE("[%s target]: Looking for a target inside the workspace of the tool...", Tool_Names[_myTrackID] );
+            _flagTargetSpawned = false;    
           }
+        break;
+      }    
+    
+    case KINEMATIC_SIMULATION:
+    {
+      if( Utils_math<double>::isInRange(-_trocarPosition(CART_X) + _targetsXYZ[CART_X].second[_xTarget], _cartesianLimsTools(CART_X,L_MIN) - 0.5*_myVirtualJointLims(CART_X,L_MIN), _cartesianLimsTools(CART_X,L_MAX)- 0.5*_myVirtualJointLims(CART_X,L_MAX)) 
+            && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)- 0.5*_myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- 0.5*_myVirtualJointLims(CART_Y,L_MAX))    
+          ) 
+        {
+          _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
+          // cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
+          Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
+          // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
+          _myRotationMatrixSpawn.setIdentity();
+          if (targetTrocarDistance.norm() > FLT_EPSILON) 
+          {
+            _myRotationMatrixSpawn = Utils_math<double>::rodriguesRotation(Eigen::Vector3d(0.0, 0.0, 1.0), targetTrocarDistance);
+          }
+          _myRotationMatrixSpawn =  _myRotationMatrixSpawn * AngleAxis<double>(_myRandomAngle, Vector3d::UnitZ()).toRotationMatrix();
+          _myQuaternionSpawn = Eigen::Quaternion<double>(_myRotationMatrixSpawn);
+          _flagTargetSpawned=true;        
+        } else {
+          ROS_INFO_ONCE("[%s target]: Looking for a target inside the workspace of the tool...", Tool_Names[_myTrackID] );
+          generateRandomTarget(&_xTarget,&_myRandomAngle);
+          _flagTargetSpawned = false;    
         }
-      else
+
+      break;
+    }
+    default:
+      break;
+    }
+
+    if (_flagTargetSpawned)
+    {
+      _nTarget++;
+      ROS_INFO("[%s target]: New target generated!. # %i",Tool_Names[_myTrackID],_nTarget);
+      _myStatus[TARGET_CHANGED]=false;
+      _xTargetPrev=_xTarget;
+      if (_nTarget>=NB_TARGETS)
       {
-        _flagTargetSpawned = false;
+        ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
+        publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
+        _pubTargetReachedSphere.publish(_msgTargetReachedSphere);
+        _stop=true;
       }
-        // Generate Aim Frame
-        
-        _targetAimPosition = _myPositionSpawn + Eigen::Vector3d(0.0,0.0,0.7*_myVirtualJointLims(CART_Z,L_MAX));
-        double randomAngleAim = _myRandomAngle;
-        generateRandomTarget(NULL,&randomAngleAim); // Generate an aim orientation different than that in which we spawned the target
-        _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleAim, Vector3d::UnitZ()).toRotationMatrix();
-    } else {
-      
-      ROS_INFO_ONCE("[%s target]: Looking for a target inside the workspace of the tool...", Tool_Names[_myTrackID] );
-      _flagTargetSpawned = false;    
     }
   }
 }
@@ -522,71 +597,173 @@ void targetObject::computetargetObjectPose(){
 
 void targetObject::evaluateTarget()
 {  
-  _precisionPos = (_myPositionCurrent - _targetAimPosition).norm();
-  _precisionAng = _myQuaternionCurrent.angularDistance(_targetAimQuaternion);
-  double errorAng = 1.0-cos(_precisionAng);
-  // std::cout<<"Precision in angle:" << errorAng<<std::endl;
-  if (_precisionPos < 0.007)
+  switch (_mySimulationMode)
   {
-    _myStatus[TARGET_REACHED]=true;
-   
-  } else {
-    _flagTargetReached=false; 
-    // _flagTargetReachedOpen=false;
-     _myStatus[TARGET_REACHED]=false;
-  }
-  if (errorAng < (1-cos(7.0*DEG_TO_RAD)))
-  {
-    _myStatus[TARGET_ALIGNED]=true;
-    
-  } else{
-    _myStatus[TARGET_ALIGNED]=false;
-  }  
-
-  if ( _myStatus[TARGET_REACHED] && !_myStatus[TARGET_ALIGNED])
-  {
-     if(!_flagTargetReached)
+    case DYNAMIC_SIMULATION:
     {
-       _flagTargetReached=true;
-      //  _flagTargetReachedOpen=true; 
-       ROS_INFO_ONCE("[%s target]: YOU MANAGED THE POSITIONING", Tool_Names[_myTrackID]);   
-    }
-    publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
-  }
+      _precisionPos = (_myPositionCurrent - _targetAimPosition).norm();
+      _precisionAng = _myQuaternionCurrent.angularDistance(_targetAimQuaternion);
+      double errorAng = 1.0-cos(_precisionAng);
+      
+      //Check conditions
+      if (_precisionPos < 0.007)
+      {
+        _myStatus[TARGET_REACHED]=true;
+      } else {
+          _myStatus[TARGET_REACHED]=false;
+      }
+      if (errorAng < (1-cos(7.0*DEG_TO_RAD)))
+      {
+        _myStatus[TARGET_ALIGNED]=true;
+      } else{
+        _myStatus[TARGET_ALIGNED]=false;
+      }
+      
+      // Enable flags
+      if (_myStatus[TARGET_REACHED]){
+        if(!_flagTargetReached){
+          _flagTargetReached=true;
+          ROS_INFO("[%s target]: YOU MANAGED THE POSITIONING", Tool_Names[_myTrackID]);   
+        }
+      } else{
+        _flagTargetReached = false;
+      }
 
-  if ( _myStatus[TARGET_REACHED] && _myStatus[TARGET_ALIGNED])
-  {
-    if (!_flagTargetGrasped)
-    {
+      if ( _myStatus[TARGET_REACHED] && _myStatus[TARGET_ALIGNED]){
+        if (!_flagTargetInAimSuccess)
+        {
           _startDelayForCorrection = ros::Time::now(); 
-          // cout<<"startDelay: "<<_startDelayForCorrection.toNSec()<<endl;
-          ROS_INFO_ONCE("[%s target]: YOU MANAGED THE ALIGNMENT", Tool_Names[_myTrackID]);
-          _flagTargetGrasped=true;
-    }  
-    publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
-  }
+          ROS_INFO("[%s target]: YOU MANAGED THE ALIGNMENT", Tool_Names[_myTrackID]);
 
-  if ( !_myStatus[TARGET_REACHED] && !_myStatus[TARGET_ALIGNED])
-  {
-    _startDelayForCorrection = ros::Time::now(); 
-    publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
-    _flagTargetGrasped=false;
-  }
+          _flagTargetInAimSuccess=true;
+        } 
+      } else{
+         _flagTargetInAimSuccess=false;
+      }
+      
+      // Perform actions
+      if (!_flagTargetReached || !_flagTargetInAimSuccess){
+        _startDelayForCorrection = ros::Time::now(); 
+        publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+      }
+      if (_flagTargetReached){
+        publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
+      }
+      if (_flagTargetInAimSuccess){
+        publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
+      }
 
-
-
-  if (_myStatus[TARGET_REACHED] && _myStatus[TARGET_ALIGNED] && _nTarget < NB_TARGETS) {
-    
-    if ((ros::Time::now() - _startDelayForCorrection).toSec() > DELAY_SEC){ 
-      // generateRandomTarget(&_xTarget, &_myRandomAngle);
-      // _startDelayForCorrection=ros::Time::now();
-      _myStatus[TARGET_CHANGED]=true;
-      _myStatus[TARGET_REACHED]=false;
-      _myStatus[TARGET_ALIGNED]=false;
-      _flagTargetSpawned=false;
-      publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+      if (_flagTargetReached && _flagTargetInAimSuccess && _nTarget < NB_TARGETS) {
+        if ((ros::Time::now() - _startDelayForCorrection).toSec() > DELAY_SEC){ 
+          _myStatus[TARGET_CHANGED]=true;
+          _myStatus[TARGET_REACHED]=false;
+          _myStatus[TARGET_ALIGNED]=false;
+          _flagTargetSpawned=false;
+          _flagTargetReached=false;
+          _flagTargetInAimSuccess=false;
+          publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+        }
+      }
+      break;
     }
+    case KINEMATIC_SIMULATION:
+    {
+      
+      _precisionPos = (_myPositionSpawn - _toolTipPosition).norm();
+      _precisionAng = _myQuaternionSpawn.angularDistance(_toolTipQuaternion);
+      double errorAng = 1.0-cos(_precisionAng);
+      // Check conditions      
+      if (_precisionPos < 0.007)
+      {
+        _myStatus[TARGET_REACHED]=true;        
+      } else {
+        _myStatus[TARGET_REACHED]=false;
+      }
+      if (errorAng < (1-cos(7.0*DEG_TO_RAD)))
+      {
+        _myStatus[TARGET_ALIGNED]=true;
+      } else{
+        _myStatus[TARGET_ALIGNED]=false;
+      }
+      if (_toolJointPosition(tool_wrist_open_angle)<_myOpeningAngle){ 
+        _myStatus[TARGET_GRASPED]=true;
+      } else{ 
+        _myStatus[TARGET_GRASPED]=false;
+      }
+
+      if (_toolJointPosition(tool_wrist_open_angle)>25.0*DEG_TO_RAD){ 
+        _myStatus[TARGET_OPEN_GRIPPER]=true;
+      } else{ 
+        _myStatus[TARGET_OPEN_GRIPPER]=false;
+      }
+
+      //Enable flags
+
+      if (_myStatus[TARGET_REACHED]){
+        if(!_flagTargetReached){
+          ROS_INFO("[%s target]: YOU MANAGED THE POSITIONING", Tool_Names[_myTrackID]);   
+          _flagTargetReached=true;
+        
+        }
+      } else { 
+        _flagTargetReached=false;
+      }
+      
+      if ( _flagTargetReached && _myStatus[TARGET_ALIGNED] && _myStatus[TARGET_OPEN_GRIPPER]){
+        if(!_flagTargetReachedAndAligned){
+          ROS_INFO("[%s target]: YOU MANAGED THE POSITIONING AND ALIGNMENT", Tool_Names[_myTrackID]);
+        }
+        _flagTargetReachedAndAligned=true;
+      } 
+      if ( !_myStatus[TARGET_REACHED] || !_myStatus[TARGET_ALIGNED]){
+        if(_flagTargetReachedAndAligned){
+          _flagTargetReachedAndAligned=false;
+        }
+      } 
+      if ( _flagTargetReachedAndAligned && _myStatus[TARGET_GRASPED])
+      {
+        if (!_flagTargetGrasped){
+              _startDelayForCorrection = ros::Time::now();        
+              _flagTargetGrasped=true;
+              ROS_INFO("[%s target]: YOU MANAGED THE POSITIONING, ALIGNMENT AND GRASPING", Tool_Names[_myTrackID]);
+        }  
+      } else {
+        _flagTargetGrasped=false;
+      }
+
+  
+      // Perform actions
+      if (!_flagTargetReachedAndAligned || !_flagTargetGrasped){
+        _startDelayForCorrection = ros::Time::now(); 
+        publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+      }
+      if (_flagTargetReachedAndAligned){
+        publishTargetReachedSphere(visualization_msgs::Marker::ADD, CYAN,0.0);
+      }
+      if (_flagTargetGrasped){
+        publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
+      }
+     
+      if (_flagTargetReached && _flagTargetGrasped && _nTarget < NB_TARGETS) {
+        if ((ros::Time::now() - _startDelayForCorrection).toSec() > DELAY_SEC){ 
+          _myStatus[TARGET_CHANGED]=true;
+          _myStatus[TARGET_REACHED]=false;
+          _myStatus[TARGET_ALIGNED]=false;
+          _myStatus[TARGET_GRASPED]=false;
+          _myStatus[TARGET_OPEN_GRIPPER]=false;
+          _flagTargetSpawned=false;
+          _flagTargetReached=false;
+          _flagTargetGrasped=false;
+          publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
+        }
+      }
+      break;
+    }
+    default:
+      break;
   }
+   _pubTargetReachedSphere.publish(_msgTargetReachedSphere);
+ 
 }
 
 
@@ -611,18 +788,18 @@ void targetObject::evaluateTarget()
       if (_toolJointPosition(tool_wrist_open_angle)<=17.0*DEG_TO_RAD)
       {
           publishTargetReachedSphere(visualization_msgs::Marker::ADD, YELLOW,0.0);
-          if (!_flagTargetGrasped)
+          if (!_flagTargetInAimSuccess)
           {
             _startDelayForCorrection = ros::Time::now(); 
             std::cout<<"grasped"<<std::endl;
           }
-          _flagTargetGrasped=true;
+          _flagTargetInAimSuccess=true;
           _myStatus=TARGET_ALIGNED;
       }
       else
       {
         _startDelayForCorrection = ros::Time::now(); 
-        _flagTargetGrasped=false;
+        _flagTargetInAimSuccess=false;
       }
      }
   }
@@ -631,7 +808,7 @@ void targetObject::evaluateTarget()
     _startDelayForCorrection = ros::Time::now(); 
     _flagTargetReached=false; 
     // _flagTargetReachedOpen=false;
-    _flagTargetGrasped=false; 
+    _flagTargetInAimSuccess=false; 
     _myStatus=TARGET_NOT_REACHED;
      publishTargetReachedSphere(visualization_msgs::Marker::DELETE, NONE,0.0);
   }
@@ -683,15 +860,32 @@ void targetObject::evaluateTarget()
 
 
 void targetObject::writeTFtargetObject(){
-  _msgAllTransforms[TF_TARGET_OBJECT].child_frame_id=std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_main_link";
-  _msgAllTransforms[TF_TARGET_OBJECT].header.frame_id="torso_link";
-  _msgAllTransforms[TF_TARGET_OBJECT].header.stamp = ros::Time::now();
 
-  tf::vectorEigenToMsg(_myPositionCurrent,_msgAllTransforms[TF_TARGET_OBJECT].transform.translation);
-  tf::quaternionEigenToMsg(_myQuaternionCurrent,_msgAllTransforms[TF_TARGET_OBJECT].transform.rotation); 
+    switch (_mySimulationMode)
+    {
+      case DYNAMIC_SIMULATION:
+      {
+        _msgAllTransforms[TF_TARGET_OBJECT].child_frame_id=std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_main_link";
+        _msgAllTransforms[TF_TARGET_OBJECT].header.frame_id="torso_link";
+        _msgAllTransforms[TF_TARGET_OBJECT].header.stamp = ros::Time::now();
+        tf::vectorEigenToMsg(_myPositionCurrent,_msgAllTransforms[TF_TARGET_OBJECT].transform.translation);
+        tf::quaternionEigenToMsg(_myQuaternionCurrent,_msgAllTransforms[TF_TARGET_OBJECT].transform.rotation); 
+        break;
+      }
+    
+      case KINEMATIC_SIMULATION:
+      {
+        _msgtargetObjectTransform.child_frame_id=std::string(Tool_Names[_myTrackID])+"_"+_myName+"_target_main_link";
+        _msgtargetObjectTransform.header.frame_id="torso_link";
+        _msgtargetObjectTransform.header.stamp = ros::Time::now();
+        tf::vectorEigenToMsg(_myPositionSpawn,_msgtargetObjectTransform.transform.translation);
+        tf::quaternionEigenToMsg(_myQuaternionSpawn,_msgtargetObjectTransform.transform.rotation); 
+        break;
+      }
 
-  // _msgAllTransforms[TF_TARGET_OBJECT] = _msgtargetObjectTransform;
-  
+      default:
+      break;
+    }
 }
 
 void targetObject::writeTFtargetAim(){
@@ -789,98 +983,62 @@ void targetObject::publishTargetReachedSphere(int32_t action_,Marker_Color color
   _msgTargetReachedSphere.scale.x = 0.05;
   _msgTargetReachedSphere.scale.y = 0.05;
   _msgTargetReachedSphere.scale.z = 0.05;
-  _msgTargetReachedSphere.color.a = 0.2; // Don't forget to set the alpha!
-  switch (color_)
-  {
-  case YELLOW:
-  {
-    _msgTargetReachedSphere.color.r = 1;
-    _msgTargetReachedSphere.color.g = 1;
-    _msgTargetReachedSphere.color.b = 0;  
-    break;
-  }
-  case RED:
-  {
-    _msgTargetReachedSphere.color.r = 1;
-    _msgTargetReachedSphere.color.g = 0;
-    _msgTargetReachedSphere.color.b = 0;  
-    break;
-  }
-  case CYAN:
-  {
-    _msgTargetReachedSphere.color.r = 0;
-    _msgTargetReachedSphere.color.g = 1;
-    _msgTargetReachedSphere.color.b = 1;  
-    break;
-  }
-  default:
-  {
-    break;
-  }
-  }
+  assignColorToMarker(&_msgTargetReachedSphere.color,color_,0.2 ); // Don't forget to set the alpha!
   _msgTargetReachedSphere.lifetime= ros::Duration(delay_);
   // only if using a MESH_RESOURCE marker type:
   // marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
-  _pubTargetReachedSphere.publish(_msgTargetReachedSphere);
+  //_pubTargetReachedSphere.publish(_msgTargetReachedSphere);
   // _mutex.unlock();
 }
 
 void targetObject::publishMarkerTargetRviz (int32_t action_,Marker_Color color_, double delay_){
-  
-
-
-  _msgRvizTarget.header.frame_id = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link";
-  _msgRvizTarget.header.stamp = ros::Time::now();
-  _msgRvizTarget.ns = "";
-  _msgRvizTarget.id = 1;
-  _msgRvizTarget.type = visualization_msgs::Marker::MESH_RESOURCE;
-  _msgRvizTarget.mesh_resource = "package://surgical_sim/models/meshes/stl/target/target_translated.STL";
-  _msgRvizTarget.action = action_;
-  _msgRvizTarget.pose.position.x = 0.0;
-  _msgRvizTarget.pose.position.y = 0.0;
-  _msgRvizTarget.pose.position.z = 0.0;
-  _msgRvizTarget.pose.orientation.x = 0.0;
-  _msgRvizTarget.pose.orientation.y = 0.0;
-  _msgRvizTarget.pose.orientation.z = 0.0;
-  _msgRvizTarget.pose.orientation.w = 1;
-  _msgRvizTarget.scale.x = 1.00;
-  _msgRvizTarget.scale.y = 1.00;
-  _msgRvizTarget.scale.z = 1.00;
-  _msgRvizTarget.color.a = 1.0; // Don't forget to set the alpha!
-  switch (color_)
+  switch (_mySimulationMode)
   {
-  case WHITE:
-  {
-    _msgRvizTarget.color.r = 1;
-    _msgRvizTarget.color.g = 1;
-    _msgRvizTarget.color.b = 1;  
-    break;
-  }  
-  case YELLOW:
-  {
-    _msgRvizTarget.color.r = 1;
-    _msgRvizTarget.color.g = 1;
-    _msgRvizTarget.color.b = 0;  
-    break;
-  }
-  case RED:
-  {
-    _msgRvizTarget.color.r = 1;
-    _msgRvizTarget.color.g = 0;
-    _msgRvizTarget.color.b = 0;  
-    break;
-  }
-  case CYAN:
-  {
-    _msgRvizTarget.color.r = 0;
-    _msgRvizTarget.color.g = 1;
-    _msgRvizTarget.color.b = 1;  
-    break;
-  }
-  default:
-  {
-    break;
-  }
+    case DYNAMIC_SIMULATION:
+    {
+      _msgRvizTarget.header.frame_id = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+      _msgRvizTarget.header.stamp = ros::Time::now();
+      _msgRvizTarget.ns = "";
+      _msgRvizTarget.id = 1;
+      _msgRvizTarget.type = visualization_msgs::Marker::MESH_RESOURCE;
+      _msgRvizTarget.mesh_resource = "package://surgical_sim/models/meshes/stl/target/target_translated.STL";
+      _msgRvizTarget.action = action_;
+      _msgRvizTarget.pose.position.x = 0.0;
+      _msgRvizTarget.pose.position.y = 0.0;
+      _msgRvizTarget.pose.position.z = 0.0;
+      _msgRvizTarget.pose.orientation.x = 0.0;
+      _msgRvizTarget.pose.orientation.y = 0.0;
+      _msgRvizTarget.pose.orientation.z = 0.0;
+      _msgRvizTarget.pose.orientation.w = 1;
+      _msgRvizTarget.scale.x = 1.00;
+      _msgRvizTarget.scale.y = 1.00;
+      _msgRvizTarget.scale.z = 1.00;
+      assignColorToMarker(&_msgRvizTarget.color,color_,1.0); // Don't forget to set the alpha!
+      break;
+    }
+     case KINEMATIC_SIMULATION:
+    {
+      _msgRvizTarget.header.frame_id = std::string(Tool_Names[_myTrackID])+"_" + _myName +"_target_main_link";
+      _msgRvizTarget.header.stamp = ros::Time::now();
+      _msgRvizTarget.ns = "";
+      _msgRvizTarget.id = 1;
+      _msgRvizTarget.type = visualization_msgs::Marker::SPHERE;
+      _msgRvizTarget.action = action_;
+      _msgRvizTarget.pose.position.x = 0.0;
+      _msgRvizTarget.pose.position.y = 0.0;
+      _msgRvizTarget.pose.position.z = 0.0;
+      _msgRvizTarget.pose.orientation.x = 0.0;
+      _msgRvizTarget.pose.orientation.y = 0.0;
+      _msgRvizTarget.pose.orientation.z = 0.0;
+      _msgRvizTarget.pose.orientation.w = 1;
+      _msgRvizTarget.scale.x = _mySize;
+      _msgRvizTarget.scale.y = _mySize;
+      _msgRvizTarget.scale.z = _mySize;
+      assignColorToMarker(&_msgRvizTarget.color,color_,0.5); // Don't forget to set the alpha!
+      break;
+    }
+    default:
+      break;
   }
   _msgRvizTarget.lifetime= ros::Duration(delay_);
   // only if using a MESH_RESOURCE marker type:
@@ -900,14 +1058,18 @@ void targetObject::recordStatistics(){
 	ros::Duration deltaTime = ros::Time::now() - _startingTime;
   double precisionPOS_on = _flagTargetReached ? _precisionPos : 0.0;
   double precisionANG_on = _flagTargetReached ? _precisionAng * RAD_TO_DEG : 0.0;
-  double precisionGRASP_on = _flagTargetGrasped ? _precisionGrasp * RAD_TO_DEG : 0.0;
+  double precisionGRASP_on = _flagTargetInAimSuccess ? _precisionGrasp * RAD_TO_DEG : 0.0;
   
     if (_flagRecordingStarted)
     {
 		_statsOutputFile << deltaTime<< " "
 					<< _nTarget<< " "
+          << _mySize<< " "
+          << _myOpeningAngle<< " "
           << _myStatus[TARGET_REACHED]<< " "
           << _myStatus[TARGET_ALIGNED]<< " "
+          << _myStatus[TARGET_OPEN_GRIPPER]<< " "
+          << _myStatus[TARGET_GRASPED]<< " "
           << _myStatus[TARGET_CHANGED]<< " "
           << _myPositionSpawn.transpose()<<" "
           << _myQuaternionSpawn.x()<<" "
@@ -955,7 +1117,11 @@ void targetObject::recordStatistics(){
     {
       _statsOutputFile << "t"<< " "
 					<< "nT"<< " "
+          << "targetSize"<< " "
+          << "targetOpeningAngle"<< " "
           << "statReached"<< " "
+          << "statAligned"<< " "
+          << "statOpenGripper"<< " "
           << "statGrasped"<< " "
           << "statChanged"<< " "
           << "posTXSpawn"<<" "
@@ -1272,11 +1438,79 @@ void targetObject::generateRandomTarget(int* xTarget_,double* randomAngle_)
     }
     *randomAngle_ = randomAngleNew;
   }
+  
+  if(randomAngle_!=NULL && xTarget_!=NULL && _mySimulationMode==KINEMATIC_SIMULATION)
+  {
+    double openingAngleNew = _myOpeningAngle;
+    while(openingAngleNew == _myOpeningAngle)
+    {
+      openingAngleNew = Utils_math<double>::map(rand()%(NB_TARGETS-1), 0 , NB_TARGETS-1, 0.3 * Max_Angle, Max_Angle ) ;
+       if (openingAngleNew!=_myOpeningAngle)
+        {
+          break;
+        }
+    }
+    _myOpeningAngle = openingAngleNew;
+    ROS_INFO("[%s target]: The new openingAngle is %f", Tool_Names[_myTrackID],_myOpeningAngle);
+    _mySize= 0.04398 * sin(_myOpeningAngle) / sin( (M_PI - _myOpeningAngle) / 2); 
+    ROS_INFO("[%s target]: The new size of the target is %f", Tool_Names[_myTrackID],_mySize);
+  }
 }
   
   
   
-  
+void targetObject::assignColorToMarker(std_msgs::ColorRGBA* colorMsg_, Marker_Color color_, double alpha_){
+  switch (color_)
+  {
+    case YELLOW:
+    {
+      colorMsg_->r = 1.0;
+      colorMsg_->g = 1.0;
+      colorMsg_->b = 0.0;  
+      break;
+    }
+    case RED:
+    {
+      colorMsg_->r = 1.0;
+      colorMsg_->g = 0.0;
+      colorMsg_->b = 0.0;  
+      break;
+    }
+    case CYAN:
+    {
+      colorMsg_->r = 0.0;
+      colorMsg_->g = 1.0;
+      colorMsg_->b = 1.0;  
+      break;
+    }
+    case ORANGE:
+    {
+      colorMsg_->r = 1.0;
+      colorMsg_->g = 0.4;
+      colorMsg_->b = 0.0;  
+      break;
+    }
+    case PURPLE:
+    {
+      colorMsg_->r = 0.6;
+      colorMsg_->g = 0.0;
+      colorMsg_->b = 1.0;  
+      break;
+    }
+    case WHITE:
+    {
+      colorMsg_->r = 1.0;
+      colorMsg_->g = 1.0;
+      colorMsg_->b = 1.0;  
+      break;
+    }
+    default:
+    {
+      break;
+    }
+  }
+  colorMsg_->a=alpha_;
+}
   
   
     

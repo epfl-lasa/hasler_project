@@ -2,7 +2,7 @@
   <arg name="id"          default="right" />
   <arg name="leg_model"   default="$(find leg_as_robot)/urdf/$(arg id)/leg.create.xacro"/>
   <arg name="virtual_leg" default="true" />
-	<arg name="freq"        default="10000.0"/>  
+	<arg name="freq"        default="500.0"/>  
   <arg name="rviz"        default="true"/>
   <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" />
 

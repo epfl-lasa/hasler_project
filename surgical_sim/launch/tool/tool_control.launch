@@ -9,7 +9,10 @@
 	<arg name="frequencyVibration" default="32.6"/>
 	<arg name="sharedGrasp" default="false"/>
 	<arg name="rosControl" default="true"/>
+	<arg name="rightToolType" default="forceps"/>
+	<arg name="leftToolType" default="forceps"/>
 	<arg name="selfRotationType" default="speed"/>
+
 	
 	
 
@@ -31,8 +34,9 @@
 
 		<rosparam file="$(find surgical_sim)/config/left_tool_settings.yaml" command="load"/>
 		<rosparam file="$(find surgical_sim)/config/right_tool_settings.yaml" command="load"/>
-    	<node pkg="surgical_sim" type="init_forceps_right.sh" name="run_script_right" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
-		<node pkg="surgical_sim" type="init_camera_left.sh" name="run_script_left" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+    	
+		<node pkg="surgical_sim" type="init_$(arg rightToolType)_right.sh" name="run_script_right" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+		<node pkg="surgical_sim" type="init_$(arg leftToolType)_left.sh" name="run_script_left" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
 		
 		<node name="left_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen" launch-prefix="bash -c 'sleep 3; $0 $@'">
 			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   

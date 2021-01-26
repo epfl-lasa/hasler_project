@@ -72,13 +72,13 @@
       <visual>
         <origin rpy="0 0 -3.1415926" xyz="0 0 0.00195"/>
         <geometry>
-          <mesh filename="package://surgical_sim/models/meshes/stl/tool/tool_wrist_forceps_link_2_right.stl"/>
+          <mesh filename="package://surgical_sim/models/meshes/stl/tool/tool_wrist_forceps_link_2_left.stl"/>
         </geometry>
       </visual>
       <collision>
         <origin rpy="0 0 -3.1415926" xyz="0 0 0.00195"/>
         <geometry>
-          <mesh filename="package://surgical_sim/models/meshes/stl/tool/tool_wrist_forceps_link_fill_cube_6.stl"/>
+          <mesh filename="package://surgical_sim/models/meshes/stl/tool/tool_wrist_forceps_link_fill_cube_3.stl"/>
         </geometry>
       </collision>
       <inertial>

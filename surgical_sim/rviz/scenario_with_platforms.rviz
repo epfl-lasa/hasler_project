@@ -8,13 +8,11 @@ Panels:
         - /Status1
         - /TF1/Frames1
         - /TF1/Tree1
-        - /Right_Tool1
-        - /target_reached1
-        - /Left_Tool1
-        - /left_panda1
         - /Image1
-      Splitter Ratio: 0.547307134
-    Tree Height: 724
+        - /left_target1
+        - /left_target_reached1
+      Splitter Ratio: 0.592505872
+    Tree Height: 740
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -131,6 +129,8 @@ Visualization Manager:
           Value: true
         left_platform_z_link:
           Value: true
+        left_t1_target_main_link:
+          Value: true
         left_tool_base_link:
           Value: false
         left_tool_main_link:
@@ -139,9 +139,21 @@ Visualization Manager:
           Value: false
         left_tool_roll_link:
           Value: false
+        left_tool_tip_link:
+          Value: false
         left_tool_tip_link_ee:
           Value: true
+        left_tool_wrist_forceps_link:
+          Value: false
+        left_tool_wrist_forceps_link_2_left:
+          Value: false
+        left_tool_wrist_forceps_link_2_right:
+          Value: false
+        left_tool_wrist_forceps_link_shaft:
+          Value: false
         left_tool_wrist_link:
+          Value: false
+        left_tool_wrist_shaft_link:
           Value: false
         left_tool_yaw_link:
           Value: false
@@ -207,8 +219,6 @@ Visualization Manager:
           Value: true
         right_platform_z_link:
           Value: true
-        right_t1_target_aim:
-          Value: true
         right_t1_target_main_link:
           Value: true
         right_tool_base_link:
@@ -222,7 +232,7 @@ Visualization Manager:
         right_tool_tip_link:
           Value: false
         right_tool_tip_link_ee:
-          Value: false
+          Value: true
         right_tool_wrist_forceps_link:
           Value: false
         right_tool_wrist_forceps_link_2_left:
@@ -304,8 +314,16 @@ Visualization Manager:
                 left_tool_yaw_link:
                   left_tool_main_link:
                     left_tool_wrist_link:
-                      left_tool_tip_link_ee:
-                        {}
+                      left_tool_wrist_shaft_link:
+                        left_tool_wrist_forceps_link:
+                          left_tool_wrist_forceps_link_shaft:
+                            left_tool_tip_link:
+                              left_tool_tip_link_ee:
+                                {}
+                            left_tool_wrist_forceps_link_2_left:
+                              {}
+                            left_tool_wrist_forceps_link_2_right:
+                              {}
           right_panda_link0:
             right_panda_link1:
               right_panda_link2:
@@ -346,7 +364,7 @@ Visualization Manager:
                             right_tool_wrist_forceps_link_2_right:
                               {}
           torso_link:
-            right_t1_target_aim:
+            left_t1_target_main_link:
               {}
             right_t1_target_main_link:
               {}
@@ -628,7 +646,7 @@ Visualization Manager:
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /right_t1_target/target_state_publisher/target_reached_sphere
-      Name: target_reached
+      Name: right_target_reached
       Namespaces:
         "": true
       Queue Size: 100
@@ -790,14 +808,44 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        left_tool_tip_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         left_tool_tip_link_ee:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        left_tool_wrist_forceps_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_forceps_link_2_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_forceps_link_2_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_tool_wrist_forceps_link_shaft:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         left_tool_wrist_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
+        left_tool_wrist_shaft_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         left_tool_yaw_link:
           Alpha: 1
           Show Axes: false
@@ -815,7 +863,7 @@ Visualization Manager:
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /right_t1_target/target_state_publisher/marker_target_rviz
-      Name: target
+      Name: right_target
       Namespaces:
         {}
       Queue Size: 100
@@ -960,6 +1008,22 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /left_t1_target/target_state_publisher/marker_target_rviz
+      Name: left_target
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /left_t1_target/target_state_publisher/target_reached_sphere
+      Name: left_target_reached
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -985,25 +1049,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.346930981
+      Distance: 0.392177343
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.0368035398
-        Y: 0.52828598
-        Z: 1.26123011
+        X: 0.00550182723
+        Y: -0.0100120436
+        Z: 0.0461605042
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.9297961
-      Target Frame: <Fixed Frame>
+      Pitch: 0.784796715
+      Target Frame: left_tool_tip_link_ee
       Value: Orbit (rviz)
-      Yaw: 4.64221859
+      Yaw: 3.05721045
     Saved:
       - Class: rviz/Orbit
         Distance: 1.1899302
@@ -1047,13 +1111,13 @@ Visualization Manager:
         Yaw: 1.898543
 Window Geometry:
   Displays:
-    collapsed: true
-  Height: 1021
-  Hide Left Dock: true
+    collapsed: false
+  Height: 1056
+  Hide Left Dock: false
   Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001ae000003bbfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006f00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000002e100000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730000000028000003bb000000f300fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006500000001fd000002060000001600ffffff00000001000001c2000003bbfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000028000003bb000000bb00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000078000000040fc0100000002fb0000000800540069006d00650000000000000007800000027600fffffffb0000000800540069006d006501000000000000045000000000000000000000039c000003bb00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001ba000003d1fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000002e100000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000002e000003d1000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006500000001fd000002060000001800ffffff00000001000001c2000003d1fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002e000003d1000000b700fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000078000000040fc0100000002fb0000000800540069006d00650000000000000007800000038300fffffffb0000000800540069006d006501000000000000045000000000000000000000057e000003d100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -1062,6 +1126,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 924
-  X: 996
-  Y: 27
+  Width: 1855
+  X: 65
+  Y: 24

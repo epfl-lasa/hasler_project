@@ -86,12 +86,15 @@ const float SCALE_GAINS_ANGULAR_POSITION = 1e-4f * RAD_TO_DEG;
 
 class targetObject {
 
+public:
+  enum Marker_Color {NONE, RED, YELLOW, CYAN, WHITE, ORANGE, PURPLE};
+
 private:
   
   static targetObject *me;
 
-  enum Marker_Color {NONE, RED, YELLOW, CYAN, WHITE};
-  enum Target_Status {TARGET_REACHED, TARGET_ALIGNED, TARGET_CHANGED,NB_TARGET_STATUS};
+  enum Simulation_Mode {KINEMATIC_SIMULATION, DYNAMIC_SIMULATION};
+  enum Target_Status {TARGET_REACHED, TARGET_ALIGNED, TARGET_OPEN_GRIPPER, TARGET_GRASPED,TARGET_CHANGED,NB_TARGET_STATUS};
   enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
   enum TF_List {TF_TARGET_OBJECT, TF_TARGET_AIM, NB_TF_LIST};
 
@@ -101,9 +104,10 @@ private:
   Action_State _aState;
 
   TrackID _myTrackID; 
+  Simulation_Mode _mySimulationMode;
   // Eigen and Geometry
 
-  
+  Marker_Color _myTargetColor;
   
   
   Eigen::Vector3d    _targetAimPosition;
@@ -171,6 +175,8 @@ private:
   double _myThreshold;
 
   double _myRandomAngle;
+
+  double _mySize, _myOpeningAngle;
   // std variables
 
   std::ofstream _myFile;
@@ -251,8 +257,9 @@ private:
   bool  _flagToolTipTFConnected;
   bool  _flagTrocarTFConnected;
   bool  _flagTargetReached;
-  bool  _flagTargetReachedOpen;
+  bool  _flagTargetReachedAndAligned;
   bool  _flagTargetGrasped;
+  bool  _flagTargetInAimSuccess;
   bool  _flagTargetSpawned;
   bool  _flagRecordingStarted;
 
@@ -321,9 +328,9 @@ private:
   
   
   void getGazeboTargetCurrentPos();
-  
   bool gazeboDeleteModel();
   bool gazeboSpawnModel();
+  void assignColorToMarker(std_msgs::ColorRGBA* colorMsg_, Marker_Color color_, double alpha_);
 
 
 
