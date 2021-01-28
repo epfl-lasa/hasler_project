@@ -412,10 +412,18 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
       _toolJointLims[L_MIN]->data(joint_) = _toolJointLimsAll[L_MIN]->data(joint_) ;
       _toolJointLims[L_MAX]->data(joint_) = _toolJointLimsAll[L_MAX]->data(joint_) ;
     }
-     _toolJointLims[L_MIN]->data(tool_joint3_yaw) = -1.5*M_PI; 
-     _toolJointLims[L_MAX]->data(tool_joint3_yaw) =  1.5*M_PI; 
-     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw) = -1.5*M_PI; 
-     _toolJointLimsAll[L_MAX]->data(tool_joint3_yaw) =  1.5*M_PI; 
+    if (_tool_id==LEFT_TOOL){
+     _toolJointLims[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI - 1.5*M_PI_2; 
+     _toolJointLims[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI - 0.0*M_PI_2;
+     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI - 1.5*M_PI_2; 
+     _toolJointLimsAll[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI - 0.0*M_PI_2;
+    }
+    if (_tool_id==RIGHT_TOOL){
+     _toolJointLims[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI + 0.0*M_PI_2; 
+     _toolJointLims[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI + 1.5*M_PI_2;
+     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI + 0.0*M_PI_2; 
+     _toolJointLimsAll[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI + 1.5*M_PI_2;
+    }
   }
 
 
@@ -580,13 +588,13 @@ void surgicalTool::publishToolJointCommands() {
 void surgicalTool::calculateDesiredFrame(){
 
   if(_tool_type==FORCEPS){
-    _desiredToolEEFrame.p.data[0] = Utils_math<double>::map( _platformJoints(p_x) - _platformJointsOffset(p_x),
+    _desiredToolEEFrame.p.data[0] = Utils_math<double>::map( _platformJoints(p_x) + _platformJointsOffset(p_x),
                                                             _desiredPlatformWSLims(p_x,L_MIN), _desiredPlatformWSLims(p_x,L_MAX), 
                                                             _cartesianLimits(CART_X,L_MIN),_cartesianLimits(CART_X,L_MAX));
-    _desiredToolEEFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y) - _platformJointsOffset(p_y),
+    _desiredToolEEFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y) + _platformJointsOffset(p_y),
                                                             _desiredPlatformWSLims(p_y,L_MIN), _desiredPlatformWSLims(p_y,L_MAX), 
                                                             _cartesianLimits(CART_Y,L_MIN),_cartesianLimits(CART_Y,L_MAX));
-    _desiredToolEEFrame.p.data[2] = Utils_math<double>::map( _platformJoints(p_pitch) - _platformJointsOffset(p_pitch),
+    _desiredToolEEFrame.p.data[2] = Utils_math<double>::map( _platformJoints(p_pitch) + _platformJointsOffset(p_pitch),
                                                             _desiredPlatformWSLims(p_pitch,L_MIN), _desiredPlatformWSLims(p_pitch,L_MAX), 
                                                              _cartesianLimits(CART_Z,L_MIN),_cartesianLimits(CART_Z,L_MAX));
   }else { //! _tool_type=CAMERA
@@ -602,13 +610,13 @@ void surgicalTool::calculateDesiredFrame(){
     
     static Eigen::Matrix<double,NB_PLATFORM_AXIS,1> averageOfPlatformLims = _desiredPlatformWSLims.rowwise().mean().cwiseAbs();
     
-      relativeFrame(CART_X) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x) - _platformJointsOffset(p_x),_deadZoneValues(p_x,L_MIN), _deadZoneValues(p_x,L_MAX)),
+      relativeFrame(CART_X) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x) + _platformJointsOffset(p_x),_deadZoneValues(p_x,L_MIN), _deadZoneValues(p_x,L_MAX)),
                                                             -averageOfPlatformLims(p_x), averageOfPlatformLims(p_x), 
                                                             -1.0,1.0);                                                            
-      relativeFrame(CART_Y) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y) - _platformJointsOffset(p_y),_deadZoneValues(p_y,L_MIN), _deadZoneValues(p_y,L_MAX)),
+      relativeFrame(CART_Y) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y) + _platformJointsOffset(p_y),_deadZoneValues(p_y,L_MIN), _deadZoneValues(p_y,L_MAX)),
                                                               -averageOfPlatformLims(p_y), averageOfPlatformLims(p_y), 
                                                               -1.0,1.0); //! The minus sign, is because from the point of view of the camera Up is -Y
-      relativeFrame(CART_Z) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch) - _platformJointsOffset(p_pitch) ,_deadZoneValues(p_pitch,L_MIN), _deadZoneValues(p_pitch,L_MAX)),
+      relativeFrame(CART_Z) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch) + _platformJointsOffset(p_pitch) ,_deadZoneValues(p_pitch,L_MIN), _deadZoneValues(p_pitch,L_MAX)),
                                                               -averageOfPlatformLims(p_pitch), averageOfPlatformLims(p_pitch),  
                                                               -1.0,1.0);                                                              
      
@@ -728,20 +736,21 @@ void surgicalTool::performInverseKinematics(){
   
   if(_tool_selfRotation==R_POSITION)  
   {
-    _toolJoints->data(tool_joint3_yaw) = -Utils_math<double>::map( _platformJoints(p_yaw) - _platformJointsOffset(p_yaw) , 
+    _toolJoints->data(tool_joint3_yaw) = -Utils_math<double>::map( _platformJoints(p_yaw) + _platformJointsOffset(p_yaw) , 
                                     _desiredPlatformWSLims(p_yaw,L_MIN),_desiredPlatformWSLims(p_yaw,L_MAX), 
                                     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw),_toolJointLimsAll[L_MAX]->data(tool_joint3_yaw)) ;
   } else
   // {
-     _toolJoints->data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw) - _platformJointsOffset(p_yaw),_deadZoneValues(p_yaw,L_MIN),_deadZoneValues(p_yaw,L_MAX)), 
+     _toolJoints->data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw) + _platformJointsOffset(p_yaw),_deadZoneValues(p_yaw,L_MIN),_deadZoneValues(p_yaw,L_MAX)), 
                                     _desiredPlatformWSLims(p_yaw,L_MIN),_desiredPlatformWSLims(p_yaw,L_MAX), -1.0, 1.0) * _speedControlGainSelfRotation * _dt ;
-    // cout<<_toolJoints->data(tool_joint3_yaw)<<endl;                                  
+    // cout<<_toolJoints->data(tool_joint3_yaw)<<endl;     
+    _toolJoints->data(tool_joint3_yaw) = Utils_math<double>::bound(_toolJoints->data(tool_joint3_yaw), _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw),_toolJointLimsAll[L_MAX]->data(tool_joint3_yaw));                             
 
   // }
 
   if (_tool_type==FORCEPS)
     {
-      _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) - _platformJointsOffset(p_roll),
+      _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) + _platformJointsOffset(p_roll),
                                                     _desiredPlatformWSLims(p_roll,L_MIN),_desiredPlatformWSLims(p_roll,L_MAX), 
                                                     _toolJointLimsAll[L_MAX]->data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN]->data(tool_joint5_wrist_open_angle)));
       // cout<<_toolJointsAll(tool_joint5_wrist_open_angle)<<endl;                                                    
@@ -839,4 +848,5 @@ void surgicalTool::readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg:
       _hAxisFilterPos->setAlphas(_hAxisFilterPosValue);
       _hAxisFilterGrasp->setAlpha(_hAxisFilterGraspValue);
     }
+    ROS_INFO_ONCE("[%s tool]: sharedGrasp read!",Tool_Names[_tool_id]);
 }

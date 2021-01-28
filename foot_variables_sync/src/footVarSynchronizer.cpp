@@ -239,6 +239,7 @@ void footVarSynchronizer::run()
 				_msgFootOutputPrev=_msgFootOutput;
 				_flagInitialConfig=true;
 				ROS_INFO("Updating default parameters from the platform in the rqt_reconfig...");
+				ros::spinOnce();
 			}
 
 			// else if (_flagInitialConfig && !_flagOutputMessageReceived && _flagWasDynReconfCalled)
@@ -248,7 +249,7 @@ void footVarSynchronizer::run()
 			// 	_dynRecServer.updateConfig(_config);
 			// 	_flagWasDynReconfCalled = false;
 			// }
-
+			
 			else if(_subFootOutput.getNumPublishers()!=0)
 				{
 					changeParamCheck();
@@ -472,7 +473,7 @@ void footVarSynchronizer::changeParamCheck()
 
 	else
 	{
-		std::cout<<"boo"<<std::endl;
+		// std::cout<<"boo"<<std::endl;
 		_flagIsParamStillSame[Params_Category::PID_POS] = false;
 	}
 

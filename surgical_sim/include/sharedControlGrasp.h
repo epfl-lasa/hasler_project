@@ -78,7 +78,7 @@ private:
   static sharedControlGrasp *me;
   
   enum ToolID { UNKNOWN = 0, RIGHT_TOOL = 1, LEFT_TOOL = 2};
-
+  enum SimType {KINEMATIC_SIM, DYNAMIC_SIM};
   //enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
   enum Action_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS};
 
@@ -86,7 +86,7 @@ private:
   
   Action_State _aState;
   Action_State _aStateNext;
-
+  SimType _mySimType;
   ToolID _myID;
   // TrackMode _myTrackMode; 
   // Eigen and Geometry
@@ -180,6 +180,7 @@ private:
   smoothSignals* _mySmoothSignalsGrasp;
   ros::Time _startTimeForKeepingGrasp;
   ros::Time _startTimeForReleasingGrasp;
+  ros::Time _startTimeForChangingGainsToZero;
 
 
   

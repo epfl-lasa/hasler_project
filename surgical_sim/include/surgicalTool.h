@@ -120,7 +120,7 @@ private:
   Eigen::Matrix<double,NB_PLATFORM_AXIS,NB_LIMS> _deadZoneValues;
   Eigen::Matrix<double,NB_CART_AXIS,NB_LIMS> _cartesianLimits;
 
-  KDL::JntArray* _toolJoints;
+  KDL::JntArray* _toolJoints; KDL::JntArray* _toolJointsOffset;
   KDL::JntArray* _toolJointsFull;
   KDL::JntArray* _toolJointsInit;
   KDL::JntArray* _toolJointLims[NB_LIMS];
@@ -187,7 +187,7 @@ private:
    
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJoints;
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJointsOffset;
-
+  
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJoints;
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformVelocities;
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformEfforts;

@@ -36,7 +36,7 @@ const double Scale_Foot[] = {Axis_Limits[0]/0.15,Axis_Limits[1]/0.15,(1.5*Axis_L
 const double Limits_Cart[NB_CART_AXIS][NB_TOOLS][NB_LIMS] = {{{-0.15,0.05},{0.05,0.15}},  //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
                                                             {{-0.15,0.15},{-0.15,0.15}}, //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
                                                             {{-0.26,-0.06},{-0.26,-0.06}} }; //! [[RIGHT_MIN RIGHT_MAX] [LEFT_MIN LEFT_MAX]]
-const double Max_Angle = 17.0 * DEG_TO_RAD;
+const double Max_Angle = 20.0 * DEG_TO_RAD;
 
 
 targetObject *targetObject::me = NULL;
@@ -212,7 +212,15 @@ targetObject::targetObject(ros::NodeHandle &n_1, double frequency, urdf::Model m
       _subjectID = "s0";
   }
 
-  
+  _nbTargetsMax=15;
+
+  if (!_n.getParam("nTargets", _nbTargetsMax))
+  { 
+    _nbTargetsMax=15;
+    ROS_INFO("[%s target]: No indicaton of nTargets, set to  %i", Tool_Names[_myTrackID], _nbTargetsMax); 
+  }else{
+    ROS_INFO("[%s target]: nTargets set to  %i", Tool_Names[_myTrackID], _nbTargetsMax); 
+  }
 
   
   for (size_t i = 0; i < NB_TARGET_STATUS; i++)
@@ -373,7 +381,7 @@ void targetObject::run() {
       {
         computetargetObjectPose();  
       }
-      else
+      else if (!_stop)
       {
         if (_flagToolJointsConnected)
         { 
@@ -519,7 +527,11 @@ void targetObject::computetargetObjectPose(){
               && Utils_math<double>::isInRange(-_trocarPosition(CART_Y) + _targetsXYZ[CART_Y].second[_xTarget], _cartesianLimsTools(CART_Y,L_MIN)- 0.5*_myVirtualJointLims(CART_Y,L_MIN), _cartesianLimsTools(CART_Y,L_MAX)- 0.5*_myVirtualJointLims(CART_Y,L_MAX))    
             ) 
           {
-            _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
+            if (_targetsXYZ[CART_Y].second[_xTarget]<0){
+              _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget]-0.015, _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
+            }else if (_targetsXYZ[CART_Y].second[_xTarget]>0){
+              _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget]+0.012, _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
+            }
             // cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
             Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
             // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
@@ -542,7 +554,8 @@ void targetObject::computetargetObjectPose(){
             _targetAimQuaternion = _myQuaternionSpawn * AngleAxis<double>(randomAngleAim, Vector3d::UnitZ()).toRotationMatrix();
           } else {
             ROS_INFO_ONCE("[%s target]: Looking for a target inside the workspace of the tool...", Tool_Names[_myTrackID] );
-            _flagTargetSpawned = false;    
+            generateRandomTarget(&_xTarget,&_myRandomAngle);    
+            _flagTargetSpawned = false;
           }
         break;
       }    
@@ -554,7 +567,7 @@ void targetObject::computetargetObjectPose(){
           ) 
         {
           _myPositionSpawn << _targetsXYZ[CART_X].second[_xTarget], _targetsXYZ[CART_Y].second[_xTarget], _targetsXYZ[CART_Z].second[_xTarget] + 0.025;
-          // cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
+          cout<<"Next Position: "<<_myPositionSpawn.transpose()<<endl; 
           Eigen::Vector3d targetTrocarDistance = _trocarPosition-_myPositionSpawn;
           // cout<<"targetTrocarDistanceSpawn: "<<targetTrocarDistance.transpose()<<endl; 
           _myRotationMatrixSpawn.setIdentity();
@@ -583,7 +596,7 @@ void targetObject::computetargetObjectPose(){
       ROS_INFO("[%s target]: New target generated!. # %i",Tool_Names[_myTrackID],_nTarget);
       _myStatus[TARGET_CHANGED]=false;
       _xTargetPrev=_xTarget;
-      if (_nTarget>=NB_TARGETS)
+      if (_nTarget>=_nbTargetsMax)
       {
         ROS_INFO("[%s target]: Protocol finished", Tool_Names[_myTrackID]);
         publishTargetReachedSphere(visualization_msgs::Marker::ADD, RED,0.0);
@@ -1444,7 +1457,7 @@ void targetObject::generateRandomTarget(int* xTarget_,double* randomAngle_)
     double openingAngleNew = _myOpeningAngle;
     while(openingAngleNew == _myOpeningAngle)
     {
-      openingAngleNew = Utils_math<double>::map(rand()%(NB_TARGETS-1), 0 , NB_TARGETS-1, 0.3 * Max_Angle, Max_Angle ) ;
+      openingAngleNew = Utils_math<double>::map(rand()%(NB_TARGETS-1), 0 , NB_TARGETS-1, 0.45 * Max_Angle, Max_Angle ) ;
        if (openingAngleNew!=_myOpeningAngle)
         {
           break;

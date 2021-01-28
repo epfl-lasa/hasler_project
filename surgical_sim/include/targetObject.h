@@ -108,7 +108,7 @@ private:
   // Eigen and Geometry
 
   Marker_Color _myTargetColor;
-  
+  int _nbTargetsMax;
   
   Eigen::Vector3d    _targetAimPosition;
   Eigen::Quaterniond    _targetAimQuaternion;

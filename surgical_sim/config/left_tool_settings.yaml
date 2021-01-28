@@ -13,13 +13,13 @@
   # cartLimsZ: [-0.26,-0.06] # [m]
   
   toolType: 'forceps'
-  toolSelfRotationControl: 'position'
+  toolSelfRotationControl: 'speed'
   speedControlGainCamera: 0.5
   speedControlGainSelfRotation: 10.0
   desiredPlatformWorkspaceLimsMin: [-0.090, -0.0975, -0.200, 0.00000, -0.349066] # Y,X,PITCH,ROLL,YAW
-  desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, -0.261799 , 0.349066]
-  deadZoneValuesPlatformMin: [-0.030, -0.030, -0.18, -0.15, -0.08]
-  deadZoneValuesPlatformMax: [0.030, 0.030, 0.03, 0.15, 0.08]
+  desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, -0.226892 , 0.349066]
+  deadZoneValuesPlatformMin: [-0.030, -0.030, -0.18, -0.15, -0.010]
+  deadZoneValuesPlatformMax: [0.030, 0.030, 0.03, 0.15, 0.26]
   platformJointOffsets: [0.0, 0.0, 0.0, 0.0, 0.0]
   cartLimsX: [-0.05, 0.15] # [m]
   cartLimsY: [-0.15,0.15]  # [m]
