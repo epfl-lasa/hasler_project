@@ -15,6 +15,24 @@ left_panda:
       - left_panda_joint6
       - left_panda_joint7
 
+
+right_panda:
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 500  # in Hz
+
+
+  joint_position_controller:
+    type: position_controllers/JointGroupPositionController
+    joints:
+      - right_panda_joint1
+      - right_panda_joint2
+      - right_panda_joint3
+      - right_panda_joint4
+      - right_panda_joint5
+      - right_panda_joint6
+      - right_panda_joint7
+
   # gazebo_ros_control:
   #   pid_gains:
   #     panda_joint1: {p: 50, i: 0, d: 20}

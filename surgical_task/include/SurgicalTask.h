@@ -74,10 +74,11 @@ class SurgicalTask
 
     enum TrocarSpacePositionDofs {X = 0 , Y = 1, Z = 2, SELF_ROTATION = 3};
 
-
     enum HumanInputDevice {JOYSTICK=0, FOOT=1};
 
     enum ObjectID {LEFT_ROBOT_BASIS = 0, RIGHT_ROBOT_BASIS = 1, LEFT_HUMAN_TOOL = 2, RIGHT_HUMAN_TOOL = 3};
+    
+    enum HumanInputMode {SINGLE_FOOT_SINGLE_ROBOT = 0, DOMINANT_FOOT_TWO_ROBOTS = 1};
 
   private:
     // ROS variables
@@ -201,6 +202,8 @@ class SurgicalTask
     float _desiredGripperPosition[NB_ROBOTS];
     float _gripperRange;
     float _dRCMTool[NB_ROBOTS];
+    int _dominantFootID, _nonDominantFootID;
+    int _humanInputMode;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -244,6 +247,7 @@ class SurgicalTask
     bool _firstPublish[NB_ROBOTS];
     bool _useFranka;
     Utils<float>::ROBOT_ID _robotID;
+    bool _clutching;
 
 
 
@@ -262,6 +266,8 @@ class SurgicalTask
     Eigen::Vector3f _xdFoot[NB_ROBOTS];
     Eigen::Vector3f _FdFoot[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _humanClutchingOffset;
+    Eigen::Vector3f _toolClutchingOffset;
     Eigen::Vector3f _xdTool[NB_ROBOTS];
     Eigen::VectorXf _ikJoints[NB_ROBOTS];
     Eigen::Vector3f _xIK[NB_ROBOTS];                         // Position [m] (3x1)
@@ -320,6 +326,8 @@ class SurgicalTask
     Eigen::MatrixXf _p[4];
     int _nbTasks;
     Eigen::Matrix<float, 5, 1> _filterGainFootAxis[NB_ROBOTS];
+    int _currentRobot;
+    Eigen::Vector3f _attractorOffset;
 
 
   public:
@@ -354,13 +362,13 @@ class SurgicalTask
 
     void selectRobotMode(int r);
 
-    void trocarSelection(int r);
+    void trocarSelection(int r, int h);
 
-    void trocarInsertion(int r);
+    void trocarInsertion(int r, int h);
 
-    void trocarSpace(int r);
+    void trocarSpace(int r, int h);
 
-    void computeDesiredToolVelocity(int r);
+    void computeDesiredToolVelocity(int r, int h);
 
     void computeDesiredFootWrench();
     // Compute desired orientation
@@ -368,7 +376,7 @@ class SurgicalTask
 
     void initializeBeliefs(int r);
 
-    void taskAdaptation(int r);
+    void taskAdaptation(int r, int h);
     
     // Log data to text file
     void logData();
@@ -410,7 +418,7 @@ class SurgicalTask
 
     void computeHapticFeedback(int r);
 
-    void computeDesiredFootWrench(int r);
+    void computeDesiredFootWrench(int r, int h);
 
     // Callback to update damping matrix form the DS-impedance controller
     // void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg); 

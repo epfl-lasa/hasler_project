@@ -10,7 +10,7 @@
   <arg name="rightRobotOrigin.z" default="0"/>
   <arg name="rightRobotOrigin.ax" default="0"/>
   <arg name="rightRobotOrigin.ay" default="0"/>
-  <arg name="rightRobotOrigin.az" default="0"/>
+  <arg name="rightRobotOrigin.az" default="3.14159265359"/>
   <arg name="leftRobotOrigin.x" default="0"/>
   <arg name="leftRobotOrigin.y" default="0.5"/>
   <arg name="leftRobotOrigin.z" default="0"/>
@@ -79,6 +79,18 @@
     <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg pandaUrdfFile) robotName:=$(arg leftRobotName) origin.x:=$(arg leftRobotOrigin.x) origin.y:=$(arg leftRobotOrigin.y) origin.z:=$(arg leftRobotOrigin.z) origin.ax:=$(arg leftRobotOrigin.ax) origin.ay:=$(arg leftRobotOrigin.ay) origin.az:=$(arg leftRobotOrigin.az)"/>
 
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg leftRobotName)/robot_description -urdf -model $(arg leftRobotName) -J $(arg leftRobotName)_joint4 -1.57 -J $(arg leftRobotName)_joint6 1.57 -unpause"/>
+
+
+    <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller joint_position_controller"/>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen"/>
+  </group>
+
+
+  <group ns="right_panda">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg pandaUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) origin.ax:=$(arg rightRobotOrigin.ax) origin.ay:=$(arg rightRobotOrigin.ay) origin.az:=$(arg rightRobotOrigin.az)"/>
+
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg rightRobotName)/robot_description -urdf -model $(arg rightRobotName) -J $(arg rightRobotName)_joint4 -1.57 -J $(arg rightRobotName)_joint6 1.57 -unpause"/>
 
 
     <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller joint_position_controller"/>
