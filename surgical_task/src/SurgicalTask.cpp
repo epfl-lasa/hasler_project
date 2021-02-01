@@ -109,6 +109,12 @@ SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency):
   _Rcamera.setIdentity();
 
   _filteredForceGain = 0.9f;
+
+  _currentRobot = LEFT;
+  _clutching = false;
+  _humanClutchingOffset.setConstant(0.0f);
+  _toolClutchingOffset.setConstant(0.0f);
+  _attractorOffset.setConstant(0.0f);
 }
 
 
@@ -144,6 +150,40 @@ bool SurgicalTask::init()
   else
   {
     ROS_INFO("Human input device: %d %d\n", (int) _humanInputDevice[LEFT], (int)_humanInputDevice[RIGHT]);
+  }
+
+  if (!_nh.getParam("SurgicalTask/humanInputMode", _humanInputMode))
+  {
+    ROS_ERROR("Couldn't retrieve the human input mode");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Human input mode: %d\n", (int) _humanInputMode);
+  }
+
+  if(!_nh.getParam("SurgicalTask/dominantFoot", _dominantFootID))
+  {
+    ROS_ERROR("Couldn't retrieve the dominant foot");
+    return false;
+  }
+  else
+  {
+    if(_dominantFootID == RIGHT)
+    {
+      _nonDominantFootID = LEFT;
+    }
+    else if(_dominantFootID == LEFT)
+    {
+      _nonDominantFootID = RIGHT;
+    }
+    else
+    {
+      ROS_ERROR("Dominant foot selected does not exist");
+      return false;
+    }
+    ROS_INFO("Dominant foot: %d\n", _dominantFootID);
+    ROS_INFO("Non dominant foot: %d\n", _nonDominantFootID);
   }
 
   _linearMapping.resize(NB_ROBOTS);
@@ -569,7 +609,16 @@ bool SurgicalTask::init()
   {
     _subRobotPose[RIGHT] = _nh.subscribe<geometry_msgs::Pose>("/right_lwr/ee_pose", 1, boost::bind(&SurgicalTask::updateRobotPose,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     _subRobotTwist[RIGHT] = _nh.subscribe<geometry_msgs::Twist>("/right_lwr/ee_vel", 1, boost::bind(&SurgicalTask::updateRobotTwist,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-    _subCurrentJoints[RIGHT] = _nh.subscribe<sensor_msgs::JointState>("/right_lwr/joint_states", 1, boost::bind(&SurgicalTask::updateCurrentJoints,this,_1,RIGHT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
+    
+    if(!_useFranka)
+    {
+      _subCurrentJoints[RIGHT] = _nh.subscribe<sensor_msgs::JointState>("/right_lwr/joint_states", 1, boost::bind(&SurgicalTask::updateCurrentJoints,this,_1,RIGHT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
+    }
+    else
+    {
+      _subCurrentJoints[RIGHT] = _nh.subscribe<sensor_msgs::JointState>("/right_panda/joint_states", 1, boost::bind(&SurgicalTask::updateCurrentJoints,this,_1,RIGHT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
+    }
+
     _subDampingMatrix[RIGHT] = _nh.subscribe<std_msgs::Float32MultiArray>("/right_lwr/joint_controllers/passive_ds_damping_matrix", 1, boost::bind(&SurgicalTask::updateDampingMatrix,this,_1,RIGHT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
    
     if(!_useSim)
@@ -579,7 +628,7 @@ bool SurgicalTask::init()
    
     if(_humanInputDevice[RIGHT] == JOYSTICK)
     {
-      _subJoystick[RIGHT] = _nh.subscribe<sensor_msgs::Joy>("/left/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      _subJoystick[RIGHT] = _nh.subscribe<sensor_msgs::Joy>("/right/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     }
     else
     {
@@ -595,7 +644,22 @@ bool SurgicalTask::init()
     _pubFilteredWrench[RIGHT] = _nh.advertise<geometry_msgs::Wrench>("SurgicalTask/filteredWrenchRight", 1);
     _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg_v5>("/right/surgical_task/foot_input", 1);
     _pubNullspaceCommand[RIGHT] = _nh.advertise<std_msgs::Float32MultiArray>("/right_lwr/joint_controllers/passive_ds_command_nullspace", 1);
-    _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/command_joint_pos", 1);
+
+    if(!_useFranka)
+    {
+      _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/command_joint_pos", 1);
+    }
+    else
+    {
+      if(_useSim)
+      {
+        _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("/right_panda/joint_position_controller/command", 1);
+      }
+      else
+      {
+        _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("/right_panda/joint_impedance_controller/qd", 1);
+      }
+    }   
     // _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/passive_ds_nullspace_joints", 1);
     _pubGripper = _nh.advertise<custom_msgs_gripper::GripperInputMsg>("/right/gripperInput", 1);
     _pubStiffness[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/stiffness", 1);
@@ -829,7 +893,7 @@ bool SurgicalTask::allSubscribersOK()
 
   for(int k = 0; k < NB_ROBOTS; k++)
   {
-    robotStatus[k] = !_useRobot[k] || ((_useFranka ||_firstRobotPose[k]) && (_useFranka || _firstRobotTwist[k])
+    robotStatus[k] = !_useRobot[k] || (_firstRobotPose[k] &&  _firstRobotTwist[k]
                       // && _firstDampingMatrix[k] 
                       && _firstJointsUpdate[k] 
                       && _firstHumanInput[k]);
@@ -928,8 +992,16 @@ void SurgicalTask::receiveFrames()
           }
           else
           {
-            _lr.waitForTransform("/world", "/right_lwr_base_link", ros::Time(0), ros::Duration(3.0));
-            _lr.lookupTransform("/world", "/right_lwr_base_link", ros::Time(0), _transform); 
+            if(!_useFranka)
+            {
+              _lr.waitForTransform("/world", "/right_lwr_base_link", ros::Time(0), ros::Duration(3.0));
+              _lr.lookupTransform("/world", "/right_lwr_base_link", ros::Time(0), _transform);                      
+            }
+            else
+            {
+              _lr.waitForTransform("/world", "/right_panda_link0", ros::Time(0), ros::Duration(3.0));
+              _lr.lookupTransform("/world", "/right_panda_link0", ros::Time(0), _transform);                                    
+            }
           }
           _xRobotBaseOrigin[k] << _transform.getOrigin().x(), _transform.getOrigin().y(), _transform.getOrigin().z();
           _qRobotBaseOrigin[k] << _transform.getRotation().w(), _transform.getRotation().x(), _transform.getRotation().y(), _transform.getRotation().z();
@@ -1039,34 +1111,36 @@ void SurgicalTask::computeCommand()
 {
   humanInputTransformation();
 
-  if(_useOptitrack)
+  if(_humanInputMode== DOMINANT_FOOT_TWO_ROBOTS)
   {
-    updateHumanToolPosition();
-  }
+    std::cerr << "[SurgicalTask]: DOMINANT FOOT TWO ROBOTS: " << _dominantFootID << std::endl;
+    for(int r = 0; r <NB_ROBOTS; r++)
+    {   
+      if(_useRobot[r])
+      {
+        updateTrocarInformation(r);
+        
+        selectRobotMode(r);
+      }
+    }
 
-  for(int r = 0; r <NB_ROBOTS; r++)
-  {   
-    if(_useRobot[r])
-    {
-      updateTrocarInformation(r);
-      
-      selectRobotMode(r);
-      
-      switch(_robotMode[r])
+    if(!_clutching)
+    {    
+      switch(_robotMode[_currentRobot])
       {
         case TROCAR_SELECTION:
         {
-          trocarSelection(r);
+          trocarSelection(_currentRobot, _dominantFootID);
           break;
         }
         case TROCAR_INSERTION:
         {
-          trocarInsertion(r);
+          trocarInsertion(_currentRobot ,_dominantFootID);
           break;
         }
         case TROCAR_SPACE:
         {
-          trocarSpace(r);
+          trocarSpace(_currentRobot, _dominantFootID);
           break;
         }
         default:
@@ -1074,15 +1148,61 @@ void SurgicalTask::computeCommand()
           break;
         }
       }
-    
-      if(_humanInputDevice[r] == FOOT)
+    }
+    if(_humanInputDevice[_dominantFootID] == FOOT)
+    {
+      computeHapticFeedback(_currentRobot);
+      computeDesiredFootWrench(_currentRobot, _dominantFootID);
+    }
+  }
+  else
+  {
+    std::cerr << "[SurgicalTask]: SINGLE FOOT SINGLE ROBOT" << std::endl;
+
+    if(_useOptitrack)
+    {
+      updateHumanToolPosition();
+    }
+
+    for(int r = 0; r <NB_ROBOTS; r++)
+    {   
+      if(_useRobot[r])
       {
-        computeHapticFeedback(r);
-        computeDesiredFootWrench(r);
+        updateTrocarInformation(r);
+        
+        selectRobotMode(r);
+        
+        switch(_robotMode[r])
+        {
+          case TROCAR_SELECTION:
+          {
+            trocarSelection(r, r);
+            break;
+          }
+          case TROCAR_INSERTION:
+          {
+            trocarInsertion(r, r);
+            break;
+          }
+          case TROCAR_SPACE:
+          {
+            trocarSpace(r, r);
+            break;
+          }
+          default:
+          {
+            break;
+          }
+        }
+      
+        if(_humanInputDevice[r] == FOOT)
+        {
+          computeHapticFeedback(r);
+          computeDesiredFootWrench(r, r);
+        }
       }
     }
   }
-
 }
 
 
@@ -1192,7 +1312,7 @@ void SurgicalTask::selectRobotMode(int r)
 }
 
 
-void SurgicalTask::trocarSelection(int r)
+void SurgicalTask::trocarSelection(int r, int h)
 {
   std::cerr << "[SurgicalTask]: " << r << ": TROCAR SELECTION" << std::endl;
 
@@ -1211,7 +1331,7 @@ void SurgicalTask::trocarSelection(int r)
   else
   {
     _vd[r] = _fx[r];
-    _vd[r] += 0.1f*_trocarInput[r](2)*_rEETrocar[r].normalized();  
+    _vd[r] += 0.1f*_trocarInput[h](2)*_rEETrocar[r].normalized();  
   }
 
   _vd[r] = Utils<float>::bound(_vd[r],0.3f);
@@ -1262,15 +1382,15 @@ void SurgicalTask::trocarSelection(int r)
 }
 
 
-void SurgicalTask::trocarInsertion(int r)
+void SurgicalTask::trocarInsertion(int r, int h)
 {
   std::cerr << "[SurgicalTask]: " << r << ": TROCAR INSERTION" << std::endl;
 
-  std::cerr << "[SurgicalTask]: trocar input:  " << _trocarInput[r].transpose() << std::endl;
+  std::cerr << "[SurgicalTask]: trocar input:  " << _trocarInput[h].transpose() << std::endl;
 
   if(_linearMapping[r]==POSITION_VELOCITY || _useSim)
   {
-    _vd[r] = 0.1f*_trocarInput[r](2)*_rEETrocar[r].normalized(); 
+    _vd[r] = 0.1f*_trocarInput[h](2)*_rEETrocar[r].normalized(); 
     if(_dRCMTool[r]> -0.005f && (_wRb[r].col(2)).dot(_vd[r])<0.0f)
     {
       _vd[r].setConstant(0.0f);
@@ -1319,7 +1439,7 @@ void SurgicalTask::trocarInsertion(int r)
       // std::cerr << _x[r].transpose() << std::endl;
       // std::cerr << _vd[r].transpose() << std::endl;
 
-      _selfRotationCommand[r] =_trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[r](W_SELF_ROTATION);
+      _selfRotationCommand[r] =_trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
       if(_currentJoints[r](6)>_trocarSpaceSelfRotationRange && _selfRotationCommand[r]>0.0f)
       {
         _selfRotationCommand[r] = 0.0f;
@@ -1365,12 +1485,12 @@ void SurgicalTask::trocarInsertion(int r)
 }
 
 
-void SurgicalTask::trocarSpace(int r)
+void SurgicalTask::trocarSpace(int r, int h)
 {
   std::cerr << "[SurgicalTask]: " << r << ": TROCAR SPACE" << std::endl;
 
   // Compute desired tool velocity
-  computeDesiredToolVelocity(r);
+  computeDesiredToolVelocity(r, h);
 
   std::cerr << "[SurgicalTask]: " << r << ": vd tool before: " << _vdTool[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
 
@@ -1390,7 +1510,7 @@ void SurgicalTask::trocarSpace(int r)
   std::cerr << "[SurgicalTask]: " << r << ": vd tool after: " << _vdTool[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
 
   // Compute desired gripper position
-  _desiredGripperPosition[r] = _gripperRange*(1.0f-std::max(0.0f,_trocarInput[r](EXTRA_DOF)));
+  _desiredGripperPosition[r] = _gripperRange*(1.0f-std::max(0.0f,_trocarInput[h](EXTRA_DOF)));
 
   if (_controlStrategy[r] == PASSIVE_DS)
   {
@@ -1467,9 +1587,9 @@ void SurgicalTask::trocarSpace(int r)
 }
 
 
-void SurgicalTask::computeDesiredToolVelocity(int r)
+void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 {
-  std::cerr << "[SurgicalTask]: trocar input:  " << _trocarInput[r].transpose() << std::endl;
+  std::cerr << "[SurgicalTask]: trocar input:  " << _trocarInput[h].transpose() << std::endl;
 
   // Compute IK tip position
   Eigen::Matrix4f Hik;
@@ -1483,7 +1603,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r)
     Eigen::Vector3f gains;
     gains << _trocarSpaceVelocityGains[V_UP], _trocarSpaceVelocityGains[V_RIGHT], _trocarSpaceVelocityGains[V_INSERTION];
 
-    _vdTool[r] = _wRb[r]*(gains.cwiseProduct(_trocarInput[r].segment(0,3)));   
+    _vdTool[r] = _wRb[r]*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
 
     if(_useSafetyLimits)
     {
@@ -1650,7 +1770,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r)
       _vdTool[r] += vs;
     }
 
-    _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[r](W_SELF_ROTATION);
+    _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
     _selfRotationCommand[r] = Utils<float>::bound(_selfRotationCommand[r],-_toolTipSelfAngularVelocityLimit,_toolTipSelfAngularVelocityLimit);
     if(_currentJoints[r](6)>_trocarSpaceSelfRotationRange && _selfRotationCommand[r]>0.0f)
     {
@@ -1664,19 +1784,19 @@ void SurgicalTask::computeDesiredToolVelocity(int r)
 
     if(r==LEFT && _allowTaskAdaptation)
     {
-      if(_useTaskAdaptation && _trocarInput[r](EXTRA_DOF)>0.6f)
+      if(_useTaskAdaptation && _trocarInput[h](EXTRA_DOF)>0.6f)
       {
         _useTaskAdaptation = false;
       }
-      if(!_useTaskAdaptation && _trocarInput[r](EXTRA_DOF) <-0.6f)
+      if(!_useTaskAdaptation && _trocarInput[h](EXTRA_DOF) <-0.6f)
       {
         initializeBeliefs(r);
         _useTaskAdaptation = true;
       }
       if(_useTaskAdaptation)
       {
-        taskAdaptation(r);
-        _vdTool[r] = gains(V_INSERTION)*_trocarInput[r](V_INSERTION)*_wRb[r].col(V_INSERTION)+_vda;
+        taskAdaptation(r, h);
+        _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION)+_vda;
       }   
     }
 
@@ -1705,7 +1825,17 @@ void SurgicalTask::computeDesiredToolVelocity(int r)
 
     Eigen::Vector3f desiredOffset;
 
-    desiredOffset(Z) = _trocarSpaceMinZOffset[r]*std::max(_trocarInput[r](Z),0.0f);
+    // desiredOffset(Z) = _trocarSpaceMinZOffset[r]*std::max(_trocarInput[h](Z),0.0f);
+
+    // desiredOffset(Z) = std::min(_trocarSpaceMinZOffset[r]*_trocarInput[h](Z)+_toolClutchingOffset(Z),0.0);
+    desiredOffset(Z) = Utils<float>::bound(_trocarSpaceMinZOffset[r]*_trocarInput[h](Z)+_toolClutchingOffset(Z),
+                                           _trocarSpaceMinZOffset[r],0.0);
+
+
+    // desiredOffset(Z) 
+    _attractorOffset(Z) =  desiredOffset(Z);
+
+
     if(desiredOffset(Z)>pyramidHeight(Z))
     {
       std::cerr << "[SurgicalTask]: " << "PYRAMID" << std::endl;
@@ -1718,14 +1848,26 @@ void SurgicalTask::computeDesiredToolVelocity(int r)
       {
         off = std::tan(theta)*desiredOffset(Z)*pyramidOffset.normalized();
       }
-      desiredOffset(X) = -desiredOffset(Z)*std::tan(pyramidAngle*_trocarInput[r](X))-off(X);  
-      desiredOffset(Y) = -desiredOffset(Z)*std::tan(pyramidAngle*_trocarInput[r](Y))-off(Y);
+      // desiredOffset(X) = -desiredOffset(Z)*std::tan(pyramidAngle*_trocarInput[h](X))-off(X);  
+      // desiredOffset(Y) = -desiredOffset(Z)*std::tan(pyramidAngle*_trocarInput[h](Y))-off(Y);
+      desiredOffset(X) = -desiredOffset(Z)*std::tan(Utils<float>::bound(pyramidAngle*_trocarInput[h](X)+_toolClutchingOffset(X),-pyramidAngle,pyramidAngle))-off(X);  
+      _attractorOffset(X) = Utils<float>::bound(pyramidAngle*_trocarInput[h](X)+_toolClutchingOffset(X),-pyramidAngle,pyramidAngle);
+      // desiredOffset(Y) = -desiredOffset(Z)*std::tan(pyramidAngle*_trocarInput[h](Y))-off(Y);
+      desiredOffset(Y) = -desiredOffset(Z)*std::tan(Utils<float>::bound(pyramidAngle*_trocarInput[h](Y)+_toolClutchingOffset(Y),-pyramidAngle,pyramidAngle))-off(Y);  
+      _attractorOffset(Y) = Utils<float>::bound(pyramidAngle*_trocarInput[h](Y)+_toolClutchingOffset(Y),-pyramidAngle,pyramidAngle);
+
     }
+
     else
     {
       std::cerr << "[SurgicalTask]: " << "SQUARE" << std::endl;
-      desiredOffset(X) = (xMin+xMax)/2+_trocarInput[r](X)*(xMax-xMin)/2;        
-      desiredOffset(Y) = (yMin+yMax)/2+_trocarInput[r](Y)*(yMax-yMin)/2;
+      // desiredOffset(X) = (xMin+xMax)/2+_trocarInput[h](X)*(xMax-xMin)/2;        
+      // desiredOffset(Y) = (yMin+yMax)/2+_trocarInput[h](Y)*(yMax-yMin)/2;
+      desiredOffset(X) = (xMin+xMax)/2+Utils<float>::bound(_trocarInput[h](X)*(xMax-xMin)/2+_toolClutchingOffset(X),-(xMax-xMin)/2,(xMax-xMin)/2);
+      _attractorOffset(X) = Utils<float>::bound(_trocarInput[h](X)*(xMax-xMin)/2+_toolClutchingOffset(X),-(xMax-xMin)/2,(xMax-xMin)/2);        
+      desiredOffset(Y) = (yMin+yMax)/2+Utils<float>::bound(_trocarInput[h](Y)*(yMax-yMin)/2+_toolClutchingOffset(Y),-(yMax-yMin)/2,(yMax-yMin)/2);
+      _attractorOffset(Y) = Utils<float>::bound(_trocarInput[h](Y)*(yMax-yMin)/2+_toolClutchingOffset(Y),-(yMax-yMin)/2,(yMax-yMin)/2);
+
     }
 
     // Compute real offset from end effector to inital target point
@@ -1773,12 +1915,12 @@ void SurgicalTask::computeDesiredToolVelocity(int r)
     {
       if(_selfRotationMapping[r] == POSITION_POSITION)
       {
-        _selfRotationCommand[r] = _trocarSpaceSelfRotationGain*(_trocarInput[r](SELF_ROTATION)*_trocarSpaceSelfRotationRange*M_PI/180.0f-_currentJoints[r](6));
+        _selfRotationCommand[r] = _trocarSpaceSelfRotationGain*(_trocarInput[h](SELF_ROTATION)*_trocarSpaceSelfRotationRange*M_PI/180.0f-_currentJoints[r](6));
         _selfRotationCommand[r]  = Utils<float>::bound(_selfRotationCommand[r] ,-_toolTipSelfAngularVelocityLimit, _toolTipSelfAngularVelocityLimit);        
       }
       else
       {
-        _selfRotationCommand[r] =_trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[r](W_SELF_ROTATION);
+        _selfRotationCommand[r] =_trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
         if(_currentJoints[r](6)>_trocarSpaceSelfRotationRange && _selfRotationCommand[r]>0.0f)
         {
           _selfRotationCommand[r] = 0.0f;
@@ -1866,14 +2008,14 @@ void SurgicalTask::initializeBeliefs(int r)
 
 
 
-void SurgicalTask::taskAdaptation(int r)
+void SurgicalTask::taskAdaptation(int r, int h)
 {
   ////////////////////////////////////
   // Compute human desired velocity //
   ////////////////////////////////////
   Eigen::Vector3f vH;
 
-  vH = _wRb[r].col(V_UP)*_trocarInput[r](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[r](V_RIGHT);
+  vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
   
   std::cerr << "[SurgicalTask]: " << r << ": Human input: " << vH.transpose() << std::endl; 
 
@@ -1994,14 +2136,14 @@ void SurgicalTask::taskAdaptation(int r)
 
 
 
-// void SurgicalTask::taskAdaptation(int r)
+// void SurgicalTask::taskAdaptation(int r, int h)
 // {
 //   ////////////////////////////////////
 //   // Compute human desired velocity //
 //   ////////////////////////////////////
 //   Eigen::Vector3f vH;
 
-//   vH = _wRb[r].col(V_UP)*_trocarInput[r](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[r](V_RIGHT);
+//   vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
   
 //   std::cerr << "[SurgicalTask]: " << r << ": Human input: " << vH.transpose() << std::endl; 
 
@@ -2033,7 +2175,7 @@ void SurgicalTask::taskAdaptation(int r)
 //   // Update offset distance from tool tip to attractor with max belief
 //   Eigen::MatrixXf::Index indexMax;
 //   _beliefsC.array().maxCoeff(&indexMax);
-//   if(std::fabs(1.0f-_beliefsC[indexMax])<FLT_EPSILON && std::fabs(_trocarInput[r](V_INSERTION))>FLT_EPSILON)
+//   if(std::fabs(1.0f-_beliefsC[indexMax])<FLT_EPSILON && std::fabs(_trocarInput[h](V_INSERTION))>FLT_EPSILON)
 //   {
 //     if(_controlStrategy[r] == PASSIVE_DS)
 //     {
@@ -2214,108 +2356,212 @@ void SurgicalTask::humanInputTransformation()
 {
   Eigen::Matrix<float,5,5> R;
 
-  for(int r = 0; r < NB_ROBOTS; r++)
+  if(_humanInputMode == DOMINANT_FOOT_TWO_ROBOTS)
   {
-    if(_useRobot[r])
+
+    _trocarInput[_nonDominantFootID] = _footPose[_nonDominantFootID];
+
+    if(_humanInputDevice[_nonDominantFootID] == FOOT)
     {
-      if(_humanInputDevice[r] == FOOT)
+     // Scale human input between -1 and 1
+      for(int k = 0; k < 5; k++)
       {
-        if(_linearMapping[r]==POSITION_POSITION)
+        _trocarInput[_nonDominantFootID](k) = Utils<float>::bound(2*_trocarInput[_nonDominantFootID](k)/_footInterfaceRange[_nonDominantFootID][k], -1.0f, 1.0f);
+      }  
+    }
+
+    if(_trocarInput[_nonDominantFootID](X) < -0.7f)
+    {
+      _currentRobot = LEFT;
+    }
+    else if(_trocarInput[_nonDominantFootID](X) > 0.7f)
+    {
+      _currentRobot = RIGHT;
+    }
+
+    if(_trocarInput[_nonDominantFootID](Y) < -0.7f)
+    {
+      _clutching = false;
+    }
+    else if(_trocarInput[_nonDominantFootID](Y) > 0.7f)
+    {
+      _clutching = true;
+      _toolClutchingOffset = _attractorOffset;
+    }
+
+    if(_humanInputDevice[_nonDominantFootID] == FOOT)
+    {
+      if(_linearMapping[_currentRobot] == POSITION_POSITION)
+      {
+        // X, Y, Z, SELF_ROTATION, EXTRA_DOF <= Y, -X, PITCH, -YAW, ROLL
+        R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+             -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+             0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+             0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+             0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
+        _trocarInput[_dominantFootID] = R*_footPose[_dominantFootID];
+
+        if(_clutching)
         {
-          // X, Y, Z, SELF_ROTATION, EXTRA_DOF <= Y, -X, PITCH, -YAW, ROLL
-          R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-               -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-               0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
-               0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
-               0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
-          _trocarInput[r] = R*_footPose[r];
+          _humanClutchingOffset = _trocarInput[_dominantFootID];
+        }
 
-          // Scale human input between -1 and 1
-          _trocarInput[r](X) = Utils<float>::bound(2*_trocarInput[r](X)/_footInterfaceRange[r][FOOT_Y], -1.0f, 1.0f);
-          _trocarInput[r](Y) = Utils<float>::bound(2*_trocarInput[r](Y)/_footInterfaceRange[r][FOOT_X], -1.0f, 1.0f);
-          _trocarInput[r](Z) = Utils<float>::bound(2*_trocarInput[r](Z)/_footInterfaceRange[r][FOOT_PITCH], -1.0f, 1.0f);
-          // If a linear position-position mapping is desired for the foot we allow for a poosition-position or position-velocity
-          // mapping for the self rotation 
-          if(_selfRotationMapping[r]==POSITION_POSITION)
-          {
-            _trocarInput[r](SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[r](SELF_ROTATION)/_footInterfaceRange[r][FOOT_YAW], -1.0f, 1.0f);
-          }
-          else
-          {
-            _trocarInput[r](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[r](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
-            _trocarInput[r](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[r](W_SELF_ROTATION)/(_footInterfaceRange[r][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
-          }
-          _trocarInput[r](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[r](EXTRA_DOF)/_footInterfaceRange[r][FOOT_ROLL], -1.0f, 1.0f);
+        _trocarInput[_dominantFootID] -= _humanClutchingOffset;
 
+        // Scale human input between -1 and 1
+        _trocarInput[_dominantFootID](X) = Utils<float>::bound(2*_trocarInput[_dominantFootID](X)/_footInterfaceRange[_dominantFootID][FOOT_Y], -1.0f, 1.0f);
+        _trocarInput[_dominantFootID](Y) = Utils<float>::bound(2*_trocarInput[_dominantFootID](Y)/_footInterfaceRange[_dominantFootID][FOOT_X], -1.0f, 1.0f);
+        _trocarInput[_dominantFootID](Z) = Utils<float>::bound(2*_trocarInput[_dominantFootID](Z)/_footInterfaceRange[_dominantFootID][FOOT_PITCH], -1.0f, 1.0f);
+        // If a linear position-position mapping is desired for the foot we allow for a poosition-position or position-velocity
+        // mapping for the self rotation 
+        if(_selfRotationMapping[_dominantFootID]==POSITION_POSITION)
+        {
+          _trocarInput[_dominantFootID](SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[_dominantFootID](SELF_ROTATION)/_footInterfaceRange[_dominantFootID][FOOT_YAW], -1.0f, 1.0f);
         }
         else
         {
-          // V_UP, V_RIGHT, V_INSERTION, W_SELF_ROTATION <= PITCH, -ROLL, Y, -YAW
-          R << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-               0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
-               0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-               0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
-               1.0f, 0.0f, 0.0f, 0.0f, 0.0f;
-          _trocarInput[r] = R*_footPose[r];
-
-          // Apply deadzone on foot position
-          _trocarInput[r](V_UP) = Utils<float>::deadZone(_trocarInput[r](V_UP), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
-          _trocarInput[r](V_RIGHT) = Utils<float>::deadZone(_trocarInput[r](V_RIGHT), -_footInterfaceDeadZone[FOOT_ROLL], _footInterfaceDeadZone[FOOT_ROLL]);
-          _trocarInput[r](V_INSERTION) = Utils<float>::deadZone(_trocarInput[r](V_INSERTION), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
-          _trocarInput[r](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[r](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
-          _trocarInput[r](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[r](EXTRA_DOF)/_footInterfaceRange[r][FOOT_X], -1.0f, 1.0f);
-
-          // Scale human input between -1 and 1
-          _trocarInput[r](V_UP) = Utils<float>::bound(2*_trocarInput[r](V_UP)/(_footInterfaceRange[r][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
-          _trocarInput[r](V_RIGHT) = Utils<float>::bound(2*_trocarInput[r](V_RIGHT)/(_footInterfaceRange[r][FOOT_ROLL]-2*_footInterfaceDeadZone[FOOT_ROLL]), -1.0f, 1.0f);
-          _trocarInput[r](V_INSERTION) = Utils<float>::bound(2*_trocarInput[r](V_INSERTION)/(_footInterfaceRange[r][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
-          _trocarInput[r](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[r](W_SELF_ROTATION)/(_footInterfaceRange[r][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
-          _trocarInput[r](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[r](EXTRA_DOF)/_footInterfaceRange[r][FOOT_X], -1.0f, 1.0f);
-
-          // // V_UP, V_RIGHT, V_INSERTION, W_SELF_ROTATION <= Y, -X, PITCH, -YAW
-          // R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-          //      1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-          //      0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
-          //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
-          //      0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
-          // _trocarInput[r] = R*_footPose[r];
-
-          // // Apply deadzone on foot position
-          // _trocarInput[r](V_UP) = Utils<float>::deadZone(_trocarInput[r](V_UP), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
-          // _trocarInput[r](V_RIGHT) = Utils<float>::deadZone(_trocarInput[r](V_RIGHT), -_footInterfaceDeadZone[FOOT_X], _footInterfaceDeadZone[FOOT_X]);
-          // _trocarInput[r](V_INSERTION) = Utils<float>::deadZone(_trocarInput[r](V_INSERTION), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
-          // _trocarInput[r](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[r](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
-          // _trocarInput[r](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[r](EXTRA_DOF)/_footInterfaceRange[r][FOOT_ROLL], -1.0f, 1.0f);
-
-          // // Scale human input between -1 and 1
-          // _trocarInput[r](V_UP) = Utils<float>::bound(2*_trocarInput[r](V_UP)/(_footInterfaceRange[r][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
-          // _trocarInput[r](V_RIGHT) = Utils<float>::bound(2*_trocarInput[r](V_RIGHT)/(_footInterfaceRange[r][FOOT_X]-2*_footInterfaceDeadZone[FOOT_X]), -1.0f, 1.0f);
-          // _trocarInput[r](V_INSERTION) = Utils<float>::bound(2*_trocarInput[r](V_INSERTION)/(_footInterfaceRange[r][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
-          // _trocarInput[r](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[r](W_SELF_ROTATION)/(_footInterfaceRange[r][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
-          // _trocarInput[r](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[r](EXTRA_DOF)/_footInterfaceRange[r][FOOT_ROLL], -1.0f, 1.0f);
-
+          _trocarInput[_dominantFootID](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[_dominantFootID](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
+          _trocarInput[_dominantFootID](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[_dominantFootID](W_SELF_ROTATION)/(_footInterfaceRange[_dominantFootID][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
         }
+        _trocarInput[_dominantFootID](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[_dominantFootID](EXTRA_DOF)/_footInterfaceRange[_dominantFootID][FOOT_ROLL], -1.0f, 1.0f);
       }
       else
       {
+        // V_UP, V_RIGHT, V_INSERTION, W_SELF_ROTATION <= PITCH, -ROLL, Y, -YAW
+        R << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+             0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+             0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+             0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+             1.0f, 0.0f, 0.0f, 0.0f, 0.0f;
+        _trocarInput[_dominantFootID] = R*_footPose[_dominantFootID];
 
-        if(_linearMapping[r] == POSITION_POSITION)
+        // Apply deadzone on foot position
+        _trocarInput[_dominantFootID](V_UP) = Utils<float>::deadZone(_trocarInput[_dominantFootID](V_UP), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
+        _trocarInput[_dominantFootID](V_RIGHT) = Utils<float>::deadZone(_trocarInput[_dominantFootID](V_RIGHT), -_footInterfaceDeadZone[FOOT_ROLL], _footInterfaceDeadZone[FOOT_ROLL]);
+        _trocarInput[_dominantFootID](V_INSERTION) = Utils<float>::deadZone(_trocarInput[_dominantFootID](V_INSERTION), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
+        _trocarInput[_dominantFootID](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[_dominantFootID](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
+
+        // Scale human input between -1 and 1
+        _trocarInput[_dominantFootID](V_UP) = Utils<float>::bound(2*_trocarInput[_dominantFootID](V_UP)/(_footInterfaceRange[_dominantFootID][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
+        _trocarInput[_dominantFootID](V_RIGHT) = Utils<float>::bound(2*_trocarInput[_dominantFootID](V_RIGHT)/(_footInterfaceRange[_dominantFootID][FOOT_ROLL]-2*_footInterfaceDeadZone[FOOT_ROLL]), -1.0f, 1.0f);
+        _trocarInput[_dominantFootID](V_INSERTION) = Utils<float>::bound(2*_trocarInput[_dominantFootID](V_INSERTION)/(_footInterfaceRange[_dominantFootID][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
+        _trocarInput[_dominantFootID](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[_dominantFootID](W_SELF_ROTATION)/(_footInterfaceRange[_dominantFootID][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
+        _trocarInput[_dominantFootID](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[_dominantFootID](EXTRA_DOF)/_footInterfaceRange[_dominantFootID][FOOT_X], -1.0f, 1.0f);      
+
+      }
+
+    }
+    else
+    {
+      if(_linearMapping[_currentRobot] == POSITION_POSITION)
+      {
+        R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+              1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+              0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+              0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+              0.0f, 0.0f, 0.0f, 1.0f, 0.0f;          
+      
+        _trocarInput[_dominantFootID] = R*_footPose[_dominantFootID];
+
+        if(_clutching)
         {
-          R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-                1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-                0.0f, 0.0f, 0.0f, 1.0f, 0.0f;          
+          _humanClutchingOffset = _trocarInput[_dominantFootID];
+        }
+
+        _trocarInput[_dominantFootID] -= _humanClutchingOffset;
+
+      }
+      else
+      {
+        R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+              -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+              0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+              0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+              0.0f, 0.0f, 0.0f, 1.0f, 0.0f;   
+       _trocarInput[_dominantFootID] = R*_footPose[_dominantFootID];
+      }
+    }
+  }
+  else if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT)
+  {
+    for(int h = 0; h < NB_ROBOTS; h++)
+    {
+      if(_useRobot[h])
+      {
+        if(_humanInputDevice[h] == FOOT)
+        {
+          if(_linearMapping[h]==POSITION_POSITION)
+          {
+            // X, Y, Z, SELF_ROTATION, EXTRA_DOF <= Y, -X, PITCH, -YAW, ROLL
+            R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+                 -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+                 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                 0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
+            _trocarInput[h] = R*_footPose[h];
+
+            // Scale human input between -1 and 1
+            _trocarInput[h](X) = Utils<float>::bound(2*_trocarInput[h](X)/_footInterfaceRange[h][FOOT_Y], -1.0f, 1.0f);
+            _trocarInput[h](Y) = Utils<float>::bound(2*_trocarInput[h](Y)/_footInterfaceRange[h][FOOT_X], -1.0f, 1.0f);
+            _trocarInput[h](Z) = Utils<float>::bound(2*_trocarInput[h](Z)/_footInterfaceRange[h][FOOT_PITCH], -1.0f, 1.0f);
+            // If a linear position-position mapping is desired for the foot we allow for a poosition-position or position-velocity
+            // mapping for the self rotation 
+            if(_selfRotationMapping[h]==POSITION_POSITION)
+            {
+              _trocarInput[h](SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](SELF_ROTATION)/_footInterfaceRange[h][FOOT_YAW], -1.0f, 1.0f);
+            }
+            else
+            {
+              _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
+              _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
+            }
+            _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_ROLL], -1.0f, 1.0f);
+
+          }
+          else
+          {
+            // V_UP, V_RIGHT, V_INSERTION, W_SELF_ROTATION <= PITCH, -ROLL, Y, -YAW
+            R << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+                 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+                 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                 1.0f, 0.0f, 0.0f, 0.0f, 0.0f;
+            _trocarInput[h] = R*_footPose[h];
+
+            // Apply deadzone on foot position
+            _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
+            _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), -_footInterfaceDeadZone[FOOT_ROLL], _footInterfaceDeadZone[FOOT_ROLL]);
+            _trocarInput[h](V_INSERTION) = Utils<float>::deadZone(_trocarInput[h](V_INSERTION), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
+            _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
+
+            // Scale human input between -1 and 1
+            _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
+            _trocarInput[h](V_RIGHT) = Utils<float>::bound(2*_trocarInput[h](V_RIGHT)/(_footInterfaceRange[h][FOOT_ROLL]-2*_footInterfaceDeadZone[FOOT_ROLL]), -1.0f, 1.0f);
+            _trocarInput[h](V_INSERTION) = Utils<float>::bound(2*_trocarInput[h](V_INSERTION)/(_footInterfaceRange[h][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
+            _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
+            _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_X], -1.0f, 1.0f);
+          }
         }
         else
         {
-          R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-                -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-                0.0f, 0.0f, 0.0f, 1.0f, 0.0f;   
+          if(_linearMapping[h] == POSITION_POSITION)
+          {
+            R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+                  1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                  0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                  0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+                  0.0f, 0.0f, 0.0f, 1.0f, 0.0f;          
+          }
+          else
+          {
+            R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+                  -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                  0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                  0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+                  0.0f, 0.0f, 0.0f, 1.0f, 0.0f;   
+          }
+          _trocarInput[h] = R*_footPose[h];
         }
-        _trocarInput[r] = R*_footPose[r];
       }
     }
   }
@@ -2354,9 +2600,9 @@ void SurgicalTask::computeHapticFeedback(int r)
 }
 
 
-void SurgicalTask::computeDesiredFootWrench(int r)
+void SurgicalTask::computeDesiredFootWrench(int r, int h)
 {
-  _desiredFootWrench[r].setConstant(0.0f);
+  _desiredFootWrench[h].setConstant(0.0f);
 
   Eigen::Matrix<float,5,3> GammaF;
   Eigen::Matrix3f G;
@@ -2371,29 +2617,29 @@ void SurgicalTask::computeDesiredFootWrench(int r)
 
   GammaF = P*G;
 
-  _desiredFootWrench[r] = GammaF*_FdFoot[r];        
+  _desiredFootWrench[h] = GammaF*_FdFoot[r];        
 
   for(int k = 0; k < 2; k++)
   {
-    if(_desiredFootWrench[r](k)>15.0f)
+    if(_desiredFootWrench[h](k)>15.0f)
     {
-      _desiredFootWrench[r](k) = 15.0f;
+      _desiredFootWrench[h](k) = 15.0f;
     }
-    else if(_desiredFootWrench[r](k)<-15.0f)
+    else if(_desiredFootWrench[h](k)<-15.0f)
     {
-      _desiredFootWrench[r](k) = -15.0f;
+      _desiredFootWrench[h](k) = -15.0f;
     }
   }
 
   for(int k = 0 ; k < 3; k++)
   {
-    if(_desiredFootWrench[r](k+2)>2.0f)
+    if(_desiredFootWrench[h](k+2)>2.0f)
     {
-      _desiredFootWrench[r](k+2) = 2.0f;
+      _desiredFootWrench[h](k+2) = 2.0f;
     }
-    else if(_desiredFootWrench[r](k+2)<-2.0f)
+    else if(_desiredFootWrench[h](k+2)<-2.0f)
     {
-      _desiredFootWrench[r](k+2) = -2.0f;
+      _desiredFootWrench[h](k+2) = -2.0f;
     }
   }
 }
@@ -2597,11 +2843,20 @@ void SurgicalTask::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int r)
 
   _footPose[r](FOOT_X) = msg->axes[0];
   _footPose[r](FOOT_Y) = msg->axes[1];
-  _footPose[r](FOOT_PITCH) = msg->axes[4];
+  if(r==LEFT)
+  {
+    _footPose[r](FOOT_PITCH) = msg->axes[5];
+    _footPose[r](FOOT_YAW) = (-msg->axes[3]+1.0f)/2.0f-(-msg->axes[4]+1.0f)/2.0f;
+  }
+  else
+  {
+    _footPose[r](FOOT_PITCH) = msg->axes[3];
+    _footPose[r](FOOT_YAW) = 0.0f;
+
+  //   _footPose[r](FOOT_YAW) = (-msg->axes[13]+1.0f)/2.0f-(-msg->axes[14]+1.0f)/2.0f;
+  }
   // _footPose[r](FOOT_YAW) = (-msg->axes[5]+1.0f)/2.0f-(-msg->axes[2]+1.0f)/2.0f;
-  _footPose[r](FOOT_PITCH) = msg->axes[5];
   _footPose[r](FOOT_ROLL) = msg->axes[2];
-  _footPose[r](FOOT_YAW) = (-msg->axes[3]+1.0f)/2.0f-(-msg->axes[4]+1.0f)/2.0f;
 
   if(msg->buttons[4] && !msg->buttons[5])
   {
@@ -2745,6 +3000,11 @@ void SurgicalTask::updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& 
   if(!_firstJointsUpdate[r])
   {
     _firstJointsUpdate[r] = true;
+    if(_useFranka)
+    {
+      _firstRobotPose[r] = true;
+      _firstRobotTwist[r] = true;
+    }
     _ikJoints[r] = _currentJoints[r];
   }
 }
