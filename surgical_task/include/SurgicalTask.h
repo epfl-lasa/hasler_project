@@ -98,6 +98,7 @@ class SurgicalTask
     ros::Subscriber _subOptitrackPose[NB_TRACKED_OBJECTS];  // Subscribe to optitrack markers' pose
     ros::Subscriber _subGripper;
     ros::Subscriber _subFootSharedGrasping[NB_ROBOTS];
+    ros::Subscriber _subToolsTip;
 
     // Publisher declaration
     ros::Publisher _pubDesiredTwist[NB_ROBOTS];           // Desired twist to DS-impdedance controller
@@ -216,6 +217,7 @@ class SurgicalTask
 
     float _humanToolLength[2];
     Eigen::Vector3f _humanToolPosition[2];
+    int _humanToolStatus[2];
     Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];
 
 
@@ -397,6 +399,8 @@ class SurgicalTask
     void updateGripperOutput(const custom_msgs_gripper::GripperOutputMsg::ConstPtr& msg);
 
     void updateOptitrackPose(const geometry_msgs::PoseStamped::ConstPtr& msg, int k); 
+
+    void updateToolsTip(const std_msgs::Float64MultiArray::ConstPtr& msg); 
 
     uint16_t  checkTrackedMarker(float a, float b);
 

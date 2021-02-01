@@ -7,7 +7,7 @@ SurgicalTask/useFranka: true
 SurgicalTask/humanInputDevice: [0, 1]
 
 # Mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
-SurgicalTask/linearMapping: [1, 1]
+SurgicalTask/linearMapping: [0, 0]
 
 # Mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
 SurgicalTask/selfRotationMapping: [0, 0]
@@ -27,7 +27,8 @@ SurgicalTask/useOptitrack: false
 # Tool length [LEFT, RIGHT]
 # SurgicalTask/toolOffsetFromEE: [0.513, 0.54]
 # SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
-SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
+# SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
+SurgicalTask/toolOffsetFromEE: [0.375, 0.54]
 
 # Left foot interface range
 SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 40, 30, 35]
@@ -48,7 +49,7 @@ SurgicalTask/useSafetyLimits: false
 SurgicalTask/safetyLimitsStiffnessGain: 100
 
 # Allow task adaptation in position velocity mapping
-SurgicalTask/allowTaskAdaptation: false
+SurgicalTask/allowTaskAdaptation: true
 
 # Tool tip linear velocity limit
 SurgicalTask/toolTipLinearVelocityLimit: 0.1
@@ -62,6 +63,9 @@ SurgicalTask/trocarSpacePyramidBaseSize: [0.12, 0.15]
 # Trocar space pyramid base offset in position position mapping
 SurgicalTask/trocarSpacePyramidBaseOffset: [0.04, -0.05, -0.09,
                                             0.04, 0.05, -0.07]
+
+# SurgicalTask/trocarSpacePyramidBaseOffset: [0.0, 0, -0.2,
+#                                             0.04, 0.05, -0.07]
 
 # Trocar space pyramid min z offset offset in position position mapping
 SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.145]
