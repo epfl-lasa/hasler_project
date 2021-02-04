@@ -439,10 +439,11 @@ bool QpSolverRCM::step3(Eigen::VectorXf &joints, Eigen::VectorXf joints0,
 	qpOASES::returnValue ret = qpOASES::TERMINAL_LIST_ELEMENT;
 
 	_slackLimits.setConstant(1.0f);
-	_slackGains.setConstant(100000.0f);
+	_slackGains.setConstant(10000.0f);
 
 	_rcmGain = depthGain;
-	std::cerr << "rcmGain: " << _rcmGain << std::endl;
+	// _rcmGain = 100.0f;
+	// std::cerr << "rcmGain: " << _rcmGain << std::endl;
 
   while(count<1)
   {

@@ -204,6 +204,7 @@ class SurgicalTask
     float _dRCMTool[NB_ROBOTS];
     int _dominantFootID, _nonDominantFootID;
     int _humanInputMode;
+    std::vector<float> _insertionOffset;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -328,6 +329,9 @@ class SurgicalTask
     Eigen::Matrix<float, 5, 1> _filterGainFootAxis[NB_ROBOTS];
     int _currentRobot;
     Eigen::Vector3f _attractorOffset;
+    bool _switching = false;
+    bool _wait = false;
+    bool _insertionFinished = false;
 
 
   public:

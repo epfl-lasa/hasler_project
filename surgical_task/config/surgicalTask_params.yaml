@@ -1,13 +1,13 @@
 # Use robot [LEFT, RIGHT]
-SurgicalTask/useRobot: [true, true]
+SurgicalTask/useRobot: [false, true]
 
 SurgicalTask/useFranka: true
 
 # Human input device [LEFT, RIGHT] (0: JOYSTICK / 1: FOOT)
-SurgicalTask/humanInputDevice: [0, 0]
+SurgicalTask/humanInputDevice: [0, 1]
 
 # Human input mode (0: SINGLE_FOOT_SINGLE_ROBOT 1: DOMINANT_FOOT_TWO_ROBOTS)
-SurgicalTask/humanInputMode: 1
+SurgicalTask/humanInputMode: 0
 
 # Linear mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
 SurgicalTask/linearMapping: [0, 1]
@@ -22,7 +22,7 @@ SurgicalTask/controlStrategy: [1, 1]
 SurgicalTask/jointImpedanceStiffnessGain: [700, 700, 700, 700, 500, 500, 300]
 
 # Dominant foot (0: LEFT / 1: RIGHT)
-SurgicalTask/dominantFoot: 0
+SurgicalTask/dominantFoot: 1
 
 # Use sim
 SurgicalTask/useSim: true
@@ -35,6 +35,9 @@ SurgicalTask/useOptitrack: false
 # SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
 # SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
 SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
+
+# Insertion offset [LEFT, RIGHT]
+SurgicalTask/insertionOffset: [-0.04, -0.04]
 
 # Left foot interface range
 SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 40, 30, 35]
@@ -64,17 +67,18 @@ SurgicalTask/toolTipLinearVelocityLimit: 0.1
 SurgicalTask/toolTipSelfAngularVelocityLimit: 1.5
 
 # Trocar space pyramid base size in position position mapping
-SurgicalTask/trocarSpacePyramidBaseSize: [0.12, 0.15]
+SurgicalTask/trocarSpacePyramidBaseSize: [0.12, 0.12]
 
 # Trocar space pyramid base offset in position position mapping
 SurgicalTask/trocarSpacePyramidBaseOffset: [0.04, -0.05, -0.09,
-                                            0.04, 0.05, -0.07]
+                                            0.02, 0.05, -0.07]
 
-# SurgicalTask/trocarSpacePyramidBaseOffset: [0.0, 0, -0.2,
-#                                             0.04, 0.05, -0.07]
+# SurgicalTask/trocarSpacePyramidBaseOffset: [0.0, 0, 0,
+#                                             0.0, 0.0, -0.07]
 
 # Trocar space pyramid min z offset offset in position position mapping
-SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.145]
+# SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.08]
+SurgicalTask/trocarSpaceMinZOffset: [-0.145, -0.05]
 
 # Trocar space linear ds gain in position position mapping
 SurgicalTask/trocarSpaceLinearDSFixedGain: 4.0
