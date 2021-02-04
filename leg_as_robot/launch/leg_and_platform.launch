@@ -15,7 +15,7 @@
       <arg name="offset_x"           value="0.25" if="$(eval arg('id')=='right')"/>
       <arg name="offset_x"           value="-0.25" if="$(eval arg('id')=='left')"/>
       <!-- <arg name="offset_y"           value="0.47046"/> -->
-      <arg name="offset_y"           value="0.46"/>
+      <arg name="offset_y"           value="0.44"/>
       <arg name="offset_z"           value="0.0"/>
   </include>
 

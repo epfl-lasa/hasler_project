@@ -4,8 +4,8 @@
 	<arg name="virtual_tool" default="false"/>
 	<arg name="freq" default="10000.0"/>
 	<arg name="two_platforms" default="false"/>
-	<arg name="magnitudeVibration" default="100.0"/>
-	<arg name="decayRateVibration" default="55.0"/>
+	<arg name="magnitudeVibration" default="50.0"/>
+	<arg name="decayRateVibration" default="50.0"/>
 	<arg name="frequencyVibration" default="32.6"/>
 	<arg name="sharedGrasp" default="false"/>
 	<arg name="leftSharedGrasp" default="false"/>
@@ -41,6 +41,8 @@
 				<param name="hapticGraspOn" value="false"/>
 				<param name="simType" value="kinematic"/>
 				<param name="publish_frequency" type="double" value="500.0" />
+				
+				<param name="simType" value="$(arg simType)"/>
 			</node>  
 		</group>
 	
@@ -81,7 +83,7 @@
 				<param name="sharedGraspOn" value="$(arg rightSharedGrasp)"/>
 				<param name="hapticGraspOn" value="false"/>
 				<param name="publish_frequency" type="double" value="500.0" />
-				<param name="simType" value="kinematic"/>
+				<param name="simType" value="$(arg simType)"/>
 			</node>  
 		</group>
 		<group if="$(arg leftSharedGrasp)">
@@ -93,7 +95,7 @@
 				<param name="sharedGraspOn" value="$(arg leftSharedGrasp)"/>
 				<param name="hapticGraspOn" value="false"/>
 				<param name="publish_frequency" type="double" value="500.0" />
-				<param name="simType" value="kinematic"/>
+				<param name="simType" value="$(arg simType)"/>
 			</node>  
 		</group>
 	</group>

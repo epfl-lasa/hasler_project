@@ -7,7 +7,7 @@
   <arg name="simMode" default="dynamic"/>
   
   <arg name="nTargets" default="20"/>
-  <arg name="freq" default="300.0"/>  
+  <arg name="freq" default="200.0"/>  
   
   <group ns="$(arg id)_$(arg targetName)_target">
     <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) targetID:=$(arg id)_$(arg targetName)"/>
@@ -21,7 +21,7 @@
     <param name="nTargets" value="$(arg nTargets)"/>
     <param name="subjectID" value="$(arg subjectID)"/>
     <param name="publish_frequency" type="double" value="$(arg freq)" />
-    
+
     <remap from="joint_states" to="target_state_publisher/joint_states"/>
   </node>
   </group>

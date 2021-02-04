@@ -53,6 +53,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
       _myModel(model_) {
    me = this;
   _stop = false;
+  _flagToolEnabled=false;
+  _flagForwardKinematicsStarted=false;
 
   _myInput = LEG_INPUT;
   std::string inputName_;
@@ -67,7 +69,42 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     ROS_INFO("[%s tool]: Control input changed to platform",Tool_Names[_tool_id]);
     _myInput=PLATFORM_INPUT;
   }
+  //! Get parameter of interaction mode
+  std::string interactionMode_="individual";
+  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"interactionMode", interactionMode_))
+  { 
+      ROS_ERROR("[%s tool]: No interactionMode param",Tool_Names[_tool_id]); 
+  }
+  _myInteractionMode = interactionMode_.compare("mixed")==0 ? MIXED_MODE : INDIVIDUAL_MODE;
+
+  if (_myInteractionMode==MIXED_MODE)
+  {
+      //! Get parameter of 
+     _graspITofAuxPlatform = p_pitch; 
+     std::vector<std::string> mappingAux_;
+
+    mappingAux_.assign(NB_PLATFORM_AXIS,"");
+    
+   
+    if (!_n.getParam("/mixed_platform/mappingAux", mappingAux_))
+    { 
+      ROS_ERROR("[%s tool]: No /mixed_platform/mappingAux present ",Tool_Names[_tool_id]);
+    }else {
+      ROS_INFO("[%s tool]: mappingAux  param loaded",Tool_Names[_tool_id]); 
+    }   
+    
+      for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+      {
+          if (mappingAux_[i].compare("grasp")==0)
+          {
+            _graspITofAuxPlatform = i;;
+            break;
+          } 
+      }   
+
+  }
   
+
   std::string toolTypeStr_;
   if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"toolType", toolTypeStr_))
   { 
@@ -82,7 +119,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     _tool_type=FORCEPS;
   } else
   {
-    _tool_type=FORCEPS; // default
+    ROS_ERROR("[%s tool]: No type of tool detected, aborting", Tool_Names[_tool_id]);
+    _stop=true;
   }
 
   _nDOF=NB_TOOL_AXIS_FULL;
@@ -112,6 +150,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   } 
 
 
+
+  
   _legJointLims[L_MIN] = new KDL::JntArray(NB_LEG_AXIS);
   _legJointLims[L_MIN]->data.setZero();
   _legJointLims[L_MAX] = new KDL::JntArray(NB_LEG_AXIS);
@@ -139,6 +179,7 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
   _desiredToolEEFrame.M.Identity();
   _desiredToolEEFrame.p.Zero();
+  _desiredToolEEFrameOffset.setZero();
   
 
 
@@ -299,16 +340,16 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
       }
 
       _platformJointsOffset.setZero();
-      std::vector<double> platformJointOffsets;
-      platformJointOffsets.resize(NB_PLATFORM_AXIS);
-      if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"platformJointOffsets", platformJointOffsets))
-      { 
-          ROS_ERROR(" [%s tool]: No platformJointOffsets  param", Tool_Names[_tool_id]); 
-      }
-        for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-        {
-          _platformJointsOffset(i)=platformJointOffsets[i];
-        }
+      // std::vector<double> platformJointOffsets;
+      // platformJointOffsets.resize(NB_PLATFORM_AXIS);
+      // if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"platformJointOffsets", platformJointOffsets))
+      // { 
+      //     ROS_ERROR(" [%s tool]: No platformJointOffsets  param", Tool_Names[_tool_id]); 
+      // }
+      //   for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+      //   {
+      //     _platformJointsOffset(i)=platformJointOffsets[i];
+      //   }
 
       _deadZoneValues = 0.2*_desiredPlatformWSLims;
       //cout<<_deadZoneValues.transpose()<<endl;
@@ -334,6 +375,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
         {
           _deadZoneValues(i,L_MAX)=deadZoneValuesPlatformMax[i];
         }
+
+      
 
 
   }
@@ -397,6 +440,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
   _mySegments = _myToolBaseToWristChain.segments;
   _mySegmentsTip = _myToolBaseToTipChain.segments;
+  _myFrames.assign(_mySegments.size(),KDL::Frame(KDL::Rotation::Identity(),KDL::Vector::Zero()));
+  _myFrames_tip.assign(_mySegmentsTip.size(),KDL::Frame(KDL::Rotation::Identity(),KDL::Vector::Zero()));
 
 
   // double test = Utils_math<double>::map(2.5,-5,5,-1,1);
@@ -467,10 +512,18 @@ bool surgicalTool::init() //! Initialization of the node. Its datatype
       , 1, boost::bind(&surgicalTool::readLegJoints, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
-  _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Platform_Names[_tool_id])+"_platform/platform_joint_publisher/joint_states"
-      , 1, boost::bind(&surgicalTool::readPlatformJoints, this, _1),
+  if (_myInteractionMode==MIXED_MODE)
+  {
+    _subPlatformJointStates = _n.subscribe<custom_msgs::TwoFeetOneToolMsg>( "/mixed_platform/platform_state"
+      , 1, boost::bind(&surgicalTool::readMixedPlatformControlState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
-
+  } else
+  {
+    _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Platform_Names[_tool_id])+"_platform/platform_joint_publisher/joint_states"
+    , 1, boost::bind(&surgicalTool::readPlatformJoints, this, _1),
+    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
+  }
+    
   _subSharedGrasp = _n.subscribe<custom_msgs_gripper::SharedGraspingMsg>( "/"+std::string(Platform_Names[_tool_id])+"_tool/sharedGrasping"
       , 1, boost::bind(&surgicalTool::readSharedGrasp, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());      
@@ -504,9 +557,10 @@ void surgicalTool::run() {
           count++;
         } else {
           ROS_INFO_ONCE("[%s tool]: The control input for the tool connected", Tool_Names[_tool_id]);
-          if (_flagCurrentToolJointsRead) {          
-            ROS_INFO_ONCE("[%s tool]: The control started", Tool_Names[_tool_id]);
+          if (_flagCurrentToolJointsRead){
             performChainForwardKinematics();
+            if (_flagToolEnabled || _myInteractionMode==INDIVIDUAL_MODE) {          
+            ROS_INFO_ONCE("[%s tool]: The control started", Tool_Names[_tool_id]);
             //readFootTipBasePose();
             switch (_myInput)
             {
@@ -538,6 +592,7 @@ void surgicalTool::run() {
               // publishManipulabilityEllipsoid();
             }
           }
+        }
         ros::spinOnce();
         _loopRate.sleep();
   }
@@ -588,15 +643,41 @@ void surgicalTool::publishToolJointCommands() {
 void surgicalTool::calculateDesiredFrame(){
 
   if(_tool_type==FORCEPS){
-    _desiredToolEEFrame.p.data[0] = Utils_math<double>::map( _platformJoints(p_x) + _platformJointsOffset(p_x),
-                                                            _desiredPlatformWSLims(p_x,L_MIN), _desiredPlatformWSLims(p_x,L_MAX), 
-                                                            _cartesianLimits(CART_X,L_MIN),_cartesianLimits(CART_X,L_MAX));
-    _desiredToolEEFrame.p.data[1] = Utils_math<double>::map( _platformJoints(p_y) + _platformJointsOffset(p_y),
-                                                            _desiredPlatformWSLims(p_y,L_MIN), _desiredPlatformWSLims(p_y,L_MAX), 
-                                                            _cartesianLimits(CART_Y,L_MIN),_cartesianLimits(CART_Y,L_MAX));
-    _desiredToolEEFrame.p.data[2] = Utils_math<double>::map( _platformJoints(p_pitch) + _platformJointsOffset(p_pitch),
-                                                            _desiredPlatformWSLims(p_pitch,L_MIN), _desiredPlatformWSLims(p_pitch,L_MAX), 
-                                                             _cartesianLimits(CART_Z,L_MIN),_cartesianLimits(CART_Z,L_MAX));
+     Eigen::Vector3d relativeFrame;
+    relativeFrame.setZero();
+    Eigen::Vector3d desiredNewFrame;
+    desiredNewFrame.setZero();
+    Eigen::Vector3d defaultFrame;
+    defaultFrame.setZero();
+
+    defaultFrame(CART_X) = Utils_math<double>::map( 0.0,
+                                                      _desiredPlatformWSLims(p_x,L_MIN), _desiredPlatformWSLims(p_x,L_MAX), 
+                                                      _cartesianLimits(CART_X,L_MIN),_cartesianLimits(CART_X,L_MAX));
+    defaultFrame(CART_Y) = Utils_math<double>::map( 0.0,
+                                                      _desiredPlatformWSLims(p_y,L_MIN), _desiredPlatformWSLims(p_y,L_MAX), 
+                                                      _cartesianLimits(CART_Y,L_MIN),_cartesianLimits(CART_Y,L_MAX));
+    defaultFrame(CART_Z) = Utils_math<double>::map( 0.0,
+                                                      _desiredPlatformWSLims(p_pitch,L_MIN), _desiredPlatformWSLims(p_pitch,L_MAX), 
+                                                      _cartesianLimits(CART_Z,L_MIN),_cartesianLimits(CART_Z,L_MAX));
+    
+
+    relativeFrame(CART_X) = Utils_math<double>::map( _platformJoints(p_x) + _platformJointsOffset(p_x),
+                                                      _desiredPlatformWSLims(p_x,L_MIN), _desiredPlatformWSLims(p_x,L_MAX), 
+                                                      _cartesianLimits(CART_X,L_MIN),_cartesianLimits(CART_X,L_MAX));
+    relativeFrame(CART_Y) = Utils_math<double>::map( _platformJoints(p_y) + _platformJointsOffset(p_y),
+                                                      _desiredPlatformWSLims(p_y,L_MIN), _desiredPlatformWSLims(p_y,L_MAX), 
+                                                      _cartesianLimits(CART_Y,L_MIN),_cartesianLimits(CART_Y,L_MAX));
+    relativeFrame(CART_Z) = Utils_math<double>::map( _platformJoints(p_pitch) + _platformJointsOffset(p_pitch),
+                                                      _desiredPlatformWSLims(p_pitch,L_MIN), _desiredPlatformWSLims(p_pitch,L_MAX), 
+                                                      _cartesianLimits(CART_Z,L_MIN),_cartesianLimits(CART_Z,L_MAX));
+    
+    desiredNewFrame = relativeFrame +  (_desiredToolEEFrameOffset-defaultFrame);
+    
+    desiredNewFrame(CART_X) =  Utils_math<double>::bound(desiredNewFrame(CART_X),_cartesianLimits(CART_X,L_MIN),_cartesianLimits(CART_X,L_MAX));
+    desiredNewFrame(CART_Y) =  Utils_math<double>::bound(desiredNewFrame(CART_Y),_cartesianLimits(CART_Y,L_MIN),_cartesianLimits(CART_Y,L_MAX));
+    desiredNewFrame(CART_Z) =  Utils_math<double>::bound(desiredNewFrame(CART_Z),_cartesianLimits(CART_Z,L_MIN),_cartesianLimits(CART_Z,L_MAX));
+    tf::vectorEigenToKDL(desiredNewFrame,_desiredToolEEFrame.p);  
+    
   }else { //! _tool_type=CAMERA
 
     Eigen::Vector3d relativeFrame;
@@ -610,13 +691,13 @@ void surgicalTool::calculateDesiredFrame(){
     
     static Eigen::Matrix<double,NB_PLATFORM_AXIS,1> averageOfPlatformLims = _desiredPlatformWSLims.rowwise().mean().cwiseAbs();
     
-      relativeFrame(CART_X) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x) + _platformJointsOffset(p_x),_deadZoneValues(p_x,L_MIN), _deadZoneValues(p_x,L_MAX)),
+      relativeFrame(CART_X) = Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_x),_deadZoneValues(p_x,L_MIN), _deadZoneValues(p_x,L_MAX)),
                                                             -averageOfPlatformLims(p_x), averageOfPlatformLims(p_x), 
                                                             -1.0,1.0);                                                            
-      relativeFrame(CART_Y) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y) + _platformJointsOffset(p_y),_deadZoneValues(p_y,L_MIN), _deadZoneValues(p_y,L_MAX)),
+      relativeFrame(CART_Y) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_y),_deadZoneValues(p_y,L_MIN), _deadZoneValues(p_y,L_MAX)),
                                                               -averageOfPlatformLims(p_y), averageOfPlatformLims(p_y), 
                                                               -1.0,1.0); //! The minus sign, is because from the point of view of the camera Up is -Y
-      relativeFrame(CART_Z) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch) + _platformJointsOffset(p_pitch) ,_deadZoneValues(p_pitch,L_MIN), _deadZoneValues(p_pitch,L_MAX)),
+      relativeFrame(CART_Z) = -Utils_math<double>::map(Utils_math<double>::deadZone(_platformJoints(p_pitch),_deadZoneValues(p_pitch,L_MIN), _deadZoneValues(p_pitch,L_MAX)),
                                                               -averageOfPlatformLims(p_pitch), averageOfPlatformLims(p_pitch),  
                                                               -1.0,1.0);                                                              
      
@@ -632,7 +713,7 @@ void surgicalTool::calculateDesiredFrame(){
       desiredNewFrame(CART_Z) =  Utils_math<double>::bound(desiredNewFrame(CART_Z),_cartesianLimits(CART_Z,L_MIN),_cartesianLimits(CART_Z,L_MAX));
       tf::vectorEigenToKDL(desiredNewFrame,_desiredToolEEFrame.p);
   }
-
+  
   Eigen::Vector3d p_;
   tf::vectorKDLToEigen(_desiredToolEEFrame.p,p_);  
   Quaterniond q_ = Quaterniond::FromTwoVectors(Eigen::Vector3d(0.0, 0.0, 1.0), p_);
@@ -739,20 +820,37 @@ void surgicalTool::performInverseKinematics(){
     _toolJoints->data(tool_joint3_yaw) = -Utils_math<double>::map( _platformJoints(p_yaw) + _platformJointsOffset(p_yaw) , 
                                     _desiredPlatformWSLims(p_yaw,L_MIN),_desiredPlatformWSLims(p_yaw,L_MAX), 
                                     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw),_toolJointLimsAll[L_MAX]->data(tool_joint3_yaw)) ;
-  } else
-  // {
+  } else  {
+    double speedControlGainSelfRotationMod = 0.0;
+    
+    if (_tool_id==RIGHT_TOOL){
+        speedControlGainSelfRotationMod = _platformJoints(p_yaw) >_deadZoneValues(p_yaw,L_MAX) ? 20.0*_speedControlGainSelfRotation : _speedControlGainSelfRotation;
+    }else{
+
+        speedControlGainSelfRotationMod = _platformJoints(p_yaw) < _deadZoneValues(p_yaw,L_MIN) ? 20.0*_speedControlGainSelfRotation : _speedControlGainSelfRotation;
+    }
+
      _toolJoints->data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw) + _platformJointsOffset(p_yaw),_deadZoneValues(p_yaw,L_MIN),_deadZoneValues(p_yaw,L_MAX)), 
                                     _desiredPlatformWSLims(p_yaw,L_MIN),_desiredPlatformWSLims(p_yaw,L_MAX), -1.0, 1.0) * _speedControlGainSelfRotation * _dt ;
     // cout<<_toolJoints->data(tool_joint3_yaw)<<endl;     
+   }
     _toolJoints->data(tool_joint3_yaw) = Utils_math<double>::bound(_toolJoints->data(tool_joint3_yaw), _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw),_toolJointLimsAll[L_MAX]->data(tool_joint3_yaw));                             
-
-  // }
 
   if (_tool_type==FORCEPS)
     {
-      _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) + _platformJointsOffset(p_roll),
+      
+      
+      if (_myInteractionMode==INDIVIDUAL_MODE)
+      {
+        _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) + _platformJointsOffset(p_roll),
                                                     _desiredPlatformWSLims(p_roll,L_MIN),_desiredPlatformWSLims(p_roll,L_MAX), 
                                                     _toolJointLimsAll[L_MAX]->data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN]->data(tool_joint5_wrist_open_angle)));
+      } else //! MIXED_MODE
+      {
+        _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) + _platformJointsOffset(p_roll),
+                                            _desiredPlatformWSLims(_graspITofAuxPlatform,L_MAX),_desiredPlatformWSLims(_graspITofAuxPlatform,L_MIN), 
+                                            _toolJointLimsAll[L_MAX]->data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN]->data(tool_joint5_wrist_open_angle)));
+      }
       // cout<<_toolJointsAll(tool_joint5_wrist_open_angle)<<endl;                                                    
       _toolJointsAll(tool_joint5_wrist_open_angle_mimic) = _toolJointsAll(tool_joint5_wrist_open_angle) ;
     }
@@ -766,23 +864,30 @@ void surgicalTool::performInverseKinematics(){
 void surgicalTool::performChainForwardKinematics() 
 {
   KDL::Frame frame_;
-  _myFrames.clear();
   //cout<<_toolJoints->data.transpose()<<endl;
   for (unsigned int i = 0; i < _mySegments.size(); i++) {
       _myFKSolver_wrist->JntToCart(*me->_toolJoints, frame_, i + 1);
-      _myFrames.push_back(frame_); 
+      _myFrames[i]=frame_; 
     //  cout<<_myFrames[i].p.data[0]<<" "<<_myFrames[i].p.data[1]<<" "<<_myFrames[i].p.data[2]<<endl;
   }
   KDL::Frame frameTip_;
-  _myFrames_tip.clear();
+  _myFrames_tip.resize(_mySegmentsTip.size());
   _toolJointsFull->data=_toolJointsAll;
   //cout<<_toolJointsFull->data.transpose()<<endl;
   for (unsigned int j = 0; j < _mySegmentsTip.size(); j++) {
       _myFKSolver_tip->JntToCart(*me->_toolJointsFull, frameTip_, j + 1);
       // cout<<frameTip_.p.data[0]<<" "<<frameTip_.p.data[1]<<" "<<frameTip_.p.data[2]<<endl;
-      _myFrames_tip.push_back(frameTip_);
+      _myFrames_tip[j] = frameTip_;
   }  
   publishToolTipPose();
+  if(!_flagForwardKinematicsStarted)
+  {
+    std::cout<<"Current frame of the wrist: "
+             <<_myFrames[_mySegments.size()-1].p[0]<<" "
+             <<_myFrames[_mySegments.size()-1].p[1]<<" "
+             <<_myFrames[_mySegments.size()-1].p[2]<<" "<<std::endl;
+  }
+  _flagForwardKinematicsStarted=true;
 }
 
 
@@ -815,19 +920,50 @@ void surgicalTool::readPlatformJoints(const sensor_msgs::JointState::ConstPtr &m
   _flagPlatformJointsConnected = true;
 }
 
+void surgicalTool::readMixedPlatformControlState(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg) {
+  bool enableNow_ = false;
+  if(_flagForwardKinematicsStarted)
+  {
+    enableNow_ = msg->currentTool==_tool_id;
+
+    if (!_flagToolEnabled && enableNow_)
+    { 
+      tf::vectorKDLToEigen(_myFrames[_mySegments.size()-1].p,_desiredToolEEFrameOffset);
+      cout<<"desiredToolOffset: "<<_desiredToolEEFrameOffset.transpose()<<endl;
+      _flagToolEnabled=true;
+    } 
+      _flagToolEnabled=enableNow_;
+
+    if (_flagToolEnabled)
+    {
+      for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
+          me->_platformJoints(i) = msg->mixedPlatformJointState.position[i];
+          me->_platformVelocities(i) = msg->mixedPlatformJointState.velocity[i];
+          me->_platformEfforts(i) = msg->mixedPlatformJointState.effort[i];
+          me->_platformJointsOffset(i) = msg->mixedPlatformOffset[i];
+        }  
+        
+    }
+    if (!_flagPlatformJointsConnected) {
+        ROS_INFO("[%s tool]: platform joints received by the tool",Tool_Names[_tool_id]);
+      }
+    _flagPlatformJointsConnected = true;
+  }
+}
+
 
 void surgicalTool::readCurrentToolJoints(const sensor_msgs::JointState::ConstPtr &msg) {
 
   _msgToolCurrentJointStates = *msg;
 
-  // if (!_flagCurrentToolJointsRead) {
-  //   ROS_INFO("[%s tool]: Current joints received by the tool", Tool_Names[_tool_id]);
-  //     for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
-  //     {
-  //       _toolJointsInit->data[i] = msg->position[i];
-  //     }
-  //     *_toolJoints = *_toolJointsInit;
-  // }
+  if (!_flagCurrentToolJointsRead) {
+    ROS_INFO("[%s tool]: Current joints received by the tool", Tool_Names[_tool_id]);
+      for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
+      {
+        _toolJoints->data[i] = msg->position[i];
+      }
+      _toolJointsInit->data = _toolJoints->data;
+  }
   _flagCurrentToolJointsRead = true;
 
 }

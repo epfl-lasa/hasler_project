@@ -52,6 +52,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <custom_msgs_gripper/SharedGraspingMsg.h>
 
+#include <custom_msgs/TwoFeetOneToolMsg.h>
+
 #define LEG_AXES \
   ListofLegAxes(hip_adduction, "hip_adduction")    \
   ListofLegAxes(hip_extension, "hip_extension")    \
@@ -95,14 +97,15 @@ class surgicalTool {
 
 public:
   enum Tool_Name { NO_TOOL= 0, RIGHT_TOOL=1, LEFT_TOOL=2};
-  enum Tool_Type { FORCEPS, CAMERA};
+  enum Tool_Type { FORCEPS, CAMERA}; 
   enum Self_Rotation_Type {R_SPEED, R_POSITION};
+  enum Interaction_Mode {INDIVIDUAL_MODE, MIXED_MODE};
 
 private:
   enum Control_Input { LEG_INPUT = 1, PLATFORM_INPUT = 2 };
   
   Control_Input _myInput;
-  
+  Interaction_Mode _myInteractionMode;
   Tool_Name _tool_id;
   Tool_Type _tool_type;
 
@@ -158,12 +161,14 @@ private:
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,NB_TOOL_AXIS_RED> _weightedJointSpaceMassMatrix;
   Eigen::Matrix<double,NB_AXIS_WRENCH,NB_AXIS_WRENCH> _weightedTaskSpaceMassMatrix;
   
+  bool _flagToolEnabled;
+  
   bool _flagRosControl;
   bool _mySolutionFound;
   bool _flagSharedGrasp;
   volatile bool _flagCurrentToolJointsRead;
   int _nDOF;
-  
+  uint8_t _graspITofAuxPlatform;
   
   Eigen::Vector4d _hAxisFilterPosValue;
   double _hAxisFilterGraspValue;
@@ -178,6 +183,7 @@ private:
   tf2_ros::Buffer _tfBuffer;
   tf2_ros::TransformListener* _tfListener;
   KDL::Frame _desiredToolEEFrame;
+  Eigen::Vector3d _desiredToolEEFrameOffset;
   KDL::Frame _footTipPosFrame;
   KDL::Frame _footTipPosFrameInit;
 
@@ -212,6 +218,7 @@ private:
   bool _flagFootTipPoseConnected;
   bool _flagLegJointsConnected;
   bool _flagPlatformJointsConnected;
+  bool _flagForwardKinematicsStarted;
 
   bool _stop;
 
@@ -250,6 +257,7 @@ private:
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readCurrentToolJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
+  void readMixedPlatformControlState(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg);
   //! OTHER METHODS
   static void stopNode(int sig);
 };

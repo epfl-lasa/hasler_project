@@ -23,6 +23,8 @@
 #include <geometry_msgs/WrenchStamped.h>
 
 #include "geometry_msgs/PointStamped.h"
+#include "custom_msgs/TwoFeetOneToolMsg.h"
+
 #define NB_PARAMS_CATEGORIES 10
 #define NB_FO_CATEGORIES 6
 #define NB_FI_PUBLISHERS 2
@@ -212,6 +214,7 @@ class footVarSynchronizer
     
     void dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level);
     void changeParamCheck();
+    void updateInternalVariables();
     void requestDoActionsParams();
     void changedPlatformCheck();
     void requestDoActionsPlatform();
@@ -233,6 +236,7 @@ class footVarSynchronizer
     void readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readLegGravCompFI(const custom_msgs::FootInputMsg_v5::ConstPtr &msg);
     void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg);
     void correctForceForLegCompensation();
     void processAllPublishers();
 

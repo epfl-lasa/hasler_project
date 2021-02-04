@@ -1,12 +1,14 @@
 /right_tool:
+  interactionMode: 'mixed' # individual, mixed
   toolType: 'forceps'
+  controlledBy: 'right'
   toolSelfRotationControl: 'speed'
   speedControlGainCamera: 0.5
-  speedControlGainSelfRotation: 10.0
-  desiredPlatformWorkspaceLimsMin: [-0.090, -0.0975, -0.200, 0.000, -0.349066] # Y,X,PITCH,ROLL,YAW
-  desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, 0.126892, 0.349066] #[0.090, 0.0975, 0.0872665, 0.226892, 0.349066]
-  deadZoneValuesPlatformMin: [-0.05, -0.05, -0.18, -0.15, -0.26]
-  deadZoneValuesPlatformMax: [0.05, 0.05, 0.00, 0.15, 0.03]
+  speedControlGainSelfRotation: 5.0
+  desiredPlatformWorkspaceLimsMin: [-0.040, -0.0975, -0.200, 0.000, -0.349066] # Y,X,PITCH,ROLL,YAW
+  desiredPlatformWorkspaceLimsMax: [0.040, 0.040, 0.0872665, 0.226892, 0.349066] #[0.090, 0.0975, 0.0872665, 0.226892, 0.349066]
+  deadZoneValuesPlatformMin: [-0.05, -0.05, -0.18, -0.15, -0.16]
+  deadZoneValuesPlatformMax: [0.05, 0.05, 0.00, 0.10, 0.01]
   platformJointOffsets: [0.0, 0.0, 0.0, -0.15, 0.0]
   cartLimsX: [-0.15,0.10] # [m]
   cartLimsY: [-0.10,0.10]  # [m]
