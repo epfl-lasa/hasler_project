@@ -5,7 +5,11 @@
 #include <ros/ros.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Float32MultiArray.h>
-#include <gazebo/math/gzmath.hh>
+#if GAZEBO_MAJOR_VERSION >= 9
+	#include <ignition/math.hh>
+#else 
+	#include <gazebo/math/gzmath.hh>
+#endif
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <boost/thread.hpp>
@@ -35,7 +39,11 @@ namespace gazebo
 			tf::TransformListener _actorTfListener;
 			tf::StampedTransform _actorTransform;
 			//! Variables for current status
+#if GAZEBO_MAJOR_VERSION >= 9
+			ignition::math::Pose3d _actorPose;
+#else 
 			math::Pose _actorPose;
+#endif
 			boost::mutex _lock;
 
 			ros::Publisher _pubObjectPose;
@@ -105,7 +113,23 @@ namespace gazebo
 			// _actorPose.rot.y=_actorTransform.getRotation().y();
 			// _actorPose.rot.z=_actorTransform.getRotation().z();
 			// _actorPose.rot.w=_actorTransform.getRotation().w();
-			  		
+#if GAZEBO_MAJOR_VERSION >= 9
+			ignition::math::Vector3d objectPosition = _actorBaseLink->WorldCoGPose().Pos();
+			ignition::math::Quaterniond objectOrientation = _actorBaseLink->WorldCoGPose().Rot();
+	
+			_msgObjectPose.position.x = objectPosition.X();
+			_msgObjectPose.position.y = objectPosition.Y();
+			_msgObjectPose.position.z = objectPosition.Z();
+			_msgObjectPose.orientation.w = objectOrientation.W();
+			_msgObjectPose.orientation.x = objectOrientation.X();
+			_msgObjectPose.orientation.y = objectOrientation.Y();
+			_msgObjectPose.orientation.z = objectOrientation.Z();
+			_pubObjectPose.publish(_msgObjectPose);
+
+    		_transform.setOrigin(tf::Vector3(objectPosition.X(), objectPosition.Y(), objectPosition.Z()));
+    		_transform.setRotation(tf::Quaternion(objectOrientation.X(), objectOrientation.Y(), objectOrientation.Z(), objectOrientation.W()));
+    		_br.sendTransform(tf::StampedTransform(_transform, ros::Time::now(), "world", _actorName + "/base_link"));
+#else 
 			math::Vector3 objectPosition = _actorBaseLink->GetWorldCoGPose().pos;
 			math::Quaternion objectOrientation = _actorBaseLink->GetWorldCoGPose().rot;
 	
@@ -121,6 +145,7 @@ namespace gazebo
     		_transform.setOrigin(tf::Vector3(objectPosition.x, objectPosition.y, objectPosition.z));
     		_transform.setRotation(tf::Quaternion(objectOrientation.x, objectOrientation.y, objectOrientation.z, objectOrientation.w));
     		_br.sendTransform(tf::StampedTransform(_transform, ros::Time::now(), "world", _actorName + "/base_link"));
+#endif
 		}
 	};
 	//! Register the plugin

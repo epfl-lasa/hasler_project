@@ -224,7 +224,7 @@ public:
   virtual const char *strError(const int error) const;
 
   // /// @copydoc KDL::SolverI::updateInternalDataStructures()
-  // virtual void updateInternalDataStructures();
+  virtual void updateInternalDataStructures();
 
 private:
   const Chain &chain;

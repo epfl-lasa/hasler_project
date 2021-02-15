@@ -34,23 +34,23 @@
        weight_js(MatrixXd::Identity(nj, nj)), lambda(0.0), lambda_scaled(0.0),
        nrZeroSigmas(0), svdResult(0), sigmaMin(0) {}
 
-//  void ChainFdSolverTorque_wdls::updateInternalDataStructures() {
-//    jnt2jac.updateInternalDataStructures();
-//    nj = chain.getNrOfJoints();
-//    jac.resize(nj);
-//    MatrixXd z6nj = MatrixXd::Zero(6, nj);
-//    VectorXd znj = VectorXd::Zero(nj);
-//    MatrixXd znjnj = MatrixXd::Zero(nj, nj);
-//    U.conservativeResizeLike(z6nj);
-//    S.conservativeResizeLike(znj);
-//    V.conservativeResizeLike(znjnj);
-//    tmp.conservativeResizeLike(znj);
-//    tmp_jac.conservativeResizeLike(z6nj);
-//    tmp_jac_weight1.conservativeResizeLike(z6nj);
-//    tmp_jac_weight2.conservativeResizeLike(z6nj);
-//    tmp_js.conservativeResizeLike(znjnj);
-//    weight_js.conservativeResizeLike(MatrixXd::Identity(nj, nj));
-//  }
+ void ChainFdSolverTorque_wdls::updateInternalDataStructures() {
+   jnt2jac.updateInternalDataStructures();
+   nj = chain.getNrOfJoints();
+   jac.resize(nj);
+   MatrixXd z6nj = MatrixXd::Zero(6, nj);
+   VectorXd znj = VectorXd::Zero(nj);
+   MatrixXd znjnj = MatrixXd::Zero(nj, nj);
+   U.conservativeResizeLike(z6nj);
+   S.conservativeResizeLike(znj);
+   V.conservativeResizeLike(znjnj);
+   tmp.conservativeResizeLike(znj);
+   tmp_jac.conservativeResizeLike(z6nj);
+   tmp_jac_weight1.conservativeResizeLike(z6nj);
+   tmp_jac_weight2.conservativeResizeLike(z6nj);
+   tmp_js.conservativeResizeLike(znjnj);
+   weight_js.conservativeResizeLike(MatrixXd::Identity(nj, nj));
+ }
 
  ChainFdSolverTorque_wdls::~ChainFdSolverTorque_wdls() {}
 

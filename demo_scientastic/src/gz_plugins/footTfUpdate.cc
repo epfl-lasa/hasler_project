@@ -5,7 +5,11 @@
 #include <ros/ros.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Float32MultiArray.h>
-#include <gazebo/math/gzmath.hh>
+#if GAZEBO_MAJOR_VERSION >= 9
+	#include <ignition/math.hh>
+#else 
+	#include <gazebo/math/gzmath.hh>
+#endif
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <boost/thread.hpp>
@@ -32,7 +36,11 @@ namespace gazebo
 			tf::TransformListener _actorTfListener;
 			tf::StampedTransform _actorTransform;
 			//! Variables for current status
+#if GAZEBO_MAJOR_VERSION >= 9
+			ignition::math::Pose3d _actorPose;
+#else 
 			math::Pose _actorPose;
+#endif
 			boost::mutex _lock;
 
 			double _jointStiffness;
@@ -120,14 +128,72 @@ namespace gazebo
 
 			// std::cerr << _actorName << std::endl;
 			_actorTransform.getRotation().getW();
-			  _actorPose.pos.x=_actorTransform.getOrigin().x();
-			  _actorPose.pos.y=_actorTransform.getOrigin().y();
-			  _actorPose.pos.z=_actorTransform.getOrigin().z();
-			  _actorPose.rot.x=_actorTransform.getRotation().x();
-			  _actorPose.rot.y=_actorTransform.getRotation().y();
-			  _actorPose.rot.z=_actorTransform.getRotation().z();
-			  _actorPose.rot.w=_actorTransform.getRotation().w();
-			  		
+#if GAZEBO_MAJOR_VERSION >= 9
+		  	_actorPose.Pos().X() =_actorTransform.getOrigin().x();
+			_actorPose.Pos().Y() =_actorTransform.getOrigin().y();
+			_actorPose.Pos().Z() =_actorTransform.getOrigin().z();
+			_actorPose.Rot().X() =_actorTransform.getRotation().x();
+			_actorPose.Rot().Y() =_actorTransform.getRotation().y();
+			_actorPose.Rot().Z() =_actorTransform.getRotation().z();
+			_actorPose.Rot().W() =_actorTransform.getRotation().w();
+#else 
+		  	_actorPose.pos.x=_actorTransform.getOrigin().x();
+			_actorPose.pos.y=_actorTransform.getOrigin().y();
+			_actorPose.pos.z=_actorTransform.getOrigin().z();
+			_actorPose.rot.x=_actorTransform.getRotation().x();
+			_actorPose.rot.y=_actorTransform.getRotation().y();
+			_actorPose.rot.z=_actorTransform.getRotation().z();
+			_actorPose.rot.w=_actorTransform.getRotation().w();
+#endif
+			  	
+#if GAZEBO_MAJOR_VERSION >= 9
+			// _actorBaseLink->SetWorldPose(_actorPose);
+			ignition::math::Vector3d temp(0.1f,0.0f,0.0f);
+			ignition::math::Vector3d footAttractor(_actorTransform.getOrigin().x(),_actorTransform.getOrigin().y(),
+				                                  _actorTransform.getOrigin().z());
+			ignition::math::Vector3d footPosition = _actorBaseLink->WorldCoGPose().Pos();
+			ignition::math::Quaterniond footQuaternion = _actorBaseLink->WorldCoGPose().Rot();
+			// std::cerr << footQuaternion.w << " " << footQuaternion.x << " " 
+			          // << footQuaternion.y << " " << footQuaternion.z << std::endl;
+
+			// std::cerr << _actorName << " " << footAttractor << " " << footPosition << std::endl;
+			ignition::math::Vector3d force = 40*(2.0f*(footAttractor-footPosition)-_actorBaseLink->WorldLinearVel());
+// 			// temp() << 10.0f,0.0f, 0.0f;
+// // 
+			ignition::math::Pose3d pose;
+			pose.Pos() = _actorBaseLink->WorldCoGPose().Pos();
+
+			ignition::math::Quaterniond qd(1.0f,0.0f,0.0f,0.0f);
+			ignition::math::Quaterniond qe = qd*footQuaternion.Inverse();
+
+			ignition::math::Vector3d axis;
+			double angle;
+			qe.ToAxis(axis,angle);
+			_actorBaseLink->SetForce(force);
+			// std::cerr << _actorBaseLink->GetRelativeForce() << std::endl;
+			// std::cerr << force << std::endl;
+			_actorBaseLink->SetTorque(200*angle*axis-20*_actorBaseLink->RelativeAngularVel());
+
+			double jointPosition= _joint->Position(0);
+			double jointForce = _jointStiffness*(0.0f-jointPosition)-_joint->GetVelocity(0)*_jointDamping;
+			_joint->SetForce(0,_jointStiffness*(0.0f-jointPosition)-_joint->GetVelocity(0)*_jointDamping);
+			// std::cerr << _actorName << " " << jointPosition << " " << jointForce << std::endl;
+
+			_msgForce.x = jointForce;
+			// _msgForce.x = 0.0f;
+			_msgForce.y = 0.0f;
+			_msgForce.z = 0.0f;
+			_pubForce.publish(_msgForce);
+			_msgFootPose.position.x = pose.Pos().X();
+			_msgFootPose.position.y = pose.Pos().Y();
+			_msgFootPose.position.z = pose.Pos().Z();
+			_msgFootPose.orientation.w = 1.0f;
+			_msgFootPose.orientation.x = 0.0f;
+			_msgFootPose.orientation.y = 0.0f;
+			_msgFootPose.orientation.z = 0.0f;
+			_pubFootPose.publish(_msgFootPose);
+#else 
+			math::Pose _actorPose;
 			// _actorBaseLink->SetWorldPose(_actorPose);
 			math::Vector3 temp(0.1f,0.0f,0.0f);
 			math::Vector3 footAttractor(_actorTransform.getOrigin().x(),_actorTransform.getOrigin().y(),
@@ -143,10 +209,12 @@ namespace gazebo
 // // 
 			math::Pose pose;
 			pose.pos = _actorBaseLink->GetWorldCoGPose().pos;
+
 			math::Quaternion qd(1.0f,0.0f,0.0f,0.0f);
 			math::Quaternion qe = qd*footQuaternion.GetInverse();
-			double angle;
+		
 			math::Vector3 axis;
+			double angle;
 			qe.GetAsAxis(axis,angle);
 			_actorBaseLink->SetForce(force);
 			// std::cerr << _actorBaseLink->GetRelativeForce() << std::endl;
@@ -171,6 +239,7 @@ namespace gazebo
 			_msgFootPose.orientation.y = 0.0f;
 			_msgFootPose.orientation.z = 0.0f;
 			_pubFootPose.publish(_msgFootPose);
+#endif
 
 
 			}
