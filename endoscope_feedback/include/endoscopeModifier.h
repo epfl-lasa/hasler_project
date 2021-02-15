@@ -24,6 +24,7 @@
 #include "custom_msgs/SurgicalTaskStateMsg.h"
 #include "custom_msgs_gripper/SharedGraspingMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
+#include "std_msgs/Int16MultiArray.h"
 
 static const std::string OPENCV_WINDOW = "Image window";
 
@@ -33,55 +34,48 @@ using namespace std;
 using namespace Eigen;
 using namespace cv;
 
-class endoscopeModifier {
+class endoscopeModifier 
+{
 
-public:
-  enum tool_Types{ENDOSCOPE_ROBOT, gripper_ROBOT, gripper_HAND_R, gripper_HAND_L, NB_TOOLS};
-  static const int NB_ROBOT_TOOLS =  NB_TOOLS-2; 
-  enum tool_States {INSERTION_STATE, INSIDE_TROCAR_STATE, NB_TOOL_STATES};
-  enum gripperA_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS_GRASPER, NO_SHARED_CONTROL};
-  enum tool_SuperNum_ID {TOOL_1, TOOL_2, TOOL_3, NB_SUPERNUM_TOOLS}; //Other tools apart from the endoscope
-  enum toolH_States {HUMAN_IDLE, HUMAN_ENGAGED, HUMAN_CONFUSED}; 
-  enum tool_Axis {Y_TOOL_AXIS,X_TOOL_AXIS,Z_TOOL_AXIS,ROLL_TOOL_AXIS,GRASPING_TOOL_AXIS, NB_AXIS_TOOL};
+  public:
+    enum tool_Types{ENDOSCOPE_ROBOT, gripper_ROBOT, gripper_HAND_R, gripper_HAND_L, NB_TOOLS};
+    static const int NB_ROBOT_TOOLS =  NB_TOOLS-2; 
+    enum tool_States {INSERTION_STATE, INSIDE_TROCAR_STATE, NB_TOOL_STATES};
+    enum gripperA_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS_GRASPER, NO_SHARED_CONTROL};
+    enum tool_SuperNum_ID {TOOL_1, TOOL_2, TOOL_3, NB_SUPERNUM_TOOLS}; //Other tools apart from the endoscope
+    enum toolH_States {HUMAN_IDLE, HUMAN_ENGAGED, HUMAN_CONFUSED}; 
+    enum tool_Axis {Y_TOOL_AXIS,X_TOOL_AXIS,Z_TOOL_AXIS,ROLL_TOOL_AXIS,GRASPING_TOOL_AXIS, NB_AXIS_TOOL};
 
-private:
-  ros::NodeHandle _nh;
-  ros::Rate _loopRate;
-  
-  float _dt;
-  bool _stop;
-  std::mutex _mutex;
-  static endoscopeModifier *me;
-  
-  tool_States _toolState[NB_ROBOT_TOOLS];     
-  
-  toolH_States _toolHState[NB_ROBOT_TOOLS];   
-
-  // ros::NodeHandle _nh;
-  image_transport::ImageTransport* _it;
-  image_transport::Subscriber _myImageSub;
-  image_transport::Publisher _myOverlayedImagePub;
-  ros::Subscriber _surgicalTaskStateSub;
-  ros::Subscriber _sharedGraspingSub;
-  ros::Subscriber _gripperOutputSub;
-
-  gripperA_State _gripperStateSC;
+  private:
+    ros::NodeHandle _nh;
+    ros::Rate _loopRate;
     
-  // METHODS
-public:
-  endoscopeModifier(ros::NodeHandle &nh, float frequency);
-  ~endoscopeModifier();
-  
+    float _dt;
+    bool _stop;
+    std::mutex _mutex;
+    static endoscopeModifier *me;
+    
+    tool_States _toolState[NB_ROBOT_TOOLS];     
+    
+    toolH_States _toolHState[NB_ROBOT_TOOLS];   
 
-  bool init();
-  void run();
-private:
+    image_transport::ImageTransport* _it;
+    image_transport::Subscriber _myImageSub;
+    image_transport::Publisher _myOverlayedImagePub;
+    ros::Subscriber _surgicalTaskStateSub;
+    ros::Subscriber _sharedGraspingSub;
+    ros::Subscriber _gripperOutputSub;
+    ros::Subscriber _subMarkersPosition;
 
-  cv_bridge::CvImagePtr _myCVPtr; // Original
-  cv_bridge::CvImagePtr _myCVPtrCopy; // Original
+    gripperA_State _gripperStateSC;
 
-  //cv
+    cv_bridge::CvImagePtr _myCVPtr; // Original
+    cv_bridge::CvImagePtr _myCVPtrCopy; // Original
+
+    //cv
     cv::Mat _warning_icon_resized;
+    std::vector<cv::Point2i> _markersPosition;
+    std::vector<bool> _markersState; 
 
   //Eigen
   
@@ -94,21 +88,34 @@ private:
     Matrix<bool,NB_AXIS_TOOL,1> _toolDOFEnable[NB_ROBOT_TOOLS];
     
   //Flag
-
     bool _flagImageReceivedOnce;
     volatile bool _flagImageReceived;
     volatile bool _flagSurgicalTaskStateReceived;
     volatile bool _flagSharedGraspingMsgReceived;
     volatile bool _flagGripperOutputMsgReceived;
+    bool _firstMarkersPosition;
 
     custom_msgs::SurgicalTaskStateMsg _surgicalTaskMsg;
     custom_msgs_gripper::SharedGraspingMsg _sharedGraspingMsg;
     custom_msgs_gripper::GripperOutputMsg _gripperOutputMsg;
+      
+    // METHODS
+  public:
+    endoscopeModifier(ros::NodeHandle &nh, float frequency);
+    ~endoscopeModifier();
+    bool init();
+    void run();
+
+  private:
+    
+    static void stopNode(int sig);
 
     void loadIcons();
     void imageCb(const sensor_msgs::ImageConstPtr& msg);
     void addToolStateFB();
     void addGraspingStateFB();
+    void addMarkersPosition();
+     
     void drawTransparency(cv::Mat frame, cv::Mat transp, int xPos, int yPos);
 
     void putTextForTool(uint toolN_ ,tool_States toolState_, cv::Point point_, cv::Scalar color_);
@@ -117,7 +124,7 @@ private:
     void readSurgicalTaskState(const custom_msgs::SurgicalTaskStateMsgConstPtr& msg);
     void readSharedGrasping(const custom_msgs_gripper::SharedGraspingMsgConstPtr& msg);
     void readGripperOutput(const custom_msgs_gripper::GripperOutputMsgConstPtr& msg);
-    static void stopNode(int sig);
+    void updateMarkersPosition(const std_msgs::Int16MultiArrayConstPtr& msg);
 
   // Utils
     cv::Point2i eigenV2iToCv(Eigen::Vector2i eigenVec2i_);

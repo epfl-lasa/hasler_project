@@ -2,43 +2,16 @@ import numpy as np
 import cv2
 import rospy
 from std_msgs.msg import Float64MultiArray
+from sensor_msgs.msg import Image
 
 
-def detect_blur_fft(image, size=60, thresh=10, vis=False):
-    # grab the dimensions of the image and use the dimensions to
-    # derive the center (x, y)-coordinates
-    (h, w) = image.shape
-    (cX, cY) = (int(w / 2.0), int(h / 2.0))
-    # compute the FFT to find the frequency transform, then shift
-    # the zero frequency component (i.e., DC component located at
-    # the top-left corner) to the center where it will be more
-    # easy to analyze
-    fft = np.fft.fft2(image)
-    fftShift = np.fft.fftshift(fft)
-
-    # compute the magnitude spectrum of the transform
-    magnitude = 20 * np.log(np.abs(fftShift))
-
-    fftShift[cY - size:cY + size, cX - size:cX + size] = 0
-    fftShift = np.fft.ifftshift(fftShift)
-    recon = np.fft.ifft2(fftShift)
-
-    # compute the magnitude spectrum of the reconstructed image,
-    # then compute the mean of the magnitude values
-    magnitude = 20 * np.log(np.abs(recon))
-    mean = np.mean(magnitude)
-    # the image will be considered "blurry" if the mean value of the
-    # magnitudes is less than the threshold value
-    return (mean, mean <= thresh)
-
-
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture("/dev/video1")
 # cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 # cap = cv2.VideoCapture(0)
 kernel = np.ones((5 ,5), np.uint8)
 
 rospy.init_node('tools_tracker', anonymous=True)
-rate = rospy.Rate(30) # 10hz
+rate = rospy.Rate(0) # 10hz
 
 pub = rospy.Publisher('surgical_task/tools_tip', Float64MultiArray, queue_size=1)
 
@@ -56,10 +29,9 @@ while not rospy.is_shutdown():
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     variance = cv2.Laplacian(gray, cv2.CV_64F).var()
-    print("Variance", variance)
-    # print("Bou", detect_blur_fft(gray))
-    img_size = frame.shape
 
+    print("Variance", variance)
+    img_size = frame.shape
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
 
@@ -70,12 +42,12 @@ while not rospy.is_shutdown():
     # upper_blue = np.array([139,255,255]) 
     lower_blue = np.array([79,71,54]) 
     upper_blue = np.array([144,255,255]) 
-    lower_blue = np.array([150,60,0]) 
-    upper_blue = np.array([255,255,255]) 
+    lower_red = np.array([150,60,0]) 
+    upper_red = np.array([255,255,255]) 
 
     # red range
-    lower_red = np.array([0,115,0]) 
-    upper_red = np.array([255,255,255]) 
+    # lower_red = np.array([0,115,0]) 
+    # upper_red = np.array([255,255,255]) 
 
     # green range
     lower_green = np.array([67, 47, 0]) 
@@ -86,24 +58,24 @@ while not rospy.is_shutdown():
 
 
     # preparing the masks to overlay 
-    mask_blue = cv2.inRange(hsv, lower_blue, upper_blue) 
+    mask_red = cv2.inRange(hsv, lower_red, upper_red) 
     mask_green = cv2.inRange(hsv, lower_green, upper_green) 
 
 
-    mask_blue = cv2.morphologyEx(mask_blue, cv2.MORPH_OPEN, kernel)
-    # mask_blue = cv2.medianBlur(mask_blue,9)
+    mask_red = cv2.morphologyEx(mask_red, cv2.MORPH_OPEN, kernel)
+    # mask_red = cv2.medianBlur(mask_red,9)
 
     mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
     variance_green = cv2.Laplacian(mask_green, cv2.CV_64F).var()
     print("Variance green", variance_green)
-    variance_blue = cv2.Laplacian(mask_blue, cv2.CV_64F).var()
+    variance_blue = cv2.Laplacian(mask_red, cv2.CV_64F).var()
     print("Variance red", variance_blue)
     # mask_green = cv2.medianBlur(mask_green,9)
 
     # variance = cv2.Laplacian(mask_green, cv2.CV_64F).var()
     # print("Variance", variance)
 
-    contours, hierarchy = cv2.findContours(mask_blue,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(mask_red,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     # mask_green = cv2.drawContours(mask_green, contours, -1, (255,0,0), 3)
 
     # find the biggest countour (c) by the area
@@ -112,6 +84,7 @@ while not rospy.is_shutdown():
         M = cv2.moments(c)
         print("blue:",M["m00"])
         if(M["m00"]>500 and M["m00"]<40000 and variance_blue < 1000):
+        # if(M["m00"]>500):
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             # print(cX,cY)
@@ -120,7 +93,7 @@ while not rospy.is_shutdown():
             cX = int(blue_position[1]*img_size[1]/2)+img_size[1]/2
             cY = -int(blue_position[0]*img_size[0]/2)+img_size[0]/2
             cv2.circle(frame, (cX, cY), 5, (255, 255, 255), -1)
-            cv2.putText(frame, "c_b", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            cv2.putText(frame, "c_r", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         else:
             blue_position[2] = 0
     else:
@@ -128,7 +101,7 @@ while not rospy.is_shutdown():
 
 
     mask_green_2 = mask_green
-    contours, hierarchy = cv2.findContours(mask_green,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(mask_green,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     # mask_green = cv2.drawContours(mask_green, contours, -1, (255,0,0), 3)
 
     # find the biggest countour (c) by the area
@@ -137,6 +110,7 @@ while not rospy.is_shutdown():
         M = cv2.moments(c)
         print("green:",M["m00"])
         if(M["m00"]>500 and M["m00"]<40000 and variance_green < 1000):
+        # if(M["m00"]>500):
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             # print(cX,cY)
@@ -167,10 +141,10 @@ while not rospy.is_shutdown():
 
     # The black region in the mask has the value of 0, 
     # so when multiplied with original image removes all non-blue regions 
-    result = cv2.bitwise_and(frame, frame, mask = mask_blue | mask_green)
+    result = cv2.bitwise_and(frame, frame, mask = mask_red | mask_green)
 
 
-    # M = cv2.moments(mask_blue)
+    # M = cv2.moments(mask_red)
     # if(M["m00"]>100000):
     #     # print "blue: ", M["m00"]
     #     cX = int(M["m10"] / M["m00"])
@@ -206,9 +180,10 @@ while not rospy.is_shutdown():
     pub.publish(msg)
 
     cv2.imshow('frame', frame) 
-    cv2.imshow('mask_blue', mask_blue) 
-    cv2.imshow('mask_green_2', mask_green) 
+    cv2.imshow('mask_red', mask_red) 
+    cv2.imshow('mask_green', mask_green) 
     cv2.imshow('result', result) 
+    # cv2.namedWindow('result',cv2.NORM)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

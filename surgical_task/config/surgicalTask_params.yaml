@@ -1,19 +1,19 @@
 # Use robot [LEFT, RIGHT]
-SurgicalTask/useRobot: [false, true]
+SurgicalTask/useRobot: [true, true]
 
 SurgicalTask/useFranka: true
 
 # Human input device [LEFT, RIGHT] (0: JOYSTICK / 1: FOOT)
-SurgicalTask/humanInputDevice: [0, 1]
+SurgicalTask/humanInputDevice: [0, 0]
 
 # Human input mode (0: SINGLE_FOOT_SINGLE_ROBOT 1: DOMINANT_FOOT_TWO_ROBOTS)
-SurgicalTask/humanInputMode: 0
+SurgicalTask/humanInputMode: 1
 
 # Linear mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
 SurgicalTask/linearMapping: [0, 1]
 
 # Self rotation mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
-SurgicalTask/selfRotationMapping: [0, 0]
+SurgicalTask/selfRotationMapping: [0, 1]
 
 # Control strategy [LEFT, RIGHT] (0: PASSIVE_DS / 1: JOINT_IMPEDANCE)
 SurgicalTask/controlStrategy: [1, 1]
@@ -21,8 +21,8 @@ SurgicalTask/controlStrategy: [1, 1]
 # Stiffness gain for joint impedance control strategy
 SurgicalTask/jointImpedanceStiffnessGain: [700, 700, 700, 700, 500, 500, 300]
 
-# Dominant foot (0: LEFT / 1: RIGHT)
-SurgicalTask/dominantFoot: 1
+# Dominant human input (0: LEFT / 1: RIGHT)
+SurgicalTask/dominantInput: 1
 
 # Use sim
 SurgicalTask/useSim: true
@@ -36,8 +36,8 @@ SurgicalTask/useOptitrack: false
 # SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
 SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
 
-# Insertion offset [LEFT, RIGHT]
-SurgicalTask/insertionOffset: [-0.04, -0.04]
+# Insertion distance in position velocity mapping [LEFT, RIGHT]
+SurgicalTask/insertionDistancePVM: [-0.04, -0.04]
 
 # Left foot interface range
 SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 40, 30, 35]
@@ -58,7 +58,7 @@ SurgicalTask/useSafetyLimits: false
 SurgicalTask/safetyLimitsStiffnessGain: 100
 
 # Allow task adaptation in position velocity mapping
-SurgicalTask/allowTaskAdaptation: false
+SurgicalTask/allowTaskAdaptation: true
 
 # Tool tip linear velocity limit
 SurgicalTask/toolTipLinearVelocityLimit: 0.1
@@ -80,6 +80,24 @@ SurgicalTask/trocarSpacePyramidBaseOffset: [0.04, -0.05, -0.09,
 # SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.08]
 SurgicalTask/trocarSpaceMinZOffset: [-0.145, -0.05]
 
+
+# Insertion phase offset for position position mapping
+SurgicalTask/insertionOffsetPPM: [0.04, -0.05, -0.09,
+                                  0.02, 0.05, -0.07]
+
+# Offset range in operation phase for position position mapping
+SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.05,
+                                       0.12, 0.14, 0.05]
+
+# Min offset limits in operation phase for position velocity mapping 
+SurgicalTask/operationMinOffsetPVM: [-0.01, -0.11, -0.1,
+                                     -0.01, -0.11, -0.1]
+
+# Max offset limits in operation phase for position velocity mapping 
+SurgicalTask/operationMaxOffsetPVM: [0.11, 0.01, 0,
+                                     0.11, 0.01, 0]
+
+
 # Trocar space linear ds gain in position position mapping
 SurgicalTask/trocarSpaceLinearDSFixedGain: 4.0
 
@@ -94,6 +112,9 @@ SurgicalTask/trocarSpaceSelfRotationGain: 1.5
 
 # Trocar space self rotation range in position position mapping
 SurgicalTask/trocarSpaceSelfRotationRange: 160
+
+# Tool tracking system used for track the position of the surgeon tools (0: CAMERA_BASED, 1: OPTITRACK_BASED)
+SurgicalTask/toolsTracking: 0
 
 # Task adaptation alignment gain
 SurgicalTask/taskAdaptationAlignmentGain: 2.0

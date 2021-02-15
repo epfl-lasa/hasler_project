@@ -38,6 +38,8 @@
 #include <tf/tf.h>
 #include "QpSolverRCM.h"
 #include "QpSolverRCM3.h"
+#include "QpSolverRCMCollision.h"
+#include "QpSolverRCMCollision2.h"
 #include "CvxgenSolverRCM.h"
 #include <pthread.h>
 
@@ -62,9 +64,9 @@ class SurgicalTask
 
     enum Robot {LEFT = 0, RIGHT = 1};
 
-    enum ControlStrategy {PASSIVE_DS=0, JOINT_IMPEDANCE=1};
+    enum ControlPhase {INSERTION = 0, OPERATION = 1};
 
-    enum RobotMode {TROCAR_SELECTION = 0, TROCAR_INSERTION = 1, TROCAR_SPACE = 2};
+    enum ControlStrategy {PASSIVE_DS = 0, JOINT_IMPEDANCE = 1};
 
     enum FootDofs {FOOT_X = 0, FOOT_Y = 1, FOOT_PITCH = 2, FOOT_ROLL = 3, FOOT_YAW = 4};
 
@@ -74,11 +76,13 @@ class SurgicalTask
 
     enum TrocarSpacePositionDofs {X = 0 , Y = 1, Z = 2, SELF_ROTATION = 3};
 
-    enum HumanInputDevice {JOYSTICK=0, FOOT=1};
+    enum HumanInputDevice {JOYSTICK = 0, FOOT = 1};
 
     enum ObjectID {LEFT_ROBOT_BASIS = 0, RIGHT_ROBOT_BASIS = 1, LEFT_HUMAN_TOOL = 2, RIGHT_HUMAN_TOOL = 3};
     
-    enum HumanInputMode {SINGLE_FOOT_SINGLE_ROBOT = 0, DOMINANT_FOOT_TWO_ROBOTS = 1};
+    enum HumanInputMode {SINGLE_FOOT_SINGLE_ROBOT = 0, DOMINANT_INPUT_TWO_ROBOTS = 1};
+
+    enum ToolsTracking {CAMERA_BASED = 0, OPTITRACK_BASED = 1};
 
   private:
     // ROS variables
@@ -171,7 +175,7 @@ class SurgicalTask
     Eigen::Matrix<float,7,1> _stiffness[NB_ROBOTS];
     std::vector<int> _linearMapping;
     std::vector<int> _selfRotationMapping;
-    RobotMode _robotMode[NB_ROBOTS];
+    ControlPhase _controlPhase[NB_ROBOTS];
     std::vector<int> _humanInputDevice;
     std::vector<int> _controlStrategy;
     std::vector<float> _footInterfaceRange[NB_ROBOTS];    
@@ -198,13 +202,19 @@ class SurgicalTask
     float _taskAdaptationProximityGain;
     float _taskAdaptationExponentialGain;
     float _taskAdaptationOverallGain;
-    Eigen::Vector3f _desiredOffset[NB_ROBOTS];
+    Eigen::Vector3f _desiredOffsetPPM[NB_ROBOTS];
+    float _desiredAnglePPM[NB_ROBOTS];
     float _desiredGripperPosition[NB_ROBOTS];
     float _gripperRange;
     float _dRCMTool[NB_ROBOTS];
-    int _dominantFootID, _nonDominantFootID;
+    int _dominantInputID, _nonDominantInputID;
     int _humanInputMode;
-    std::vector<float> _insertionOffset;
+    std::vector<float> _insertionDistancePVM;
+    int _toolsTracking;
+    Eigen::Vector3f _insertionOffsetPPM[NB_ROBOTS];
+    Eigen::Vector3f _operationOffsetRangePPM[NB_ROBOTS];
+    Eigen::Vector3f _operationMinOffsetPVM[NB_ROBOTS];
+    Eigen::Vector3f _operationMaxOffsetPVM[NB_ROBOTS];
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -241,7 +251,7 @@ class SurgicalTask
     bool _firstJointsUpdate[NB_ROBOTS];   
     bool _inputAlignedWithOrigin[NB_ROBOTS];
     bool _firstSphericalTrocarFrame[NB_ROBOTS];
-    bool _firstPillarsFrame[4];
+    bool _firstPillarsFrame[3];
     bool _usePredefinedTrocars;
     bool _firstGripper;
     bool _firstFootSharedGrasping[NB_ROBOTS];
@@ -268,7 +278,7 @@ class SurgicalTask
     Eigen::Vector3f _FdFoot[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _humanClutchingOffset;
-    Eigen::Vector3f _toolClutchingOffset;
+    Eigen::Vector4f _toolClutchingOffset;
     Eigen::Vector3f _xdTool[NB_ROBOTS];
     Eigen::VectorXf _ikJoints[NB_ROBOTS];
     Eigen::Vector3f _xIK[NB_ROBOTS];                         // Position [m] (3x1)
@@ -308,6 +318,8 @@ class SurgicalTask
     QpSolverRCM _qpSolverRCM[NB_ROBOTS];    
     QpSolverRCM3 _qpSolverRCM3[NB_ROBOTS];
     CvxgenSolverRCM _cvxgenSolverRCM;
+    QpSolverRCMCollision _qpSolverRCMCollision[NB_ROBOTS];    
+    QpSolverRCMCollision2 _qpSolverRCMCollision2[NB_ROBOTS];    
 
     Eigen::VectorXi _pillarsId;
     Eigen::MatrixXf _pillarsPosition;
@@ -328,10 +340,13 @@ class SurgicalTask
     int _nbTasks;
     Eigen::Matrix<float, 5, 1> _filterGainFootAxis[NB_ROBOTS];
     int _currentRobot;
-    Eigen::Vector3f _attractorOffset;
+    Eigen::Vector4f _attractorOffset;
     bool _switching = false;
     bool _wait = false;
-    bool _insertionFinished = false;
+    bool _insertionFinished[NB_ROBOTS];
+    bool _allSubscribersOK = false;
+    bool _allFramesOK = false;
+    Eigen::Vector3f _rEERobot[NB_ROBOTS];
 
 
   public:
@@ -346,35 +361,64 @@ class SurgicalTask
     void run();
 
   private:
-    
+    // Read parameters in configuration file
+    bool readConfigurationParameters();
+
+    // Initialize Subscribers and publishers
+    void initializeSubscribersAndPublishers();
+
+    // Initialize task parameters
+    void initializeTaskParameters();
+
     // Callback called when CTRL is detected to stop the node
     static void stopNode(int sig);
 
-    bool allSubscribersOK();
+    // Check that data are received from all the subscribers
+    void checkAllSubscribers();
 
-    bool allFramesOK();
+    // Check that we received all the frames (for simulation)
+    void checkAllFrames();
 
+    // Receive simulation frames
     void receiveFrames();
 
-    void computeCommand();
+    // Main step function computing command for the two robots
+    void step();
 
-    void humanInputTransformation();
+    // Process human input (joystick/foot)
+    void processHumanInput();
 
+    // Control step for robot r and human input h
+    void robotControlStep(int r, int h);
+
+    // Dominant foot two robots control human input mode
+    void dominantFootTwoRobots();
+
+    // Single foot single robot human input mode
+    void singleFootSingleRobot();
+
+    // Compute trocar input for robot r and human input h
+    void computeTrocarInput(int r, int h);
+
+    // Update the human tool pose if optitrack is used
     void updateHumanToolPosition();
 
+    // Update trocar information for robot r
     void updateTrocarInformation(int r);
 
-    void selectRobotMode(int r);
+    // Update control phase of robot r
+    void updateControlPhase(int r);
 
-    void trocarSelection(int r, int h);
+    // Perform an insertion phase step for robot r and human input h
+    void insertionStep(int r, int h);
 
-    void trocarInsertion(int r, int h);
-
-    void trocarSpace(int r, int h);
+    // Perform an operation phase step for robot r and human input h
+    void operationStep(int r, int h);
 
     void computeDesiredToolVelocity(int r, int h);
 
     void computeDesiredFootWrench();
+
     // Compute desired orientation
     void computeDesiredOrientation();
 
@@ -423,14 +467,6 @@ class SurgicalTask
     void computeHapticFeedback(int r);
 
     void computeDesiredFootWrench(int r, int h);
-
-    // Callback to update damping matrix form the DS-impedance controller
-    // void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg); 
-
-    void pseudo_inverse(Eigen::Matrix3f &M_, Eigen::Matrix3f &M_pinv_);
-
-    static void* startIkLoop(void* ptr);
-    void ikLoop();
 
     void registerTrocars();
 

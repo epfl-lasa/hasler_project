@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 
   ros::init(argc, argv, "endoscope_modifier");
 
-  float frequency = 100.0f;
+  float frequency = 30.0f;
 
   ros::NodeHandle nh_("~");
   std::string tool_name;

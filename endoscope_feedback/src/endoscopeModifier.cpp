@@ -19,8 +19,11 @@ char const *toolState_Names[]{"need to insert", "moving inside"};
 char const *gripperAState_Names[]{"pos. open", "grasping", "hold. grasp", "pos. close", "fetch. grasp", "rel. grasp"};
 char const *toolID_Names[]{"e: ", "g: ", "g-sc: "};
 
-endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
-    : _nh(nh), _loopRate(frequency), _dt(1.0f / frequency){
+endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency): 
+_nh(nh),
+_loopRate(frequency),
+_dt(1.0f / frequency)
+{
     me = this;
     _it = new image_transport::ImageTransport(_nh);
     _stop = false; 
@@ -38,6 +41,7 @@ endoscopeModifier::endoscopeModifier(ros::NodeHandle &nh, float frequency)
     _flagSurgicalTaskStateReceived = false;
     _flagSharedGraspingMsgReceived = false;
     _flagGripperOutputMsgReceived = false;
+    _firstMarkersPosition = false;
 
     _gripperStateSC = NO_SHARED_CONTROL;
     for (size_t i = 0; i < NB_TOOLS; i++)
@@ -60,20 +64,25 @@ bool endoscopeModifier::init()
     , 1, boost::bind(&endoscopeModifier::readSurgicalTaskState, this, _1),
     ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
  
-  _myImageSub = _it->subscribe("/cv_camera/image_raw", 1,
-      &endoscopeModifier::imageCb, this);
+  // _myImageSub = _it->subscribe("/left_panda/camera/image_raw", 1,
+  //     &endoscopeModifier::imageCb, this);
+
+  _myImageSub = _it->subscribe("/cv_camera/image_raw", 1, &endoscopeModifier::imageCb, this);
  
   _myOverlayedImagePub = _it->advertise("/image_converter/output_video", 1);
-  cv::namedWindow(OPENCV_WINDOW);
+  cv::namedWindow(OPENCV_WINDOW,WINDOW_NORMAL);
 
-  _sharedGraspingSub = _nh.subscribe<custom_msgs_gripper::SharedGraspingMsg>( "/right/sharedGrasping"
-    , 1, boost::bind(&endoscopeModifier::readSharedGrasping, this, _1),
-    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _sharedGraspingSub = _nh.subscribe<custom_msgs_gripper::SharedGraspingMsg>( "/right/sharedGrasping", 1,
+                       boost::bind(&endoscopeModifier::readSharedGrasping, this, _1),
+                       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-  _gripperOutputSub = _nh.subscribe<custom_msgs_gripper::GripperOutputMsg>( "/right/gripperOutput"
-    , 1, boost::bind(&endoscopeModifier::readGripperOutput, this, _1),
-    ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+  _gripperOutputSub = _nh.subscribe<custom_msgs_gripper::GripperOutputMsg>( "/right/gripperOutput", 1, 
+                      boost::bind(&endoscopeModifier::readGripperOutput, this, _1),
+                      ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
+  _subMarkersPosition = _nh.subscribe<std_msgs::Int16MultiArray>("/endoscope_modifier/markers_position", 1, 
+                        boost::bind(&endoscopeModifier::updateMarkersPosition, this, _1),
+                        ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   // Subscriber definitions
   signal(SIGINT, endoscopeModifier::stopNode);
 
@@ -96,53 +105,55 @@ void endoscopeModifier::run() {
       
       if (_flagImageReceived)
       {         
-        _flagImageReceived=false;
-        // Initialize -> Only once
-        if (!_flagImageReceivedOnce)
-        {
-           _feedIMGDims<<_myCVPtr->image.rows, _myCVPtr->image.cols;
-           for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
-           {
-             _toolStateTextCoord[i] = (_feedIMGDims * R_T_STATE_TXT_FB[i]).cast<int>();
-           }
-           _gripperAStateTextCoord = (_feedIMGDims * R_GRIPPER_ASTATE_TXT_FB).cast<int>();
-           loadIcons();
-           _flagImageReceivedOnce=true;
-        }
+      //   _flagImageReceived=false;
+      //   // Initialize -> Only once
+      //   if (!_flagImageReceivedOnce)
+      //   {
+      //      _feedIMGDims<<_myCVPtr->image.rows, _myCVPtr->image.cols;
+      //      for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
+      //      {
+      //        _toolStateTextCoord[i] = (_feedIMGDims * R_T_STATE_TXT_FB[i]).cast<int>();
+      //      }
+      //      _gripperAStateTextCoord = (_feedIMGDims * R_GRIPPER_ASTATE_TXT_FB).cast<int>();
+      //      loadIcons();
+      //      _flagImageReceivedOnce=true;
+      //   }
         cv::Size sourceImgSize = _myCVPtr->image.size();
         _myCVPtrCopy = _myCVPtr;
 
-        if(_flagSurgicalTaskStateReceived)
-        {
-          for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
-          {
-            _toolState[i] = (tool_States) (_surgicalTaskMsg.robotsToolState[i] >= NB_TOOL_STATES ? NB_TOOL_STATES - 1 : _surgicalTaskMsg.robotsToolState[i]);       
-            // _toolState[i] = (tool_States) Utils_math<int>::bound( _surgicalTaskMsg.robotsToolState[i], tool_States::INSERTION_STATE,tool_States::INSIDE_TROCAR_STATE);       
-            tf::poseMsgToEigen(_surgicalTaskMsg.allToolsPoseWRTImage[i], _allToolsPose[i]);
-          }
+      //   if(_flagSurgicalTaskStateReceived)
+      //   {
+      //     for (size_t i = 0; i < NB_ROBOT_TOOLS; i++)
+      //     {
+      //       _toolState[i] = (tool_States) (_surgicalTaskMsg.robotsToolState[i] >= NB_TOOL_STATES ? NB_TOOL_STATES - 1 : _surgicalTaskMsg.robotsToolState[i]);       
+      //       // _toolState[i] = (tool_States) Utils_math<int>::bound( _surgicalTaskMsg.robotsToolState[i], tool_States::INSERTION_STATE,tool_States::INSIDE_TROCAR_STATE);       
+      //       tf::poseMsgToEigen(_surgicalTaskMsg.allToolsPoseWRTImage[i], _allToolsPose[i]);
+      //     }
 
-          _flagSurgicalTaskStateReceived=false;
-        }
+      //     _flagSurgicalTaskStateReceived=false;
+      //   }
 
-        if(_flagSharedGraspingMsgReceived)
-        {
-          _gripperStateSC = (gripperA_State) (_sharedGraspingMsg.sGrasp_aState >= NB_ACTIONS_GRASPER ? NB_ACTIONS_GRASPER-1 : _sharedGraspingMsg.sGrasp_aState);       
-          cout<<_gripperStateSC<<endl;
-          _flagSharedGraspingMsgReceived=false;
-        }
+      //   if(_flagSharedGraspingMsgReceived)
+      //   {
+      //     _gripperStateSC = (gripperA_State) (_sharedGraspingMsg.sGrasp_aState >= NB_ACTIONS_GRASPER ? NB_ACTIONS_GRASPER-1 : _sharedGraspingMsg.sGrasp_aState);       
+      //     cout<<_gripperStateSC<<endl;
+      //     _flagSharedGraspingMsgReceived=false;
+      //   }
 
 
-      if(_flagGripperOutputMsgReceived)
-      {
-        _flagGripperOutputMsgReceived=false;
-      }
+      // if(_flagGripperOutputMsgReceived)
+      // {
+      //   _flagGripperOutputMsgReceived=false;
+      // }
 
-      addToolStateFB();
-      addGraspingStateFB();
+      // addToolStateFB();
+      // addGraspingStateFB();
+      addMarkersPosition();
+
 
       // Update GUI Window
         cv::imshow(OPENCV_WINDOW, _myCVPtrCopy->image);
-        cv::waitKey(3);
+        cv::waitKey(1);
         // Output modified video stream
         _myOverlayedImagePub.publish(_myCVPtrCopy->toImageMsg());
       }
@@ -198,6 +209,18 @@ void endoscopeModifier::addGraspingStateFB()
   if (_gripperStateSC!=NO_SHARED_CONTROL)
   {
     putTextForGripper(1, _gripperStateSC,eigenV2iToCv(_gripperAStateTextCoord),COLOR_TOOL_TXT[2]);
+  }
+}
+
+void endoscopeModifier::addMarkersPosition()
+{
+  if(_firstMarkersPosition)
+  {
+    // std::cerr << _markersPosition.size() << std::endl;
+    for(int k = 0; k < _markersPosition.size(); k++)
+    {
+      cv::drawMarker(_myCVPtrCopy->image, _markersPosition[k], cv::Scalar(255,255,255), cv::MARKER_CROSS, 20, 2);
+    }
   }
 }
 
@@ -280,4 +303,31 @@ void endoscopeModifier::readGripperOutput(const custom_msgs_gripper::GripperOutp
     {
       _flagGripperOutputMsgReceived=true;
     }    
+}
+
+void endoscopeModifier::updateMarkersPosition(const std_msgs::Int16MultiArrayConstPtr& msg)
+{
+  if(!_firstMarkersPosition)
+  {
+    for(int k = 0; k < msg->layout.dim[0].size/3; k++)
+    {
+      _markersPosition.push_back(cv::Point2i(msg->data[3*k+0],msg->data[3*k+1]));
+      _markersState.push_back(msg->data[3*k+2]);
+    }
+    _firstMarkersPosition = true;
+  }
+  else
+  {
+    for(int k = 0; k < msg->layout.dim[0].size/3; k++)
+    {
+      _markersPosition[k] = cv::Point2i(msg->data[3*k+0],msg->data[3*k+1]);
+      _markersState[k] = msg->data[3*k+2];
+    }
+  }
+    // _gripperOutputMsg = *msg;
+
+    // if (!_flagGripperOutputMsgReceived)
+    // {
+    //   _flagGripperOutputMsgReceived=true;
+    // }    
 }
