@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="axis.urdf.xacro">
-  <xacro:arg name="origin.x" default="0"/>
-  <xacro:arg name="origin.y" default="0"/>
-  <xacro:arg name="origin.z" default="0"/>
+  <xacro:arg name="origin_x" default="0"/>
+  <xacro:arg name="origin_y" default="0"/>
+  <xacro:arg name="origin_z" default="0"/>
   <xacro:arg name="name" default="target"/>
 
   <!-- <link name="world"/> -->
@@ -49,10 +49,10 @@
   </link>
 
 
-    <gazebo>
+<!--     <gazebo>
     <plugin name="objectPosePublishing" filename="libobjectPosePublishing.so">
       <actorName>$(arg name)</actorName>
     </plugin>
-  </gazebo>
+  </gazebo> -->
 
 </robot>

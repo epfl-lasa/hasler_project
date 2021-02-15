@@ -26,7 +26,7 @@
   <arg name="target.y" default="0"/>
   <arg name="target.z" default="0"/>
   <arg name="target2.x" default="$(arg target.x)"/>
-  <arg name="target2.y" default="+0."/>
+  <arg name="target2.y" default="+0.1"/>
   <arg name="target2.z" default="$(arg target.z)"/>
   <arg name="target3.x" default="$(arg target.x)"/>
   <arg name="target3.y" default="-0.1"/>
@@ -69,14 +69,14 @@
     <!-- <node name="worldRightTransform" pkg="foot_control_xy" type="worldActorTransform" args="foot -x 2.0 -y 0.0 -z 0 -qx 0.0 -qy 0.0 -qz 0.0 -qw 1.0"/> -->
 
   <group if="$(arg showEnvironment)" ns="environment">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg environmentUrdfFile) origin.x:=$(arg surgicalFrame.x) origin.y:=$(arg surgicalFrame.y) origin.z:=$(arg surgicalFrame.z)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg environmentUrdfFile) origin_x:=$(arg surgicalFrame.x) origin_y:=$(arg surgicalFrame.y) origin_z:=$(arg surgicalFrame.z)"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="environment_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /environment/robot_description -urdf -model environment -unpause" respawn="false" output="screen" />
   </group>
 
 
   <group ns="left_panda">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg pandaUrdfFile) robotName:=$(arg leftRobotName) origin.x:=$(arg leftRobotOrigin.x) origin.y:=$(arg leftRobotOrigin.y) origin.z:=$(arg leftRobotOrigin.z) origin.ax:=$(arg leftRobotOrigin.ax) origin.ay:=$(arg leftRobotOrigin.ay) origin.az:=$(arg leftRobotOrigin.az)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) robotName:=$(arg leftRobotName) origin_x:=$(arg leftRobotOrigin.x) origin_y:=$(arg leftRobotOrigin.y) origin_z:=$(arg leftRobotOrigin.z) origin_ax:=$(arg leftRobotOrigin.ax) origin_ay:=$(arg leftRobotOrigin.ay) origin_az:=$(arg leftRobotOrigin.az)"/>
 
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg leftRobotName)/robot_description -urdf -model $(arg leftRobotName) -J $(arg leftRobotName)_joint4 -1.57 -J $(arg leftRobotName)_joint6 1.57 -unpause"/>
 
@@ -88,7 +88,7 @@
 
 
   <group if="$(arg showTarget1)" ns="target1">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target1 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg axisUrdfFile) name:=target1 origin_x:=$(arg target.x) origin_y:=$(arg target.y) origin_z:=$(arg target.z)"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target.x) -y $(arg target.y) -z $(arg target.z) -unpause -param /target1/robot_description -urdf -model target1" respawn="false" output="screen" />
   </group>
@@ -96,7 +96,7 @@
 
 
   <group if="$(arg showTarget2)" ns="target2">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target2 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg axisUrdfFile) name:=target2 origin_x:=$(arg target.x) origin_y:=$(arg target.y) origin_z:=$(arg target.z)"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target2.x) -y $(arg target2.y) -z $(arg target2.z) -unpause -param /target2/robot_description -urdf -model target2" respawn="false" output="screen" />
   </group>
@@ -104,14 +104,14 @@
 
 
   <group if="$(arg showTarget3)" ns="target3">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target3 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg axisUrdfFile) name:=target3 origin_x:=$(arg target.x) origin_y:=$(arg target.y) origin_z:=$(arg target.z)"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target3.x) -y $(arg target3.y) -z $(arg target3.z) -unpause -param /target3/robot_description -urdf -model target3" respawn="false" output="screen" />
   </group>
 
 
   <group if="$(arg showTarget4)" ns="target4">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg axisUrdfFile) name:=target4 origin.x:=$(arg target.x) origin.y:=$(arg target.y) origin.z:=$(arg target.z)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg axisUrdfFile) name:=target4 origin_x:=$(arg target.x) origin_y:=$(arg target.y) origin_z:=$(arg target.z)"/>
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
     <node name="target_frame_spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-x $(arg target4.x) -y $(arg target4.y) -z $(arg target4.z) -unpause -param /target4/robot_description -urdf -model target4" respawn="false" output="screen" />
   </group>
