@@ -88,7 +88,7 @@
 
 
   <group ns="right_panda">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg pandaUrdfFile) robotName:=$(arg rightRobotName) origin.x:=$(arg rightRobotOrigin.x) origin.y:=$(arg rightRobotOrigin.y) origin.z:=$(arg rightRobotOrigin.z) origin.ax:=$(arg rightRobotOrigin.ax) origin.ay:=$(arg rightRobotOrigin.ay) origin.az:=$(arg rightRobotOrigin.az)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) robotName:=$(arg rightRobotName) origin_x:=$(arg rightRobotOrigin.x) origin_y:=$(arg rightRobotOrigin.y) origin_z:=$(arg rightRobotOrigin.z) origin_ax:=$(arg rightRobotOrigin.ax) origin_ay:=$(arg rightRobotOrigin.ay) origin_az:=$(arg rightRobotOrigin.az)"/>
 
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg rightRobotName)/robot_description -urdf -model $(arg rightRobotName) -J $(arg rightRobotName)_joint4 -1.57 -J $(arg rightRobotName)_joint6 1.57 -unpause"/>
 
