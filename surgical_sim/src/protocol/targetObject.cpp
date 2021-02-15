@@ -297,7 +297,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
   _pubTargetReachedSphere = _n.advertise<visualization_msgs::Marker>("target_reached_sphere", 0);
   _pubRvizTargetMarker = _n.advertise<visualization_msgs::Marker>("marker_target_rviz", 0);
 
-  _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tool_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
+  _pubFootInput = _n.advertise<custom_msgs::FootInputMsg>("/"+std::string(Tool_Names[_myTrackID])+"/target_fi_publisher/foot_input",0);
   _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myTrackID])+"/sharedGrasping",0);
 
 
@@ -305,7 +305,7 @@ bool targetObject::init() //! Initialization of the node. Its datatype
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
   
-  _subLegGravityCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>(
+  _subLegGravityCompTorques = _n.subscribe<custom_msgs::FootInputMsg>(
                   "/"+std::string(Tool_Names[_myTrackID])+"/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&targetObject::readLegGravityCompTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
@@ -315,13 +315,13 @@ bool targetObject::init() //! Initialization of the node. Its datatype
                   "/"+std::string(Tool_Names[_myTrackID])+"/force_sensor_modifier/force_foot_rest_world", 1,boost::bind(&targetObject::readForceFootRestWorld, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
   
-  _subUnbiasedJointTorques = _n.subscribe<custom_msgs::FootOutputMsg_v3>(
+  _subUnbiasedJointTorques = _n.subscribe<custom_msgs::FootOutputMsg>(
                   "/"+std::string(Tool_Names[_myTrackID])+"/force_sensor_modifier/torques_modified", 1,boost::bind(&targetObject::readUnbiasedJointTorques, this, _1),
                   ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
   _subToolJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myTrackID])+"_tool/joint_states"
       , 1, boost::bind(&targetObject::readToolState, this, _1),
       ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());    
-  _subFootPlatform = _n.subscribe<custom_msgs::FootOutputMsg_v3>( "/FI_Output/"+std::string(Tool_Names2[_myTrackID])
+  _subFootPlatform = _n.subscribe<custom_msgs::FootOutputMsg>( "/FI_Output/"+std::string(Tool_Names2[_myTrackID])
        , 1, boost::bind(&targetObject::readFIOutput, this, _1),
        ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());     
   _subPlatformJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myTrackID])+"/platform_joint_publisher/joint_states"
@@ -1251,7 +1251,7 @@ void targetObject::recordStatistics(){
   _flagPlatformJointsConnected = true;
   }
 
-  void targetObject::readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg) {
+  void targetObject::readLegGravityCompTorques(const custom_msgs::FootInputMsg::ConstPtr &msg) {
 
   for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
     // me->_platformJointStates_prev(i) = me->_platformJointStates(i);
@@ -1264,7 +1264,7 @@ void targetObject::recordStatistics(){
   _flagLegGravityTorquesConnected = true;
   }
 
-  void targetObject::readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg) {
+  void targetObject::readFIOutput(const custom_msgs::FootOutputMsg::ConstPtr &msg) {
 
   for (unsigned int i = 0; i < NB_PLATFORM_AXIS; i++) {
     // me->_platformJointStates_prev(i) = me->_platformJointStates(i);
@@ -1302,7 +1302,7 @@ void targetObject::readForceFootRestWorld(const geometry_msgs::WrenchStamped::Co
 	 }
 }
 
-void targetObject::readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg){
+void targetObject::readUnbiasedJointTorques(const custom_msgs::FootOutputMsg::ConstPtr &msg){
     for (size_t i = 0; i < NB_AXIS; i++)
     {
       _platformJointEffortM(i) = msg->platform_effortM[i];

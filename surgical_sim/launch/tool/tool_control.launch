@@ -12,7 +12,7 @@
 	<arg name="rightSharedGrasp" default="false"/>
 	<arg name="rosControl" default="true"/>
 	<arg name="rightToolType" default="forceps"/>
-	<arg name="leftToolType" default="forceps"/>
+	<arg name="leftToolType" default="camera"/>
 	<arg name="simType" default="kinematic"/>
 	<arg name="selfRotationType" default="speed"/>
 

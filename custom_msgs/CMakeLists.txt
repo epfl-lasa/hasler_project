@@ -21,21 +21,14 @@ add_message_files(
   FILES 
   SurgicalTaskStateMsg.msg
 	FootInputMsg.msg
-  FootInputMsg_v2.msg
-  FootInputMsg_v3.msg
-  FootInputMsg_v5.msg
-	FootOutputMsg.msg
-  FootOutputMsg_v2.msg
-  FootOutputMsg_v3.msg
-	FeetOutputMsg.msg
-  FeetOutputMsg_v2.msg
+  FootOutputMsg.msg
+  FeetOutputMsg.msg
   TwoFeetOneToolMsg.msg)
 
 add_service_files(
   FILES
   setControllerSrv.srv
   setStateSrv.srv
-  setStateSrv_v2.srv
 )
 
 generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)

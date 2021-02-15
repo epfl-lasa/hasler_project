@@ -101,11 +101,11 @@ bool multiAxisFrictionID::init() //! Initialization of the node. Its datatype (b
 {
 	if (_platform_name==LEFT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_LEFT,1, boost::bind(&multiAxisFrictionID::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_LEFT,1, boost::bind(&multiAxisFrictionID::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
 	if (_platform_name==RIGHT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v2>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_RIGHT,1, boost::bind(&multiAxisFrictionID::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_RIGHT,1, boost::bind(&multiAxisFrictionID::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
   	
 
@@ -536,7 +536,7 @@ void multiAxisFrictionID::publishPositionOnly()
 	_mutex.unlock();
 }
 
-void multiAxisFrictionID::fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg)
+void multiAxisFrictionID::fetchFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg)
 {
 	_flagOutputMessageReceived=true;
 	_platform_id = msg->platform_id; 

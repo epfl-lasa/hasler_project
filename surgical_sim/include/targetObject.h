@@ -28,8 +28,8 @@
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 
-#include "custom_msgs/FootInputMsg_v5.h"
-#include "custom_msgs/FootOutputMsg_v3.h"
+#include "custom_msgs/FootInputMsg.h"
+#include "custom_msgs/FootOutputMsg.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
 #include <dynamic_reconfigure/server.h>
@@ -220,7 +220,7 @@ private:
   ros::ServiceClient _clientDeleteOldTarget;
 
 
-  custom_msgs::FootInputMsg_v5 _msgFootInput;
+  custom_msgs::FootInputMsg _msgFootInput;
 
   visualization_msgs::Marker _msgTargetReachedSphere;
   visualization_msgs::Marker _msgRvizTarget;
@@ -297,15 +297,15 @@ private:
   
   void readPlatformState(const sensor_msgs::JointState::ConstPtr &msg);
 
-  void readLegGravityCompTorques(const custom_msgs::FootInputMsg_v5::ConstPtr &msg);
+  void readLegGravityCompTorques(const custom_msgs::FootInputMsg::ConstPtr &msg);
 
-  void readFIOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg);
+  void readFIOutput(const custom_msgs::FootOutputMsg::ConstPtr &msg);
 
   void readForceFootRestWorld(const geometry_msgs::WrenchStamped::ConstPtr &msg);
 
-  void readUnbiasedJointTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg);
+  void readUnbiasedJointTorques(const custom_msgs::FootOutputMsg::ConstPtr &msg);
   
-  void readGtraTorques(const custom_msgs::FootOutputMsg_v3::ConstPtr &msg);
+  void readGtraTorques(const custom_msgs::FootOutputMsg::ConstPtr &msg);
   
   void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg);
   

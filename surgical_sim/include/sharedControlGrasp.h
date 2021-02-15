@@ -22,7 +22,7 @@
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 
-#include "custom_msgs/FootInputMsg_v5.h"
+#include "custom_msgs/FootInputMsg.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
 #include <dynamic_reconfigure/server.h>
@@ -163,7 +163,7 @@ private:
   ros::Publisher _pubFootInput;
 
 
-  custom_msgs::FootInputMsg_v5 _msgFootInput;
+  custom_msgs::FootInputMsg _msgFootInput;
   Eigen::Matrix<double, 6, 1> _wrenchGrasperRobot;
   
   float _realGripperSpeed;

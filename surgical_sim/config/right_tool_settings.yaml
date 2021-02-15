@@ -1,7 +1,7 @@
 /right_tool:
   interactionMode: 'mixed' # individual, mixed
   toolType: 'forceps'
-  controlledBy: 'right'
+  toolControl: 'position'
   toolSelfRotationControl: 'speed'
   speedControlGainCamera: 0.5
   speedControlGainSelfRotation: 5.0

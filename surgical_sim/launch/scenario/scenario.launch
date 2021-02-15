@@ -44,7 +44,6 @@
   <include file="$(find surgical_sim)/launch/tool/tool.launch">
     <arg name="id" value="$(arg id1)"/>
     <arg name="w_forceps" value="true" />
-    <arg name="w_gripper" value="false" />
     <arg name="rosControl" value="true"/>
     <arg name="rviz" value="false"/>
     <arg name="virtual_tool" value="$(arg virtual_tool)"/>

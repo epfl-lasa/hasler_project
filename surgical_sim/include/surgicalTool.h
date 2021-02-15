@@ -34,10 +34,10 @@
 
 #include <std_msgs/Float64MultiArray.h>
 
-// #include <custom_msgs/FootInputMsg_v3.h>
-// #include <custom_msgs/FootOutputMsg_v3.h>
+// #include <custom_msgs/FootInputMsg.h>
+// #include <custom_msgs/FootOutputMsg.h>
 // #include <custom_msgs/setControllerSrv.h>
-// #include <custom_msgs/setStateSrv_v2.h>
+// #include <custom_msgs/setStateSrv.h>
 // #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 // #include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
 // #include "../../5_axis_platform/lib/platform/src/definitions_security.h"

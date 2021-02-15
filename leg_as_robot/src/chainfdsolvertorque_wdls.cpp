@@ -113,7 +113,9 @@
    tmp_jac_weight2 = weight_ts.lazyProduct(tmp_jac_weight1);
 
    // Compute the SVD of the weighted jacobian
-   svdResult = svd_eigen_HH(tmp_jac_weight2, U, S, V, tmp, maxiter);
+   //svdResult = svd_eigen_HH(tmp_jac_weight2, U, S, V, tmp, maxiter);
+   Eigen::JacobiSVD<MatrixXd> svd(tmp_jac_weight2, ComputeThinU | ComputeThinV);
+   U = svd.matrixU(); V= svd.matrixV(); S=svd.singularValues();
    if (0 != svdResult) {
      wrench_out.setZero();
      return (error = E_SVD_FAILED);

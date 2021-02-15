@@ -512,7 +512,7 @@ bool SurgicalTask::init()
     }
     else
     {
-      _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg_v3>("/FI_Output/Left",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     }
 
     // Publisher definitions
@@ -520,7 +520,7 @@ bool SurgicalTask::init()
     _pubDesiredOrientation[LEFT] = _nh.advertise<geometry_msgs::Quaternion>("/left_lwr/joint_controllers/passive_ds_command_orient", 1);
     _pubDesiredWrench[LEFT] = _nh.advertise<geometry_msgs::Wrench>("/left_lwr/joint_controllers/passive_ds_command_force", 1);
     _pubFilteredWrench[LEFT] = _nh.advertise<geometry_msgs::Wrench>("SurgicalTask/filteredWrenchLeft", 1);
-    _pubFootInput[LEFT] = _nh.advertise<custom_msgs::FootInputMsg_v5>("/left/surgical_task/foot_input", 1);
+    _pubFootInput[LEFT] = _nh.advertise<custom_msgs::FootInputMsg>("/left/surgical_task/foot_input", 1);
     _pubNullspaceCommand[LEFT] = _nh.advertise<std_msgs::Float32MultiArray>("/left_lwr/joint_controllers/passive_ds_command_nullspace", 1);
     
     if(!_useFranka)
@@ -574,7 +574,7 @@ bool SurgicalTask::init()
     }
     else
     {
-      _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg_v3>("/FI_Output/Right",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       _subFootSharedGrasping[RIGHT] = _nh.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/right/sharedGrasping",1, boost::bind(&SurgicalTask::updateFootSharedGrasping,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     }
 
@@ -584,7 +584,7 @@ bool SurgicalTask::init()
     _pubDesiredOrientation[RIGHT] = _nh.advertise<geometry_msgs::Quaternion>("/right_lwr/joint_controllers/passive_ds_command_orient", 1);
     _pubDesiredWrench[RIGHT] = _nh.advertise<geometry_msgs::Wrench>("/right_lwr/joint_controllers/passive_ds_command_force", 1);
     _pubFilteredWrench[RIGHT] = _nh.advertise<geometry_msgs::Wrench>("SurgicalTask/filteredWrenchRight", 1);
-    _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg_v5>("/right/surgical_task/foot_input", 1);
+    _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg>("/right/surgical_task/foot_input", 1);
     _pubNullspaceCommand[RIGHT] = _nh.advertise<std_msgs::Float32MultiArray>("/right_lwr/joint_controllers/passive_ds_command_nullspace", 1);
     _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/command_joint_pos", 1);
     // _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/passive_ds_nullspace_joints", 1);
@@ -2449,7 +2449,7 @@ void SurgicalTask::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int r)
   }
 }
 
-void SurgicalTask::updateFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg, int r)
+void SurgicalTask::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int r)
 {
   for(int m = 0; m < 5; m++)
   {

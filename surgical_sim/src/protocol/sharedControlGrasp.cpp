@@ -206,7 +206,7 @@ sharedControlGrasp::~sharedControlGrasp() { me->_n.shutdown(); }
 bool sharedControlGrasp::init() 
 {
     _hapticTorques.setZero();
-    _pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>("/"+std::string(Tool_Names[_myID])+"/shared_control_publisher/foot_input",0); //! should not have _tool
+    _pubFootInput = _n.advertise<custom_msgs::FootInputMsg>("/"+std::string(Tool_Names[_myID])+"/shared_control_publisher/foot_input",0); //! should not have _tool
     _pubSharedGrasp = _n.advertise<custom_msgs_gripper::SharedGraspingMsg>("/"+std::string(Tool_Names[_myID])+"_tool/sharedGrasping",0);
     _subToolJointStates = _n.subscribe<sensor_msgs::JointState>( "/"+std::string(Tool_Names[_myID])+"_tool/joint_states"
     , 1, boost::bind(&sharedControlGrasp::readToolState, this, _1),

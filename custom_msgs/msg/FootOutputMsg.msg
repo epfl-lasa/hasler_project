@@ -1,30 +1,14 @@
 # FootOutputMsg.msg
 
-time stamp
-int16 id
+time platform_stamp
+int8 platform_id
 
-float32 x
-float32 y
-float32 phi
-float32 theta
-float32 psi
+float32[5] platform_position
+float32[5] platform_speed
+float32[5] platform_effortRef
+float32[5] platform_effortD
+float32[5] platform_effortM
 
-float32 Fx_d
-float32 Fy_d
-float32 Tphi_d
-float32 Ttheta_d
-float32 Tpsi_d
+int8 platform_machineState
+int8 platform_controllerType
 
-float32 vx
-float32 vy
-float32 wphi
-float32 wtheta
-float32 wpsi
-
-float32 Fx_m
-float32 Fy_m
-float32 Tphi_m
-float32 Ttheta_m
-float32 Tpsi_m
-
-int16 state

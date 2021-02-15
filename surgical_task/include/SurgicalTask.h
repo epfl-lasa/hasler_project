@@ -24,10 +24,10 @@
 #include "sensor_msgs/Joy.h"
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/Marker.h"
-#include "custom_msgs/FootInputMsg_v3.h"
-#include "custom_msgs/FootInputMsg_v5.h"
+#include "custom_msgs/FootInputMsg.h"
+#include "custom_msgs/FootInputMsg.h"
 #include "custom_msgs/FootOutputMsg_v2.h"
-#include "custom_msgs/FootOutputMsg_v3.h"
+#include "custom_msgs/FootOutputMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
 #include "custom_msgs_gripper/GripperInputMsg.h"
 #include "custom_msgs_gripper/SharedGraspingMsg.h"
@@ -120,7 +120,7 @@ class SurgicalTask
     geometry_msgs::Twist _msgDesiredTwist;
     geometry_msgs::WrenchStamped _msgFilteredWrench;
     geometry_msgs::Wrench _msgDesiredFootWrench;
-    custom_msgs::FootInputMsg_v5 _msgFootInput;
+    custom_msgs::FootInputMsg _msgFootInput;
     std_msgs::Float32MultiArray _msgNullspaceCommand; 
     custom_msgs_gripper::GripperInputMsg _msgGripperInput;  
     custom_msgs_gripper::GripperOutputMsg _msgGripperOutput;  
@@ -390,7 +390,7 @@ class SurgicalTask
 
     void updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int k);
 
-    void updateFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg, int k);
+    void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k);
     
     void updateFootSharedGrasping(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr& msg, int k);
 

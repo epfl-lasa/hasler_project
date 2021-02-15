@@ -24,7 +24,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_security.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
-#include <custom_msgs/FootOutputMsg_v3.h>
+#include <custom_msgs/FootOutputMsg.h>
 #include <custom_msgs/FootInputMsg_v2.h>
 #include <custom_msgs/setControllerSrv.h>
 #include <custom_msgs/setStateSrv.h>
@@ -65,14 +65,14 @@ class frictionLogger
     ros::Publisher _pubFriction;                  // Filtered measured wrench
     ros::Publisher _pubFootInput;
     // Subscribers declarations
-    ros::Subscriber _subFootOutput;            // FootOutputMsg_v3
+    ros::Subscriber _subFootOutput;            // FootOutputMsg
 
     ros::ServiceClient _clientSetController;
     ros::ServiceClient _clientSetState;
 
     // Subsciber and publisher messages declaration
-    custom_msgs::FootOutputMsg_v3 _msgFootOutput;
-    custom_msgs::FootOutputMsg_v3 _msgStaticFriction;
+    custom_msgs::FootOutputMsg _msgFootOutput;
+    custom_msgs::FootOutputMsg _msgStaticFriction;
     custom_msgs::FootInputMsg_v2 _msgFootInput;
     custom_msgs::setControllerSrv _srvSetController;
     custom_msgs::setStateSrv _srvSetState;
@@ -103,7 +103,7 @@ class frictionLogger
     Platform_Name _platform_name;
     Axis _frictionAxis;
     //Variables from messages
-        //! FootOutputMsg_v3 -> Internal for the platform
+        //! FootOutputMsg -> Internal for the platform
             int8_t _platform_id;
             
             Eigen::Matrix<float,NB_AXIS,1> _platform_position;
@@ -175,7 +175,7 @@ class frictionLogger
     
 
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg); 
+    void fetchFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg); 
     void logData();
     static void stopNode(int sig);
     
