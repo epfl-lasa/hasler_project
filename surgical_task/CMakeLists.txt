@@ -68,7 +68,9 @@ include_directories(${qpOASES_INCLUDE_DIRS})
 add_library(jacobian src/JacobianDefinitions.cpp include/JacobianDefinitions.h)
 add_library(qpSolverRCM STATIC src/QpSolverRCM.cpp include/QpSolverRCM.h
                                src/QpSolverRCM2.cpp include/QpSolverRCM2.h
-                               src/QpSolverRCM3.cpp include/QpSolverRCM3.h)
+                               src/QpSolverRCM3.cpp include/QpSolverRCM3.h
+                               src/QpSolverRCMCollision.cpp include/QpSolverRCMCollision.h
+                               src/QpSolverRCMCollision2.cpp include/QpSolverRCMCollision2.h)
 target_link_libraries(qpSolverRCM ${qpOASES_LIBRARIES} jacobian)
 
 add_library(cvxgenSolverRCM include/cvxgen/solver.c 
@@ -102,7 +104,16 @@ add_executable(pillar_frames src/pillarFrames_node.cpp src/PillarFrames.cpp)
 target_link_libraries(pillar_frames ${catkin_LIBRARIES})
 add_dependencies(pillar_frames ${PROJECT_NAME}_gencpp)
 
-add_executable(surgical_task src/surgicalTask_node.cpp src/SurgicalTask.cpp)
+add_executable(surgical_task src/surgicalTask_node.cpp 
+                             src/SurgicalTask.cpp 
+                             src/surgical_task/PublishersAndSubscribers.cpp
+                             src/surgical_task/Init.cpp
+                             src/surgical_task/SimulationFrames.cpp
+                             src/surgical_task/HumanInput.cpp
+                             src/surgical_task/CameraTaskAdaptation.cpp
+                             src/surgical_task/OptitrackTracking.cpp
+                             src/surgical_task/RobotControl.cpp)
+
 target_link_libraries(surgical_task ${catkin_LIBRARIES} qpSolverRCM cvxgenSolverRCM)
 add_dependencies(surgical_task ${PROJECT_NAME}_gencpp)
 

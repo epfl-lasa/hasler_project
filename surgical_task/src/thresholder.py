@@ -10,7 +10,7 @@ def nothing(x):
 
 # Load in image
 # cap = cv2.VideoCapture(0)
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture("/dev/video1")
 
 # Create a window
 cv2.namedWindow('image')
@@ -63,7 +63,7 @@ while(1):
 
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-    contours, hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
 
     output = cv2.bitwise_and(image,image, mask= mask)
@@ -81,10 +81,11 @@ while(1):
     # Display output image
     cv2.imshow('image',output)
     cv2.imshow('mask',mask)
-    if len(contours)!=0:
-        c = max(contours, key = cv2.contourArea)
-        M = cv2.moments(c)
-        print("green:",M["m00"],cv2.contourArea(c))
+    # cv2.imshow('original',image)
+    # if len(contours)!=0:
+    #     c = max(contours, key = cv2.contourArea)
+    #     M = cv2.moments(c)
+    #     print("green:",M["m00"],cv2.contourArea(c))
         # if(cv2.contourArea(c)>100):
     # Wait longer to prevent freeze for videos.
     if cv2.waitKey(wait_time) & 0xFF == ord('q'):
