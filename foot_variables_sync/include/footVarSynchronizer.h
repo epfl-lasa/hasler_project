@@ -38,7 +38,7 @@ class footVarSynchronizer
     public:
         enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2}; 
         
-        enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,MP_TOOL_POS_PID,MP_TOOL_SPEED_PID,NB_POS_PID_C};   
+        enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,MP_TOOL_POS_PID,MP_TOOL_SPEED_PID,MP_TOOL_MIXED_PID,NB_POS_PID_C};   
         enum Tool_Control {TOOL_POSITION_CTRL,TOOL_SPEED_CTRL};
 	private:
         enum Params_Category {M_STATE, EFF_COMP, C_AXIS, C_TYPE, FLAG_SENDPOS,FLAG_CAPTUREPOS, DES_POS, FLAG_GAINS, PID_POS, PID_SPEED};
@@ -74,7 +74,7 @@ class footVarSynchronizer
     custom_msgs::TwoFeetOneToolMsg _msgTwoFeetOneTool;
    
     // Publisher declaration
-    ros::Publisher _pubFootInput;               // FootInputMsg_v2
+    ros::Publisher _pubFootInput;               // FootInputMsg
     
     ros::ServiceClient _clientSetState;
     ros::ServiceClient _clientSetController;
@@ -119,7 +119,7 @@ class footVarSynchronizer
             Controller _platform_controllerType;
             State _platform_machineState;
 
-    //! FootInputMsg_v2 + setStateSrv + setControllerSrv -> External = within the ros network
+    //! FootInputMsg + setStateSrv + setControllerSrv -> External = within the ros network
         
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_position;
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_speed;
@@ -186,6 +186,7 @@ class footVarSynchronizer
 
         volatile bool _flagControlThisPosition; //! To make sure you don't send a torque and position in the same message
         volatile bool _flagControlZeroEffort; 
+        volatile bool _flagLoadPIDGains;
         volatile bool _flagSendPIDGains; 
         volatile bool _flagCapturePlatformPosition;
         volatile bool _flagUpdateConfig;

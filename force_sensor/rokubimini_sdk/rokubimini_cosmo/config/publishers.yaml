@@ -1,5 +1,18 @@
 publishers:
-  ft_sensor0:
+  ft_right:
+    ft_sensor_readings:
+      topic: /rokubimini_cosmo/forcetorque_readings
+      queue_size: 10
+      latch: false
+    ft_sensor_imu:
+      topic: /rokubimini_cosmo/readings/imu
+      queue_size: 10
+      latch: false
+    ft_sensor_wrench:
+      topic: /rokubimini_cosmo/readings/wrench
+      queue_size: 10
+      latch: false
+  ft_left:
     ft_sensor_readings:
       topic: /rokubimini_cosmo/forcetorque_readings
       queue_size: 10

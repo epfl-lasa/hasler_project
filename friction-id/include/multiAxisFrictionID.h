@@ -13,7 +13,7 @@
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include "lp_filter.h"
 #include <custom_msgs/FootOutputMsg.h>
-#include <custom_msgs/FootInputMsg_v2.h>
+#include <custom_msgs/FootInputMsg.h>
 
 using namespace std;
 
@@ -61,10 +61,10 @@ class multiAxisFrictionID
      ros::Subscriber _subFootOutput;            // FootOutputMsg
     
     // Publisher declaration
-    ros::Publisher _pubFootInput;               // FootInputMsg_v2
+    ros::Publisher _pubFootInput;               // FootInputMsg
 
     // Subsciber and publisher messages declaration
-    custom_msgs::FootInputMsg_v2 _msgFootInput;
+    custom_msgs::FootInputMsg _msgFootInput;
     
     //!boolean variables
     

@@ -26,7 +26,7 @@
 #include "visualization_msgs/Marker.h"
 #include "custom_msgs/FootInputMsg.h"
 #include "custom_msgs/FootInputMsg.h"
-#include "custom_msgs/FootOutputMsg_v2.h"
+#include "custom_msgs/FootOutputMsg.h"
 #include "custom_msgs/FootOutputMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
 #include "custom_msgs_gripper/GripperInputMsg.h"

@@ -21,6 +21,7 @@ _dt(1.0f/frequency)
 	_stop = false;
 	_flagControlThisPosition=false;
 	_flagSendPIDGains=false;
+	_flagLoadPIDGains=false;
 
 	_flagControlZeroEffort=false;
 	_flagCapturePlatformPosition = false;
@@ -193,6 +194,33 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
 			{
 				_ros_paramD[MP_TOOL_SPEED_PID][i] = dToolSpeedControl_[i];
+			}
+		}
+		
+		std::vector<double> pToolMixedControl_;
+		std::vector<double> dToolMixedControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/p", pToolMixedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_MIXED_PID][i] = pToolMixedControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/d", dToolMixedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_MIXED_PID][i] = dToolMixedControl_[i];
 			}
 		}
 
@@ -376,6 +404,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 void footVarSynchronizer::stopNode(int sig)
 {
     me->_stop= true;
+	me->publishFootInput(NULL);
 }
 
 void footVarSynchronizer::run()
@@ -405,6 +434,7 @@ void footVarSynchronizer::run()
 				// _config.desired_Position_YAW = _platform_position[YAW];
 				_config.use_default_gains=true;
 				_config.send_pid_gains=false;
+				_config.load_param_pid_gains=false;
 				_ros_defaultControl=true;
 				_ros_position=_platform_position;
 				_config.controlled_axis=-1;
@@ -419,6 +449,12 @@ void footVarSynchronizer::run()
 			} else if(_subFootOutput.getNumPublishers()!=0)
 			{
 				checkWhichPIDGainsToUse();
+				// cout<<_myPIDCategory<<endl;
+				if (!_ros_defaultControl && _flagLoadPIDGains)
+				{ 
+					controlGainsDefault(-1);
+					_flagUpdateConfig = true;
+				}
 				if (_flagWasDynReconfCalled)
 				{
 					updateInternalVariables();
@@ -509,23 +545,19 @@ void footVarSynchronizer::checkWhichPIDGainsToUse()
 {	
 	if (_mixedPlatformOn)
 	{	
-		if(_subPlatformControlFromTool.getNumPublishers()==0)
-		{
-			if(_platform_machineState==TELEOPERATION)
-			{
-				_myPIDCategory=S_TELEOP_PID;
-			}
-			else if(_platform_machineState==ROBOT_STATE_CONTROL)
-			{
-				_myPIDCategory=S_ROBOT_CTRL_PID;
-			}
-		} else if (_flagTwoFeetOneToolRead)
+		if(_platform_machineState==TELEOPERATION)
 		{
 			if ((Platform_Name) _mainPlatform == _platform_id)
 			{
-				_myPIDCategory = _msgTwoFeetOneTool.currentControlMode==TOOL_POSITION_CTRL ? MP_TOOL_POS_PID : MP_TOOL_SPEED_PID;
-			} 
-			_flagTwoFeetOneToolRead=false;
+				_myPIDCategory = _msgTwoFeetOneTool.currentControlMode == (uint8_t) TOOL_POSITION_CTRL ? MP_TOOL_POS_PID : MP_TOOL_SPEED_PID;
+			}else
+			{
+				_myPIDCategory=MP_TOOL_MIXED_PID;
+			}
+		}
+		else if(_platform_machineState==ROBOT_STATE_CONTROL)
+		{
+			_myPIDCategory=S_ROBOT_CTRL_PID;
 		}
 	}else 
 	{	
@@ -548,6 +580,7 @@ void footVarSynchronizer::updateInternalVariables()
 	_ros_controllerType = (uint8_t) _config.controller_type;
 	_ros_defaultControl = (bool) _config.use_default_gains;
 	_flagSendPIDGains = (bool) _config.send_pid_gains;
+	_flagLoadPIDGains = (bool) _config.load_param_pid_gains;
     _flagControlThisPosition = (bool) _config.send_this_position;
     _flagControlZeroEffort = (bool)_config.send_zero_effort;
     _flagCapturePlatformPosition = (bool)_config.capture_platform_position;
@@ -871,11 +904,7 @@ void footVarSynchronizer::updateConfigAfterParamsChanged()
 	{
 		_flagUpdateConfig = false;
 
-		if (_ros_defaultControl)
-		{
-			controlGainsDefault(-1);
-			_flagUpdateConfig = true;
-		}
+	
 
 		if (_flagPositionOnlyPublished && _flagControlThisPosition)
 		{
@@ -916,7 +945,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 	void footVarSynchronizer::requestDoActionsParams()
 	{
 
-		if (_config.machine_state == TELEOPERATION &&
+		if (_config.machine_state == (int) TELEOPERATION &&
 			_flagCapturePlatformPosition)
 		{
 			_config.desired_Position_X = C_WS_LIMIT_X;
@@ -1080,6 +1109,8 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
   //! Keep send the same valuest that the platform is broadcasting
   processAllPublishers();	
  // _mutex.lock();
+ if (!_stop)
+ {
   for (int k = 0; k < NB_PLATFORM_AXIS; k++) {
     _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k] + _msgTotalDesiredFootInput.ros_position[rosAxis[k]];
     _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k] + _msgTotalDesiredFootInput.ros_speed[rosAxis[k]] ;
@@ -1103,11 +1134,34 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 	for (int k = 0; k < NB_AXIS_WRENCH; k++) {
 		_msgFootInput.ros_forceSensor[k] = _ros_forceSensor_controlled[k]; // rosAxis not applied
   	}
+  }else
+  {
+	for (int k = 0; k < NB_AXIS_WRENCH; k++) {
+		_msgFootInput.ros_forceSensor[k] = 0.0; // rosAxis not applied
+  	}
   }
- 
+ }
+ else
+ {
+	 _msgFootInput.ros_effort.fill(0.0f);
+	 _msgFootInput.ros_filterAxisForce.fill(0.0f);
+	 _msgFootInput.ros_forceSensor.fill(0.0f);
+	 _msgFootInput.ros_kp.fill(0.0f);
+	 _msgFootInput.ros_ki.fill(0.0f);
+	 _msgFootInput.ros_kd.fill(0.0f);
+	 for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+	 {
+		 _msgFootInput.ros_position[i] = _platform_position[i];
+	 }
+	 _msgFootInput.ros_speed.fill(0.0f);
+	 _msgFootInput.ros_effort.fill(0.0f);
+ }
 
   _pubFootInput.publish(_msgFootInput);
-  *flagVariableOnly_ = true;
+  if (flagVariableOnly_!=NULL)
+  {
+  	*flagVariableOnly_ = true;
+  }
   //_mutex.unlock();
 }
 

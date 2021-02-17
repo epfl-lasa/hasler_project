@@ -82,6 +82,8 @@
         "random": "cpp",
         "graphicscontext": "cpp",
         "viewport": "cpp",
-        "shape": "cpp"
+        "shape": "cpp",
+        "matrixd": "cpp",
+        "matrixf": "cpp"
     }
 }

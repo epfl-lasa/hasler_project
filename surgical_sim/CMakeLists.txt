@@ -77,12 +77,6 @@ install(PROGRAMS scripts/init_franka_left.sh DESTINATION ${CATKIN_PACKAGE_BIN_DE
 install(PROGRAMS scripts/init_forceps_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(PROGRAMS scripts/init_camera_left.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
-add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)
-target_link_libraries(gzTfUpdate 
-					  ${catkin_LIBRARIES}
-					  ${GAZEBO_LIBRARIES}
-            ${Boost_LIBRARIES})
-
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 

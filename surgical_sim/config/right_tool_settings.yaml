@@ -8,8 +8,8 @@
   desiredPlatformWorkspaceLimsMin: [-0.040, -0.0975, -0.200, 0.000, -0.349066] # Y,X,PITCH,ROLL,YAW
   desiredPlatformWorkspaceLimsMax: [0.040, 0.040, 0.0872665, 0.226892, 0.349066] #[0.090, 0.0975, 0.0872665, 0.226892, 0.349066]
   deadZoneValuesPlatformMin: [-0.05, -0.05, -0.18, -0.15, -0.16]
-  deadZoneValuesPlatformMax: [0.05, 0.05, 0.00, 0.10, 0.01]
+  deadZoneValuesPlatformMax: [0.05, 0.05, 0.00, 0.10, 0.02]
   platformJointOffsets: [0.0, 0.0, 0.0, -0.15, 0.0]
-  cartLimsX: [-0.15,0.10] # [m]
-  cartLimsY: [-0.10,0.10]  # [m]
+  cartLimsX: [-0.15,0.15] # [m]
+  cartLimsY: [-0.10,0.15]  # [m]
   cartLimsZ: [-0.26,-0.03] # [m]
