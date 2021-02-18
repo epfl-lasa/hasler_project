@@ -16,7 +16,7 @@
       <param name="rate" type="double" value="$(arg freq)"/>
     </node>
 
-    <node name="chair_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+    <node name="chair_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
       <param name="publish_frequency" type="double" value="$(eval 2*arg('freq'))"/>
       <remap from="joint_states" to="chair_joint_publisher/joint_states" />
     </node>

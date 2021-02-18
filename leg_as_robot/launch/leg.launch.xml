@@ -29,7 +29,7 @@
         </node>
       </group>
 
-      <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <node name="leg_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
         <param name="publish_frequency" value="$(eval 2*arg('freq'))"/>
         <remap from="joint_states" to="leg_joint_publisher/joint_states" />
       </node>
