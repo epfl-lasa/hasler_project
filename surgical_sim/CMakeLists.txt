@@ -24,7 +24,6 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   controller_manager
   controller_manager_msgs
-  controller_manager_tests
   controller_interface
   hardware_interface
   joint_limits_interface
@@ -52,7 +51,7 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs gazebo_ros tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils_math custom_msgs urdf kdl_parser eigen_conversions controller_manager controller_manager_msgs realtime_tools transmission_interface hardware_interface controller_manager_tests  joint_limits_interface hardware_interface kdl_conversions custom_msgs_gripper utils_math endoscope_feedback
+  CATKIN_DEPENDS roscpp rospy std_msgs gazebo_ros tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils_math custom_msgs urdf kdl_parser eigen_conversions controller_manager controller_manager_msgs realtime_tools transmission_interface hardware_interface   joint_limits_interface hardware_interface kdl_conversions custom_msgs_gripper utils_math endoscope_feedback
   DEPENDS gazebo_ros
   )
 
