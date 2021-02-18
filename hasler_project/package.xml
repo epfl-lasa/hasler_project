@@ -16,6 +16,16 @@
   <run_depend>surgical_simulator</run_depend>
   <run_depend>foot_variables_sync</run_depend>
   <run_depend>multiaxis_friction_identification</run_depend>
+  <run_depend>rokubimini_ros</run_depend>
+  <run_depend>surgical_sim</run_depend>
+  <run_depend>surgical_task</run_depend>
+  <run_depend>utils_math</run_depend>
+  <run_depend>utils</run_depend>
+  <run_depend>friction-id</run_depend>
+  <run_depend>foot_platform_ros</run_depend>
+  <run_depend>leg_as_robot</run_depend>
+  <run_depend>custom_msgs_gripper</run_depend>
+
 
   
 
