@@ -18,7 +18,6 @@
   <run_depend>multiaxis_friction_identification</run_depend>
   <run_depend>rokubimini_ros</run_depend>
   <run_depend>surgical_sim</run_depend>
-  <run_depend>surgical_task</run_depend>
   <run_depend>utils_math</run_depend>
   <run_depend>utils</run_depend>
   <run_depend>friction-id</run_depend>
