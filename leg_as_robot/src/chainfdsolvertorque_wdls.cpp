@@ -32,26 +32,10 @@
        tmp_jac_weight2(MatrixXd::Zero(6, nj)), tmp_ts(MatrixXd::Zero(6, nj)),
        tmp_js(MatrixXd::Zero(nj, nj)), weight_ts(MatrixXd::Identity(6, 6)),
        weight_js(MatrixXd::Identity(nj, nj)), lambda(0.0), lambda_scaled(0.0),
-       nrZeroSigmas(0), svdResult(0), sigmaMin(0) {}
+       nrZeroSigmas(0), svdResult(0), sigmaMin(0),error(E_NOERROR) {}
+ 
 
-//  void ChainFdSolverTorque_wdls::updateInternalDataStructures() {
-//    jnt2jac.updateInternalDataStructures();
-//    nj = chain.getNrOfJoints();
-//    jac.resize(nj);
-//    MatrixXd z6nj = MatrixXd::Zero(6, nj);
-//    VectorXd znj = VectorXd::Zero(nj);
-//    MatrixXd znjnj = MatrixXd::Zero(nj, nj);
-//    U.conservativeResizeLike(z6nj);
-//    S.conservativeResizeLike(znj);
-//    V.conservativeResizeLike(znjnj);
-//    tmp.conservativeResizeLike(znj);
-//    tmp_jac.conservativeResizeLike(z6nj);
-//    tmp_jac_weight1.conservativeResizeLike(z6nj);
-//    tmp_jac_weight2.conservativeResizeLike(z6nj);
-//    tmp_js.conservativeResizeLike(znjnj);
-//    weight_js.conservativeResizeLike(MatrixXd::Identity(nj, nj));
-//  }
-
+  
  ChainFdSolverTorque_wdls::~ChainFdSolverTorque_wdls() {}
 
  int ChainFdSolverTorque_wdls::setWeightJS(const MatrixXd &Mq) {
@@ -186,6 +170,6 @@
    if (E_CONVERGE_PINV_SINGULAR == error)
      return "Converged put pseudo inverse of jacobian is singular.";
    else
-     return SolverI::strError(error);
+     return strErrorGen(error);
  }
  }
