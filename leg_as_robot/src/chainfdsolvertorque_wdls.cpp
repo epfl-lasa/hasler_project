@@ -126,10 +126,10 @@
    for (i = 0; i < jac.rows(); i++) {
      sum = 0.0;
      for (j = 0; j < jac.columns(); j++) {
-       //if (j < 6)
+       if (i < 6)
          sum += tmp_js(i, j) * torque_in(j);
-       //else
-       //  sum += 0.0;
+       else
+        sum += 0.0;
      }
      // If sigmaMin > eps, then wdls is not active and lambda_scaled = 0
      // (default value)
@@ -173,3 +173,18 @@
      return strErrorGen(error);
  }
  }
+
+ // The original transformation of wdls is:
+
+// J# = Mq * V * Db# * U' * Mx
+
+// then I transpose:
+// J#' = Mx' * U * Db#' * V' * Mq'
+
+// since Db is a diagonal (hence symmetric) matrix, 
+// The transpose of the pseudoinverse is the same as the original matrix and clipped to 6x6 Db#' = Db#
+
+//Note that the original version of this file (only for the pinverse of the Jacobian), the U' * Mx is calculated as Mx * U and then transposed
+//in the for loop (j,i) instead of (i,j)
+
+
