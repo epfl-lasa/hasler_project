@@ -127,7 +127,7 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointVelocitiesLimits(4) = 2.6100f;
 	  _jointVelocitiesLimits(5) = 2.6100f;
 	  _jointVelocitiesLimits(6) = 2.6100f;	
-	  _jointVelocitiesLimits *= 0.8f;
+	  _jointVelocitiesLimits *= 0.2f;
 	}
 }
 
@@ -278,8 +278,6 @@ bool QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0
 		if(ret == qpOASES::SUCCESSFUL_RETURN)
 		{
     		joints += dt*jointVelocities;
-    		std::cerr << "jdot: " << jointVelocities.transpose()*180/M_PI << std::endl;
-			std::cerr << "jdotLim: " << _jointVelocitiesLimits.transpose() << std::endl;
 		}
 		else
 		{

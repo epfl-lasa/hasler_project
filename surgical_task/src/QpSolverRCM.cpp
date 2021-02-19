@@ -127,7 +127,7 @@ void QpSolverRCM::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointVelocitiesLimits(4) = 2.6100f;
 	  _jointVelocitiesLimits(5) = 2.6100f;
 	  _jointVelocitiesLimits(6) = 2.6100f;	
-	  _jointVelocitiesLimits *= 0.8f;
+	  _jointVelocitiesLimits *= 0.2f;
 	}
 }
 
@@ -251,6 +251,7 @@ bool QpSolverRCM::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0,
 		if(ret == qpOASES::SUCCESSFUL_RETURN)
 		{
     	joints += dt*jointVelocities;
+
 		}
 
   }
@@ -550,7 +551,7 @@ bool QpSolverRCM::step3(Eigen::VectorXf &joints, Eigen::VectorXf joints0,
 
 		if(ret == qpOASES::SUCCESSFUL_RETURN)
 		{
-    		joints += dt*jointVelocities;
+  		joints += dt*jointVelocities;
   			// std::cerr << "output error: "<< (error-J*jointVelocities).transpose() << std::endl;
 		}
 		else
