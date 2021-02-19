@@ -50,7 +50,7 @@ class CameraManager:
     self.clutchingStateText = ["Off", "On"]
     self.clutchingStateTextPosition = (440,60)
 
-    self.markerText = ["R","G"]
+    self.markerText = ["O","B", "Y"]
 
     self.waitText = ["Warning: Center your dominant foot","to start moving the camera !"]
     self.waitTextPosition = [(100,240),(140,270)]
@@ -81,7 +81,8 @@ class CameraManager:
 
         self.toolsTracker.step(self.inputImage, self.imageSize)
 
-        result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskRed | self.toolsTracker.maskGreen)
+        result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskOrange | self.toolsTracker.maskBlue 
+                                                                          | self.toolsTracker.maskYellow)
 
 
         # self.toolsTracker.markersPosition[0] = np.array([630,470,1])
@@ -89,21 +90,23 @@ class CameraManager:
         self.displaySurgicalTaskState(self.outputImage)
 
         msg = Int16MultiArray()
-        msg.data = np.concatenate((self.toolsTracker.markersPosition[0], self.toolsTracker.markersPosition[1]), axis=None)
+        msg.data = np.concatenate((self.toolsTracker.markersPosition[0], self.toolsTracker.markersPosition[1], 
+                                   self.toolsTracker.markersPosition[2]), axis=None)
         msg.layout.dim.append(MultiArrayDimension())
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPosition.publish(msg)
         
         msg = Float64MultiArray()
-        msg.data = np.concatenate((self.toolsTracker.markersPositionTransformed[0], self.toolsTracker.markersPositionTransformed[1]),
-                                  axis=None)
+        msg.data = np.concatenate((self.toolsTracker.markersPositionTransformed[0], self.toolsTracker.markersPositionTransformed[1],
+                                   self.toolsTracker.markersPositionTransformed[2]), axis=None)
         msg.layout.dim.append(MultiArrayDimension())
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPositionTransformed.publish(msg)
 
         cv2.imshow('output', self.outputImage) 
-        cv2.imshow('maskRed', self.toolsTracker.maskRed) 
-        cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
+        cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
+        cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
+        cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
         # cv2.imshow('result', result) 
         
       if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -174,29 +177,52 @@ class CameraManager:
 
 class ToolsTracker:
   def __init__(self):
-    self.lowerHsvBlue = np.array([79,71,54])     
-    self.upperHsvBlue = np.array([144,255,255])
+    self.lowerHsvBlue = np.array([90,80,60])     
+    self.upperHsvBlue = np.array([104,255,255])
 
     # self.lowerHsvRed = np.array([150,60,0]) 
     # self.upperHsvRed = np.array([255,255,255]) 
-    self.lowerHsvRed = np.array([0,0,40]) 
-    self.upperHsvRed = np.array([8,255,255]) 
+    # self.lowerHsvRed = np.array([0,10,100]) 
+    # self.upperHsvRed = np.array([10,255,255]) 
+    self.lowerHsvRed = np.array([125,0,0]) 
+    self.upperHsvRed = np.array([179,255,255]) 
+
+    self.lowerHsvOrange = np.array([5,140,0]) 
+    self.upperHsvOrange = np.array([10,255,255]) 
 
     # self.lowerHsvGreen = np.array([50,40, 0]) 
     # self.upperHsvGreen = np.array([97, 255, 255]) 
-    self.lowerHsvGreen = np.array([22, 0, 40]) 
-    self.upperHsvGreen = np.array([45, 255, 230]) 
+    # self.lowerHsvGreen = np.array([44, 0, 0]) 
+    # self.upperHsvGreen = np.array([69, 255, 100]) 
+
+    # self.lowerHsvGreen = np.array([44, 0, 0]) 
+    # self.upperHsvGreen = np.array([69, 255, 100]) 
+    # self.lowerHsvGreen = np.array([80, 0, 80]) 
+    # self.upperHsvGreen = np.array([100, 255, 170]) 
+    self.lowerHsvGreen = np.array([80, 40, 80]) 
+    self.upperHsvGreen = np.array([105, 255, 140]) 
+
+
+    # self.lowerHsvRed = np.array([0,0,40]) 
+    # self.upperHsvRed = np.array([8,255,255]) 
+    # self.lowerHsvGreen = np.array([22, 0, 40]) 
+    # self.upperHsvGreen = np.array([45, 255, 230]) 
+
+    self.lowerHsvYellow = np.array([18,0,160])
+    self.upperHsvYellow = np.array([42,255,255])
 
     self.kernel = np.ones((5 ,5), np.uint8)
 
-    self.markersPosition = np.array([(0,0,0),
-                                    (0,0,0)])
+    self.markersPosition = np.array([(0, 0, 0),
+                                     (0, 0, 0),
+                                     (0, 0, 0)])
 
     # self.markersPositionWindow = 
-    self.markersPositionTransformed = np.array([(0.0,0.0,0),
-                                               (0.0,0.0,0)])
+    self.markersPositionTransformed = np.array([(0.0, 0.0, 0),
+                                                (0.0, 0.0, 0),
+                                                (0.0, 0.0, 0)])
 
-    self.firstMarkerDetection = [False, False]
+    self.firstMarkerDetection = [False, False, False]
 
 
 
@@ -211,10 +237,15 @@ class ToolsTracker:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) 
 
     # Apply red filter
-    self.maskRed = self.colorFilter(hsv, imageSize, self.lowerHsvRed, self.upperHsvRed, 0)
+    self.maskOrange = self.colorFilter(hsv, imageSize, self.lowerHsvOrange, self.upperHsvOrange, 0)
 
     # Apply green filter
-    self.maskGreen = self.colorFilter(hsv, imageSize, self.lowerHsvGreen, self.upperHsvGreen, 1)
+    self.maskBlue = self.colorFilter(hsv, imageSize, self.lowerHsvBlue, self.upperHsvBlue, 1)
+
+
+    # Apply yellow filter
+    self.maskYellow = self.colorFilter(hsv, imageSize, self.lowerHsvYellow, self.upperHsvYellow, 2)
+
 
     # Check for saturation
     self.checkForSaturation(image)
@@ -233,7 +264,13 @@ class ToolsTracker:
     variance = cv2.Laplacian(mask, cv2.CV_64F).var()
     # print("variance: ", variance)
 
-    _, contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    # check OpenCV version
+    major = cv2.__version__.split('.')[0]
+    if major == '3':
+      ret, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+      contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # _, contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
     if len(contours)!=0:
       c = max(contours, key = cv2.contourArea)
@@ -267,7 +304,8 @@ class ToolsTracker:
   def checkForSaturation(self, image):
     for k in range(0,len(self.markersPosition)):
       if self.markersPosition[k][2]:
-        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 150:
+        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 180:
+          print("Saturation: ", k, image[self.markersPosition[k][1],self.markersPosition[k][0]].mean())
           self.markersPosition[k][2] = 0
           self.markersPositionTransformed[k][2] = 0
 

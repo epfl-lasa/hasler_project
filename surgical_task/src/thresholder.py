@@ -10,7 +10,7 @@ def nothing(x):
 
 # Load in image
 # cap = cv2.VideoCapture(0)
-cap = cv2.VideoCapture("/dev/video1")
+cap = cv2.VideoCapture("/dev/video0")
 
 # Create a window
 cv2.namedWindow('image')
@@ -63,7 +63,15 @@ while(1):
 
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-    _, contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    # check OpenCV version
+    major = cv2.__version__.split('.')[0]
+    if major == '3':
+      ret, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+      contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+
+    # _, contours, _ = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
 
     output = cv2.bitwise_and(image,image, mask= mask)
