@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "tf_conversions/tf_eigen.h"
 
+
 #define ListofLegAxes(enumeration, names) names,
 char const *Leg_Axis_Names[]{LEG_AXES};
 #undef ListofLegAxes
@@ -14,21 +15,42 @@ legRobot *legRobot::me = NULL;
 
 legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
                    legRobot::Leg_Name leg_id, urdf::Model model_)
-    : _n(n_1), _leg_id(leg_id), _loopRate(frequency), _dt(1.0f / frequency),
-      _myModel(model_) {
+    : _n(n_1), _leg_id(leg_id), _loopRate(frequency), _freq(frequency), _dt(1.0f / frequency),
+    _myModel(model_) {
   me = this;
   _stop = false;
   _flagFootPoseConnected = false;
-  _legJoints = new KDL::JntArray(NB_LEG_AXIS);
-  _legJoints->data.setZero();
-  _legJointsPrev = new KDL::JntArray(NB_LEG_AXIS);
-  _legJointsPrev->data.setZero();
-  _legJointsInit = new KDL::JntArray(NB_LEG_AXIS);
-  _legJointsInit->data.setZero();
-  _gravityTorques = new KDL::JntArray(NB_LEG_AXIS);
-  _legJointLims[L_MIN] = new KDL::JntArray(NB_LEG_AXIS);
-  _legJointLims[L_MAX] = new KDL::JntArray(NB_LEG_AXIS);
-  _gravityTorques->data.setZero();
+  _legJoints.resize(NB_LEG_AXIS);
+  _legJoints.data.setZero();
+  _legJointsPrev.resize(NB_LEG_AXIS);
+  _legJointsPrev.data.setZero();
+  _legJointsInit.resize(NB_LEG_AXIS);
+  _legJointsInit.data.setZero();
+
+  _legJointsVel.resize(NB_LEG_AXIS);
+  _legJointsVel.data.setZero();
+
+  _legJointsVelPrev.resize(NB_LEG_AXIS);
+  _legJointsVelPrev.data.setZero();
+
+  _legJointsAcc.resize(NB_LEG_AXIS);
+  _legJointsAcc.data.setZero();
+  Eigen::VectorXd filterVelGains((int) NB_LEG_AXIS);
+  Eigen::VectorXd filterAccGains((int) NB_LEG_AXIS);
+  filterVelGains.setConstant(0.95);
+  filterAccGains.setConstant(0.99);
+  _legVelFilter.setAlphas(filterVelGains);
+  _legAccFilter.setAlphas(filterAccGains);
+  _gravityTorques.resize(NB_LEG_AXIS);
+  _gravityTorques.data.setZero();
+  _coriolisTorques.resize(NB_LEG_AXIS); _coriolisTorques.data.setZero();
+  _inertialTorques.resize(NB_LEG_AXIS);_inertialTorques.data.setZero();
+  _maxWrench<<15.0,15.0,100.0,2.5,2.5,2.5;
+  
+  _totalTorques.resize(NB_LEG_AXIS);
+  _totalTorques.data.setZero();
+  _legJointLims[L_MIN].resize(NB_LEG_AXIS);
+  _legJointLims[L_MAX].resize(NB_LEG_AXIS);
   _wrenchGravityFootBase.setZero();
   _gravityVector << 0.0, 0.0, (double)GRAVITY;
   _mySolutionFound=true;
@@ -44,6 +66,8 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
   _flagFootPoseConnected =  false;
   _flagHipPoseConnected =  false;
 
+
+  _decimationVel=(int) (_freq/200.0); _decimationAcc= (int) (_freq/100.0);  _innerCounterVel=0; _innerCounterAcc=0;
   if (!kdl_parser::treeFromUrdfModel(_myModel, _myTree)) {
     ROS_ERROR("[%s leg]: Failed to construct kdl tree",Leg_Names[_leg_id]);
     _stop=true;
@@ -67,14 +91,14 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
 
   for (int joint_=0; joint_<NB_LEG_AXIS; joint_++ )
   {
-    _legJointLims[L_MIN]->data(joint_) = _myModel.getJoint(std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[joint_]))->limits->lower;
-    _legJointLims[L_MAX]->data(joint_) = _myModel.getJoint(std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[joint_]))->limits->upper;
+    _legJointLims[L_MIN].data(joint_) = _myModel.getJoint(std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[joint_]))->limits->lower;
+    _legJointLims[L_MAX].data(joint_) = _myModel.getJoint(std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[joint_]))->limits->upper;
   }
   _myVelIKSolver = new KDL::ChainIkSolverVel_wdls(_myFootBaseChain);
 
   _myTorqueFDSolver = new KDL::ChainFdSolverTorque_wdls(_myFootBaseChain);
 
-  _myPosIkSolver = new KDL::ChainIkSolverPos_NR_JL(_myFootBaseChain,*me->_legJointLims[L_MIN], *me->_legJointLims[L_MAX], *_myFKSolver,*_myVelIKSolver);
+  _myPosIkSolver = new KDL::ChainIkSolverPos_NR_JL(_myFootBaseChain,me->_legJointLims[L_MIN], me->_legJointLims[L_MAX], *_myFKSolver,*_myVelIKSolver);
 
   _tfListener = new tf2_ros::TransformListener(_tfBuffer);
 }
@@ -105,7 +129,7 @@ bool legRobot::init() //! Initialization of the node. Its datatype
   }
 }
 
-void legRobot::stopNode(int sig) { me->_stop = true; }
+void legRobot::stopNode(int sig) { me->_stop = true;  me->publishFootBaseGravityWrench(); me->publishLegJointStates(); }
 
 void legRobot::run() {
   
@@ -116,13 +140,15 @@ void legRobot::run() {
       computedWeightingMatrixes();
       performInverseKinematics();
       publishLegJointStates();
-      computeGravityTorque();
+      computeIDTorque();
       performChainForwardKinematics();
       computeNetCoG();
       computeFootBaseWrenchForwardDynamics();
       computeLegManipulability();
       publishManipulabilityEllipsoidRot();
       publishManipulabilityEllipsoidLin();
+      _innerCounterVel++;
+      _innerCounterAcc++;
     }
     ros::spinOnce();
     _loopRate.sleep();
@@ -136,19 +162,34 @@ void legRobot::run() {
 
 void legRobot::publishLegJointStates() {
   // _mutex.lock();
+  if(!_stop)
+  {
+    _msgJointStates.header.stamp = ros::Time::now();
+    _msgJointStates.name.resize(NB_LEG_AXIS);
+    _msgJointStates.position.resize(NB_LEG_AXIS);
+    _msgJointStates.velocity.resize(NB_LEG_AXIS);
+    _msgJointStates.effort.resize(NB_LEG_AXIS);
 
-  _msgJointStates.header.stamp = ros::Time::now();
+    for (int k = 0; k < NB_LEG_AXIS; k++) {
+      _msgJointStates.name[k] = std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[k]);
+      _msgJointStates.position[k] = me->_legJoints.data[k];
+      _msgJointStates.velocity[k] = me->_legJointsVel.data[k];
+      _msgJointStates.effort[k] = me->_totalTorques.data[k];
+    }
+  }else
+  {
+    _msgJointStates.header.stamp = ros::Time::now();
+    _msgJointStates.name.resize(NB_LEG_AXIS);
+    _msgJointStates.position.resize(NB_LEG_AXIS);
+    _msgJointStates.velocity.resize(NB_LEG_AXIS);
+    _msgJointStates.effort.resize(NB_LEG_AXIS);
 
-  _msgJointStates.name.resize(NB_LEG_AXIS);
-  _msgJointStates.position.resize(NB_LEG_AXIS);
-  _msgJointStates.velocity.resize(NB_LEG_AXIS);
-  _msgJointStates.effort.resize(NB_LEG_AXIS);
-
-  for (int k = 0; k < NB_LEG_AXIS; k++) {
-    _msgJointStates.name[k] = std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[k]);
-    _msgJointStates.position[k] = me->_legJoints->data[k];
-    _msgJointStates.velocity[k] = 0.0f;
-    _msgJointStates.effort[k] = 0.0f;
+    for (int k = 0; k < NB_LEG_AXIS; k++) {
+      _msgJointStates.name[k] = std::string(Leg_Names[_leg_id]) + "_leg_" + std::string(Leg_Axis_Names[k]);
+      _msgJointStates.position[k] = me->_legJoints.data[k];
+      _msgJointStates.velocity[k] = 0.0;
+      _msgJointStates.effort[k] = 0.0;
+    }
   }
   _pubLegJointStates.publish(_msgJointStates);
   // _mutex.unlock();
@@ -229,13 +270,25 @@ void legRobot::readHipBasePose() {
 
 
 void legRobot::performInverseKinematics(){
-  *_legJointsPrev = *_legJoints;
-  int ret = _myPosIkSolver->CartToJnt(*me->_legJointsInit,_footPosFrame,*me->_legJoints);
-  *_legJointsInit = *_legJoints;
+  if (_innerCounterAcc>_decimationAcc)
+  {
+    _legJointsAcc.data = _legAccFilter.update((_legJointsVel.data - _legJointsVelPrev.data) * _freq);
+    _innerCounterAcc=0;
+    _legJointsVelPrev.data = _legJointsVel.data;
+  }
+  if (_innerCounterVel>_decimationVel)
+  {
+    _legJointsVel.data = _legVelFilter.update((_legJoints.data - _legJointsPrev.data) * _freq);
+    _innerCounterVel=0;
+  }
+  _legJointsPrev.data = _legJoints.data;
+  
+  int ret = _myPosIkSolver->CartToJnt(me->_legJointsInit,_footPosFrame,me->_legJoints);
+  _legJointsInit.data = _legJoints.data;
   if (ret<0)
   {   
-    *_legJoints = *_legJointsPrev;
-    *_legJointsInit = *_legJointsPrev;
+    _legJoints.data = _legJointsPrev.data;
+    _legJointsInit.data = _legJointsPrev.data;
     if(_mySolutionFound)
     {
       ROS_ERROR("[%s leg]: No leg IK solutions found yet... move around to find one",Leg_Names[_leg_id]);
@@ -266,16 +319,23 @@ void legRobot::performInverseKinematics(){
 
 //     if ((leg_joints_temp.segment(0,NB_JOINTS_TO_PROCESS).array().abs() > 100 * DEG_TO_RAD).any()==0)
 //     {
-//       _legJoints->data = leg_joints_temp;
+//       _legJoints.data = leg_joints_temp;
 //     } 
     
 //   }
-//    leg_joints_temp = _legJoints->data;
+//    leg_joints_temp = _legJoints.data;
 // }
 
-void legRobot::computeGravityTorque() {
-  _myChainDyn->JntToGravity(*_legJoints,*_gravityTorques);
- // cout<<_gravityTorques->data.transpose()<<endl;
+void legRobot::computeIDTorque() {
+  _myChainDyn->JntToGravity(_legJoints,_gravityTorques);
+  _myChainDyn->JntToCoriolis(_legJoints,_legJointsVel,_coriolisTorques);
+  KDL::JntArray temp_torque;
+  
+  temp_torque.resize(NB_LEG_AXIS); temp_torque.data.setZero();
+  Add(_gravityTorques,_coriolisTorques,temp_torque);
+  Add(temp_torque,_inertialTorques,_totalTorques);
+  
+ // cout<<_inertialTorques.data.transpose()<<endl;
 }
 
 void legRobot::computeNetCoG(){
@@ -287,7 +347,7 @@ void legRobot::computeNetCoG(){
   double linkmass = 0.0;
   
   for (unsigned int i = 0; i < _mySegments.size(); i++) {
-   // _myFKSolver->JntToCart(*me->_legJoints, frame_, i+1);
+   // _myFKSolver->JntToCart(me->_legJoints, frame_, i+1);
     tf::vectorKDLToEigen(_hipPosFrame * _myFrames[i] * _mySegments[i].getInertia().getCOG(), cogLink);
     
     linkmass = _mySegments[i].getInertia().getMass();
@@ -321,8 +381,9 @@ void legRobot::computeFootBaseWrenchForwardDynamics() {
   // WrenchOfGravity_footbase = J^-T * torques_of_gravity_compensation_in_leg
   // This wrench will be "replicated" by the foot platform to alleviate the
   // gravity compensation.
-  _myTorqueFDSolver->JntToCart(*_legJoints, *_gravityTorques,
+  _myTorqueFDSolver->JntToCart(_legJoints, _totalTorques,
                                _supportWrenchEigen);
+  _supportWrenchEigen =  _supportWrenchEigen.cwiseMax(-_maxWrench).cwiseMin(_maxWrench);
   
   publishFootBaseGravityWrench();
 }
@@ -330,17 +391,35 @@ void legRobot::computeFootBaseWrenchForwardDynamics() {
 void legRobot::publishFootBaseGravityWrench() {
   //! Keep send the same valuest that the leg is broadcasting
   // _mutex.lock();
-  std::string frame_name;
-  frame_name = _leg_id == RIGHT ? "/right_leg_foot_base"
-                                : "/left_leg_foot_base";
-  _msgFootBaseWrench.header.stamp = ros::Time::now();
-  _msgFootBaseWrench.header.frame_id = frame_name;
-  _msgFootBaseWrench.wrench.force.x = _supportWrenchEigen(0);
-  _msgFootBaseWrench.wrench.force.y = _supportWrenchEigen(1);
-  _msgFootBaseWrench.wrench.force.z = _supportWrenchEigen(2);
-  _msgFootBaseWrench.wrench.torque.x = _supportWrenchEigen(3);
-  _msgFootBaseWrench.wrench.torque.y = _supportWrenchEigen(4);
-  _msgFootBaseWrench.wrench.torque.z = _supportWrenchEigen(5);
+  if(!_stop)
+  {
+    std::string frame_name;
+    frame_name = _leg_id == RIGHT ? "/right_leg_foot_base"
+                                  : "/left_leg_foot_base";
+    _msgFootBaseWrench.header.stamp = ros::Time::now();
+    _msgFootBaseWrench.header.frame_id = frame_name;
+    _msgFootBaseWrench.wrench.force.x = _supportWrenchEigen(0);
+    _msgFootBaseWrench.wrench.force.y = _supportWrenchEigen(1);
+    _msgFootBaseWrench.wrench.force.z = _supportWrenchEigen(2);
+    _msgFootBaseWrench.wrench.torque.x = _supportWrenchEigen(3);
+    _msgFootBaseWrench.wrench.torque.y = _supportWrenchEigen(4);
+    _msgFootBaseWrench.wrench.torque.z = _supportWrenchEigen(5);
+  }else
+
+  {
+    std::string frame_name;
+    frame_name = _leg_id == RIGHT ? "/right_leg_foot_base"
+                                  : "/left_leg_foot_base";
+    _msgFootBaseWrench.header.stamp = ros::Time::now();
+    _msgFootBaseWrench.header.frame_id = frame_name;
+    _msgFootBaseWrench.wrench.force.x = 0.0f;
+    _msgFootBaseWrench.wrench.force.y = 0.0f;
+    _msgFootBaseWrench.wrench.force.z = 0.0f;
+    _msgFootBaseWrench.wrench.torque.x = 0.0f;
+    _msgFootBaseWrench.wrench.torque.y = 0.0f;
+    _msgFootBaseWrench.wrench.torque.z = 0.0f;
+  }
+
   _pubFootBaseWrench.publish(_msgFootBaseWrench);
   // _mutex.unlock();
 }
@@ -349,7 +428,8 @@ void legRobot::publishFootBaseGravityWrench() {
 
 void legRobot::computedWeightingMatrixes()
 {
-  _myChainDyn->JntToMass(*_legJoints, _myJointSpaceInertiaMatrix);
+  _myChainDyn->JntToMass(_legJoints, _myJointSpaceInertiaMatrix);
+  Multiply(_myJointSpaceInertiaMatrix,_legJointsAcc,_inertialTorques);
   _weightedJointSpaceMassMatrix = _myJointSpaceInertiaMatrix.data;
   //_myVelIKSolver->setWeightJS(_weightedJointSpaceMassMatrix.normalized());
   //_myTorqueFDSolver->setWeightJS(_weightedJointSpaceMassMatrix.normalized());
@@ -358,7 +438,7 @@ void legRobot::computedWeightingMatrixes()
 void legRobot::computeLegManipulability()
 {
   //_myTorqueFDSolver->U;
-  _myJacSolver->JntToJac(*_legJoints,_myJacobian);
+  _myJacSolver->JntToJac(_legJoints,_myJacobian);
   Matrix<double, NB_AXIS_WRENCH, NB_LEG_AXIS> weightedJacobian = _myJacobian.data*_weightedJointSpaceMassMatrix.inverse();
   //_mySVD.compute(_myJacobian.data*_weightedJointSpaceMassMatrix.inverse(),ComputeThinU | ComputeThinV);
   _mySVD.compute(weightedJacobian.normalized(), ComputeThinU | ComputeThinV);
@@ -373,7 +453,7 @@ void legRobot::performChainForwardKinematics()
   KDL::Frame frame_;
   _myFrames.clear();
   for (unsigned int i = 0; i < _mySegments.size(); i++) {
-    _myFKSolver->JntToCart(*me->_legJoints, frame_, i + 1);
+    _myFKSolver->JntToCart(me->_legJoints, frame_, i + 1);
     _myFrames.push_back(frame_);
   }
 }

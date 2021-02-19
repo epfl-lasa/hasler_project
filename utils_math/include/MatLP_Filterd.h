@@ -9,7 +9,7 @@ class MatLP_Filterd
 {
 	public:
         MatLP_Filterd(MatrixXd alphas);
-        ~MatLP_Filterd();
+		MatLP_Filterd();
         MatrixXd update(MatrixXd raw_matrix);
         void setAlphas(MatrixXd alphas);
         void reset();
@@ -20,6 +20,7 @@ class MatLP_Filterd
 		MatrixXd _bias;
 		MatrixXd _old_output;
 		MatrixXd _output;
+		bool _initialized;
 };
 
 #endif /*__MATLP_FILTERD__*/
