@@ -32,6 +32,12 @@ _publishTransforms(publishTransforms)
 	_trocarOrientation.row(id) << 0.0f, 0.0f, 1.0f;
 	id++;
 
+	Eigen::Matrix3f R;
+	R.setIdentity();
+/*	R << -1.0f, 0.0f ,0.0f,
+	     0.0f, -1.0f, 0.0f,
+	     0.0f, 0.0f, 1.0f;*/
+
 	for(int k = 1; k <medialDivision+1; k+=1)
 	{
 		for(int m = 1 ; m < transversalDivision+1; m+=1)
@@ -39,6 +45,7 @@ _publishTransforms(publishTransforms)
 			_trocarPosition.row(id) << -sphereRadius*cos((k-1)*angle1+angle1_offset)*sin((m-1)*angle2),
 			                           sphereRadius*cos((k-1)*angle1+angle1_offset)*cos((m-1)*angle2),
 			                           sphereRadius*sin((k-1)*angle1+angle1_offset);
+           	_trocarPosition.row(id) = (R*_trocarPosition.row(id).transpose()).transpose(); 
 			_trocarPosition.row(id) += _sphereCenter.transpose();
 			_trocarOrientation.row(id) = (_trocarPosition.row(id)-_sphereCenter.transpose()).normalized();
 			id++;

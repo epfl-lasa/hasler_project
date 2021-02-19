@@ -103,7 +103,7 @@ class SurgicalTask
     ros::Subscriber _subOptitrackPose[NB_TRACKED_OBJECTS];  // Subscribe to optitrack markers' pose
     ros::Subscriber _subGripper;
     ros::Subscriber _subFootSharedGrasping[NB_ROBOTS];
-    ros::Subscriber _subToolsTip;
+    ros::Subscriber _subMarkersPosition;
 
     // Publisher declaration
     ros::Publisher _pubDesiredTwist[NB_ROBOTS];           // Desired twist to DS-impdedance controller
@@ -231,6 +231,8 @@ class SurgicalTask
 
     float _humanToolLength[2];
     Eigen::Vector3f _humanToolPosition[2];
+    Eigen::MatrixXf _colorMarkersPosition;
+    Eigen::VectorXi _colorMarkersStatus;
     int _humanToolStatus[2];
     Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];
 
@@ -256,9 +258,11 @@ class SurgicalTask
     bool _firstGripper;
     bool _firstFootSharedGrasping[NB_ROBOTS];
     bool _firstPublish[NB_ROBOTS];
+    bool _firstColorMarkersPosition;
     bool _useFranka;
     Utils<float>::ROBOT_ID _robotID;
     bool _clutching;
+    bool _trackingOK;
 
 
 
@@ -287,7 +291,6 @@ class SurgicalTask
 
     bool _optitrackOK;
     bool _optitrackInitialized;
-    bool _useOptitrack;
     bool _firstOptitrackPose[NB_TRACKED_OBJECTS];  // Monitor first optitrack markers update
     Eigen::Matrix<float,3,NB_TRACKED_OBJECTS> _markersPosition;       // Markers position in optitrack frame
     Eigen::Matrix<float,4,NB_TRACKED_OBJECTS> _markersQuaternion;       // Markers position in optitrack frame
@@ -456,7 +459,7 @@ class SurgicalTask
 
     void updateOptitrackPose(const geometry_msgs::PoseStamped::ConstPtr& msg, int k); 
 
-    void updateToolsTip(const std_msgs::Float64MultiArray::ConstPtr& msg); 
+    void updateMarkersPosition(const std_msgs::Float64MultiArray::ConstPtr& msg); 
 
     uint16_t  checkTrackedMarker(float a, float b);
 

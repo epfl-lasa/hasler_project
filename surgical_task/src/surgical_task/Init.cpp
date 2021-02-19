@@ -139,17 +139,6 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
-  if (!_nh.getParam("SurgicalTask/useOptitrack", _useOptitrack))
-  {
-    ROS_ERROR("Couldn't retrieve the use optitrack boolean");
-    return false;
-  }
-  else
-  {
-    ROS_INFO("Use optitrack: %d\n", (int) _useOptitrack);
-  }
-
-
   _toolOffsetFromEE.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/toolOffsetFromEE", _toolOffsetFromEE))
   {
@@ -617,8 +606,11 @@ void SurgicalTask::initializeTaskParameters()
   if(!_useSim)
   {
     _xRobotBaseOrigin[LEFT].setConstant(0.0f);
-     _xRobotBaseOrigin[LEFT] << 0.0f, 1.04f, 0.0f; // WARNING !!!!!!!!!!!
+     _xRobotBaseOrigin[LEFT] << 0.0f, 0.0f, 0.0f; // WARNING !!!!!!!!!!!
     _xRobotBaseOrigin[RIGHT].setConstant(0.0f);
+    _xRobotBaseOrigin[RIGHT] << 0.0f, 0.79f, 0.0f;
+    _wRRobotBasis[LEFT].setIdentity();
+    _wRRobotBasis[RIGHT].setIdentity();
   }
 
 
@@ -731,6 +723,7 @@ void SurgicalTask::registerTrocars()
     newSettings.c_lflag &= ~(ICANON);                 // disable buffering     
     newSettings.c_cc[VMIN] = 0; 
     newSettings.c_cc[VTIME] = 0; 
+    cfmakeraw(&newSettings);
     tcsetattr( STDIN_FILENO, TCSANOW, &newSettings);  // apply new settings
 
     int c = getchar();  // read character (non-blocking)

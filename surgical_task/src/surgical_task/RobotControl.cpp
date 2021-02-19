@@ -51,6 +51,10 @@ void SurgicalTask::updateTrocarInformation(int r)
   // Compute distance RCM tool
   _dRCMTool[r] = (_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2))-_toolOffsetFromEE[r];
 
+  std::cerr << _xEE[r].transpose() <<std::endl;
+  std::cerr << _x[r].transpose() <<std::endl;
+  std::cerr << _xRCM[r].transpose() <<std::endl;
+  std::cerr << (_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2)) << std::endl;
 	std::cerr << "[SurgicalTask]: " << r << ": Distance RCM-tool: " << _dRCMTool[r] << std::endl;
 	std::cerr << "[SurgicalTask]: " << r << ": Distance RCM-trocar: " << (_trocarPosition[r]-_xRCM[r]).norm() <<std::endl;
 
@@ -99,7 +103,7 @@ void SurgicalTask::insertionStep(int r, int h)
 
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
-    _vd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r]+0.01)-_x[r]; 
+    _vd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r])-_x[r]; 
   }
   else
   {

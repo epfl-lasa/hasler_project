@@ -50,7 +50,7 @@ void SurgicalTask::initializeBeliefs(int r)
 		std::vector<int> tempID;
 	  for(int k = 0; k < _nbTasks; k++)
 	  {
-	    if(_humanToolStatus[k])
+	    if(_colorMarkersStatus[k])
 	    {
 	      tempID.push_back(k);
 	    }
@@ -62,7 +62,7 @@ void SurgicalTask::initializeBeliefs(int r)
 
 	    for(int k = 0; k < tempID.size(); k++)
 	    {
-	      error(k) = _humanToolPosition[tempID[k]].norm();
+	      error(k) = _colorMarkersPosition.row(tempID[k]).norm();
 	    }
       
       float minValue = error.array().minCoeff(&indexMin);
@@ -177,7 +177,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	  {
 	    float alpha = 0.05f; 
 
-	    errork.row(k) = (_wRb[r]*_humanToolPosition[k]).transpose();
+	    errork.row(k) = (_wRb[r]*_colorMarkersPosition.row(k).transpose()).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
 	    std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << std::endl;
 

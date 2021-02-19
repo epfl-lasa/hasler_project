@@ -81,7 +81,10 @@ void SurgicalTask::run()
       if(!_allFramesOK)
       {
         // Receive frames
-        receiveFrames();
+        if(_useSim)
+        {
+          receiveFrames();
+        }
 
         // Check all frames are received
         checkAllFrames();

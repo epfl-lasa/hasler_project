@@ -55,9 +55,10 @@ void SurgicalTask::initializeSubscribersAndPublishers()
       {
         _pubDesiredJoints[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("/left_panda/joint_impedance_controller/qd", 1);
       }
+      
+      _pubRobotData[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("left_lwr/joint_controllers/passive_ds_robot_data", 1);
     } 
 
-    _pubRobotData[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("left_lwr/joint_controllers/passive_ds_robot_data", 1);
     
     if(!_useFranka)
     {
@@ -124,8 +125,17 @@ void SurgicalTask::initializeSubscribersAndPublishers()
         _pubDesiredJoints[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("/right_panda/joint_impedance_controller/qd", 1);
       }
     }   
+
+    if(!_useFranka)
+    {
+      _pubStiffness[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/stiffness", 1);
+    }
+    else
+    {
+      _pubStiffness[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("/right_panda/joint_impedance_controller/k_gains", 1);
+    }
+
     _pubGripper = _nh.advertise<custom_msgs_gripper::GripperInputMsg>("/right/gripperInput", 1);
-    _pubStiffness[RIGHT] = _nh.advertise<std_msgs::Float64MultiArray>("right_lwr/joint_controllers/stiffness", 1);
 
   }
 
@@ -137,24 +147,24 @@ void SurgicalTask::initializeSubscribersAndPublishers()
   _subOptitrackPose[LEFT_HUMAN_TOOL] = _nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/left_tool/pose", 1, boost::bind(&SurgicalTask::updateOptitrackPose,this,_1,LEFT_HUMAN_TOOL),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackPose[RIGHT_HUMAN_TOOL] = _nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/right_tool/pose", 1, boost::bind(&SurgicalTask::updateOptitrackPose,this,_1,RIGHT_HUMAN_TOOL),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
 
-  _subToolsTip = _nh.subscribe("/surgical_task/tools_tip", 1, &SurgicalTask::updateToolsTip, this, ros::TransportHints().reliable().tcpNoDelay());
+  _subMarkersPosition = _nh.subscribe("/surgical_task/markers_position_transformed", 1, &SurgicalTask::updateMarkersPosition, this, ros::TransportHints().reliable().tcpNoDelay());
 
 }
 
 
 void SurgicalTask::checkAllSubscribers()
 {
-  bool robotStatus[NB_ROBOTS];
+  bool robotStatusOK[NB_ROBOTS];
 
   for(int k = 0; k < NB_ROBOTS; k++)
   {
-    robotStatus[k] = !_useRobot[k] || (_firstRobotPose[k] &&  _firstRobotTwist[k]
+    robotStatusOK[k] = !_useRobot[k] || (_firstRobotPose[k] &&  _firstRobotTwist[k]
                       // && _firstDampingMatrix[k] 
                       && _firstJointsUpdate[k] 
                       && _firstHumanInput[k]);
                       // && (_useSim || _wrenchBiasOK[k]);
 
-    if(!robotStatus[k])
+    if(!robotStatusOK[k])
     {
       std::cerr << k << ": Status: " << "use: " << _useRobot[k] 
                 << " pose: " << _firstRobotPose[k] << " twist: " << _firstRobotTwist[k]
@@ -164,7 +174,11 @@ void SurgicalTask::checkAllSubscribers()
     }
   }
 
-  if(_useOptitrack)
+  if(_useSim)
+  {
+    _trackingOK = true;
+  }
+  else if(!_useSim && _toolsTracking == OPTITRACK_BASED)
   {
     _optitrackOK = true;
     for(int k = 0; k < NB_TRACKED_OBJECTS-2; k++)
@@ -180,9 +194,15 @@ void SurgicalTask::checkAllSubscribers()
     {
       optitrackInitialization();
     }
+
+    _trackingOK = _optitrackOK && _optitrackInitialized; 
+  }
+  else if (!_useSim && _toolsTracking == CAMERA_BASED)
+  {
+    _trackingOK = _firstColorMarkersPosition;
   }
 
-  _allSubscribersOK = robotStatus[LEFT] && robotStatus[RIGHT] && (!_useOptitrack || (_optitrackOK && _optitrackInitialized));// && (_useSim ||_firstGripper);
+  _allSubscribersOK = robotStatusOK[LEFT] && robotStatusOK[RIGHT] && _trackingOK;// && (_useSim ||_firstGripper);
 }
 
 
@@ -335,7 +355,7 @@ void SurgicalTask::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg, int
   _wRb[r] = Utils<float>::quaternionToRotationMatrix(_q[r]);
   _x[r] = _xEE[r]+_toolOffsetFromEE[r]*_wRb[r].col(2);
 
-  if((!_useSim && (!_useOptitrack ||  _optitrackInitialized)) ||_firstRobotBaseFrame[r])
+  if((!_useSim && _trackingOK) ||_firstRobotBaseFrame[r])
   {
     _xEE[r] += _xRobotBaseOrigin[r];
     _x[r] += _xRobotBaseOrigin[r];
@@ -343,7 +363,7 @@ void SurgicalTask::updateRobotPose(const geometry_msgs::Pose::ConstPtr& msg, int
 
   if(!_firstRobotPose[r])
   {
-    if((!_useSim && (!_useOptitrack ||  _optitrackInitialized))  || _firstRobotBaseFrame[r])
+    if((!_useSim && _trackingOK)  || _firstRobotBaseFrame[r])
     {
       _firstRobotPose[r] = true;
       _xd[r] = _x[r];
@@ -411,6 +431,8 @@ void SurgicalTask::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int r)
   {
     _firstHumanInput[r]= true;
   }
+
+  std::cerr << r <<  " " << (int)_firstHumanInput[r] << std::endl;
 }
 
 void SurgicalTask::updateFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg, int r)
@@ -536,7 +558,11 @@ void SurgicalTask::updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& 
     _q[r] = Utils<float>::rotationMatrixToQuaternion(_wRb[r]);
     _x[r] = _xEE[r]+_toolOffsetFromEE[r]*_wRb[r].col(2);
 
-
+/*    std::cerr << _xEE[r].transpose() << std::endl;
+    std::cerr << _toolOffsetFromEE[r] << std::endl;
+    std::cerr << _wRb[r].col(2).transpose() << std::endl;
+    std::cerr << _xRobotBaseOrigin[r].transpose() << std::endl;
+    std::cerr << _wRRobotBasis[r] << std::endl;*/
     if(!_useSim ||_firstRobotBaseFrame[r])
     {
       _xEE[r] += _xRobotBaseOrigin[r];
@@ -562,10 +588,42 @@ void SurgicalTask::updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& 
   }
 }
 
-void SurgicalTask::updateToolsTip(const std_msgs::Float64MultiArray::ConstPtr& msg) 
+void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::ConstPtr& msg) 
 {
 
-  _humanToolStatus[LEFT] = (int) msg->data[2];
+  if(!_firstColorMarkersPosition)
+  {
+    _nbTasks = (int)(msg->layout.dim[0].size/3);
+    _beliefsC.resize(_nbTasks);
+    _beliefsC.setConstant(0.0f);
+    _beliefsC(0) = 1.0f;
+    _dbeliefsC.resize(_nbTasks);
+    _dbeliefsC.setConstant(0.0f);
+
+    _colorMarkersPosition.resize(_nbTasks, 3);
+    _colorMarkersStatus.resize(_nbTasks);
+
+    _firstColorMarkersPosition = true;
+  }
+
+
+  if(_firstColorMarkersPosition)
+  {
+    for(int k = 0; k < _nbTasks; k++)
+    {
+      _colorMarkersStatus[k] = msg->data[3*k+2];
+      if(_colorMarkersStatus[k])
+      {
+        _colorMarkersPosition.row(k) << msg->data[3*k], msg->data[3*k+1], 0.0f; 
+      }
+      else
+      {
+        _colorMarkersPosition.row(k).setConstant(0.0f);
+      }
+    }
+
+  }
+/*  _humanToolStatus[LEFT] = (int) msg->data[2];
   if(_humanToolStatus[LEFT])
   {
     _humanToolPosition[LEFT] << msg->data[0],  msg->data[1], 0.0f;
@@ -583,7 +641,7 @@ void SurgicalTask::updateToolsTip(const std_msgs::Float64MultiArray::ConstPtr& m
   {
     _humanToolPosition[RIGHT].setConstant(0.0f);
   }
-
+*/
   // _D[r] << msg->data[0],msg->data[1],msg->data[2],
   //          msg->data[3],msg->data[4],msg->data[5],
   //          msg->data[6],msg->data[7],msg->data[8];
