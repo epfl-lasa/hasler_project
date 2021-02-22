@@ -7,6 +7,7 @@ from std_msgs.msg import Float64MultiArray, Int16MultiArray, MultiArrayDimension
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from surgical_task.msg import SurgicalTaskStateMsg
+import time
 
 
 class CameraManager:
@@ -50,17 +51,33 @@ class CameraManager:
     self.clutchingStateText = ["Off", "On"]
     self.clutchingStateTextPosition = (440,60)
 
-    self.markerText = ["O","B", "Y"]
+    self.markerText = ["R", "G", "Y"]
+    self.markerColor = (0, 255, 255)
+
 
     self.waitText = ["Warning: Center your dominant foot","to start moving the camera !"]
-    self.waitTextPosition = [(100,240),(140,270)]
+    self.waitTextPosition = [(100,210),(140,240)]
     self.waitTextColor = (0,128,255)
+
+    self.eeCollisionText = ["Warning: The robots' end-effectors", "are close to collide !"]
+    self.eeCollisionTextPosition = [(110,270),(190,300)]
+    self.eeCollisionTextColor = (0,128,255)
+    self.showEECollisionText = False
+    self.timeEECollisionText = time.time()
+
+
+    self.toolCollisionText = ["Warning: The camera and instrument", "are close to collide !"]
+    self.toolCollisionTextPosition = [(100,330),(180,360)]
+    self.toolCollisionTextColor = (0,128,255)
+    self.showToolCollisionText = False
+    self.timeToolCollisionText = time.time()
 
     self.currentRobot = 0
     self.useTaskAdaptation = False
     self.clutching = False
     self.wait = False
-
+    self.eeCollision = False
+    self.toolCollision = False
 
     self.imageSize = (0,0)
 
@@ -81,7 +98,7 @@ class CameraManager:
 
         self.toolsTracker.step(self.inputImage, self.imageSize)
 
-        result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskOrange | self.toolsTracker.maskBlue 
+        result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskRed | self.toolsTracker.maskGreen 
                                                                           | self.toolsTracker.maskYellow)
 
 
@@ -104,8 +121,8 @@ class CameraManager:
         self.pubMarkersPositionTransformed.publish(msg)
 
         cv2.imshow('output', self.outputImage) 
-        cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
-        cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
+        cv2.imshow('maskRed', self.toolsTracker.maskRed) 
+        cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
         cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
         # cv2.imshow('result', result) 
         
@@ -119,10 +136,18 @@ class CameraManager:
     for k in range(0,len(self.toolsTracker.markersPosition)):
       # if self.toolsTracker.markersPosition[k][2]:
         # cv2.circle(image, (self.markersPosition[k][0], self.markersPosition[k][1]), 5, (255, 255, 255), -1)
-      cv2.drawMarker(image, (self.toolsTracker.markersPosition[k][0], self.toolsTracker.markersPosition[k][1]), (0, 255, 255),
+      color = (255, 255, 255)
+      if self.toolsTracker.markersPosition[k][2]:
+        color = self.markerColor
+
+      cv2.drawMarker(image, (self.toolsTracker.markersPosition[k][0], self.toolsTracker.markersPosition[k][1]), color,
                                cv2.MARKER_CROSS, 20, 2)
-      cv2.putText(image, self.markerText[k], (self.toolsTracker.markersPosition[k][0],
-                    self.toolsTracker.markersPosition[k][1] - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+
+      pY = self.toolsTracker.markersPosition[k][1] - 25
+      if pY < 10:
+        pY = self.toolsTracker.markersPosition[k][1] + 25
+
+      cv2.putText(image, self.markerText[k], (self.toolsTracker.markersPosition[k][0], pY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
 
   def displaySurgicalTaskState(self,image):
@@ -136,7 +161,6 @@ class CameraManager:
       # print(self.controlPhase[k])
       cv2.putText(image, self.robotTool[k]+self.controlPhaseText[self.controlPhase[k]], self.controlPhaseTextPosition[k], 
                   cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, textColor, 1)
-
 
     self.displayWarnings(image)
 
@@ -156,6 +180,22 @@ class CameraManager:
       for k in range(0,len(self.waitTextPosition)):
         cv2.putText(image, self.waitText[k], self.waitTextPosition[k], cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.waitTextColor, 1)
 
+    if self.eeCollision:
+      if time.time()-self.timeEECollisionText> 1:
+        self.showEECollisionText = not self.showEECollisionText
+        self.timeEECollisionText = time.time()
+      if self.showEECollisionText:
+        for k in range(0,len(self.eeCollisionTextPosition)):
+          cv2.putText(image, self.eeCollisionText[k], self.eeCollisionTextPosition[k], cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.eeCollisionTextColor, 1)
+
+    if self.toolCollision:
+      if time.time()-self.timeToolCollisionText> 1:
+        self.showToolCollisionText = not self.showToolCollisionText
+        self.timeToolCollisionText = time.time()
+      if self.showToolCollisionText:
+        for k in range(0,len(self.toolCollisionTextPosition)):
+          cv2.putText(image, self.toolCollisionText[k], self.toolCollisionTextPosition[k], cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.toolCollisionTextColor, 1)
+
 
   def updateSurgicalTaskState(self, msg):
     self.humanInputMode = msg.humanInputMode 
@@ -167,6 +207,8 @@ class CameraManager:
     self.useTaskAdaptation = msg.useTaskAdaptation
     self.clutching = msg.clutching
     self.wait = msg.wait
+    self.eeCollision = msg.eeCollision
+    self.toolCollision = msg.toolCollision
 
 
   def updateImage(self, msg):
@@ -177,18 +219,18 @@ class CameraManager:
 
 class ToolsTracker:
   def __init__(self):
-    self.lowerHsvBlue = np.array([90,80,60])     
-    self.upperHsvBlue = np.array([104,255,255])
+    self.lowerHsvBlue = np.array([90,54,160])     
+    self.upperHsvBlue = np.array([108,255,255])
 
     # self.lowerHsvRed = np.array([150,60,0]) 
     # self.upperHsvRed = np.array([255,255,255]) 
     # self.lowerHsvRed = np.array([0,10,100]) 
     # self.upperHsvRed = np.array([10,255,255]) 
-    self.lowerHsvRed = np.array([125,0,0]) 
-    self.upperHsvRed = np.array([179,255,255]) 
+    self.lowerHsvRed = np.array([112,0,0]) 
+    self.upperHsvRed = np.array([179,110,255]) 
 
-    self.lowerHsvOrange = np.array([5,140,0]) 
-    self.upperHsvOrange = np.array([10,255,255]) 
+    self.lowerHsvOrange = np.array([0,80,125]) 
+    self.upperHsvOrange = np.array([179,255,255]) 
 
     # self.lowerHsvGreen = np.array([50,40, 0]) 
     # self.upperHsvGreen = np.array([97, 255, 255]) 
@@ -199,7 +241,7 @@ class ToolsTracker:
     # self.upperHsvGreen = np.array([69, 255, 100]) 
     # self.lowerHsvGreen = np.array([80, 0, 80]) 
     # self.upperHsvGreen = np.array([100, 255, 170]) 
-    self.lowerHsvGreen = np.array([80, 40, 80]) 
+    self.lowerHsvGreen = np.array([80, 60, 80]) 
     self.upperHsvGreen = np.array([105, 255, 140]) 
 
 
@@ -208,8 +250,8 @@ class ToolsTracker:
     # self.lowerHsvGreen = np.array([22, 0, 40]) 
     # self.upperHsvGreen = np.array([45, 255, 230]) 
 
-    self.lowerHsvYellow = np.array([18,0,160])
-    self.upperHsvYellow = np.array([42,255,255])
+    self.lowerHsvYellow = np.array([0,0,0])
+    self.upperHsvYellow = np.array([80,255,255])
 
     self.kernel = np.ones((5 ,5), np.uint8)
 
@@ -237,10 +279,10 @@ class ToolsTracker:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) 
 
     # Apply red filter
-    self.maskOrange = self.colorFilter(hsv, imageSize, self.lowerHsvOrange, self.upperHsvOrange, 0)
+    self.maskRed = self.colorFilter(hsv, imageSize, self.lowerHsvRed, self.upperHsvRed, 0)
 
     # Apply green filter
-    self.maskBlue = self.colorFilter(hsv, imageSize, self.lowerHsvBlue, self.upperHsvBlue, 1)
+    self.maskGreen = self.colorFilter(hsv, imageSize, self.lowerHsvGreen, self.upperHsvGreen, 1)
 
 
     # Apply yellow filter

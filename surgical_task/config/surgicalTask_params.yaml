@@ -134,3 +134,18 @@ SurgicalTask/taskAdaptationOverallGain: 1.0
 
 # Gripper range
 SurgicalTask/gripperRange: 20.0
+
+# Enable EE collision avoidance in QP RCM solver
+SurgicalTask/enableEECollisionAvoidance: true
+
+# Safety collision distance between the end-effector sphere and the obstacle
+SurgicalTask/eeSafetyCollisionDistance: 0.03
+
+# Safety collision sphere radius 
+SurgicalTask/eeSafetyCollisionRadius: 0.1 
+
+# Enable Tool collision avoidance in QP RCM solver
+SurgicalTask/enableToolCollisionAvoidance: true
+
+# Safety collision distance between the tool and the obstacle
+SurgicalTask/toolSafetyCollisionDistance: 0.03

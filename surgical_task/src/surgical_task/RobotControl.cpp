@@ -58,16 +58,61 @@ void SurgicalTask::updateTrocarInformation(int r)
 	std::cerr << "[SurgicalTask]: " << r << ": Distance RCM-tool: " << _dRCMTool[r] << std::endl;
 	std::cerr << "[SurgicalTask]: " << r << ": Distance RCM-trocar: " << (_trocarPosition[r]-_xRCM[r]).norm() <<std::endl;
 
-	if(r == LEFT)
-	{
-		_rEERobot[r] = _xEE[r]-_xEE[RIGHT];
-	}
-	else if (r == RIGHT)
-	{
-		_rEERobot[r] = _xEE[r]-_xEE[LEFT];
-	}
+	// if(r == LEFT)
+	// {
+	// 	_rEERobot[r] = _xEE[r]-_xEE[RIGHT];
+	// }
+	// else if (r == RIGHT)
+	// {
+	// 	_rEERobot[r] = _xEE[r]-_xEE[LEFT];
+	// }
+
+  Eigen::Vector3f r21, e1, e2;
+  if(r == LEFT)
+  {
+    _rEERobot[r] = _xEE[r]-_xEE[RIGHT];
+    e1 = _wRb[r].col(2);
+    e2 = _wRb[RIGHT].col(2);
+  }
+  else if (r == RIGHT)
+  {
+    _rEERobot[r] = _xEE[r]-_xEE[LEFT];
+    e1 = _wRb[r].col(2);
+    e2 = _wRb[LEFT].col(2);
+  }
+
+  r21 = _rEERobot[r];
+
+
+  float l1 = 0.0f, l2 = 0.0f;
+  float den = 1.0f-std::pow(e1.dot(e2),2.0f);
+
+
+  if(den > FLT_EPSILON)
+  {
+    l1 = -(r21.dot(e1)-e1.dot(e2)*r21.dot(e2))/den;
+    l1 = std::max(0.0f, std::min(l1, _toolOffsetFromEE[r]));
+    l2 = (r21.dot(e2)-e1.dot(e2)*r21.dot(e1))/den;
+    if(r == LEFT)
+    {
+      l2 = std::max(0.0f, std::min(l2, _toolOffsetFromEE[RIGHT]));
+    }
+    else
+    {
+      l2 = std::max(0.0f, std::min(l2, _toolOffsetFromEE[LEFT]));
+    }
+
+    _rToolCollision[r] = r21+l1*e1-l2*e2;
+    _toolCollisionOffset[r] = l1;
+  }
+  else
+  {
+    _rToolCollision[r] = r21;
+    _toolCollisionOffset[r] = _toolOffsetFromEE[r];
+  }
 
 	std::cerr << "[SurgicalTask]: " << r << ": Distance EE-Robot: " << _rEERobot[r].norm() << " " << _rEERobot[r].norm()-2*0.1f <<std::endl;
+  std::cerr << "[SurgicalTask]: " << r << ": Distance Tool-Tool: " << _rToolCollision[r].transpose() << _rToolCollision[r].norm() << " " << l1 << " " << l2 <<std::endl;
 
 
 }
@@ -165,9 +210,10 @@ void SurgicalTask::insertionStep(int r, int h)
 
     // bool res = _qpSolverRCM[r].step3(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
     //                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f);
-    bool res = _qpSolverRCMCollision[r].step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
-                                     _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                     _rEERobot[r].normalized(), _rEERobot[r].norm()-2*0.1f);
+    bool res = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                             (_rEERobot[r].norm()-2.0f*_eeSafetyCollisionRadius)*_rEERobot[r].normalized(), _rToolCollision[r],
+                                             _toolCollisionOffset[r]);
     // bool res = _qpSolverRCMCollision2[r].step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
     //                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                  _rEERobot[r].normalized(), _rEERobot[r].norm()-2*0.1f);
@@ -276,9 +322,10 @@ void SurgicalTask::operationStep(int r, int h)
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     // bool res = _qpSolverRCM[r].step3(_ikJoints[r], _ikJoints[r], _trocarPosition[r],
     //          _toolOffsetFromEE[r], _vdTool[r], _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f);
-    bool res = _qpSolverRCMCollision[r].step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                     _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                     _rEERobot[r].normalized(), _rEERobot[r].norm()-2*0.1f);
+    bool res = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                              (_rEERobot[r].norm()-2.0f*_eeSafetyCollisionRadius)*_rEERobot[r].normalized(), _rToolCollision[r],
+                                             _toolCollisionOffset[r]);
     // bool res = _qpSolverRCMCollision2[r].step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
     //                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                  _rEERobot[r].normalized(), _rEERobot[r].norm()-2*0.1f);

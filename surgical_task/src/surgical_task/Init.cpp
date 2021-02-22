@@ -500,6 +500,57 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Gripper range: %f\n", _gripperRange);
   }
 
+
+  if (!_nh.getParam("SurgicalTask/enableEECollisionAvoidance", _enableEECollisionAvoidance))
+  {
+    ROS_ERROR("Couldn't retrieve the EE enable collision avoidance boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Enable EE collision avoidance: %d\n", (int) _enableEECollisionAvoidance);
+  }
+
+  if (!_nh.getParam("SurgicalTask/enableToolCollisionAvoidance", _enableToolCollisionAvoidance))
+  {
+    ROS_ERROR("Couldn't retrieve the enable Tool collision avoidance boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Enable Tool collision avoidance: %d\n", (int) _enableToolCollisionAvoidance);
+  }
+
+  if (!_nh.getParam("SurgicalTask/eeSafetyCollisionDistance", _eeSafetyCollisionDistance))
+  {
+    ROS_ERROR("Couldn't retrieve the EE safety collision distance");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("EE safety collision distance: %f\n", _eeSafetyCollisionDistance);
+  }
+
+  if (!_nh.getParam("SurgicalTask/eeSafetyCollisionRadius", _eeSafetyCollisionRadius))
+  {
+    ROS_ERROR("Couldn't retrieve the EE safety collision radius");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("EE safety collision radius: %f\n", _eeSafetyCollisionRadius);
+  }
+
+  if (!_nh.getParam("SurgicalTask/toolSafetyCollisionDistance", _toolSafetyCollisionDistance))
+  {
+    ROS_ERROR("Couldn't retrieve the Tool safety collision distance");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Tool safety collision distance: %f\n", _toolSafetyCollisionDistance);
+  }
+
   return true;
 }
 
@@ -704,10 +755,24 @@ void SurgicalTask::initializeTaskParameters()
     _robotID = Utils<float>::ROBOT_ID::KUKA_LWR;
   }
 
+
+  if(_useRobot[LEFT] && _useRobot[RIGHT])
+  {
+    _qpSolverRCMCollision[LEFT] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);  
+    _qpSolverRCMCollision[RIGHT] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                            _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);    
+  }
+  else
+  {
+    _qpSolverRCMCollision[LEFT] = new QpSolverRCMCollision();
+    _qpSolverRCMCollision[RIGHT] = new QpSolverRCMCollision();
+  }
+
   _qpSolverRCM[LEFT].setRobot(_robotID);
   _qpSolverRCM[RIGHT].setRobot(_robotID);
-  _qpSolverRCMCollision[LEFT].setRobot(_robotID);
-  _qpSolverRCMCollision[RIGHT].setRobot(_robotID);
+  _qpSolverRCMCollision[LEFT]->setRobot(_robotID);
+  _qpSolverRCMCollision[RIGHT]->setRobot(_robotID);
   _qpSolverRCMCollision2[LEFT].setRobot(_robotID);
   _qpSolverRCMCollision2[RIGHT].setRobot(_robotID);
 }

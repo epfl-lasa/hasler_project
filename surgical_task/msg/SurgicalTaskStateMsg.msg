@@ -6,3 +6,5 @@ int8 currentRobot # LEFT = 0, RIGHT = 1
 bool useTaskAdaptation
 bool clutching
 bool wait  
+bool eeCollision
+bool toolCollision

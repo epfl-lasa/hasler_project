@@ -340,6 +340,17 @@ void SurgicalTask::publishData()
   _msgSurgicalTaskState.useTaskAdaptation = _useTaskAdaptation;
   _msgSurgicalTaskState.clutching = _clutching;
   _msgSurgicalTaskState.wait = _wait;
+  _msgSurgicalTaskState.eeCollision = false;
+  if(_useRobot[LEFT] && _useRobot[RIGHT] && std::fabs(_rEERobot[LEFT].norm()-2.0f*_eeSafetyCollisionRadius-_eeSafetyCollisionDistance)< 5.0e-3f)
+  {
+    _msgSurgicalTaskState.eeCollision = true;
+  }
+  _msgSurgicalTaskState.toolCollision = false;
+  if(_useRobot[LEFT] && _useRobot[RIGHT] && std::fabs(_rToolCollision[LEFT].norm()-_toolSafetyCollisionDistance)< 5.0e-3f)
+  {
+    _msgSurgicalTaskState.toolCollision = true;
+  }
+
 
   _pubSurgicalTaskState.publish(_msgSurgicalTaskState);
 }

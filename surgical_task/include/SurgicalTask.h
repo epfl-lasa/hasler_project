@@ -215,6 +215,13 @@ class SurgicalTask
     Eigen::Vector3f _operationOffsetRangePPM[NB_ROBOTS];
     Eigen::Vector3f _operationMinOffsetPVM[NB_ROBOTS];
     Eigen::Vector3f _operationMaxOffsetPVM[NB_ROBOTS];
+    bool _enableEECollisionAvoidance;
+    bool _enableToolCollisionAvoidance;
+    float _eeSafetyCollisionDistance;
+    float _eeSafetyCollisionRadius;
+    float _toolSafetyCollisionDistance;
+
+
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -321,7 +328,7 @@ class SurgicalTask
     QpSolverRCM _qpSolverRCM[NB_ROBOTS];    
     QpSolverRCM3 _qpSolverRCM3[NB_ROBOTS];
     CvxgenSolverRCM _cvxgenSolverRCM;
-    QpSolverRCMCollision _qpSolverRCMCollision[NB_ROBOTS];    
+    QpSolverRCMCollision* _qpSolverRCMCollision[NB_ROBOTS];    
     QpSolverRCMCollision2 _qpSolverRCMCollision2[NB_ROBOTS];    
 
     Eigen::VectorXi _pillarsId;
@@ -350,7 +357,8 @@ class SurgicalTask
     bool _allSubscribersOK = false;
     bool _allFramesOK = false;
     Eigen::Vector3f _rEERobot[NB_ROBOTS];
-
+    Eigen::Vector3f _rToolCollision[NB_ROBOTS];
+    float _toolCollisionOffset[NB_ROBOTS];
 
   public:
 
