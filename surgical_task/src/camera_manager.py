@@ -48,6 +48,11 @@ class CameraManager:
     self.cameraModeText = ["Joystick","Assistance"]
     self.cameraModeTextPosition = (20,60)
 
+    self.cameraWorkspaceCollisionText = "Workspace limits reached !"
+    self.cameraWorkspaceCollisionTextPosition = (20,90) 
+    self.showCameraWorkspaceCollisionText = False
+    self.timeCameraWorkspaceCollisionText = time.time()
+
     self.clutchingStateText = ["Off", "On"]
     self.clutchingStateTextPosition = (440,60)
 
@@ -56,28 +61,29 @@ class CameraManager:
 
 
     self.waitText = ["Warning: Center your dominant foot","to start moving the camera !"]
-    self.waitTextPosition = [(100,210),(140,240)]
-    self.waitTextColor = (0,128,255)
+    self.waitTextPosition = [(120,210),(160,240)]
+    self.waitTextColor = (0,100,255)
 
     self.eeCollisionText = ["Warning: The robots' end-effectors", "are close to collide !"]
-    self.eeCollisionTextPosition = [(110,270),(190,300)]
-    self.eeCollisionTextColor = (0,128,255)
+    self.eeCollisionTextPosition = [(130,270),(210,300)]
+    self.eeCollisionTextColor = (0,100,255)
     self.showEECollisionText = False
     self.timeEECollisionText = time.time()
 
 
     self.toolCollisionText = ["Warning: The camera and instrument", "are close to collide !"]
-    self.toolCollisionTextPosition = [(100,330),(180,360)]
-    self.toolCollisionTextColor = (0,128,255)
+    self.toolCollisionTextPosition = [(130,330),(210,360)]
+    self.toolCollisionTextColor = (0,100,255)
     self.showToolCollisionText = False
     self.timeToolCollisionText = time.time()
 
     self.currentRobot = 0
     self.useTaskAdaptation = False
     self.clutching = False
-    self.wait = False
-    self.eeCollision = False
-    self.toolCollision = False
+    self.wait = True
+    self.eeCollision = True
+    self.toolCollision = True
+    self.workspaceCollision = True
 
     self.imageSize = (0,0)
 
@@ -147,20 +153,22 @@ class CameraManager:
       if pY < 10:
         pY = self.toolsTracker.markersPosition[k][1] + 25
 
-      cv2.putText(image, self.markerText[k], (self.toolsTracker.markersPosition[k][0], pY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+      cv2.putText(image, self.markerText[k], (self.toolsTracker.markersPosition[k][0], pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
 
 
   def displaySurgicalTaskState(self,image):
     for k in range(0,2):
       textColor = (220,220,220)
-      if k == self.currentRobot:
+      if k == self.currentRobot and self.humanInputMode == 1:
         textColor = self.robotColor[k] 
         cv2.rectangle(image, (0, 0), (self.imageSize[0]-1,self.imageSize[1]-1), textColor, 2)
-        self.displayRobotSpecificState(image,k)
+      elif self.humanInputMode == 0:
+        textColor = self.robotColor[k]
 
+      self.displayRobotSpecificState(image,k)
       # print(self.controlPhase[k])
       cv2.putText(image, self.robotTool[k]+self.controlPhaseText[self.controlPhase[k]], self.controlPhaseTextPosition[k], 
-                  cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, textColor, 1)
+                  cv2.FONT_HERSHEY_TRIPLEX, 0.6, textColor, 1)
 
     self.displayWarnings(image)
 
@@ -168,17 +176,17 @@ class CameraManager:
   def displayRobotSpecificState(self,image, id):
     if id == 0:
       cv2.putText(image, "Mode: "+ (self.cameraModeText[1] if self.useTaskAdaptation else self.cameraModeText[0]), 
-                  self.cameraModeTextPosition, cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.robotColor[id], 1)
+                  self.cameraModeTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
     else:
       cv2.putText(image, "Clutching: " + (self.clutchingStateText[1] if self.clutching else self.clutchingStateText[0]), 
-                  self.clutchingStateTextPosition, cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.robotColor[id], 1)
+                  self.clutchingStateTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
 
   def displayWarnings(self, image):
     if self.wait:
       for k in range(0,len(self.waitTextPosition)):
-        cv2.putText(image, self.waitText[k], self.waitTextPosition[k], cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.waitTextColor, 1)
+        cv2.putText(image, self.waitText[k], self.waitTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.waitTextColor, 1)
 
     if self.eeCollision:
       if time.time()-self.timeEECollisionText> 1:
@@ -186,7 +194,7 @@ class CameraManager:
         self.timeEECollisionText = time.time()
       if self.showEECollisionText:
         for k in range(0,len(self.eeCollisionTextPosition)):
-          cv2.putText(image, self.eeCollisionText[k], self.eeCollisionTextPosition[k], cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.eeCollisionTextColor, 1)
+          cv2.putText(image, self.eeCollisionText[k], self.eeCollisionTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.eeCollisionTextColor, 1)
 
     if self.toolCollision:
       if time.time()-self.timeToolCollisionText> 1:
@@ -194,8 +202,17 @@ class CameraManager:
         self.timeToolCollisionText = time.time()
       if self.showToolCollisionText:
         for k in range(0,len(self.toolCollisionTextPosition)):
-          cv2.putText(image, self.toolCollisionText[k], self.toolCollisionTextPosition[k], cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, self.toolCollisionTextColor, 1)
+          cv2.putText(image, self.toolCollisionText[k], self.toolCollisionTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.toolCollisionTextColor, 1)
 
+    if self.workspaceCollision:
+      if time.time()-self.timeCameraWorkspaceCollisionText> 1:
+        self.showCameraWorkspaceCollisionText = not self.showCameraWorkspaceCollisionText
+        self.timeCameraWorkspaceCollisionText = time.time()
+      if self.showCameraWorkspaceCollisionText:
+        textColor = self.robotColor[0] 
+        print(textColor)
+        cv2.putText(image, self.cameraWorkspaceCollisionText, self.cameraWorkspaceCollisionTextPosition, 
+                    cv2.FONT_HERSHEY_TRIPLEX, 0.6, textColor, 1)
 
   def updateSurgicalTaskState(self, msg):
     self.humanInputMode = msg.humanInputMode 
@@ -209,6 +226,7 @@ class CameraManager:
     self.wait = msg.wait
     self.eeCollision = msg.eeCollision
     self.toolCollision = msg.toolCollision
+    self.workspaceCollision = msg.workspaceCollision
 
 
   def updateImage(self, msg):

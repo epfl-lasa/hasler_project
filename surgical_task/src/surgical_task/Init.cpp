@@ -551,6 +551,16 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Tool safety collision distance: %f\n", _toolSafetyCollisionDistance);
   }
 
+  if (!_nh.getParam("SurgicalTask/enableWorkspaceCollisionAvoidance", _enableWorkspaceCollisionAvoidance))
+  {
+    ROS_ERROR("Couldn't retrieve the enable Workspace collision avoidance boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Enable Workspace collision avoidance: %d\n", (int) _enableWorkspaceCollisionAvoidance);
+  }
+
   return true;
 }
 
@@ -756,17 +766,26 @@ void SurgicalTask::initializeTaskParameters()
   }
 
 
-  if(_useRobot[LEFT] && _useRobot[RIGHT])
+  if(!(_useRobot[LEFT] && _useRobot[RIGHT]))
   {
-    _qpSolverRCMCollision[LEFT] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
-                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);  
-    _qpSolverRCMCollision[RIGHT] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
-                                                            _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);    
+    _enableEECollisionAvoidance = false;
+    _enableToolCollisionAvoidance = false;
   }
-  else
+
+  for(int r = 0; r < NB_ROBOTS; r++)
   {
-    _qpSolverRCMCollision[LEFT] = new QpSolverRCMCollision();
-    _qpSolverRCMCollision[RIGHT] = new QpSolverRCMCollision();
+    if(_linearMapping[r] == POSITION_VELOCITY)
+    {
+      _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
+                                                          _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
+                                                          _operationMaxOffsetPVM[r]);        
+    }
+    else
+    {
+      _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
+    }
   }
 
   _qpSolverRCM[LEFT].setRobot(_robotID);

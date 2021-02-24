@@ -220,6 +220,7 @@ class SurgicalTask
     float _eeSafetyCollisionDistance;
     float _eeSafetyCollisionRadius;
     float _toolSafetyCollisionDistance;
+    bool _enableWorkspaceCollisionAvoidance;
 
 
 
@@ -328,7 +329,8 @@ class SurgicalTask
     QpSolverRCM _qpSolverRCM[NB_ROBOTS];    
     QpSolverRCM3 _qpSolverRCM3[NB_ROBOTS];
     CvxgenSolverRCM _cvxgenSolverRCM;
-    QpSolverRCMCollision* _qpSolverRCMCollision[NB_ROBOTS];    
+    QpSolverRCMCollision* _qpSolverRCMCollision[NB_ROBOTS];   
+    QpSolverRCMCollision::Result _qpResult[NB_ROBOTS];
     QpSolverRCMCollision2 _qpSolverRCMCollision2[NB_ROBOTS];    
 
     Eigen::VectorXi _pillarsId;

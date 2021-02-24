@@ -210,7 +210,7 @@ void SurgicalTask::insertionStep(int r, int h)
 
     // bool res = _qpSolverRCM[r].step3(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
     //                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f);
-    bool res = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
                                              (_rEERobot[r].norm()-2.0f*_eeSafetyCollisionRadius)*_rEERobot[r].normalized(), _rToolCollision[r],
                                              _toolCollisionOffset[r]);
@@ -322,10 +322,10 @@ void SurgicalTask::operationStep(int r, int h)
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     // bool res = _qpSolverRCM[r].step3(_ikJoints[r], _ikJoints[r], _trocarPosition[r],
     //          _toolOffsetFromEE[r], _vdTool[r], _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f);
-    bool res = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
                                               _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
                                               (_rEERobot[r].norm()-2.0f*_eeSafetyCollisionRadius)*_rEERobot[r].normalized(), _rToolCollision[r],
-                                             _toolCollisionOffset[r]);
+                                             _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
     // bool res = _qpSolverRCMCollision2[r].step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
     //                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                  _rEERobot[r].normalized(), _rEERobot[r].norm()-2*0.1f);
@@ -444,11 +444,15 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
         }
       }
 
+
+
       std::cerr << "[SurgicalTask]: " << r << " Safety collision: " << (int) safetyCollison << std::endl; 
       std::cerr << "[SurgicalTask]: " << r << " Offset: " << currentOffset(0) << " " << _operationMinOffsetPVM[r](0) << " " << _operationMaxOffsetPVM[r](0) << std::endl;
       std::cerr << "[SurgicalTask]: " << r << " Offset: " << currentOffset(1) << " " << _operationMinOffsetPVM[r](1) << " " << _operationMaxOffsetPVM[r](1) << std::endl;
       std::cerr << "[SurgicalTask]: " << r << " Offset: " << currentOffset(2) << " " << _operationMinOffsetPVM[r](2) << " " << _operationMaxOffsetPVM[r](2) << std::endl;        
     }
+
+    std::cerr << "[SurgicalTask]: " << r << " Current offset: " << (_xIK[r]-_xd0[r]).transpose();
 
     _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
     _selfRotationCommand[r] = Utils<float>::bound(_selfRotationCommand[r],-_toolTipSelfAngularVelocityLimit,_toolTipSelfAngularVelocityLimit);

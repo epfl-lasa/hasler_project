@@ -11,73 +11,90 @@ USING_NAMESPACE_QPOASES
 
 class QpSolverRCMCollision
 {
+
+	public:
+		struct Result
+		{
+			bool res;
+			bool eeCollisionConstraintActive;
+			bool toolCollisionConstraintActive;
+			bool workspaceCollisionConstraintActive;
+		};
+
 	private:
 	
-	//!ros variables
+		//!ros variables
 
-	const int _nbVariables;
-	const int _nbJoints;
-	int _nbConstraints;
-	const int _nbTasks;
-	const int _nbSlacks;
+		const int _nbVariables;
+		const int _nbJoints;
+		int _nbConstraints;
+		const int _nbTasks;
+		const int _nbSlacks;
 
-	const float _rcmTolerance;
-	const float _toolTolerance;
-	const float _phiTolerance;
+		const float _rcmTolerance;
+		const float _toolTolerance;
+		const float _phiTolerance;
 
-	Eigen::MatrixXf _H;
-	Eigen::MatrixXf _A;
-	Eigen::VectorXf _g;
-	Eigen::VectorXf _lb;
-	Eigen::VectorXf _ub;
-	Eigen::VectorXf _lbA;
-	Eigen::VectorXf _ubA;
+		Eigen::MatrixXf _H;
+		Eigen::MatrixXf _A;
+		Eigen::VectorXf _g;
+		Eigen::VectorXf _lb;
+		Eigen::VectorXf _ub;
+		Eigen::VectorXf _lbA;
+		Eigen::VectorXf _ubA;
 
-	qpOASES::real_t* _H_qp;
-	qpOASES::real_t* _A_qp;
-	qpOASES::real_t* _g_qp;
-	qpOASES::real_t* _lb_qp;
-	qpOASES::real_t* _ub_qp;
-	qpOASES::real_t* _lbA_qp;
-	qpOASES::real_t* _ubA_qp;
+		qpOASES::real_t* _H_qp;
+		qpOASES::real_t* _A_qp;
+		qpOASES::real_t* _g_qp;
+		qpOASES::real_t* _lb_qp;
+		qpOASES::real_t* _ub_qp;
+		qpOASES::real_t* _lbA_qp;
+		qpOASES::real_t* _ubA_qp;
 
 
-	//!subscribers and publishers declaration    
-    //!boolean variables
-    
-    bool _first;
-    float _rcmGain;
-    float _toolGain;
-    Eigen::VectorXf _slackGains, _slackLimits;
+		//!subscribers and publishers declaration    
+	    //!boolean variables
+	    
+	    bool _first;
+	    float _rcmGain;
+	    float _toolGain;
+	    Eigen::VectorXf _slackGains, _slackLimits;
 
-    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits;
+	    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits;
 
-    SQProblem* _sqp;
+	    SQProblem* _sqp;
 
-	Utils<float>::ROBOT_ID _robotID;
-	
-	bool _enableEECollisionAvoidance;
-	bool _enableToolCollisionAvoidance;
-	int _idEECollisionConstraint;
-	int _idToolCollisionConstraint;
+		Utils<float>::ROBOT_ID _robotID;
+		
+		bool _enableEECollisionAvoidance;
+		bool _enableToolCollisionAvoidance;
+		bool _enableWorkspaceCollisionAvoidance;
+		int _idEECollisionConstraint;
+		int _idToolCollisionConstraint;
+		int _idWorkspaceCollisionConstraint;
 
-	float _eeSafetyCollisionDistance;
-	float _toolSafetyCollisionDistance;
+		float _eeSafetyCollisionDistance;
+		float _toolSafetyCollisionDistance;
 
-    static QpSolverRCMCollision* me;
+		Eigen::Vector3f _workspaceMinOffset;
+		Eigen::Vector3f _workspaceMaxOffset;
+
+	    static QpSolverRCMCollision* me;
 
 	public:
 		QpSolverRCMCollision(bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
-			                 bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f);
+			                 bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f,
+			                 bool enableWorkspaceCollisionAvoidance = false, Eigen::Vector3f workspaceMinOffset = Eigen::Vector3f::Zero(), 
+			                 Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero());
 
 		~QpSolverRCMCollision();
 
 		void setRobot(Utils<float>::ROBOT_ID robotID);
 
-		bool step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::Vector3f xTrocar, float toolOffset, Eigen::Vector3f vdTool, float phid,
-		          float dt, Eigen::Vector3f xRobotBasis = Eigen::Vector3f::Zero(), Eigen::Matrix3f wRRobotBasis = Eigen::Matrix3f::Identity(), 
-	              float depthGain = 1.0f, Eigen::Vector3f rEEObstacle = Eigen::Vector3f::Zero(), Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(),
-	              float toolCollisionOffset = 0.0f);
+		Result step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::Vector3f xTrocar, float toolOffset, Eigen::Vector3f vdTool, float phid,
+		            float dt, Eigen::Vector3f xRobotBasis = Eigen::Vector3f::Zero(), Eigen::Matrix3f wRRobotBasis = Eigen::Matrix3f::Identity(), 
+	                float depthGain = 1.0f, Eigen::Vector3f rEEObstacle = Eigen::Vector3f::Zero(), Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(),
+	                float toolCollisionOffset = 0.0f, bool useWorkspaceLimits = false, Eigen::Vector3f currentOffset = Eigen::Vector3f::Zero());
 
 
 		void setParameters(float rcmGain, float toolGain, Eigen::VectorXf slackGains,

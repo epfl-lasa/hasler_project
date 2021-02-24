@@ -25,14 +25,14 @@ SurgicalTask/jointImpedanceStiffnessGain: [700, 700, 700, 700, 500, 500, 300]
 SurgicalTask/dominantInput: 1
 
 # Use sim
-SurgicalTask/useSim: false
+SurgicalTask/useSim: true
 
 # Tool length [LEFT, RIGHT]
 # SurgicalTask/toolOffsetFromEE: [0.513, 0.54]
 # SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
 # SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
-SurgicalTask/toolOffsetFromEE: [0.398, 0.53]
-# SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
+# SurgicalTask/toolOffsetFromEE: [0.398, 0.53]
+SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
 
 # Insertion distance in position velocity mapping [LEFT, RIGHT]
 SurgicalTask/insertionDistancePVM: [-0.03, -0.03]
@@ -88,12 +88,12 @@ SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.05,
                                        0.12, 0.12, 0.1]
 
 # Min offset limits in operation phase for position velocity mapping 
-SurgicalTask/operationMinOffsetPVM: [-0.01, -0.11, -0.1,
-                                     -0.01, -0.11, -0.1]
+SurgicalTask/operationMinOffsetPVM: [-0.02, -0.08, -0.1,
+                                     -0.02, -0.02, -0.1]
 
 # Max offset limits in operation phase for position velocity mapping 
-SurgicalTask/operationMaxOffsetPVM: [0.11, 0.01, 0,
-                                     0.11, 0.01, 0]
+SurgicalTask/operationMaxOffsetPVM: [0.08, 0.02, 0,
+                                     0.08, 0.08, 0]
 
 
 # Trocar space linear ds gain in position position mapping
@@ -142,10 +142,14 @@ SurgicalTask/enableEECollisionAvoidance: true
 SurgicalTask/eeSafetyCollisionDistance: 0.03
 
 # Safety collision sphere radius 
-SurgicalTask/eeSafetyCollisionRadius: 0.1 
+SurgicalTask/eeSafetyCollisionRadius: 0.1
 
 # Enable Tool collision avoidance in QP RCM solver
 SurgicalTask/enableToolCollisionAvoidance: true
 
 # Safety collision distance between the tool and the obstacle
 SurgicalTask/toolSafetyCollisionDistance: 0.03
+
+# Enable workspace collision avoidance in QP RCM solver
+SurgicalTask/enableWorkspaceCollisionAvoidance: true
+
