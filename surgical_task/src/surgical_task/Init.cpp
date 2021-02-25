@@ -3,6 +3,18 @@
 
 bool SurgicalTask::readConfigurationParameters()
 {
+
+  if (!_nh.getParam("SurgicalTask/debug", _debug))
+  {
+    ROS_ERROR("Couldn't retrieve the use Franka boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Use Franka: %d\n", (int) _debug);
+  }
+
+
  	_useRobot.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/useRobot", _useRobot))
   {
@@ -729,31 +741,35 @@ void SurgicalTask::initializeTaskParameters()
   //   _pillarsPosition.row(2) << p0(0)+0.064, p0(1)-0.064, p0(2);    
   // }
 
-  // Read Neural network matrices
-  _p[0].resize(50,4);
-  _p[1].resize(50,1);
-  _p[2].resize(3,50);
-  _p[3].resize(3,1);
-
-  for(int id = 0; id < 4; id++)
+  if(_toolsTracking == OPTITRACK_BASED)
   {
-    std::ifstream file(ros::package::getPath(std::string("surgical_task"))+"/p"+std::to_string(id+1)+".txt");   
-    if (file.is_open())
+    // Read Neural network matrices
+    _p[0].resize(50,4);
+    _p[1].resize(50,1);
+    _p[2].resize(3,50);
+    _p[3].resize(3,1);
+
+    for(int id = 0; id < 4; id++)
     {
-      for(int k = 0; k < _p[id].rows(); k++)
+      std::ifstream file(ros::package::getPath(std::string("surgical_task"))+"/p"+std::to_string(id+1)+".txt");   
+      if (file.is_open())
       {
-        for(int m = 0; m < _p[id].cols(); m++)
+        for(int k = 0; k < _p[id].rows(); k++)
         {
-          file >> _p[id](k,m);
+          for(int m = 0; m < _p[id].cols(); m++)
+          {
+            file >> _p[id](k,m);
+          }
         }
+        std::cerr << _p[id] << std::endl << std::endl;
+        file.close();
       }
-      std::cerr << _p[id] << std::endl << std::endl;
-      file.close();
+      else
+      {
+        // return false;
+      }
     }
-    else
-    {
-      // return false;
-    }
+
   }
 
   if(_useFranka)

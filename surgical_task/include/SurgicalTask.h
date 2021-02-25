@@ -32,6 +32,7 @@
 #include "custom_msgs_gripper/GripperInputMsg.h"
 #include "custom_msgs_gripper/SharedGraspingMsg.h"
 #include "surgical_task/SurgicalTaskStateMsg.h"
+#include "surgical_task/RobotStateMsg.h"
 #include <dynamic_reconfigure/server.h>
 #include "Eigen/Eigen"
 #include <tf/transform_listener.h>
@@ -118,6 +119,7 @@ class SurgicalTask
     ros::Publisher _pubRobotData[NB_ROBOTS];
     ros::Publisher _pubStiffness[NB_ROBOTS];
     ros::Publisher _pubSurgicalTaskState;
+    ros::Publisher _pubRobotState[NB_ROBOTS];
     
     // Messages declaration
     geometry_msgs::Pose _msgRealPose;
@@ -132,6 +134,7 @@ class SurgicalTask
     custom_msgs_gripper::GripperOutputMsg _msgGripperOutput;  
     std_msgs::Float64MultiArray _msgStiffness;  
     surgical_task::SurgicalTaskStateMsg _msgSurgicalTaskState;
+    surgical_task::RobotStateMsg _msgRobotState;
 
     // Tool characteristics
     float _toolMass[NB_ROBOTS];                            // Tool mass [kg]
@@ -246,6 +249,7 @@ class SurgicalTask
 
 
     // Booleans
+    bool _debug;
     std::vector<bool> _useRobot;
     bool _useSim;
     bool _firstRobotPose[NB_ROBOTS];       // Monitor the first robot pose update
@@ -358,7 +362,7 @@ class SurgicalTask
     bool _insertionFinished[NB_ROBOTS];
     bool _allSubscribersOK = false;
     bool _allFramesOK = false;
-    Eigen::Vector3f _rEERobot[NB_ROBOTS];
+    Eigen::Vector3f _rEECollision[NB_ROBOTS];
     Eigen::Vector3f _rToolCollision[NB_ROBOTS];
     float _toolCollisionOffset[NB_ROBOTS];
 

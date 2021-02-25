@@ -53,16 +53,17 @@ class QpSolverRCMCollision
 
 
 		//!subscribers and publishers declaration    
-	    //!boolean variables
-	    
-	    bool _first;
-	    float _rcmGain;
-	    float _toolGain;
-	    Eigen::VectorXf _slackGains, _slackLimits;
+    //!boolean variables
+  
+  	bool _debug;  
+    bool _first;
+    float _rcmGain;
+    float _toolGain;
+    Eigen::VectorXf _slackGains, _slackLimits;
 
-	    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits;
+    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits;
 
-	    SQProblem* _sqp;
+    SQProblem* _sqp;
 
 		Utils<float>::ROBOT_ID _robotID;
 		
@@ -79,7 +80,7 @@ class QpSolverRCMCollision
 		Eigen::Vector3f _workspaceMinOffset;
 		Eigen::Vector3f _workspaceMaxOffset;
 
-	    static QpSolverRCMCollision* me;
+    static QpSolverRCMCollision* me;
 
 	public:
 		QpSolverRCMCollision(bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 

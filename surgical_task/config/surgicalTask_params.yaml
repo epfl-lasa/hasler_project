@@ -1,3 +1,6 @@
+# Print all debug comments to command line
+SurgicalTask/debug: false
+
 # Use robot [LEFT, RIGHT]
 SurgicalTask/useRobot: [true, true]
 
@@ -88,12 +91,16 @@ SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.05,
                                        0.12, 0.12, 0.1]
 
 # Min offset limits in operation phase for position velocity mapping 
-SurgicalTask/operationMinOffsetPVM: [-0.02, -0.08, -0.1,
-                                     -0.02, -0.02, -0.1]
+# SurgicalTask/operationMinOffsetPVM: [-0.06, -0.01, -0.1,
+#                                      -0.06, -0.08, -0.1]
+SurgicalTask/operationMinOffsetPVM: [-0.06, -0.08, -0.1,
+                                     -0.06, -0.01, -0.1]
 
 # Max offset limits in operation phase for position velocity mapping 
-SurgicalTask/operationMaxOffsetPVM: [0.08, 0.02, 0,
-                                     0.08, 0.08, 0]
+# SurgicalTask/operationMaxOffsetPVM: [0.06, 0.08, 0,
+#                                      0.06, 0.01, 0]
+SurgicalTask/operationMaxOffsetPVM: [0.06, 0.01, 0,
+                                     0.06, 0.08, 0]
 
 
 # Trocar space linear ds gain in position position mapping
@@ -148,7 +155,7 @@ SurgicalTask/eeSafetyCollisionRadius: 0.1
 SurgicalTask/enableToolCollisionAvoidance: true
 
 # Safety collision distance between the tool and the obstacle
-SurgicalTask/toolSafetyCollisionDistance: 0.03
+SurgicalTask/toolSafetyCollisionDistance: 0.04
 
 # Enable workspace collision avoidance in QP RCM solver
 SurgicalTask/enableWorkspaceCollisionAvoidance: true

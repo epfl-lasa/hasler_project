@@ -68,6 +68,9 @@ void SurgicalTask::initializeSubscribersAndPublishers()
     {
       _pubStiffness[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("/left_panda/joint_impedance_controller/k_gains", 1);
     }
+
+    _pubRobotState[LEFT] = _nh.advertise<surgical_task::RobotStateMsg>("surgical_task/left_robot_state", 1);
+
   }
 
   if(_useRobot[RIGHT])
@@ -136,6 +139,8 @@ void SurgicalTask::initializeSubscribersAndPublishers()
     }
 
     _pubGripper = _nh.advertise<custom_msgs_gripper::GripperInputMsg>("/right/gripperInput", 1);
+
+    _pubRobotState[RIGHT] = _nh.advertise<surgical_task::RobotStateMsg>("surgical_task/right_robot_state", 1);
 
   }
 
@@ -330,6 +335,44 @@ void SurgicalTask::publishData()
         _msgGripperInput.ros_dPosition = _desiredGripperPosition[r];
         _pubGripper.publish(_msgGripperInput);
       }
+
+      _msgRobotState.controlPhase = _controlPhase[r];
+      _msgRobotState.linearMapping = _linearMapping[r];
+      _msgRobotState.selfRotationMapping = _selfRotationMapping[r];
+      _msgRobotState.dRcmTrocar = (_trocarPosition[r]-_xRCM[r]).norm();
+      _msgRobotState.dRcmTip = _dRCMTool[r];
+      _msgRobotState.ikRes = _qpResult[r].res;
+      _msgRobotState.selfRotationMapping = _selfRotationCommand[r];
+      _msgRobotState.eeCollisionConstraintActive = _qpResult[r].eeCollisionConstraintActive;
+      _msgRobotState.dEEEE  = _rEECollision[r].norm();
+      _msgRobotState.toolCollisionConstraintActive = _qpResult[r].toolCollisionConstraintActive;
+      _msgRobotState.dToolTool = _rToolCollision[r].norm();
+      _msgRobotState.workspaceCollisionConstraintActive = _qpResult[r].workspaceCollisionConstraintActive;
+
+      for(int m = 0; m < 3; m++)
+      {
+        _msgRobotState.trocarPosition[m] = _trocarPosition[r](m);
+        _msgRobotState.tipPosition[m] = _x[r](m);
+        _msgRobotState.ikTipPosition[m] = _xIK[r](m);
+        _msgRobotState.vdTool[m] = _vdTool[r](m);
+        _msgRobotState.currentOffsetFromInsertion[m] = _x[r](m)-_xd0[r](m);
+        _msgRobotState.ikOffsetFromInsertion[m] = _xIK[r](m)-_xd0[r](m);
+        _msgRobotState.desiredOffsetFromInsertion[m] = _desiredOffsetPPM[r](m);
+      }
+
+      for(int m = 0; m < 5; m++)
+      {
+        _msgRobotState.humanInput[m] = _trocarInput[r](m);
+      }
+
+      for(int m = 0; m < 7; m++)
+      {
+        _msgRobotState.currentJoints[m] = _currentJoints[r](m);
+        _msgRobotState.ikJoints[m] = _ikJoints[r](m);
+      }
+
+      _pubRobotState[r].publish(_msgRobotState);
+
     }
   }
 
@@ -435,8 +478,6 @@ void SurgicalTask::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int r)
   {
     _firstHumanInput[r]= true;
   }
-
-  std::cerr << r <<  " " << (int)_firstHumanInput[r] << std::endl;
 }
 
 void SurgicalTask::updateFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg, int r)

@@ -33,7 +33,8 @@ find_package(Eigen3 REQUIRED)
 add_message_files(
   DIRECTORY msg
   FILES 
-  SurgicalTaskStateMsg.msg)
+  SurgicalTaskStateMsg.msg
+  RobotStateMsg.msg)
 
 
 ## Generate added messages and services
