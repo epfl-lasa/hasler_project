@@ -29,7 +29,6 @@
     <group ns="$(arg id)_tool">
         <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) toolID:=$(arg id) originTrocar.x:=$(arg originTrocar_x) originTrocar.y:=$(arg originTrocar_y) originTrocar.z:=$(arg originTrocar_z)"/>
 
-      <group if="$(arg rosControl)">
         <include file="$(find surgical_sim)/launch/tool/tool.controller.launch">
               <arg name="w_forceps" value="$(arg w_forceps)" />
               <arg name="id" value="$(arg id)"/>
@@ -42,16 +41,16 @@
               <arg name="rosControl" value="$(arg rosControl)"/> 
         </include> 
 
-  </group>
 
   <group if="$(arg rviz)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" required="true" />
   </group>
 
+  <group if="$(arg rosControl)">
     <node name="spawn_$(arg id)_tool" pkg="gazebo_ros" type="spawn_model" launch-prefix="bash -c 'sleep $(arg spawn_delay); $0 $@'" 
             args="-urdf -model $(arg id)_tool -param /$(arg id)_tool/robot_description " respawn="false" output="screen" />
     </group>
-
+  </group>
 
 </launch>
 
