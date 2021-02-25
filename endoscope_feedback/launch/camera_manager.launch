@@ -1,11 +1,11 @@
 <?xml version="1.0" ?>
 <launch>
 
-	<param name="useRosCvCamera" type="bool" value="False"/>
+	<param name="useRosCvCamera" type="bool" value="True"/>
 	<!-- <param name="cameraTopic" value="/cv_camera/image_raw"/> -->
 	<param name="cameraTopic" value="/left_panda/camera/image_raw"/>
 	<param name="cameraPort" value="/dev/video0"/>
 
-  <node name="camera_manager" pkg="surgical_task" type="camera_manager.py" output="screen"/>
+  <node name="camera_manager" pkg="endoscope_feedback" type="camera_manager.py" output="screen"/>
 
 </launch>

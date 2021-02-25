@@ -8,7 +8,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from surgical_task.msg import SurgicalTaskStateMsg
 import time
-
+import rospkg
 
 class CameraManager:
   def __init__(self):
@@ -48,8 +48,8 @@ class CameraManager:
     self.cameraModeText = ["Joystick","Assistance"]
     self.cameraModeTextPosition = (20,60)
 
-    self.cameraWorkspaceCollisionText = "Workspace limits reached !"
-    self.cameraWorkspaceCollisionTextPosition = (20,90) 
+    self.cameraWorkspaceCollisionText = "Workspace limits !"
+    self.cameraWorkspaceCollisionTextPosition = (65,90) 
     self.showCameraWorkspaceCollisionText = False
     self.timeCameraWorkspaceCollisionText = time.time()
 
@@ -60,22 +60,33 @@ class CameraManager:
     self.markerColor = (0, 255, 255)
 
 
-    self.waitText = ["Warning: Center your dominant foot","to start moving the camera !"]
-    self.waitTextPosition = [(120,210),(160,240)]
+    self.waitText = ["Center your dominant foot to" ,"start moving the camera !"]
+    self.waitTextPosition = [(160,240),(180,270)]
     self.waitTextColor = (0,100,255)
 
-    self.eeCollisionText = ["Warning: The robots' end-effectors", "are close to collide !"]
-    self.eeCollisionTextPosition = [(130,270),(210,300)]
+
+    # self.eeCollisionText = ["Warning: The robots' end-effectors", "are close to collide !"]
+    # self.eeCollisionTextPosition = [(130,270),(210,300)]
+    self.eeCollisionText = ["End-effectors collision !"]
+    self.eeCollisionTextPosition = [(45,420)]
     self.eeCollisionTextColor = (0,100,255)
     self.showEECollisionText = False
     self.timeEECollisionText = time.time()
 
 
-    self.toolCollisionText = ["Warning: The camera and instrument", "are close to collide !"]
-    self.toolCollisionTextPosition = [(130,330),(210,360)]
+    # self.toolCollisionText = ["Warning: The camera and instrument", "are close to collide !"]
+    # self.toolCollisionTextPosition = [(130,330),(210,360)]
+    self.toolCollisionText = ["Camera-Instrument collision !"]
+    self.toolCollisionTextPosition = [(45,460)]
     self.toolCollisionTextColor = (0,100,255)
     self.showToolCollisionText = False
     self.timeToolCollisionText = time.time()
+
+    rospack = rospkg.RosPack()
+    rospack.list() 
+
+    self.warningImage = cv2.imread(rospack.get_path('endoscope_feedback')+"/src/img/warning.png", cv2.IMREAD_UNCHANGED)
+    self.warningImage = cv2.resize(self.warningImage, (40,40), interpolation = cv2.INTER_AREA)
 
     self.currentRobot = 0
     self.useTaskAdaptation = False
@@ -185,6 +196,8 @@ class CameraManager:
 
   def displayWarnings(self, image):
     if self.wait:
+      self.overlay_image_alpha(image, self.warningImage, (self.waitTextPosition[0][0]-45,self.waitTextPosition[0][1]-25), self.warningImage[:,:,3]/255)
+
       for k in range(0,len(self.waitTextPosition)):
         cv2.putText(image, self.waitText[k], self.waitTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.waitTextColor, 1)
 
@@ -193,6 +206,7 @@ class CameraManager:
         self.showEECollisionText = not self.showEECollisionText
         self.timeEECollisionText = time.time()
       if self.showEECollisionText:
+        self.overlay_image_alpha(image, self.warningImage, (self.eeCollisionTextPosition[0][0]-45,self.eeCollisionTextPosition[0][1]-25), self.warningImage[:,:,3]/255)
         for k in range(0,len(self.eeCollisionTextPosition)):
           cv2.putText(image, self.eeCollisionText[k], self.eeCollisionTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.eeCollisionTextColor, 1)
 
@@ -201,6 +215,7 @@ class CameraManager:
         self.showToolCollisionText = not self.showToolCollisionText
         self.timeToolCollisionText = time.time()
       if self.showToolCollisionText:
+        self.overlay_image_alpha(image, self.warningImage, (self.toolCollisionTextPosition[0][0]-45,self.toolCollisionTextPosition[0][1]-25), self.warningImage[:,:,3]/255)
         for k in range(0,len(self.toolCollisionTextPosition)):
           cv2.putText(image, self.toolCollisionText[k], self.toolCollisionTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.toolCollisionTextColor, 1)
 
@@ -210,7 +225,7 @@ class CameraManager:
         self.timeCameraWorkspaceCollisionText = time.time()
       if self.showCameraWorkspaceCollisionText:
         textColor = self.robotColor[0] 
-        print(textColor)
+        self.overlay_image_alpha(image, self.warningImage, (self.cameraWorkspaceCollisionTextPosition[0]-45,self.cameraWorkspaceCollisionTextPosition[1]-25), self.warningImage[:,:,3]/255)
         cv2.putText(image, self.cameraWorkspaceCollisionText, self.cameraWorkspaceCollisionTextPosition, 
                     cv2.FONT_HERSHEY_TRIPLEX, 0.6, textColor, 1)
 
@@ -233,6 +248,39 @@ class CameraManager:
     self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
     if not self.firstImage:
       self.firstImage = True
+
+
+
+  def overlay_image_alpha(self, img, img_overlay, pos, alpha_mask):
+      """Overlay img_overlay on top of img at the position specified by
+      pos and blend using alpha_mask.
+
+      Alpha mask must contain values within the range [0, 1] and be the
+      same size as img_overlay.
+      """
+
+      x, y = pos
+
+      # Image ranges
+      y1, y2 = max(0, y), min(img.shape[0], y + img_overlay.shape[0])
+      x1, x2 = max(0, x), min(img.shape[1], x + img_overlay.shape[1])
+
+      # Overlay ranges
+      y1o, y2o = max(0, -y), min(img_overlay.shape[0], img.shape[0] - y)
+      x1o, x2o = max(0, -x), min(img_overlay.shape[1], img.shape[1] - x)
+
+      # Exit if nothing to do
+      if y1 >= y2 or x1 >= x2 or y1o >= y2o or x1o >= x2o:
+          return
+
+      channels = img.shape[2]
+
+      alpha = alpha_mask[y1o:y2o, x1o:x2o]
+      alpha_inv = 1.0 - alpha
+
+      for c in range(channels):
+          img[y1:y2, x1:x2, c] = (alpha * img_overlay[y1o:y2o, x1o:x2o, c] +
+                                  alpha_inv * img[y1:y2, x1:x2, c])
 
 
 class ToolsTracker:
