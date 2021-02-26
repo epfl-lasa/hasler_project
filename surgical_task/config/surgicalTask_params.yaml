@@ -2,7 +2,7 @@
 SurgicalTask/debug: false
 
 # Use robot [LEFT, RIGHT]
-SurgicalTask/useRobot: [true, true]
+SurgicalTask/useRobot: [true, false]
 
 SurgicalTask/useFranka: true
 
@@ -28,14 +28,14 @@ SurgicalTask/jointImpedanceStiffnessGain: [700, 700, 700, 700, 500, 500, 300]
 SurgicalTask/dominantInput: 1
 
 # Use sim
-SurgicalTask/useSim: true
+SurgicalTask/useSim: false
 
 # Tool length [LEFT, RIGHT]
 # SurgicalTask/toolOffsetFromEE: [0.513, 0.54]
 # SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
 # SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
-# SurgicalTask/toolOffsetFromEE: [0.398, 0.53]
-SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
+SurgicalTask/toolOffsetFromEE: [0.398, 0.53]
+# SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
 
 # Insertion distance in position velocity mapping [LEFT, RIGHT]
 SurgicalTask/insertionDistancePVM: [-0.03, -0.03]
@@ -83,24 +83,27 @@ SurgicalTask/trocarSpaceMinZOffset: [-0.145, -0.05]
 
 
 # Insertion phase offset for position position mapping
+# SurgicalTask/insertionOffsetPPM: [0.0, 0.04, -0.05,
+#                                   0.0, -0.04, -0.05]
+
 SurgicalTask/insertionOffsetPPM: [0.0, 0.04, -0.05,
-                                  0.0, -0.04, -0.05]
+                                  0.0, 0.04, -0.07]
 
 # Offset range in operation phase for position position mapping
 SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.05,
                                        0.12, 0.12, 0.1]
 
 # Min offset limits in operation phase for position velocity mapping 
-# SurgicalTask/operationMinOffsetPVM: [-0.06, -0.01, -0.1,
-#                                      -0.06, -0.08, -0.1]
-SurgicalTask/operationMinOffsetPVM: [-0.06, -0.08, -0.1,
-                                     -0.06, -0.01, -0.1]
+SurgicalTask/operationMinOffsetPVM: [-0.06, -0.01, -0.1,
+                                     -0.06, -0.08, -0.1]
+# SurgicalTask/operationMinOffsetPVM: [-0.06, -0.08, -0.1,
+#                                      -0.06, -0.01, -0.1]
 
 # Max offset limits in operation phase for position velocity mapping 
-# SurgicalTask/operationMaxOffsetPVM: [0.06, 0.08, 0,
-#                                      0.06, 0.01, 0]
-SurgicalTask/operationMaxOffsetPVM: [0.06, 0.01, 0,
-                                     0.06, 0.08, 0]
+SurgicalTask/operationMaxOffsetPVM: [0.06, 0.08, 0,
+                                     0.06, 0.01, 0]
+# SurgicalTask/operationMaxOffsetPVM: [0.06, 0.01, 0,
+#                                      0.06, 0.08, 0]
 
 
 # Trocar space linear ds gain in position position mapping
