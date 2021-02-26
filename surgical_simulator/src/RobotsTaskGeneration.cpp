@@ -918,12 +918,12 @@ void RobotsTaskGeneration::computeDesiredFootWrench()
   { 
     _desiredFootWrench[k](0) = -_kxy*_footPose[k](0)-_dxy*_footTwist[k](0);
     _desiredFootWrench[k](1) = -_kxy*_footPose[k](1)-_dxy*_footTwist[k](1);
-    _desiredFootWrench[k](3) = -_kphi*_footPose[k](3)-_dphi*_footTwist[k](3);
+    _desiredFootWrench[k](2) = -_kphi*_footPose[k](2)-_dphi*_footTwist[k](2);
   }
   std::cerr << _kxy << " " << _dxy << " " << _kphi << " " << _dphi << std::endl;  
   std::cerr << _desiredFootWrench[LEFT].transpose() << std::endl;
 
-  for(int k = 0 ; k < 3; k++)
+  for(int k = 0 ; k < 2; k++)
   {
     if(_desiredFootWrench[RIGHT](k)>25.0f)
     {
@@ -946,22 +946,22 @@ void RobotsTaskGeneration::computeDesiredFootWrench()
 
   for(int k = 0 ; k < 3; k++)
   {
-    if(_desiredFootWrench[RIGHT](k+3)>0.187f*40/9.15)
+    if(_desiredFootWrench[RIGHT](k+2)>0.187f*40/9.15)
     {
-      _desiredFootWrench[RIGHT](k+3) = 0.187f*40/9.15;
+      _desiredFootWrench[RIGHT](k+2) = 0.187f*40/9.15;
     }
-    else if(_desiredFootWrench[RIGHT](k+3)<-0.187f*40/9.15)
+    else if(_desiredFootWrench[RIGHT](k+2)<-0.187f*40/9.15)
     {
-      _desiredFootWrench[RIGHT](k+3) = -0.187f*40/9.15;
+      _desiredFootWrench[RIGHT](k+2) = -0.187f*40/9.15;
     }
 
-    if(_desiredFootWrench[LEFT](k+3)>0.212f*40/9.15)
+    if(_desiredFootWrench[LEFT](k+2)>0.212f*40/9.15)
     {
-      _desiredFootWrench[LEFT](k+3) = 0.212f*40/9.15;
+      _desiredFootWrench[LEFT](k+2) = 0.212f*40/9.15;
     }
-    else if(_desiredFootWrench[LEFT](k+3)<-0.212f*40/9.15)
+    else if(_desiredFootWrench[LEFT](k+2)<-0.212f*40/9.15)
     {
-      _desiredFootWrench[LEFT](k+3) = -0.212f*40/9.15;
+      _desiredFootWrench[LEFT](k+2) = -0.212f*40/9.15;
     }
 
   }
@@ -1032,12 +1032,17 @@ void RobotsTaskGeneration::publishData()
 
     _pubDesiredOrientation[k].publish(_msgDesiredOrientation);
 
-    _msgFootInput.FxDes = _desiredFootWrench[k](0);
-    _msgFootInput.FyDes = _desiredFootWrench[k](1);
-    _msgFootInput.TphiDes = _desiredFootWrench[k](3);
-    _msgFootInput.TthetaDes = _desiredFootWrench[k](4);
-    _msgFootInput.TpsiDes = _desiredFootWrench[k](5);
-    _msgFootInput.stateDes = 2;
+    for(int m = 0; m < 5; m++)
+    {
+      _msgFootInput.ros_position[m] = 0.0f;
+      _msgFootInput.ros_speed[m] = 0.0f;
+      _msgFootInput.ros_effort[m] = _desiredFootWrench[k](m);
+      _msgFootInput.ros_forceSensor[m] = 0.0f;
+      _msgFootInput.ros_filterAxisForce[m] = 1.0f;
+      _msgFootInput.ros_kp[m] = 0.0f;
+      _msgFootInput.ros_kd[m] = 0.0f;
+      _msgFootInput.ros_ki[m] = 0.0f;
+    }
     _pubFootInput[k].publish(_msgFootInput);
   }
 
@@ -1114,23 +1119,25 @@ void RobotsTaskGeneration::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg,
 void RobotsTaskGeneration::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
 {
 
-  // _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
-  _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
-  _footWrench[k] << msg->Fx_m, msg->Fy_m,0.0f, msg->Tphi_m, msg->Ttheta_m, msg->Tpsi_m;
-  _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
-  _footState[k] = msg->state;
+  for(int m = 0; m < 5; m++)
+  {
+    _footPose[k](m) = msg->platform_position[m];
+    _footWrench[k](m) = msg->platform_effortM[m];
+    _footTwist[k](m) = msg->platform_speed[m];
+  }
+  _footState[k] = msg->platform_machineState;
 
   _footPosition[k](0) = Utils<float>::deadZone(_footPose[k](0),-0.05,0.05);
   _footPosition[k](1) = Utils<float>::deadZone(_footPose[k](1),-0.05,0.05);
-  _footPosition[k](2) = Utils<float>::deadZone(_footPose[k](3),-5.0f,5.0f);
+  _footPosition[k](2) = Utils<float>::deadZone(_footPose[k](2),-5.0f,5.0f);
 
-  if(_footPose[k](3)>FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
+  if(_footPose[k](2)>FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
   {
-    _footPose[k](3) = FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
+    _footPose[k](2) = FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
   }
-  else if(_footPose[k](3)<-FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
+  else if(_footPose[k](2)<-FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f)
   {
-    _footPose[k](3) = -FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
+    _footPose[k](2) = -FOOT_INTERFACE_PHI_RANGE_RIGHT/2.0f; 
   }
 
   // if(!_firstFootOutput[k])

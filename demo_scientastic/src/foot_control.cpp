@@ -120,13 +120,18 @@ void FootControl::publishData()
     _msgDesiredFootPose.pose.orientation.w = 1.0f;
     _pubDesiredFootPose[k].publish(_msgDesiredFootPose);
 
-    _msgFootInput.FxDes = _desiredFootWrench[k](0);
-    _msgFootInput.FyDes = _desiredFootWrench[k](1);
-    _msgFootInput.TphiDes = _desiredFootWrench[k](3);
-    _msgFootInput.TthetaDes = _desiredFootWrench[k](4);
-    _msgFootInput.TpsiDes = _desiredFootWrench[k](5);
-    _msgFootInput.stateDes = 2;
-_pubFootInput[k].publish(_msgFootInput);
+    for(int m = 0; m < 5; m++)
+    {
+      _msgFootInput.ros_position[m] = 0.0f;
+      _msgFootInput.ros_speed[m] = 0.0f;
+      _msgFootInput.ros_effort[m] = _desiredFootWrench[k](m);
+      _msgFootInput.ros_forceSensor[m] = 0.0f;
+      _msgFootInput.ros_filterAxisForce[m] = 1.0f;
+      _msgFootInput.ros_kp[m] = 0.0f;
+      _msgFootInput.ros_kd[m] = 0.0f;
+      _msgFootInput.ros_ki[m] = 0.0f;
+    }
+    _pubFootInput[k].publish(_msgFootInput);
   }
 }
 
@@ -135,10 +140,10 @@ void FootControl::footDataTransformation()
 {
   _footPosition[RIGHT](0) = _footPose[RIGHT](0);
   _footPosition[RIGHT](1) = _footPose[RIGHT](1);
-  _footPosition[RIGHT](2) = _footPose[RIGHT](3);
+  _footPosition[RIGHT](2) = _footPose[RIGHT](2);
   _footPosition[LEFT](0) = _footPose[LEFT](0);
   _footPosition[LEFT](1) = _footPose[LEFT](1);
-  _footPosition[LEFT](2) = _footPose[LEFT](3);
+  _footPosition[LEFT](2) = _footPose[LEFT](2);
 
 }
 
@@ -179,7 +184,7 @@ void FootControl::computeDesiredFootWrench()
   // temp.setConstant(0.0f);
   _desiredFootWrench[RIGHT](1) = temp(0);
   _desiredFootWrench[RIGHT](0) = -temp(1);
-  _desiredFootWrench[RIGHT](3) = temp(2)*0.205/5;
+  _desiredFootWrench[RIGHT](2) = temp(2)*0.205/5;
 
 
   temp.setConstant(0.0f);
@@ -191,10 +196,10 @@ void FootControl::computeDesiredFootWrench()
  
   _desiredFootWrench[LEFT](1) = temp(0);
   _desiredFootWrench[LEFT](0) = -temp(1);
-  _desiredFootWrench[LEFT](3) = temp(2)*0.205/5;
+  _desiredFootWrench[LEFT](2) = temp(2)*0.205/5;
 
 
-  for(int k = 0 ; k < 3; k++)
+  for(int k = 0 ; k < 2; k++)
   {
     if(_desiredFootWrench[RIGHT](k)>25.0f)
     {
@@ -217,22 +222,22 @@ void FootControl::computeDesiredFootWrench()
 
   for(int k = 0 ; k < 3; k++)
   {
-    if(_desiredFootWrench[RIGHT](k+3)>0.187f*40/9.15)
+    if(_desiredFootWrench[RIGHT](k+2)>0.187f*40/9.15)
     {
-      _desiredFootWrench[RIGHT](k+3) = 0.187f*40/9.15;
+      _desiredFootWrench[RIGHT](k+2) = 0.187f*40/9.15;
     }
-    else if(_desiredFootWrench[RIGHT](k+3)<-0.187f*40/9.15)
+    else if(_desiredFootWrench[RIGHT](k+2)<-0.187f*40/9.15)
     {
-      _desiredFootWrench[RIGHT](k+3) = -0.187f*40/9.15;
+      _desiredFootWrench[RIGHT](k+2) = -0.187f*40/9.15;
     }
 
-    if(_desiredFootWrench[LEFT](k+3)>0.212f*40/9.15)
+    if(_desiredFootWrench[LEFT](k+2)>0.212f*40/9.15)
     {
-      _desiredFootWrench[LEFT](k+3) = 0.212f*40/9.15;
+      _desiredFootWrench[LEFT](k+2) = 0.212f*40/9.15;
     }
-    else if(_desiredFootWrench[LEFT](k+3)<-0.212f*40/9.15)
+    else if(_desiredFootWrench[LEFT](k+2)<-0.212f*40/9.15)
     {
-      _desiredFootWrench[LEFT](k+3) = -0.212f*40/9.15;
+      _desiredFootWrench[LEFT](k+2) = -0.212f*40/9.15;
     }
 
   }
@@ -251,10 +256,13 @@ void FootControl::computeDesiredFootWrench()
 void FootControl::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
 {
 
-  _footPose[k] << msg->x, msg->y,0.0f, msg->phi, msg->theta, msg->psi;
-  _footWrench[k] << msg->Fx_m, msg->Fy_m,0.0f, msg->Tphi_m, msg->Ttheta_m, msg->Tpsi_m;
-  _footTwist[k] << msg->vx, msg->vy, 0.0f, msg->wphi, msg->wtheta, msg->wpsi;
-  _footState[k] = msg->state;
+  for(int m = 0; m < 5; m++)
+  {
+    _footPose[k](m) = msg->platform_position[m];
+    _footWrench[k](m) = msg->platform_effortM[m];
+    _footTwist[k](m) = msg->platform_speed[m];
+  }
+  _footState[k] = msg->platform_machineState;
 
   if(!_firstFootOutput[k])
   {

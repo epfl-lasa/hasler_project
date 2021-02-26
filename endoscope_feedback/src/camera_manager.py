@@ -85,7 +85,7 @@ class CameraManager:
     self.warningImage = cv2.resize(self.warningImage, (40,40), interpolation = cv2.INTER_AREA)
 
     self.currentRobot = 0
-    self.useTaskAdaptation = True
+    self.useTaskAdaptation = False
     self.clutching = False
     self.wait = False
     self.eeCollision = [False, False]

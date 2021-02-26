@@ -124,17 +124,17 @@ class RobotsTaskGeneration
 
 
     ros::Subscriber _subFootOutput[NB_ROBOTS];
-    Eigen::Matrix<float,6,1> _footPose[NB_ROBOTS];
-    Eigen::Matrix<float,6,1> _footPose0[NB_ROBOTS];
-    Eigen::Matrix<float,6,1> _footSensor[NB_ROBOTS];
-    Eigen::Matrix<float,6,1> _footWrench[NB_ROBOTS];
-    Eigen::Matrix<float,6,1> _footTwist[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footPose[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footPose0[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footSensor[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrench[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
     Eigen::Vector3f _footPosition[NB_ROBOTS];
     uint32_t _footInterfaceSequenceID[NB_ROBOTS];
     bool _firstFootOutput[NB_ROBOTS];
     int _footState[NB_ROBOTS];
 
-    Eigen::Matrix<float,6,1> _desiredFootWrench[NB_ROBOTS];     // User variables
+    Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];     // User variables
     float _velocityLimit;       // Velocity limit [m/s]
     Eigen::Vector3f _xdOffset[NB_ROBOTS];
     Eigen::Vector3f _vdOffset[NB_ROBOTS];

@@ -50,11 +50,11 @@ class FootControl
 
 
 		//! FootControl variables
-    	Eigen::Matrix<float,6,1> _footPose[2];
-    	Eigen::Matrix<float,6,1> _footSensor[2];
-    	Eigen::Matrix<float,6,1> _footWrench[2];
-		Eigen::Matrix<float,6,1> _footTwist[2];
-	    Eigen::Matrix<float,6,1> _desiredFootWrench[2];
+    	Eigen::Matrix<float,5,1> _footPose[2];
+    	Eigen::Matrix<float,5,1> _footSensor[2];
+    	Eigen::Matrix<float,5,1> _footWrench[2];
+		Eigen::Matrix<float,5,1> _footTwist[2];
+	    Eigen::Matrix<float,5,1> _desiredFootWrench[2];
 	    Eigen::Vector3f _footPosition[2];
 	    Eigen::Vector3f _desiredFootPosition[2];
 	    Eigen::Vector3f _force[2];
