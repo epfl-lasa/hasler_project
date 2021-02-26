@@ -6,7 +6,7 @@ import rospy
 from std_msgs.msg import Float64MultiArray, Int16MultiArray, MultiArrayDimension
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from surgical_task.msg import SurgicalTaskStateMsg
+from surgical_task.msg import SurgicalTaskStateMsg, RobotStateMsg
 import time
 import rospkg
 
@@ -26,10 +26,6 @@ class CameraManager:
     else:
       self.cap = cv2.VideoCapture(rospy.get_param("cameraPort"))
 
-    self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
-                                                         queue_size=1)
-    self.pubMarkersPosition = rospy.Publisher('endoscope_modifier/markers_position', Int16MultiArray, queue_size=1)
-    self.subSurgicalTaskState = rospy.Subscriber('surgical_task/state', SurgicalTaskStateMsg, self.updateSurgicalTaskState)
 
     cv2.namedWindow("output", cv2.WINDOW_NORMAL)  
 
@@ -89,14 +85,24 @@ class CameraManager:
     self.warningImage = cv2.resize(self.warningImage, (40,40), interpolation = cv2.INTER_AREA)
 
     self.currentRobot = 0
-    self.useTaskAdaptation = False
+    self.useTaskAdaptation = True
     self.clutching = False
-    self.wait = True
-    self.eeCollision = True
-    self.toolCollision = True
-    self.workspaceCollision = True
+    self.wait = False
+    self.eeCollision = [False, False]
+    self.toolCollision = [False, False]
+    self.workspaceCollision = [False, False]
+    self.beliefsC = [1,0,0]
 
     self.imageSize = (0,0)
+
+    self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
+                                                         queue_size=1)
+    self.pubMarkersPosition = rospy.Publisher('endoscope_modifier/markers_position', Int16MultiArray, queue_size=1)
+    self.subSurgicalTaskState = rospy.Subscriber('surgical_task/state', SurgicalTaskStateMsg, self.updateSurgicalTaskState)
+
+    self.subRobotState = []
+    self.subRobotState.append(rospy.Subscriber('/surgical_task/left_robot_state', RobotStateMsg, self.updateRobotState, 0))
+    self.subRobotState.append(rospy.Subscriber('/surgical_task/right_robot_state', RobotStateMsg, self.updateRobotState, 1))
 
     self.run()
 
@@ -151,11 +157,12 @@ class CameraManager:
 
   def displayMarkersPosition(self, image):
     for k in range(0,len(self.toolsTracker.markersPosition)):
-      # if self.toolsTracker.markersPosition[k][2]:
-        # cv2.circle(image, (self.markersPosition[k][0], self.markersPosition[k][1]), 5, (255, 255, 255), -1)
       color = (255, 255, 255)
       if self.toolsTracker.markersPosition[k][2]:
         color = self.markerColor
+        if self.useTaskAdaptation and (1.0-self.beliefsC[k])<1e-3:
+          color = (255, 0, 255)
+
 
       cv2.drawMarker(image, (self.toolsTracker.markersPosition[k][0], self.toolsTracker.markersPosition[k][1]), color,
                                cv2.MARKER_CROSS, 20, 2)
@@ -173,10 +180,11 @@ class CameraManager:
       if k == self.currentRobot and self.humanInputMode == 1:
         textColor = self.robotColor[k] 
         cv2.rectangle(image, (0, 0), (self.imageSize[0]-1,self.imageSize[1]-1), textColor, 2)
+        self.displayRobotSpecificState(image,k)
       elif self.humanInputMode == 0:
         textColor = self.robotColor[k]
+        self.displayRobotSpecificState(image,k)
 
-      self.displayRobotSpecificState(image,k)
       # print(self.controlPhase[k])
       cv2.putText(image, self.robotTool[k]+self.controlPhaseText[self.controlPhase[k]], self.controlPhaseTextPosition[k], 
                   cv2.FONT_HERSHEY_TRIPLEX, 0.6, textColor, 1)
@@ -201,7 +209,7 @@ class CameraManager:
       for k in range(0,len(self.waitTextPosition)):
         cv2.putText(image, self.waitText[k], self.waitTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.waitTextColor, 1)
 
-    if self.eeCollision:
+    if self.eeCollision[0]:
       if time.time()-self.timeEECollisionText> 1:
         self.showEECollisionText = not self.showEECollisionText
         self.timeEECollisionText = time.time()
@@ -210,7 +218,7 @@ class CameraManager:
         for k in range(0,len(self.eeCollisionTextPosition)):
           cv2.putText(image, self.eeCollisionText[k], self.eeCollisionTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.eeCollisionTextColor, 1)
 
-    if self.toolCollision:
+    if self.toolCollision[0]:
       if time.time()-self.timeToolCollisionText> 1:
         self.showToolCollisionText = not self.showToolCollisionText
         self.timeToolCollisionText = time.time()
@@ -219,7 +227,7 @@ class CameraManager:
         for k in range(0,len(self.toolCollisionTextPosition)):
           cv2.putText(image, self.toolCollisionText[k], self.toolCollisionTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.toolCollisionTextColor, 1)
 
-    if self.workspaceCollision:
+    if self.workspaceCollision[0]:
       if time.time()-self.timeCameraWorkspaceCollisionText> 1:
         self.showCameraWorkspaceCollisionText = not self.showCameraWorkspaceCollisionText
         self.timeCameraWorkspaceCollisionText = time.time()
@@ -231,17 +239,18 @@ class CameraManager:
 
   def updateSurgicalTaskState(self, msg):
     self.humanInputMode = msg.humanInputMode 
-    # print(type(msg.controlPhase))
-    # print(str(msg.controlPhase))
-    # print(type(msg.currentRobot))
-    self.controlPhase = msg.controlPhase
     self.currentRobot = msg.currentRobot
     self.useTaskAdaptation = msg.useTaskAdaptation
     self.clutching = msg.clutching
     self.wait = msg.wait
-    self.eeCollision = msg.eeCollision
-    self.toolCollision = msg.toolCollision
-    self.workspaceCollision = msg.workspaceCollision
+    self.beliefsC = msg.beliefsC
+
+
+  def updateRobotState(self,msg, r):
+    self.controlPhase[r] = msg.controlPhase
+    self.eeCollision[r] = msg.eeCollisionConstraintActive
+    self.toolCollision[r] = msg.toolCollisionConstraintActive
+    self.workspaceCollision[r] = msg.workspaceCollisionConstraintActive
 
 
   def updateImage(self, msg):
@@ -292,8 +301,10 @@ class ToolsTracker:
     # self.upperHsvRed = np.array([255,255,255]) 
     # self.lowerHsvRed = np.array([0,10,100]) 
     # self.upperHsvRed = np.array([10,255,255]) 
-    self.lowerHsvRed = np.array([112,0,0]) 
-    self.upperHsvRed = np.array([179,110,255]) 
+    # self.lowerHsvRed = np.array([112,0,0]) 
+    # self.upperHsvRed = np.array([179,110,255]) 
+    self.lowerHsvRed = np.array([0,120,50]) 
+    self.upperHsvRed = np.array([7,255,255]) 
 
     self.lowerHsvOrange = np.array([0,80,125]) 
     self.upperHsvOrange = np.array([179,255,255]) 
@@ -307,8 +318,10 @@ class ToolsTracker:
     # self.upperHsvGreen = np.array([69, 255, 100]) 
     # self.lowerHsvGreen = np.array([80, 0, 80]) 
     # self.upperHsvGreen = np.array([100, 255, 170]) 
-    self.lowerHsvGreen = np.array([80, 60, 80]) 
-    self.upperHsvGreen = np.array([105, 255, 140]) 
+    # self.lowerHsvGreen = np.array([80, 60, 80]) 
+    # self.upperHsvGreen = np.array([105, 255, 140]) 
+    self.lowerHsvGreen = np.array([31, 70, 30]) 
+    self.upperHsvGreen = np.array([50, 255, 255]) 
 
 
     # self.lowerHsvRed = np.array([0,0,40]) 
@@ -316,8 +329,10 @@ class ToolsTracker:
     # self.lowerHsvGreen = np.array([22, 0, 40]) 
     # self.upperHsvGreen = np.array([45, 255, 230]) 
 
-    self.lowerHsvYellow = np.array([0,0,0])
-    self.upperHsvYellow = np.array([80,255,255])
+    # self.lowerHsvYellow = np.array([0,0,0])
+    # self.upperHsvYellow = np.array([80,255,255])
+    self.lowerHsvYellow = np.array([17,107,40])
+    self.upperHsvYellow = np.array([30,255,255])
 
     self.kernel = np.ones((5 ,5), np.uint8)
 
@@ -412,7 +427,7 @@ class ToolsTracker:
   def checkForSaturation(self, image):
     for k in range(0,len(self.markersPosition)):
       if self.markersPosition[k][2]:
-        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 180:
+        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 190:
           print("Saturation: ", k, image[self.markersPosition[k][1],self.markersPosition[k][0]].mean())
           self.markersPosition[k][2] = 0
           self.markersPositionTransformed[k][2] = 0

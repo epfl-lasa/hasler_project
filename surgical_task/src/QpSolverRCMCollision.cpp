@@ -140,6 +140,7 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointMax(4) = 2.8973f;
 	  _jointMax(5) = 3.7525f;
 	  _jointMax(6) = 2.8973f;
+	  _jointMax =  _jointMax.array()-5.0f*M_PI/180.0f;
 
 	  _jointMin(0) = -2.8973f;
 	  _jointMin(1) = -1.7628f;
@@ -148,6 +149,8 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointMin(4) = -2.8973f;
 	  _jointMin(5) = -0.0175f;
 	  _jointMin(6) = -2.8973f;
+	  _jointMin =  _jointMin.array()+5.0f*M_PI/180.0f;
+
 
 	  _jointVelocitiesLimits(0) = 2.1750f;
 	  _jointVelocitiesLimits(1) = 2.1750f;
@@ -282,7 +285,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 		  float ds = _eeSafetyCollisionDistance, di = 2.0f*_eeSafetyCollisionDistance;
 		  _lbA(_idEECollisionConstraint) = -0.5*(rEEObstacle.norm()-ds)/(di-ds);
 
-		  if(_lbA(_idEECollisionConstraint)>-1e-4f)
+		  if(_lbA(_idEECollisionConstraint)>-1e-3f)
 		  {
 		  	result.eeCollisionConstraintActive = true;
 		  }
@@ -293,7 +296,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  {  
 	  	float ds = _toolSafetyCollisionDistance, di = 2.0f*_toolSafetyCollisionDistance;
 	  	_lbA(_idToolCollisionConstraint) = -0.5*(rToolObstacle.norm()-ds)/(di-ds);
-		  if(_lbA(_idToolCollisionConstraint)>-1e-4f)
+		  if(_lbA(_idToolCollisionConstraint)>-1e-3f)
 		  {
 		  	result.toolCollisionConstraintActive = true;
 		  }
@@ -322,9 +325,9 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.5*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+5) = 1000.0f;
 
-		  if(_lbA(_idWorkspaceCollisionConstraint)>-1e-4f || _lbA(_idWorkspaceCollisionConstraint+1)>-1e-4f ||
-		  	 _lbA(_idWorkspaceCollisionConstraint+2)>-1e-4f || _lbA(_idWorkspaceCollisionConstraint+3)>-1e-4f ||
-		  	 _lbA(_idWorkspaceCollisionConstraint+4)>-1e-4f || _lbA(_idWorkspaceCollisionConstraint+5)>-1e-4f)
+		  if(_lbA(_idWorkspaceCollisionConstraint)>-1e-3f || _lbA(_idWorkspaceCollisionConstraint+1)>-1e-3f ||
+		  	 _lbA(_idWorkspaceCollisionConstraint+2)>-1e-3f || _lbA(_idWorkspaceCollisionConstraint+3)>-1e-3f ||
+		  	 _lbA(_idWorkspaceCollisionConstraint+4)>-1e-3f || _lbA(_idWorkspaceCollisionConstraint+5)>-1e-3f)
 		  {
 		  	result.workspaceCollisionConstraintActive = true;
 		  }

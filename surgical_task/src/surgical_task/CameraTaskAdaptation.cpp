@@ -89,7 +89,10 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
   vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
   
-  std::cerr << "[SurgicalTask]: " << r << ": Human input: " << vH.transpose() << std::endl; 
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: " << r << ": Human input: " << vH.transpose() << std::endl; 
+  }
 
   /////////////////////
   // Task adaptation //
@@ -141,7 +144,10 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	    }
 	  }
 	  
-  	std::cerr << "[SurgicalTask]: " << r << " d: " << _d << " " << std::fabs(1.0f-_beliefsC[indexMax]) << std::endl; 
+    if(_debug)
+    {
+  	 std::cerr << "[SurgicalTask]: " << r << " d: " << _d << " " << std::fabs(1.0f-_beliefsC[indexMax]) << std::endl; 
+    }
   	
 	  // Update task velocities
 	  for(int k = 0; k < _nbTasks; k++)
@@ -165,7 +171,10 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
 	    vdk.row(k) = alpha*errork.row(k);
 
-	    std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << std::endl;
+      if(_debug)
+      {
+        std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << std::endl;
+      }
 
 	    // Compute desired task adapted velocity
 	    _vda+=_beliefsC(k)*vdk.row(k).transpose();
@@ -179,7 +188,11 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
 	    errork.row(k) = (_wRb[r]*_colorMarkersPosition.row(k).transpose()).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
-	    std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << std::endl;
+      
+      if(_debug)
+      {
+        std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << std::endl;
+      }
 
 	    // Compute desired task adapted velocity
 	    _vda+=_beliefsC(k)*vdk.row(k).transpose();
@@ -214,7 +227,10 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
     _dbeliefsC(k) = _taskAdaptationOverallGain*(a+b+c);
 
-    std::cerr << "[SurgicalTask]: " << r << ": Dbeliefs target" << k << ": " << a << " " << b <<  " " << c << " " << a+b+c << " " << errork.row(k).norm() << std::endl;
+    if(_debug)
+    {
+      std::cerr << "[SurgicalTask]: " << r << ": Dbeliefs target" << k << ": " << a << " " << b <<  " " << c << " " << a+b+c << " " << errork.row(k).norm() << std::endl;
+    }
   }
 
   // std::cerr << r << ": a: " << _dbeliefsC.transpose() << std::endl;
@@ -242,7 +258,11 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
     float z = (dbmax+db2max)/2.0f;
     _dbeliefsC.array() -= z;
-    std::cerr << "[SurgicalTask]: " << r << ": Before Dbeliefs: " << _dbeliefsC.transpose() << std::endl;
+
+    if(_debug)
+    {
+      std::cerr << "[SurgicalTask]: " << r << ": Before Dbeliefs: " << _dbeliefsC.transpose() << std::endl;
+    }
 
     float S = 0.0f;
     for(int k = 0; k < _nbTasks; k++)
@@ -255,9 +275,13 @@ void SurgicalTask::taskAdaptation(int r, int h)
     _dbeliefsC(indexMax)-=S;
 
   }
-  std::cerr << "[SurgicalTask]: " << r << ": After Dbeliefs: " << _dbeliefsC.transpose() << std::endl;
 
-  std::cerr << _dbeliefsC.sum() << std::endl;
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: " << r << ": After Dbeliefs: " << _dbeliefsC.transpose() << std::endl;
+    std::cerr << _dbeliefsC.sum() << std::endl;
+  }
+
 
   _beliefsC+=_dt*_dbeliefsC;
   for(int k = 0; k < _nbTasks; k++)
@@ -267,7 +291,10 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
   _beliefsC /= _beliefsC.sum();
 
-  std::cerr << "[SurgicalTask]: " << r << ": Beliefs: " << _beliefsC.transpose() << std::endl;
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: " << r << ": Beliefs: " << _beliefsC.transpose() << std::endl;
+  }
 
   _vda.setConstant(0.0f);
   for(int k = 0; k < _nbTasks; k++)

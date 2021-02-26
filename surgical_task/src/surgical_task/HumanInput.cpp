@@ -57,7 +57,10 @@ void SurgicalTask::dominantFootTwoRobots()
     _currentRobot = RIGHT;
   }
 
-  std::cerr << "[SurgicalTask]: Tool clutching offset: " << _toolClutchingOffset.transpose() << std::endl;
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: Tool clutching offset: " << _toolClutchingOffset.transpose() << std::endl;
+  }
 
   // Check for clutching (only for robot with POSITION-POSITION mapping)
   if(_trocarInput[_nonDominantInputID](Y) < -0.7f && _linearMapping[_currentRobot]== POSITION_POSITION)
@@ -166,7 +169,10 @@ void SurgicalTask::computeTrocarInput(int r, int h)
 
       if(_wait && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
-        std::cerr <<  "[SurgicalTask]: Wait dominant foot to come back to zero !!!" << std::endl;
+         if(_debug)
+        {
+          std::cerr <<  "[SurgicalTask]: Wait dominant foot to come back to zero !!!" << std::endl;
+        }
         if(_trocarInput[h].segment(0,4).norm()<0.3f)
         {
           _wait = false;
@@ -222,7 +228,11 @@ void SurgicalTask::computeTrocarInput(int r, int h)
 
       if(_wait && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
-        std::cerr <<  "[SurgicalTask]: Wait dominant foot to come back to zero !!!" << std::endl;
+         if(_debug)
+        {
+          std::cerr <<  "[SurgicalTask]: Wait dominant foot to come back to zero !!!" << std::endl;
+        }
+        
         if(_trocarInput[h].segment(0,4).norm()<0.2f)
         {
           _wait = false;

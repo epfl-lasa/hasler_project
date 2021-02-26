@@ -57,6 +57,15 @@ void SurgicalTask::run()
   {
     if(_allSubscribersOK && _allFramesOK && _trocarsRegistered[LEFT] && _trocarsRegistered[RIGHT])
     {
+
+      static bool everythingOK = false;
+      if(!everythingOK)
+      {
+        everythingOK = true;
+        std::cerr << "[SurgicalTask]: Starting the task !!!" << std::endl;
+
+      }
+
       // Check for update of the DS-impedance controller gain
       if(!_useFranka && _useRobot[LEFT])
       {
@@ -145,7 +154,11 @@ void SurgicalTask::step()
   // Perform control step
   if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
   {
-    std::cerr << "[SurgicalTask]: DOMINANT INPUT: " << (int) _currentRobot << std::endl;
+    if(_debug)
+    {
+      std::cerr << "[SurgicalTask]: DOMINANT INPUT: " << (int) _currentRobot << std::endl;
+    }
+    
     if(_useRobot[_currentRobot])
     {
       robotControlStep(_currentRobot,_dominantInputID);

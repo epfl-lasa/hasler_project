@@ -377,16 +377,14 @@ void SurgicalTask::publishData()
   }
 
   _msgSurgicalTaskState.humanInputMode = _humanInputMode;
-  _msgSurgicalTaskState.controlPhase[LEFT] = _controlPhase[LEFT];
-  _msgSurgicalTaskState.controlPhase[RIGHT] = _controlPhase[RIGHT];
   _msgSurgicalTaskState.currentRobot = _currentRobot;
   _msgSurgicalTaskState.useTaskAdaptation = _useTaskAdaptation;
+  for(int m = 0; m < 3; m++)
+  {
+    _msgSurgicalTaskState.beliefsC[m] = _beliefsC(m);
+  }
   _msgSurgicalTaskState.clutching = _clutching;
   _msgSurgicalTaskState.wait = _wait;
-  _msgSurgicalTaskState.eeCollision = false;
-  _msgSurgicalTaskState.eeCollision = _qpResult[LEFT].eeCollisionConstraintActive;
-  _msgSurgicalTaskState.toolCollision = _qpResult[LEFT].toolCollisionConstraintActive;
-  _msgSurgicalTaskState.workspaceCollision = _qpResult[LEFT].workspaceCollisionConstraintActive;
 
   _pubSurgicalTaskState.publish(_msgSurgicalTaskState);
 }
