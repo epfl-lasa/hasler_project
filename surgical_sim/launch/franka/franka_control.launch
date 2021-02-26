@@ -1,0 +1,47 @@
+<launch>
+
+  <arg name="id" default="right"/>
+  <arg name="two_robots" default="false"/>
+  <arg name="freq" default="300.0"/>  
+  
+
+
+  <group unless="$(arg two_robots)">
+
+    <node pkg="surgical_sim" type="init_franka_$(arg id).sh" name="run_script_$(arg id)" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+    <group ns="$(arg id)_panda">
+      <node name="panda_controller" pkg="surgical_sim" type="pandaControllerSim"  launch-prefix="bash -c 'sleep 3; $0 $@'" output="screen">
+        <param name="pandaID" value="$(arg id)"/>
+        <remap from="robot_description" to="/$(arg id)_panda/robot_description"/>
+        <param name="publish_frequency" type="double" value="$(arg freq)" />
+      </node>
+
+    </group>
+  </group>
+
+   <group if="$(arg two_robots)">
+
+
+    <node pkg="surgical_sim" type="init_franka_left.sh" name="run_script_left" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+    <group ns="left_panda">
+      <node name="panda_controller" pkg="surgical_sim" type="pandaControllerSim" launch-prefix="bash -c 'sleep 6; $0 $@'" output="screen">
+        <param name="pandaID" value="left"/>
+        <remap from="robot_description" to="/left_panda/robot_description"/>
+        <param name="publish_frequency" type="double" value="$(arg freq)" />
+        </node>
+    </group>
+
+    <node pkg="surgical_sim" type="init_franka_right.sh" name="run_script_right" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+    <group ns="right_panda">
+      <node name="panda_controller" pkg="surgical_sim" type="pandaControllerSim" launch-prefix="bash -c 'sleep 6; $0 $@'" output="screen"> 
+        <param name="pandaID" value="right"/>
+        <remap from="robot_description" to="/right_panda/robot_description"/>
+        <param name="publish_frequency" type="double" value="$(arg freq)" />
+      </node>
+    </group>
+  </group>
+  
+  
+  
+</launch>
+

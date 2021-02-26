@@ -1,0 +1,44 @@
+/left_tool:
+  interactionMode: 'mixed' # individual, mixed
+  toolType: 'camera'
+  toolControl: 'speed'
+  toolSelfRotationControl: 'speed'
+  speedControlGainCamera: 0.5
+  speedControlGainSelfRotation: 5.0
+  desiredPlatformWorkspaceLimsMin: [-0.070, -0.0975, -0.200, 0.00000, -0.349066] # Y,X,PITCH,ROLL,YAW
+  desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, -0.126892 , 0.349066]
+  deadZoneValuesPlatformMin: [-0.010, -0.010, -0.18, -0.15, -0.16]
+  deadZoneValuesPlatformMax: [0.010, 0.010, 0.05, 0.15, 0.02]
+  platformJointOffsets: [0.0, 0.0, 0.0, 0.0, 0.0]
+  cartLimsX: [-0.15, 0.30] # [m]
+  cartLimsY: [-0.15,0.15]  # [m]
+  cartLimsZ: [-0.26,-0.06] # [m]
+
+
+  # interactionMode: 'individual' # individual, mixed
+  # toolType: 'camera'
+  # toolControl: 'speed'
+  # toolSelfRotationControl: 'speed'
+  # speedControlGainCamera: 0.5
+  # speedControlGainSelfRotation: 5.0
+  # desiredPlatformWorkspaceLimsMin: [-0.070, -0.0975, -0.200, 0.00000, -0.349066] # Y,X,PITCH,ROLL,YAW
+  # desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, -0.126892 , 0.349066]
+  # deadZoneValuesPlatformMin: [-0.010, -0.010, -0.18, -0.15, -0.010]
+  # deadZoneValuesPlatformMax: [0.010, 0.010, 0.05, 0.15, 0.26]
+  # platformJointOffsets: [0.0, 0.0, 0.0, 0.0, 0.0]
+  # cartLimsX: [-0.15, 0.30] # [m]
+  # cartLimsY: [-0.15,0.15]  # [m]
+  # cartLimsZ: [-0.26,-0.06] # [m]
+
+  # toolType: 'forceps'
+  # toolSelfRotationControl: 'speed'
+  # speedControlGainCamera: 0.5
+  # speedControlGainSelfRotation: 20.0
+  # desiredPlatformWorkspaceLimsMin: [-0.090, -0.0975, -0.200, 0.00000, -0.349066] # Y,X,PITCH,ROLL,YAW
+  # desiredPlatformWorkspaceLimsMax: [0.090, 0.0975, 0.0872665, -0.126892 , 0.349066]
+  # deadZoneValuesPlatformMin: [-0.030, -0.030, -0.18, -0.15, -0.010]
+  # deadZoneValuesPlatformMax: [0.030, 0.030, 0.03, 0.15, 0.26]
+  # platformJointOffsets: [0.0, 0.0, 0.0, 0.15, 0.0]
+  # cartLimsX: [-0.05, 0.15] # [m]
+  # cartLimsY: [-0.15,0.15]  # [m]
+  # cartLimsZ: [-0.26,-0.06] # [m]

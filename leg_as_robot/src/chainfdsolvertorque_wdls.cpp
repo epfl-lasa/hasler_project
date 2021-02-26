@@ -32,26 +32,10 @@
        tmp_jac_weight2(MatrixXd::Zero(6, nj)), tmp_ts(MatrixXd::Zero(6, nj)),
        tmp_js(MatrixXd::Zero(nj, nj)), weight_ts(MatrixXd::Identity(6, 6)),
        weight_js(MatrixXd::Identity(nj, nj)), lambda(0.0), lambda_scaled(0.0),
-       nrZeroSigmas(0), svdResult(0), sigmaMin(0) {}
+       nrZeroSigmas(0), svdResult(0), sigmaMin(0),error(E_NOERROR) {}
+ 
 
- void ChainFdSolverTorque_wdls::updateInternalDataStructures() {
-   jnt2jac.updateInternalDataStructures();
-   nj = chain.getNrOfJoints();
-   jac.resize(nj);
-   MatrixXd z6nj = MatrixXd::Zero(6, nj);
-   VectorXd znj = VectorXd::Zero(nj);
-   MatrixXd znjnj = MatrixXd::Zero(nj, nj);
-   U.conservativeResizeLike(z6nj);
-   S.conservativeResizeLike(znj);
-   V.conservativeResizeLike(znjnj);
-   tmp.conservativeResizeLike(znj);
-   tmp_jac.conservativeResizeLike(z6nj);
-   tmp_jac_weight1.conservativeResizeLike(z6nj);
-   tmp_jac_weight2.conservativeResizeLike(z6nj);
-   tmp_js.conservativeResizeLike(znjnj);
-   weight_js.conservativeResizeLike(MatrixXd::Identity(nj, nj));
- }
-
+  
  ChainFdSolverTorque_wdls::~ChainFdSolverTorque_wdls() {}
 
  int ChainFdSolverTorque_wdls::setWeightJS(const MatrixXd &Mq) {
@@ -113,7 +97,9 @@
    tmp_jac_weight2 = weight_ts.lazyProduct(tmp_jac_weight1);
 
    // Compute the SVD of the weighted jacobian
-   svdResult = svd_eigen_HH(tmp_jac_weight2, U, S, V, tmp, maxiter);
+   //svdResult = svd_eigen_HH(tmp_jac_weight2, U, S, V, tmp, maxiter);
+   Eigen::JacobiSVD<MatrixXd> svd(tmp_jac_weight2, ComputeThinU | ComputeThinV);
+   U = svd.matrixU(); V= svd.matrixV(); S=svd.singularValues();
    if (0 != svdResult) {
      wrench_out.setZero();
      return (error = E_SVD_FAILED);
@@ -140,10 +126,10 @@
    for (i = 0; i < jac.rows(); i++) {
      sum = 0.0;
      for (j = 0; j < jac.columns(); j++) {
-       //if (j < 6)
+       if (i < 6)
          sum += tmp_js(i, j) * torque_in(j);
-       //else
-       //  sum += 0.0;
+       else
+        sum += 0.0;
      }
      // If sigmaMin > eps, then wdls is not active and lambda_scaled = 0
      // (default value)
@@ -184,6 +170,21 @@
    if (E_CONVERGE_PINV_SINGULAR == error)
      return "Converged put pseudo inverse of jacobian is singular.";
    else
-     return SolverI::strError(error);
+     return strErrorGen(error);
  }
  }
+
+ // The original transformation of wdls is:
+
+// J# = Mq * V * Db# * U' * Mx
+
+// then I transpose:
+// J#' = Mx' * U * Db#' * V' * Mq'
+
+// since Db is a diagonal (hence symmetric) matrix, 
+// The transpose of the pseudoinverse is the same as the original matrix and clipped to 6x6 Db#' = Db#
+
+//Note that the original version of this file (only for the pinverse of the Jacobian), the U' * Mx is calculated as Mx * U and then transposed
+//in the for loop (j,i) instead of (i,j)
+
+

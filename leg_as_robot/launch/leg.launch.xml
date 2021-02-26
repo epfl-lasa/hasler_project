@@ -2,7 +2,7 @@
   <arg name="id"          default="right" />
   <arg name="leg_model"   default="$(find leg_as_robot)/urdf/$(arg id)/leg.create.xacro"/>
   <arg name="virtual_leg" default="true" />
-	<arg name="freq"        default="10000.0"/>  
+	<arg name="freq"        default="200.0"/>  
   <arg name="rviz"        default="true"/>
   <arg name="rvizconfig"  default="$(find leg_as_robot)/rviz/$(arg id)/leg_alone.rviz" />
 
@@ -29,7 +29,7 @@
         </node>
       </group>
 
-      <node name="leg_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <node name="leg_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
         <param name="publish_frequency" value="$(eval 2*arg('freq'))"/>
         <remap from="joint_states" to="leg_joint_publisher/joint_states" />
       </node>
@@ -40,6 +40,6 @@
       <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"/> 
   </group>
 
-  <node pkg="tf2_ros" type="static_transform_publisher" name="chair_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)_hip_base_link" />  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="chair_to_$(arg id)_leg" args="$(arg offset_x)  $(arg offset_y) $(arg offset_z) 0 0 0 1 /chair_base_link $(arg id)_leg_hip_base_link" />  
 
 </launch>

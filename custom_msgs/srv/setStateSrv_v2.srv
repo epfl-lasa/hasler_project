@@ -1,4 +1,0 @@
-int8 ros_machineState #HOMING,TELEOPERATION, ROBOT_STATE_CONTROL, ETC
-uint8[5] ros_effortComp #[NORMAL, CONSTRAINS, COMPENSATION, FEEDFORWARD, RCM_MOTION]
----
-bool platform_newState # new state or the same?

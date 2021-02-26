@@ -3,8 +3,8 @@
   <name>custom_msgs</name>
   <version>1.0.0</version>
   <description>custom_ros_messages_for_foot_platforms</description>
-  <maintainer email="walid.amanhoud@epfl.ch">walid</maintainer>
   <maintainer email="jacob.hernandezsanchez@epfl.ch">jacob</maintainer>
+  <maintainer email="walid.amanhoud@epfl.ch">walid</maintainer>
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
   <license>BSD</license>
   <buildtool_depend>catkin</buildtool_depend>
@@ -12,6 +12,7 @@
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <!--build_depend>5_axis_platform</build_depend-->
 
@@ -19,6 +20,7 @@
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
   <run_depend>message_generation</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->

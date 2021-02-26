@@ -62,8 +62,41 @@ namespace KDL {
  *
  * @ingroup KinematicFamily
  */
-class ChainFdSolverTorque_wdls : public KDL::SolverI {
+class ChainFdSolverTorque_wdls{
+  protected:
+	/// Latest error, initialized to E_NOERROR in constructor
+	int		error;
 public:
+
+ enum {
+	/// Converged but degraded solution (e.g. WDLS with psuedo-inverse singular)
+        E_DEGRADED         = +1,
+    //! No error
+        E_NOERROR          =  0,
+    //! Failed to converge
+        E_NO_CONVERGE      = -1,
+    //! Undefined value (e.g. computed a NAN, or tan(90 degrees) )
+        E_UNDEFINED        = -2
+    };
+
+
+	/// Return the latest error
+	virtual int getError() const { return error; }
+
+	/** Return a description of the latest error
+		\return if \a error is known then a description of \a error, otherwise
+		"UNKNOWN ERROR"
+	*/
+	virtual const char* strErrorGen(const int error) const
+	{
+		if (E_NOERROR == error) return "No error";
+		else if (E_NO_CONVERGE == error) return "Failed to converge";
+		else if (E_UNDEFINED == error) return "Undefined value";
+		else if (E_DEGRADED == error) return "Converged but degraded solution";
+		else return "UNKNOWN ERROR";
+	}
+
+
   static const int E_SVD_FAILED = -100; //! SVD solver failed
   /// solution converged but (pseudo)inverse is singular
   static const int E_CONVERGE_PINV_SINGULAR = +100;
@@ -220,11 +253,8 @@ public:
    */
   int getSVDResult() const { return svdResult; };
 
-  /// @copydoc KDL::SolverI::strError()
   virtual const char *strError(const int error) const;
 
-  // /// @copydoc KDL::SolverI::updateInternalDataStructures()
-  virtual void updateInternalDataStructures();
 
 private:
   const Chain &chain;

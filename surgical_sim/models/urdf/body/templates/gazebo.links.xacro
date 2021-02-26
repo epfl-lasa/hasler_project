@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+	
+	<xacro:property name="fricCoeff1" value="0.0"/>
+	<xacro:property name="fricCoeff2" value="0.0"/>
+	<xacro:property name="kdCollision" value="1"/>
+
+	<xacro:macro name="gazebo_links" params="name">
+		<gazebo reference="${name}">
+			<turnGravityOff>true</turnGravityOff>
+			<mu1>${fricCoeff1}</mu1>
+			<mu2>${fricCoeff2}</mu2>
+			<!-- <kinematic>1</kinematic> -->
+			<!-- <kd>${kdCollision}</kd> -->
+			<selfCollide>true</selfCollide>
+			<maxVel>1</maxVel>
+			<minDepth>0.000000001</minDepth>
+		</gazebo>
+	</xacro:macro>	
+	
+	
+</robot>

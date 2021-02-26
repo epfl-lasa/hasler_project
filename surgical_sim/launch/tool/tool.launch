@@ -1,50 +1,56 @@
 <launch>
   <arg name="id" default="right"/>
-
-  <arg name="virtual_tool" default="true"/>
+  <!-- <param name="use_sim_time" value="true"/> -->
+  <arg name="virtual_tool" default="false"/>
   <arg name="control_input" default="platform"/>
-  <arg name="model" default="$(find surgical_sim)/urdf/surgical_tool/tool_create.urdf.xacro" />
-  <arg name="use_gui" default="true" />
   <arg name="w_forceps" default="true" />
-  <arg name="w_gripper" default="false" />
   <arg name="rviz" default="true"/>
+  <arg name="gazebo_gui" default="false"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/tool_view.rviz"/>
   <arg name="magnitudeVibration" default="50.0"/>
 	<arg name="decayRateVibration" default="60.0"/>
 	<arg name="frequencyVibration" default="32.6"/>
 	<arg name="sharedGrasp" default="false"/>
-  <!-- <arg name="/use_sim_time" default="true"/> -->
-	
+  <arg name="rosControl" default="true"/>
+  <arg name="originTrocar_x" default="0.065"/>
+  <arg name="originTrocar_y" default="0.515"/>
+  <arg name="originTrocar_z" default="1.4"/>
+  <arg name="spawn_delay" default="1"/>
 
+	<arg name="model" default="$(find surgical_sim)/models/urdf/surgical_tool/tool_create.urdf.xacro" />
 
-  <group ns="$(arg id)_tool">
-
-  <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) with_gripper:=$(arg w_gripper)"/>
-  <include file="$(find surgical_sim)/launch/tool/tool.control.launch">
-      <arg name="id" value="$(arg id)"/>
-      <arg name="virtual_tool" value="$(arg virtual_tool)"/>
-      <arg name="control_input" value="$(arg control_input)"/>
-      <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
-      <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
-      <arg name="frequencyVibration" value="$(arg frequencyVibration)"/>
-      <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
-  </include>
-
+  <group if="$(arg rosControl)">
+    <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
+      <arg name="gui" value="$(arg gazebo_gui)"/>
+      <arg name="gazeboBringUp" value="$(arg rviz)"/>  
+    </include> 
   </group>
 
+    <group ns="$(arg id)_tool">
+        <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) toolID:=$(arg id) originTrocar.x:=$(arg originTrocar_x) originTrocar.y:=$(arg originTrocar_y) originTrocar.z:=$(arg originTrocar_z)"/>
 
-   <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
-      <arg name="robot_description_name" value="/$(arg id)_tool/robot_description" />
-      <arg name="robot_name" value="tool" />
-      <arg name="w_world" value="true" if="$(arg rviz)"/>  
-   </include> 
+        <include file="$(find surgical_sim)/launch/tool/tool.controller.launch">
+              <arg name="w_forceps" value="$(arg w_forceps)" />
+              <arg name="id" value="$(arg id)"/>
+              <arg name="virtual_tool" value="$(arg virtual_tool)"/>
+              <arg name="control_input" value="$(arg control_input)"/>
+              <arg name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+              <arg name="decayRateVibration" value="$(arg decayRateVibration)"/>
+              <arg name="frequencyVibration" value="$(arg frequencyVibration)"/>
+              <arg name="sharedGrasp" value="$(arg sharedGrasp)"/>  
+              <arg name="rosControl" value="$(arg rosControl)"/> 
+        </include> 
+
 
   <group if="$(arg rviz)">
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizConfig)" required="true" />
   </group>
-    
-  
 
+  <group if="$(arg rosControl)">
+    <node name="spawn_$(arg id)_tool" pkg="gazebo_ros" type="spawn_model" launch-prefix="bash -c 'sleep $(arg spawn_delay); $0 $@'" 
+            args="-urdf -model $(arg id)_tool -param /$(arg id)_tool/robot_description " respawn="false" output="screen" />
+    </group>
+  </group>
 
 </launch>
 

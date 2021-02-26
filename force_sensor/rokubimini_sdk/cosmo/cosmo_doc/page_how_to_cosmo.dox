@@ -1,0 +1,94 @@
+/*! \page page_how_to_cosmo Use cosmo in your program
+
+<H3>Header</H3>
+
+Include the cosmo header in your code.
+
+\code{c}
+#include <cosmo/cosmo.hpp>
+\endcode
+
+<H3>Create a Shared Memory Message</H3>  The first step to use cosmo is to
+define a message type to be transmitted over shared memory. The message type
+may only contain static sized memory. The only allowed std container is
+std::array, also std::string is now allowed to use with cosmo. A viable
+example of a message is given by:
+
+\code{c}
+class TestMessage{
+public:
+    TestMessage(): a(0) {}
+    int a;
+    std::array<double, 5> b;
+};
+\endcode
+
+<H3>Use a Cosmo Publisher</H3>
+
+A cosmo publisher is used to write data on to the shared memory. A cosmo
+publisher is configured with options:
+
+\code{c}
+    std::string topic = "/test";
+    cosmo::PublisherOptionsPtr options(new cosmo::PublisherOptions(topic));
+\endcode
+
+Use the helper functions specialized on the message type to instantiate a
+cosmo publisher.
+
+\code{c}
+    cosmo::PublisherPtr<TestMessage> publisher = cosmo::advertiseShm<TestMessage>(options);
+\endcode
+
+Use the publish function to write the Testmessage on the shared memory
+
+\code{c}
+    TestMessage msg;
+    for(unsigned int i=0; i<msg.b.size(); ++i) {
+        msg.b[i] = i+3;
+    }
+
+    publisher->publish(msg);
+\endcode
+
+<H3>Use a Cosmo Subscriber</H3> A cosmo subscriber is used to read data from
+the shared memory. The first step is to define a callback to handle incoming
+messages:
+
+\code{c}
+class myClass {
+public:
+    void callback(const TestMessage& msg) {
+        MELO_INFO_STREAM("Subscriber received message on /test: a:" << msg.a << "\n  b: " << msg.b[0] << ", "<< msg.b[1] << ", " << msg.b[2] << ", " << msg.b[3] << ", " << msg.b[4]);
+    }
+};
+\endcode
+
+The cosmo subscriber is configured with subscriber options:
+
+\code{c}
+    myClass instance;
+    std::string topic = "/test";
+    cosmo::SubscriberOptionsPtr<TestMessage> options(
+            new cosmo::SubscriberOptions<TestMessage>(topic, std::bind(&myClass::callback2, &instance, std::placeholders::_1)));
+\endcode
+
+Use the helper functions to instantiate a cosmo subscriber
+
+\code{c}
+    cosmo::SubscriberPtr<TestMessage> subscriber = cosmo::subscribeShm<TestMessage>(options);
+\endcode
+
+
+Call receive to receive a new message from the shared memory and handle it with the callback specified in the subscriber options:
+
+
+\code{c}
+	std::chrono::microseconds maxLockTime = std::chrono::microseconds{1200000};
+	bool receivedMsg;
+	receivedMsg = subscriber->receive(maxLockTime);
+\endcode
+
+The full source code of this example and other and other possibilities to construct cosmo Publishers and Subscribers can be found in cosmo_example.
+
+*/

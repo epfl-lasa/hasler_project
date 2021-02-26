@@ -1,0 +1,12 @@
+notification:
+  output_devices:
+    screen:
+      topic: /notification
+      queue_size: 100
+    audio:
+      topic: /notification
+      queue_size: 100
+    joystick:
+      topic: /notification
+      queue_size: 100
+      

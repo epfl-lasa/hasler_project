@@ -31,10 +31,10 @@
 #include "geometry_msgs/WrenchStamped.h"
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
-#include <custom_msgs/FootInputMsg_v3.h>
-#include <custom_msgs/FootOutputMsg_v3.h>
+#include <custom_msgs/FootInputMsg.h>
+#include <custom_msgs/FootOutputMsg.h>
 #include <custom_msgs/setControllerSrv.h>
-#include <custom_msgs/setStateSrv_v2.h>
+#include <custom_msgs/setStateSrv.h>
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
@@ -44,6 +44,7 @@
 #include <ros/package.h>
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/Marker.h>
+#include <MatLP_Filterd.h>
 
 
 //! Joint Space
@@ -75,11 +76,22 @@ private:
 
   // internal variables
   
-  KDL::JntArray* _legJoints;
-  KDL::JntArray*_legJointsInit;
-  KDL::JntArray* _legJointLims[NB_LIMS];
-  KDL::JntArray* _gravityTorques;
+  KDL::JntArray _legJoints;
+  KDL::JntArray _legJointsPrev;
+  KDL::JntArray _legJointsVel;
+  KDL::JntArray _legJointsVelPrev;
+  KDL::JntArray _legJointsAcc;
+  KDL::JntArray _legJointsInit;
+  KDL::JntArray _legJointLims[NB_LIMS];
+  KDL::JntArray _gravityTorques;
+  KDL::JntArray _coriolisTorques;
 
+  KDL::JntArray _inertialTorques;
+  KDL::JntArray _totalTorques;
+
+  MatLP_Filterd _legVelFilter;
+  MatLP_Filterd _legAccFilter;
+  
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   
   urdf::Model _myModel;
@@ -104,13 +116,17 @@ private:
 
   Eigen::Matrix<double,NB_LEG_AXIS,NB_LEG_AXIS> _weightedJointSpaceMassMatrix;
 
+  Eigen::Matrix<double,NB_AXIS_WRENCH,1> _maxWrench;
   bool _mySolutionFound;
   
   // ros variables
   ros::NodeHandle _n;
   ros::Rate _loopRate;
   float _dt;
+  float _freq;
 
+
+  int _decimationVel, _decimationAcc, _innerCounterVel, _innerCounterAcc;
   //! subscribers and publishers declaration
   // Subscribers declarations
   tf2_ros::Buffer _tfBuffer;
@@ -172,7 +188,7 @@ private:
   void readHipWorldPose();
   void performInverseKinematics();
   //void processAngles(Eigen::MatrixXd ikSolutions);
-  void computeGravityTorque(); //! effort in each leg joint
+  void computeIDTorque(); //! effort in each leg joint
   void performChainForwardKinematics();
   //void processArticulatedBodyInertias();
   void computeNetCoG();

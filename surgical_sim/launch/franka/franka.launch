@@ -1,0 +1,64 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- LAUNCH INTERFACE -->
+
+  <!-- The robot name is required for gazebo to spawn a model. -->
+  <arg name="id" default="right"/>
+
+  <arg name="robotOrigin.x" default="0"/>
+  <arg name="robotOrigin.y" default="0.5"/>
+  <arg name="robotOrigin.z" default="0"/>
+  <arg name="robotOrigin.ax" default="0"/>
+  <arg name="robotOrigin.ay" default="0"/>
+  <arg name="robotOrigin.az" default="0"/>
+
+  <arg name="modelsPath" default="$(find surgical_sim)/models/urdf"/>
+  <arg name="pandaUrdfFile" default="$(arg modelsPath)/franka/panda_arm.urdf.xacro" />
+
+  <arg name="rviz_config" default="$(find surgical_sim)/rviz/franka.rviz"/>
+  <arg name="rviz_bringup" default="true"/> <!--If false, do not launch rviz-->
+  <arg name="gazebo_bringup" default="true"/>
+  <arg name="GAZEBO_GUI" default="false"/>
+
+
+
+<arg name="panda_controller_file" default="$(find surgical_sim)/config/$(arg id)_panda_controller.yaml"/>
+ 
+<rosparam command="load" file="$(arg panda_controller_file)"/>
+
+<arg name="gazebo_world_file" default="$(find surgical_sim)/worlds/surgical_simulator_world.world"/>
+
+  <!-- load all controller configurations to rosparam server -->  
+
+  <group ns="$(arg id)_panda">
+    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg pandaUrdfFile) arm_id:=$(arg id) origin.x:=$(arg robotOrigin.x) origin.y:=$(arg robotOrigin.y) origin.z:=$(arg robotOrigin.z) origin.ax:=$(arg robotOrigin.ax) origin.ay:=$(arg robotOrigin.ay) origin.az:=$(arg robotOrigin.az)"/>
+
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg id)_panda/robot_description -urdf -model $(arg id)_panda -unpause"/>
+
+    <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller joint_position_controller"/>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen"/>
+  </group>
+
+  <!-- GAZEBO -->
+  <!-- enable/disable gui at will, the rviz listens to the simulation -->
+  <group if="$(arg gazebo_bringup)">  
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="world_name" value="$(arg gazebo_world_file)"/>
+      <arg name="paused" value="true"/>
+      <arg name="use_sim_time" value="true"/>
+      <arg name="gui" value="$(arg GAZEBO_GUI)"/>
+      <arg name="headless" value="false"/>
+      <arg name="debug" value="false"/>
+    </include>
+  </group>
+
+  <!-- LAUNCH RVIZ -->
+
+  <node name="franka_rviz" pkg="rviz" type="rviz" respawn="false" args="-d $(arg rviz_config)"
+        output="screen"
+        if="$(arg rviz_bringup)"/>
+        
+  
+
+</launch>

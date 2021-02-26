@@ -1,0 +1,111 @@
+# Use robot [LEFT, RIGHT]
+SurgicalTask/useRobot: [true, true]
+
+
+SurgicalTask/useCamera: [false, false]
+
+SurgicalTask/useFranka: true
+
+# Human input device [LEFT, RIGHT] (0: JOYSTICK / 1: FOOT)
+SurgicalTask/humanInputDevice: [1, 1]
+
+# Mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
+SurgicalTask/linearMapping: [1, 1]
+
+# Mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
+SurgicalTask/selfRotationMapping: [0, 0]
+
+# Control strategy [LEFT, RIGHT] (0: PASSIVE_DS / 1: JOINT_IMPEDANCE)
+SurgicalTask/controlStrategy: [1, 1]
+
+# Stiffness gain for joint impedance control strategy
+SurgicalTask/jointImpedanceStiffnessGain: 500
+
+# Use sim
+SurgicalTask/useSim: true
+
+# Use optitrack
+SurgicalTask/useOptitrack: false
+
+# Tool length [LEFT, RIGHT]
+# SurgicalTask/toolOffsetFromEE: [0.513, 0.54]
+# SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
+#SurgicalTask/toolOffsetFromEE: [0.4, 0.54] # simulation 0.4
+SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
+
+# Left foot interface range
+SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 40, 30, 35]
+
+# Left foot interface range
+SurgicalTask/rightFootInterfaceRange: [0.195, 0.18, 34, 30, 35]
+
+# Foot interface deadzone in position velocity mapping
+SurgicalTask/footInterfaceDeadZone: [0.03, 0.03, 5, 5, 7]
+
+# Velocity gains in trocar space when using the position velocity mapping (up, right, insertion, self rotation)
+SurgicalTask/trocarSpaceVelocityGains: [0.05, 0.05, 0.1, 1]
+
+# Use safety limits in position velocity mapping
+SurgicalTask/useSafetyLimits: false
+
+# Stiffness gain for the safety limits
+SurgicalTask/safetyLimitsStiffnessGain: 100
+
+# Allow task adaptation in position velocity mapping
+SurgicalTask/allowTaskAdaptation: false
+
+# Tool tip linear velocity limit
+SurgicalTask/toolTipLinearVelocityLimit: 0.1
+
+# Tool tip angular velocity limit
+SurgicalTask/toolTipSelfAngularVelocityLimit: 1.5
+
+# Trocar space pyramid base size in position position mapping
+SurgicalTask/trocarSpacePyramidBaseSize: [0.50, 0.50]
+
+# Trocar space pyramid base offset in position position mapping
+# SurgicalTask/trocarSpacePyramidBaseOffset: [0.04, -0.05, -0.09,
+#                                             0.04, 0.05, -0.07]
+
+SurgicalTask/trocarSpacePyramidBaseOffset: [0.50, -0.50, -0.50,
+                                            0.50, 0.50, -0.50]
+                                            
+# Trocar space pyramid min z offset offset in position position mapping
+#SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.145]
+SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.09]
+
+# Trocar space linear ds gain in position position mapping
+SurgicalTask/trocarSpaceLinearDSFixedGain: 4.0
+
+# Trocar space linear ds gaussian gain
+SurgicalTask/trocarSpaceLinearDSGaussianGain: 2.0
+
+# Trocar space linear ds gaussian width
+SurgicalTask/trocarSpaceLinearDSGaussianWidth: 0.03
+
+# Trocar space self rotation ds gain in position position mapping
+SurgicalTask/trocarSpaceSelfRotationGain: 1.5
+
+# Trocar space self rotation range in position position mapping
+SurgicalTask/trocarSpaceSelfRotationRange: 160
+
+# Task adaptation alignment gain
+SurgicalTask/taskAdaptationAlignmentGain: 2.0
+
+# Task adaptation alignment gain
+SurgicalTask/taskAdaptationGaussianWidth: 0.003
+
+# Task adaptation convergence gain 
+SurgicalTask/taskAdaptationConvergenceGain: 0.25
+
+# Task adaptation proximity gain
+SurgicalTask/taskAdaptationProximityGain: 0.25
+
+# Task adaptation exponential gain: 
+SurgicalTask/taskAdaptationExponentialGain: 10
+
+# Task adaptation overall gain
+SurgicalTask/taskAdaptationOverallGain: 1.0
+
+# Gripper range
+SurgicalTask/gripperRange: 20.0

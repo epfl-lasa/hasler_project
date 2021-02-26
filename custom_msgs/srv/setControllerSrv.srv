@@ -4,12 +4,12 @@ bool ros_defaultControl # 1: use values from definitions_2.h in firmware, 0: use
 
 int8 ros_controlledAxis # -1:all, 0-4: X Y PITCH ROLL YAW
 
-float32[5] ros_posP
-float32[5] ros_posI
-float32[5] ros_posD
+# float32[5] ros_posP
+# float32[5] ros_posI
+# float32[5] ros_posD
 
-float32[5] ros_speedP
-float32[5] ros_speedI
-float32[5] ros_speedD
+# float32[5] ros_speedP
+# float32[5] ros_speedI
+# float32[5] ros_speedD
 ---
 bool platform_controlOk

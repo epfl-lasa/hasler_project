@@ -1,0 +1,54 @@
+/right_tool:
+  # Publish all joint states -----------------------------------
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 100
+    joints_names:
+      - right_tool_insertion
+      - right_tool_pitch
+      - right_tool_roll
+      - right_tool_wrist_open_angle
+      - right_tool_wrist_open_angle_mimic
+      - right_tool_yaw
+
+  joint_position_controller_insertion:
+    type: effort_controllers/JointPositionController
+    joint: right_tool_insertion
+    pid: {p: 10000, i: 0, d: 1000}
+  
+  joint_position_controller_pitch:
+    type: effort_controllers/JointPositionController
+    joint: right_tool_pitch
+    pid: {p: 10000, i: 0, d: 1000}    
+  
+  joint_position_controller_roll:
+    type: effort_controllers/JointPositionController
+    joint: right_tool_roll
+    pid: {p: 10000, i: 0, d: 1000} 
+  
+  joint_position_controller_wrist_open_angle:
+    type: effort_controllers/JointPositionController
+    joint: right_tool_wrist_open_angle
+    pid: {p: 1000, i: 0, d: 30} 
+
+  joint_position_controller_wrist_open_angle_mimic:
+    type: effort_controllers/JointPositionController
+    joint: right_tool_wrist_open_angle_mimic
+    pid: {p: 1000, i: 0, d: 30} 
+
+  joint_position_controller_yaw:
+    type: effort_controllers/JointPositionController
+    joint: right_tool_yaw
+    pid: {p: 1000, i: 0, d: 500} 
+  
+  # gazebo_ros_control:
+  #   pid_gains:
+  #     right_tool_insertion: {p: 10000, i: 0, d: 1000}
+  #     right_tool_pitch: {p: 10000, i: 0, d: 1000}
+  #     right_tool_roll: {p: 10000, i: 0, d: 1000}
+  #     right_tool_wrist_open_angle: {p: 1000, i: 0, d: 30}
+  #     right_tool_wrist_open_angle_mimic: {p: 1000, i: 0, d: 30}
+  #     right_tool_yaw: {p: 1000, i: 0, d: 500}
+      #right_tool_wrist_pitch: {p: 0, i: 0, d: 60}
+      #right_tool_wrist_yaw: {p: 0, i: 0, d: 60}
+  # Position Controllers ---------------------------------------

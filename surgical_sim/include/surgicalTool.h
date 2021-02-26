@@ -34,10 +34,10 @@
 
 #include <std_msgs/Float64MultiArray.h>
 
-// #include <custom_msgs/FootInputMsg_v3.h>
-// #include <custom_msgs/FootOutputMsg_v3.h>
+// #include <custom_msgs/FootInputMsg.h>
+// #include <custom_msgs/FootOutputMsg.h>
 // #include <custom_msgs/setControllerSrv.h>
-// #include <custom_msgs/setStateSrv_v2.h>
+// #include <custom_msgs/setStateSrv.h>
 // #include "../../5_axis_platform/lib/platform/src/definitions_pid.h"
 // #include "../../5_axis_platform/lib/platform/src/definitions_ros.h"
 // #include "../../5_axis_platform/lib/platform/src/definitions_security.h"
@@ -51,6 +51,8 @@
 #include "LP_Filterd.h"
 #include <geometry_msgs/PoseStamped.h>
 #include <custom_msgs_gripper/SharedGraspingMsg.h>
+
+#include <custom_msgs/TwoFeetOneToolMsg.h>
 
 #define LEG_AXES \
   ListofLegAxes(hip_adduction, "hip_adduction")    \
@@ -71,22 +73,22 @@ extern const char *Leg_Axis_Names[];
 const uint8_t NB_AXIS_POSITIONING = 4;
 
 #define TOOL_AXES                                                                   \
-  ListofToolAxes(tool_pitch, "tool_pitch")    \
-  ListofToolAxes(tool_roll, "tool_roll")              \
-  ListofToolAxes(tool_yaw, "tool_yaw")    \
-  ListofToolAxes(tool_insertion, "tool_insertion")  \
-  ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
-  ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
-  ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
-  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
-  ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
+  ListofToolAxes(tool_joint1_pitch, "tool_joint1_pitch")    \
+  ListofToolAxes(tool_joint2_roll, "tool_joint2_roll")              \
+  ListofToolAxes(tool_joint3_yaw, "tool_joint3_yaw")    \
+  ListofToolAxes(tool_joint4_insertion, "tool_joint4_insertion")  \
+  ListofToolAxes(tool_joint5_wrist_open_angle, "tool_joint5_wrist_open_angle")  \
+  ListofToolAxes(tool_joint5_wrist_open_angle_mimic, "tool_joint5_wrist_open_angle_mimic")  \
+  ListofToolAxes(NB_TOOL_AXIS, "total_tool_joints") 
 #define ListofToolAxes(enumeration, names) enumeration,
 enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
-#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
+#define NB_TOOL_AXIS_FULL NB_TOOL_AXIS
 
+#define NB_TOOL_AXIS_RED (NB_TOOL_AXIS - 2)
+#define NB_TOOLS 2
 
 using namespace std;
 using namespace Eigen;
@@ -94,32 +96,41 @@ using namespace Eigen;
 class surgicalTool {
 
 public:
-  enum Tool_Name { UNKNOWN = 0, RIGHT = 1, LEFT = 2};
-
+  enum Tool_Name { NO_TOOL= 0, RIGHT_TOOL=1, LEFT_TOOL=2};
+  enum Tool_Type { FORCEPS, CAMERA}; 
+  enum Self_Rotation_Type {R_SPEED, R_POSITION};
+  enum Interaction_Mode {INDIVIDUAL_MODE, MIXED_MODE};
 
 private:
   enum Control_Input { LEG_INPUT = 1, PLATFORM_INPUT = 2 };
   
   Control_Input _myInput;
-  
+  Interaction_Mode _myInteractionMode;
   Tool_Name _tool_id;
+  Tool_Type _tool_type;
 
+  Self_Rotation_Type _tool_selfRotation;
   // internal variables
 
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,1> _toolJointsPosFiltered;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAll;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllPrev;
-  Eigen::Matrix<double,NB_TOOL_AXIS_FULL,1> _toolJointsAllSpeed;
-  Eigen::Matrix<double, NB_TOOL_AXIS_FULL, 1> _toolJointsAllOffset;
-  KDL::JntArray* _toolJoints;
+  Eigen::VectorXd _toolJointsAll;
+  Eigen::VectorXd _toolJointsAllPrev;
+  Eigen::VectorXd _toolJointsAllSpeed;
+  
+  
+  double _speedControlGainCamera,_speedControlGainSelfRotation;
+  Eigen::Matrix<double,NB_PLATFORM_AXIS,NB_LIMS> _desiredPlatformWSLims;
+  Eigen::Matrix<double,NB_PLATFORM_AXIS,NB_LIMS> _deadZoneValues;
+  Eigen::Matrix<double,NB_CART_AXIS,NB_LIMS> _cartesianLimits;
+
+  KDL::JntArray* _toolJoints; KDL::JntArray* _toolJointsOffset;
   KDL::JntArray* _toolJointsFull;
   KDL::JntArray* _toolJointsInit;
   KDL::JntArray* _toolJointLims[NB_LIMS];
   KDL::JntArray* _toolJointLimsAll[NB_LIMS];
   KDL::JntArray* _legJointLims[NB_LIMS];
   KDL::JntArray* _platformJointLims[NB_LIMS];
-  KDL::JntArray* _platformJointLimsDelta;
-
+  //KDL::JntArray* _platformJointLimsDelta;
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   Eigen::Matrix<double,NB_AXIS_POSITIONING,1> _thresholds;
   
@@ -150,12 +161,14 @@ private:
   Eigen::Matrix<double,NB_TOOL_AXIS_RED,NB_TOOL_AXIS_RED> _weightedJointSpaceMassMatrix;
   Eigen::Matrix<double,NB_AXIS_WRENCH,NB_AXIS_WRENCH> _weightedTaskSpaceMassMatrix;
   
+  bool _flagToolEnabled;
+  
+  bool _flagRosControl;
   bool _mySolutionFound;
   bool _flagSharedGrasp;
-  bool _flagToolJointLimitsOffsetCalculated;
-  bool _flagLegJointLimitsOffsetCalculated;
-  bool _flagPlatformJointLimitsOffsetCalculated;
-  
+  volatile bool _flagCurrentToolJointsRead;
+  int _nDOF;
+  uint8_t _graspITofAuxPlatform;
   
   Eigen::Vector4d _hAxisFilterPosValue;
   double _hAxisFilterGraspValue;
@@ -169,7 +182,8 @@ private:
   // Subscribers declarations
   tf2_ros::Buffer _tfBuffer;
   tf2_ros::TransformListener* _tfListener;
-  KDL::Frame _desiredTargetFrame;
+  KDL::Frame _desiredToolEEFrame;
+  Eigen::Vector3d _desiredToolEEFrameOffset;
   KDL::Frame _footTipPosFrame;
   KDL::Frame _footTipPosFrameInit;
 
@@ -179,29 +193,32 @@ private:
    
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJoints;
   Eigen::Matrix<double, NB_LEG_AXIS, 1> _legJointsOffset;
-
+  
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJoints;
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformVelocities;
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformEfforts;
   Eigen::Matrix<double, NB_PLATFORM_AXIS, 1> _platformJointsOffset;
 
   // Publisher declaration
-  //ros::Publisher _pubToolJointStates;
+  ros::Publisher _pubToolJointStates;
   ros::Publisher _pubToolJointCommands;
   ros::Publisher _pubToolTipPose;
   ros::Subscriber _subLegJointStates;
   ros::Subscriber _subPlatformJointStates;
+  ros::Subscriber _subCurrentToolJointStates;
   ros::Subscriber _subSharedGrasp;
 
   // Messages
   std_msgs::Float64MultiArray _msgJointCommands;
   sensor_msgs::JointState _msgJointStates;
+  sensor_msgs::JointState _msgToolCurrentJointStates;
   geometry_msgs::PoseStamped _msgToolTipPose;
   //! boolean variables
 
   bool _flagFootTipPoseConnected;
   bool _flagLegJointsConnected;
   bool _flagPlatformJointsConnected;
+  bool _flagForwardKinematicsStarted;
 
   bool _stop;
 
@@ -225,7 +242,7 @@ private:
   //! ROS METHODS
 
   // bool allSubscribersOK();
-  //void publishToolJointStates();
+  void publishToolJointStates();
   void publishToolJointCommands();
   void publishToolTipPose();
   void readFootTipBasePose();
@@ -238,7 +255,9 @@ private:
   void calculateDesiredFrame();
   void readSharedGrasp(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr &msg);
   void readLegJoints(const sensor_msgs::JointState::ConstPtr &msg);
+  void readCurrentToolJoints(const sensor_msgs::JointState::ConstPtr &msg);
   void readPlatformJoints(const sensor_msgs::JointState::ConstPtr &msg);
+  void readMixedPlatformControlState(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg);
   //! OTHER METHODS
   static void stopNode(int sig);
 };

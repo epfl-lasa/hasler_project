@@ -24,7 +24,6 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
   controller_manager
   controller_manager_msgs
-  controller_manager_tests
   controller_interface
   hardware_interface
   joint_limits_interface
@@ -52,7 +51,7 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs gazebo_ros tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils_math custom_msgs urdf kdl_parser eigen_conversions controller_manager controller_manager_msgs realtime_tools transmission_interface hardware_interface controller_manager_tests  joint_limits_interface hardware_interface kdl_conversions custom_msgs_gripper utils_math endoscope_feedback
+  CATKIN_DEPENDS roscpp rospy std_msgs gazebo_ros tf2 tf2_ros tf2_kdl custom_msgs dynamic_reconfigure  utils_math custom_msgs urdf kdl_parser eigen_conversions controller_manager controller_manager_msgs realtime_tools transmission_interface hardware_interface   joint_limits_interface hardware_interface kdl_conversions custom_msgs_gripper utils_math endoscope_feedback
   DEPENDS gazebo_ros
   )
 
@@ -62,18 +61,20 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 
 add_executable(surgicalToolSim src/surgicalTool.cpp src/surgicalTool_node.cpp)
 target_link_libraries(surgicalToolSim ${catkin_LIBRARIES})
+
+add_executable(pandaControllerSim src/pandaController.cpp src/pandaController_node.cpp)
+target_link_libraries(pandaControllerSim ${catkin_LIBRARIES})
+
 add_executable(targetObject src/protocol/targetObject.cpp src/protocol/targetObject_node.cpp)
 target_link_libraries(targetObject ${catkin_LIBRARIES})
 
 add_executable(sharedGrasp src/protocol/sharedControlGrasp.cpp src/protocol/sharedControlGrasp_node.cpp src/protocol/vibrator.cpp src/protocol/smoothSignals.cpp)
 target_link_libraries(sharedGrasp ${catkin_LIBRARIES})
 
-
-# add_library(gzTfUpdate SHARED src/gz_plugins/gzTfUpdate.cc)
-# target_link_libraries(gzTfUpdate 
-# 					  ${catkin_LIBRARIES}
-# 					  ${GAZEBO_LIBRARIES}
-#             ${Boost_LIBRARIES})
+install(PROGRAMS scripts/init_franka_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_franka_left.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_forceps_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/init_camera_left.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")

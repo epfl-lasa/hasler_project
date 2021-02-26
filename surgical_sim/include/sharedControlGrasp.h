@@ -22,7 +22,7 @@
 #include "ros/ros.h"
 #include <boost/shared_ptr.hpp>
 
-#include "custom_msgs/FootInputMsg_v5.h"
+#include "custom_msgs/FootInputMsg.h"
 #include "../../5_axis_platform/lib/platform/src/definitions_main.h"
 
 #include <dynamic_reconfigure/server.h>
@@ -53,20 +53,19 @@ using namespace std;
 using namespace Eigen;
 
 #define TOOL_AXES                                                                   \
-  ListofToolAxes(tool_pitch, "tool_pitch")    \
-  ListofToolAxes(tool_roll, "tool_roll")              \
-  ListofToolAxes(tool_yaw, "tool_yaw")    \
-  ListofToolAxes(tool_insertion, "tool_insertion")  \
-  ListofToolAxes(tool_wrist_pitch, "tool_wrist_pitch")  \
-  ListofToolAxes(tool_wrist_yaw, "tool_wrist_yaw")  \
-  ListofToolAxes(tool_wrist_open_angle, "tool_wrist_open_angle")  \
-  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_wrist_open_angle_mimic")  \
-  ListofToolAxes(NB_TOOL_AXIS_FULL, "total_tool_joints") 
+  ListofToolAxes(tool_pitch, "tool_joint1_pitch")    \
+  ListofToolAxes(tool_roll, "tool_joint2_roll")              \
+  ListofToolAxes(tool_yaw, "tool_joint3_yaw")    \
+  ListofToolAxes(tool_insertion, "tool_joint4_insertion")  \
+  ListofToolAxes(tool_wrist_open_angle, "tool_joint5_wrist_open_angle")  \
+  ListofToolAxes(tool_wrist_open_angle_mimic, "tool_joint5_wrist_open_angle_mimic")  \
+  ListofToolAxes(NB_TOOL_AXIS, "total_tool_joints") 
 #define ListofToolAxes(enumeration, names) enumeration,
 enum Tool_Axis : size_t { TOOL_AXES };
 #undef ListofToolAxes
 extern const char *Tool_Axis_Names[];
 
+#define NB_TOOL_AXIS_FULL NB_TOOL_AXIS
 #define NB_TOOL_AXIS_RED (NB_TOOL_AXIS_FULL - 4)
 
 const float SCALE_GAINS_LINEAR_POSITION  = 1.0f;
@@ -79,7 +78,7 @@ private:
   static sharedControlGrasp *me;
   
   enum ToolID { UNKNOWN = 0, RIGHT_TOOL = 1, LEFT_TOOL = 2};
-
+  enum SimType {KINEMATIC_SIM, DYNAMIC_SIM};
   //enum Action_State {A_POSITIONING, A_GRASPING, NB_ACTIONS};
   enum Action_State {A_POSITIONING_OPEN, A_GRASPING, A_HOLDING_GRASP, A_POSITIONING_CLOSE, A_FETCHING_OLD_GRASP, A_RELEASE_GRASP, NB_ACTIONS};
 
@@ -87,7 +86,7 @@ private:
   
   Action_State _aState;
   Action_State _aStateNext;
-
+  SimType _mySimType;
   ToolID _myID;
   // TrackMode _myTrackMode; 
   // Eigen and Geometry
@@ -164,7 +163,7 @@ private:
   ros::Publisher _pubFootInput;
 
 
-  custom_msgs::FootInputMsg_v5 _msgFootInput;
+  custom_msgs::FootInputMsg _msgFootInput;
   Eigen::Matrix<double, 6, 1> _wrenchGrasperRobot;
   
   float _realGripperSpeed;
@@ -181,6 +180,7 @@ private:
   smoothSignals* _mySmoothSignalsGrasp;
   ros::Time _startTimeForKeepingGrasp;
   ros::Time _startTimeForReleasingGrasp;
+  ros::Time _startTimeForChangingGainsToZero;
 
 
   

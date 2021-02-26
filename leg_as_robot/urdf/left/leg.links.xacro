@@ -22,10 +22,10 @@
   <xacro:property name="foot_scale_z" value="${d7_leg/d7Baseline_leg}"/> 
 
   <xacro:macro name="define_leg_links" params="leg_id:=left">
-    <link name="${leg_id}_hip_base_link"/>
-    <link name="${leg_id}_hip_adduction_link"/> <!-- virtual link-->
-    <link name="${leg_id}_hip_extension_link"/> <!-- virtual link-->
-    <link name="${leg_id}_hip_roll_link" >
+    <link name="${leg_id}_leg_hip_base_link"/>
+    <link name="${leg_id}_leg_hip_adduction_link"/> <!-- virtual link-->
+    <link name="${leg_id}_leg_hip_extension_link"/> <!-- virtual link-->
+    <link name="${leg_id}_leg_hip_roll_link" >
       <inertial>
       <origin xyz="${0.00265863 * thigh_scale_x} ${--0.00827375 * thigh_scale_y } ${0.17215567 * thigh_scale_z}" rpy="0 0 0"/>
       <mass value="${thigh_mass}"/><!-- kg -->
@@ -44,7 +44,7 @@
         </geometry>      
       </collision>
     </link>
-    <link name="${leg_id}_knee_extension_link" >
+    <link name="${leg_id}_leg_knee_extension_link" >
       <inertial>
           <origin xyz="${0.14893265 * shin_scale_x} ${0.01010783 * shin_scale_y } ${--0.00938572 * shin_scale_z}" rpy="0 0 0"/>
           <mass value="${shin_mass}"/><!-- kg -->
@@ -63,9 +63,9 @@
         </geometry>      
       </collision>
     </link>   
-    <link name="${leg_id}_ankle_pitch_link" /> <!-- virtual link-->
-    <link name="${leg_id}_ankle_roll_link" /> <!-- virtual link-->
-    <link name="${leg_id}_ankle_yaw_link">
+    <link name="${leg_id}_leg_ankle_pitch_link" /> <!-- virtual link-->
+    <link name="${leg_id}_leg_ankle_roll_link" /> <!-- virtual link-->
+    <link name="${leg_id}_leg_ankle_yaw_link">
         <inertial>
           <origin xyz="${--0.00089807 * foot_scale_x} ${-0.04499748 * foot_scale_y} ${-0.04201224 * foot_scale_z}" rpy="0 0 0"/>
           <mass value="${foot_mass}"/><!-- kg -->
@@ -84,8 +84,8 @@
         </geometry>      
       </collision>
     </link>
-    <link name="${leg_id}_foot_base"/>
-    <link name="${leg_id}_foot_tip"/>
-    <link name="${leg_id}_virtual_pedal_tip"/>
+    <link name="${leg_id}_leg_foot_base"/>
+    <link name="${leg_id}_leg_foot_tip"/>
+    <link name="${leg_id}_leg_virtual_pedal_tip"/>
   </xacro:macro>
 </robot>

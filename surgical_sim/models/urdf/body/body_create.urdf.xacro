@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<robot name="body" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Macros -->
+  <!-- Macros -->
+  <xacro:include filename="$(find surgical_sim)/models/urdf/body/torso/torso.urdf.xacro"/>
+
+  <xacro:arg name="with_liver" default="false"/>
+  <xacro:arg name="attached_to" default="world"/>
+  <xacro:arg name="bodyOrigin.x" default="0.0"/>
+  <xacro:arg name="bodyOrigin.y" default="0.5"/>
+  <xacro:arg name="bodyOrigin.z" default="1.1"/>
+  <xacro:arg name="bodyOrigin.ax" default="0.0"/>
+  <xacro:arg name="bodyOrigin.ay" default="0.0"/>
+  <xacro:arg name="bodyOrigin.az" default="0.0"/>  
+ 
+ <!--                                                   -->
+
+  <link name="$(arg attached_to)"/>
+
+   <xacro:create_torso
+        parent_link="$(arg attached_to)"
+        xyz="$(arg bodyOrigin.x) $(arg bodyOrigin.y) $(arg bodyOrigin.z)" 
+        rpy="$(arg bodyOrigin.ax) $(arg bodyOrigin.ay) $(arg bodyOrigin.az)"/>
+
+  <!-- <xacro:if value="$(arg with_liver)">
+    <xacro:attach_liver
+        parent_link="world"
+        xyz="0.0 0.5 1.1" rpy="0.0 0.0 0" />
+  </xacro:if> -->
+
+  <!-- <xacro:unless value="$(arg with_liver)">
+  
+  </xacro:unless>
+   -->
+    <gazebo>
+        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+        <robotNamespace>/body</robotNamespace>
+        <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+        <legacyModeNS>true</legacyModeNS>
+        </plugin>
+    </gazebo>
+
+</robot>

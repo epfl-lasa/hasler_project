@@ -1,50 +1,31 @@
 <launch>
-  <arg name="model" default="$(find surgical_sim)/urdf/target_object/target_object.urdf.xacro" />
-  <arg name="gui" default="true" />
-  <arg name="rviz" default="true"/>
-  <arg name="virtual_target" default="true"/>
-  <arg name="tracking_mode" default="right"/>
-  <arg name="target_name" default="targetx"/>
-  <arg name="subjectID" default="s0"/>
-
+  <arg name="model" default="$(find surgical_sim)/models/urdf/target_object/target_object.urdf.xacro" />
+  <arg name="id" default="right" />
+  <arg name="targetName" default="t1"/>
+  <arg name="subjectID" default="none"/>
+  <arg name="spawn_delay" default="0"/>
+  <arg name="simMode" default="dynamic"/>
   
-  <arg name="freq" default="300.0"/>  
+  <arg name="nTargets" default="20"/>
+  <arg name="freq" default="200.0"/>  
   
-  
-  
-  <param name="target_object_description" command="rosrun xacro xacro --inorder $(arg model)"/>
-  <param name="use_gui" value="$(arg gui)"/>
-
-  <group if="$(arg virtual_target)">
-    <node name="target_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
-      <remap from="robot_description" to="target_object_description"/>
-      <remap from="joint_states" to="target_state_publisher/joint_states"/>
-      <param name="publish_frequency" type="double" value="$(arg freq)" />
-    </node>  
+  <group ns="$(arg id)_$(arg targetName)_target">
+    <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) targetID:=$(arg id)_$(arg targetName)"/>
   </group>
 
-  <group unless="$(arg virtual_target)">
+  <group ns="$(arg id)_$(arg targetName)_target">
     <node name="target_state_publisher" pkg="surgical_sim" type="targetObject" output="screen">
-      <param name="trackingMode" value="$(arg tracking_mode)"/>
-      <param name="targetName" value="$(arg target_name)"/>
-      <param name="subjectID" value="$(arg subjectID)"/>
-      <param name="publish_frequency" type="double" value="$(arg freq)" />
-      <remap from="robot_description" to="target_object_description"/>
-      <remap from="joint_states" to="target_state_publisher/joint_states"/>
-    </node> 
-  </group>
-  
-  <node pkg="robot_state_publisher" type="robot_state_publisher"  name="target_object_state_publisher">
-    <param name="publish_frequency" type="double" value="$(eval 2*arg('freq'))" />
-    <remap from="robot_description" to="target_object_description"/>
+    <param name="trackingMode" value="$(arg id)"/>
+    <param name="targetName" value="$(arg targetName)"/>
+    <param name="simMode" value="$(arg simMode)"/>
+    <param name="nTargets" value="$(arg nTargets)"/>
+    <param name="subjectID" value="$(arg subjectID)"/>
+    <param name="publish_frequency" type="double" value="$(arg freq)" />
+
     <remap from="joint_states" to="target_state_publisher/joint_states"/>
   </node>
-
-  <group if="$(arg rviz)">
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find surgical_sim)/rviz/target_object_view.rviz" />
-    <node pkg="tf2_ros" type="static_transform_publisher" name="baseObject_static_tf" args="0 1 0 0 0 0 base_object_link target_object_link" />
   </group>
-
-
+  	
+	
 </launch>
 

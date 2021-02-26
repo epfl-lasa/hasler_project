@@ -1,6 +1,12 @@
 #include <MatLP_Filterd.h>
 #include <iostream>
 
+MatLP_Filterd::MatLP_Filterd()
+{
+  _initialized=false;
+}
+
+
 MatLP_Filterd::MatLP_Filterd(MatrixXd alphas)
 {
   _output = Eigen::MatrixXd::Zero(alphas.rows(),alphas.cols());
@@ -8,6 +14,7 @@ MatLP_Filterd::MatLP_Filterd(MatrixXd alphas)
   _alphas=alphas;
   _alphasComp = (1.0f - alphas.array()).matrix();
   _bias = Eigen::MatrixXd::Zero(alphas.rows(), alphas.cols());
+  _initialized=true;
 }
 
 
@@ -31,6 +38,13 @@ void MatLP_Filterd::reset()
 
 void MatLP_Filterd::setAlphas(MatrixXd alphas)
 {
+  if(!_initialized)
+  {
+    _output = Eigen::MatrixXd::Zero(alphas.rows(),alphas.cols());
+    _old_output = Eigen::MatrixXd::Zero(alphas.rows(), alphas.cols());
+    _bias = Eigen::MatrixXd::Zero(alphas.rows(), alphas.cols());
+    _initialized=true;
+  }
   _alphas=alphas;
-  _alphasComp = (1.0 - alphas.array()).matrix();
+  _alphasComp = (1.0f - alphas.array()).matrix();
 }

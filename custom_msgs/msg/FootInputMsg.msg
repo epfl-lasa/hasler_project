@@ -1,9 +1,13 @@
 # FootInputMsg.msg
 
-float32 FxDes
-float32 FyDes
-float32 TphiDes
-float32 TthetaDes
-float32 TpsiDes
+float32[5] ros_position 
+float32[5] ros_speed
+float32[5] ros_effort
+float32[6] ros_forceSensor
+float32[5] ros_filterAxisForce
+float32[5] ros_kp
+float32[5] ros_kd
+float32[5] ros_ki
 
-int16 stateDes
+
+

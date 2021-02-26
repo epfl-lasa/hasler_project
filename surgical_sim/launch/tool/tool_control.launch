@@ -1,0 +1,105 @@
+<launch>
+	<arg name="id" default="right"/>
+	<arg name="control_input" default="platform"/>
+	<arg name="virtual_tool" default="false"/>
+	<arg name="freq" default="10000.0"/>
+	<arg name="two_platforms" default="false"/>
+	<arg name="magnitudeVibration" default="50.0"/>
+	<arg name="decayRateVibration" default="50.0"/>
+	<arg name="frequencyVibration" default="32.6"/>
+	<arg name="sharedGrasp" default="false"/>
+	<arg name="leftSharedGrasp" default="false"/>
+	<arg name="rightSharedGrasp" default="false"/>
+	<arg name="rosControl" default="true"/>
+	<arg name="rightToolType" default="forceps"/>
+	<arg name="leftToolType" default="camera"/>
+	<arg name="simType" default="kinematic"/>
+	<arg name="selfRotationType" default="speed"/>
+
+	
+	
+
+	
+	<group unless="$(arg two_platforms)">
+		<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load"/>
+		<node name="$(arg id)_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen">
+			<param name="sharedGraspOn"     value="$(arg sharedGrasp)"/>   
+			<param name="rosControl"        value="$(arg rosControl)"/>   
+			<param name="toolID"            value="$(arg id)"/>
+			<param name="controlInput"      value="$(arg control_input)"/>
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
+			<remap from="robot_description" to="/$(arg id)_tool/robot_description"/>
+			<remap from="tool_tip_pose"     to="tool_joint_state_publisher/tool_tip_pose"/>
+		</node>	
+		<group if="$(arg sharedGrasp)">
+			<node name="$(arg id)_shared_control_grasp" pkg="surgical_sim" type="sharedGrasp" output="screen">
+				<param name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+				<param name="decayRateVibration" value="$(arg decayRateVibration)"/>
+				<param name="frequencyVibration" value="$(arg frequencyVibration)"/>
+				<param name="toolID" value="$(arg id)"/>
+				<param name="sharedGraspOn" value="$(arg sharedGrasp)"/>
+				<param name="hapticGraspOn" value="false"/>
+				<param name="simType" value="kinematic"/>
+				<param name="publish_frequency" type="double" value="500.0" />
+				
+				<param name="simType" value="$(arg simType)"/>
+			</node>  
+		</group>
+	
+	</group>
+	
+	<group if="$(arg two_platforms)">
+
+		<rosparam file="$(find surgical_sim)/config/left_tool_settings.yaml" command="load"/>
+		<rosparam file="$(find surgical_sim)/config/right_tool_settings.yaml" command="load"/>
+    	
+		<node pkg="surgical_sim" type="init_$(arg rightToolType)_right.sh" name="run_script_right" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+		<node pkg="surgical_sim" type="init_$(arg leftToolType)_left.sh" name="run_script_left" output="screen" launch-prefix="bash -c 'sleep 0; $0 $@'"/>
+		
+		<node name="left_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen" launch-prefix="bash -c 'sleep 3; $0 $@'">
+			<param name="sharedGraspOn"     value="$(arg leftSharedGrasp)"/>   
+			<param name="rosControl"        value="$(arg rosControl)"/> 
+			<param name="toolID"            value="left"/>
+			<param name="controlInput"      value="$(arg control_input)"/>
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
+			<remap from="robot_description" to="/left_tool/robot_description"/>
+			<remap from="tool_tip_pose"     to="tool_joint_state_publisher/tool_tip_pose"/>
+		</node>	
+		<node name="right_tool_joint_state_publisher" pkg="surgical_sim" type="surgicalToolSim" output="screen" launch-prefix="bash -c 'sleep 3; $0 $@'">
+			<param name="sharedGraspOn"     value="$(arg rightSharedGrasp)"/>   
+			<param name="rosControl"        value="$(arg rosControl)"/>   
+			<param name="toolID"            value="right"/>
+			<param name="controlInput"      value="$(arg control_input)"/>
+			<param name="publish_frequency" type="double" value="$(arg freq)"/>
+			<remap from="robot_description" to="/right_tool/robot_description"/>
+			<remap from="tool_tip_pose"     to="tool_joint_state_publisher/tool_tip_pose"/>
+		</node>	
+		<group if="$(arg rightSharedGrasp)">
+			<node name="right_shared_control_grasp" pkg="surgical_sim" type="sharedGrasp" output="screen">
+				<param name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+				<param name="decayRateVibration" value="$(arg decayRateVibration)"/>
+				<param name="frequencyVibration" value="$(arg frequencyVibration)"/>
+				<param name="toolID" value="right"/>
+				<param name="sharedGraspOn" value="$(arg rightSharedGrasp)"/>
+				<param name="hapticGraspOn" value="false"/>
+				<param name="publish_frequency" type="double" value="500.0" />
+				<param name="simType" value="$(arg simType)"/>
+			</node>  
+		</group>
+		<group if="$(arg leftSharedGrasp)">
+			<node name="left_shared_control_grasp" pkg="surgical_sim" type="sharedGrasp" output="screen">
+				<param name="magnitudeVibration" value="$(arg magnitudeVibration)"/>
+				<param name="decayRateVibration" value="$(arg decayRateVibration)"/>
+				<param name="frequencyVibration" value="$(arg frequencyVibration)"/>
+				<param name="toolID" value="left"/>
+				<param name="sharedGraspOn" value="$(arg leftSharedGrasp)"/>
+				<param name="hapticGraspOn" value="false"/>
+				<param name="publish_frequency" type="double" value="500.0" />
+				<param name="simType" value="$(arg simType)"/>
+			</node>  
+		</group>
+	</group>
+	
+		
+
+</launch>

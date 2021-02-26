@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <!-- Subscriber -->
+  <node ns="notification_tutorial" name="subscriber" pkg="notification_tutorial" type="subscriber_node" output="screen">
+    <rosparam file="$(find notification_tutorial)/config/subscriber.yaml" command="load" />
+  </node>
+</launch>

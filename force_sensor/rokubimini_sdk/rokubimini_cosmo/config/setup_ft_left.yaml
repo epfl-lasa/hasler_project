@@ -1,0 +1,14 @@
+rokubiminis:
+  - name: ft_left
+    configuration_file: rokubimini_sensor.yaml
+    product_code: 1
+    port: /dev/left_force_sensor
+    baud_rate: 460800
+#  - name:                     ft_sensor1
+#    configuration_file:       rokubimini_sensor.yaml
+#    product_code:             2
+#    ethercat_bus:             enx3c8cf8ea282c
+#    ethercat_address:         1
+#    ethercat_pdo_type:        A #EXTIMU
+
+

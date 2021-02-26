@@ -20,7 +20,8 @@ _dt(1.0f/frequency)
 	me=this;
 	_stop = false;
 	_flagControlThisPosition=false;
-
+	_flagSendPIDGains=false;
+	_flagLoadPIDGains=false;
 
 	_flagControlZeroEffort=false;
 	_flagCapturePlatformPosition = false;
@@ -38,6 +39,7 @@ _dt(1.0f/frequency)
 	_flagLegCompTorquesRead=false;
 	_flagLegCompWrenchRead = false;
 
+	_flagTwoFeetOneToolRead = false;
 
 	for (int i=0; i<NB_PARAMS_CATEGORIES; i++){
 	_flagIsParamStillSame[i]=true;
@@ -59,7 +61,8 @@ _dt(1.0f/frequency)
 	_flagHumanOnPlatform=false;
 	_flagCompensateLeg=false;
 
-    
+    _myPIDCategory = S_TELEOP_PID;
+
 	for (int k=0; k<NB_AXIS; k++)
 	{       
 		//Platform
@@ -70,7 +73,7 @@ _dt(1.0f/frequency)
 		_platform_effortM[k]=0.0f;
 		
 	}	
-		_platform_controllerType=TORQUE_ONLY;
+		_platform_controllerType=TORQUE_CTRL;
 		_platform_machineState=EMERGENCY;
 		_platform_id=0;
 		//ROS
@@ -88,6 +91,15 @@ _dt(1.0f/frequency)
 		_ros_speedP[k]=0.0f;
 		_ros_speedI[k]=0.0f;
 		_ros_speedD[k]=0.0f;
+
+		for (size_t c = 0; c < NB_POS_PID_C; c++)
+		{
+			
+			_ros_paramP[c][k]=0.0f;
+			_ros_paramI[c][k]=0.0f;
+			_ros_paramD[c][k]=0.0f;
+		}
+		
 
 	}
 	for (int j=0; j<NB_EFFORT_COMPONENTS; j++){
@@ -114,65 +126,256 @@ footVarSynchronizer::~footVarSynchronizer()
 
 bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
 {	
-	_nbDesiredFootInputPublishers = 0;
-	ros::NodeHandle n_;
-	n_.resolveName(Platform_Names[_platform_name]);
-	if (!n_.getParam("nFIPublishers", _nbDesiredFootInputPublishers))
-	{ 
-		ROS_ERROR("Missing number of foot input publishers in yaml file"); 
+
+	_mixedPlatformOn=false;
+    if (!_n.getParam("mixedPlatformMode", _mixedPlatformOn))
+    { 
+      ROS_ERROR(" [%s footVarSync]: No mixedPlatformMode  param",Platform_Names[_platform_name]); 
+    } 
+
+	if (_mixedPlatformOn)
+	{
+		std::string mainPlatform_="right";
+		if (!_n.getParam("/mixed_platform/mainPlatform", mainPlatform_))
+		{ 
+		ROS_ERROR(" [%s footVarSync]: No /mixed_platform/mainPlatform  param",Platform_Names[_platform_name]); 
+		} 
+
+		_mainPlatform = mainPlatform_.compare("right")==0 ? RIGHT_PLATFORM_ID : LEFT_PLATFORM_ID;
+		
+		std::vector<double> pToolPosControl_;
+		std::vector<double> dToolPosControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/p", pToolPosControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_POS_PID][i] = pToolPosControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/d", dToolPosControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_POS_PID][i] = dToolPosControl_[i];
+			}
+		}
+
+		std::vector<double> pToolSpeedControl_;
+		std::vector<double> dToolSpeedControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/p", pToolSpeedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_SPEED_PID][i] = pToolSpeedControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/d", dToolSpeedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_SPEED_PID][i] = dToolSpeedControl_[i];
+			}
+		}
+		
+		std::vector<double> pToolMixedControl_;
+		std::vector<double> dToolMixedControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/p", pToolMixedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_MIXED_PID][i] = pToolMixedControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/d", dToolMixedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_MIXED_PID][i] = dToolMixedControl_[i];
+			}
+		}
+
+			std::string toolControlTopic_ = "/mixedPlatform/platformState";
+			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/topic", toolControlTopic_))
+			{ 
+			
+				ROS_ERROR("[%s footVarSync]: Missing /toolControl/topic",Platform_Names[_platform_name]); 
+			}
+			else
+			{
+				_subPlatformControlFromTool = _n.subscribe<custom_msgs::TwoFeetOneToolMsg>(toolControlTopic_, 1, boost::bind(&footVarSynchronizer::readTwoFeetOneToolMsg, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+			}
+	
 	}
+	
+	std::vector<double> pTeloperation_;
+	std::vector<double> iTeloperation_;
+	std::vector<double> dTeloperation_;
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/p", pTeloperation_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/p",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+
+			_ros_paramP[S_TELEOP_PID][i] = pTeloperation_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/i", iTeloperation_))
+	{ 
+	
+		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/i",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramI[S_TELEOP_PID][i] = iTeloperation_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/d", dTeloperation_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/d",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramD[S_TELEOP_PID][i] = dTeloperation_[i];
+		}
+	}
+
+	std::vector<double> pRobotStControl_;
+	std::vector<double> iRobotStControl_;
+	std::vector<double> dRobotStControl_;
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/p", pRobotStControl_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/p",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramP[S_ROBOT_CTRL_PID][i] = pRobotStControl_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/i", iRobotStControl_))
+	{ 
+	
+		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/i",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramI[S_ROBOT_CTRL_PID][i] = iRobotStControl_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/d", dRobotStControl_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/d",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramD[S_ROBOT_CTRL_PID][i] = dRobotStControl_[i];
+		}
+	}
+
+	
+
+	
+	std::vector<std::string> _fiPublishers;			
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_input/topics", _fiPublishers))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing fi_input/topics param",Platform_Names[_platform_name]); 
+	}
+
+	int _nbDesiredFootInputPublishers = _fiPublishers.size();
 	
 	if (_nbDesiredFootInputPublishers!=0)
 	{
 		_subDesiredFootInput.resize(_nbDesiredFootInputPublishers);
 		_msgDesiredFootInput.resize(_nbDesiredFootInputPublishers);
 		_flagDesiredFootInputsRead.resize(_nbDesiredFootInputPublishers);
-		
+		ROS_INFO("[%s footVarSync]: The list of publishers for the platform input are: ",Platform_Names[_platform_name]);
 		for (unsigned int i  = 0; i<_nbDesiredFootInputPublishers; i++)
 		{	
 			_flagDesiredFootInputsRead[i]=false;
-			std::string topic_name;
-			char pub_name[6];
-			sprintf(pub_name,"pub_%i",i+1);
-			if (!n_.getParam(pub_name, topic_name))
-			{ 
-				ROS_ERROR("Missing topic name for %s", pub_name); 
-			}
-			else{
-				cout<<"/"+std::string(Platform_Names[_platform_name])+"/"+topic_name<<endl;
-				_subDesiredFootInput[i] = _n.subscribe<custom_msgs::FootInputMsg_v5>("/"+std::string(Platform_Names[_platform_name])+"/"+topic_name, 1, boost::bind(&footVarSynchronizer::readDesiredFootInputs, this, _1,i), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-			}
+			ROS_INFO("[%s footVarSync]: Topic %i: %s",Platform_Names[_platform_name],i,_fiPublishers[i].c_str());
+			_subDesiredFootInput[i] = _n.subscribe<custom_msgs::FootInputMsg>("/"+std::string(Platform_Names[_platform_name])+"/"+_fiPublishers[i], 1, boost::bind(&footVarSynchronizer::readDesiredFootInputs, this, _1,i), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		}
 	}
+	
+
 
 	if (_platform_name==LEFT){
-		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-		
-		
-		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/left/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
+		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_LEFT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		 
+		 
+		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/left_platform/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>("/left/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
+		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());							
-    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/left/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    	_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/left_leg/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_LEFT);
+		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_LEFT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_LEFT);
 	}
 	if (_platform_name==RIGHT){
-		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg_v5>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg_v3>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_RIGHT, 1, boost::bind(&footVarSynchronizer::fetchFootOutput, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
-		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/right/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
+		_subForceModified = _n.subscribe<geometry_msgs::WrenchStamped>("/right_platform/force_sensor_modifier/force_modified", 1,boost::bind(&footVarSynchronizer::readForceModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
-		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg_v5>("/right/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
+		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());	
 
-		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/right/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subLegGravCompWrench = _n.subscribe<geometry_msgs::WrenchStamped>("/right_leg/leg_joint_publisher/leg_foot_base_wrench", 1,boost::bind(&footVarSynchronizer::readLegGravityCompWrench, this, _1),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		
-		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv_v2>(SERVICE_CHANGE_STATE_NAME_RIGHT);
+		_clientSetState=_n.serviceClient<custom_msgs::setStateSrv>(SERVICE_CHANGE_STATE_NAME_RIGHT);
 		_clientSetController=_n.serviceClient<custom_msgs::setControllerSrv>(SERVICE_CHANGE_CTRL_NAME_RIGHT);
 	}
 
@@ -185,14 +388,14 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 	if (_n.ok()) 
 	{   
 		ros::spinOnce();
-		ROS_INFO("The supervisory variables synchronization of the foot interface is about to start ");
+		ROS_INFO("[%s footVarSync]: The supervisory variables synchronization of the foot interface is about to start ",Platform_Names[_platform_name]);
 		//! Load the default gains for position control
 
 		return true;
 	}
 	else 
 	{
-		ROS_ERROR("The ros node has a problem.");
+		ROS_ERROR("[%s footVarSync]: The ros node has a problem.",Platform_Names[_platform_name]);
 		return false;
 	}
 }
@@ -201,18 +404,18 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 void footVarSynchronizer::stopNode(int sig)
 {
     me->_stop= true;
+	me->publishFootInput(NULL);
 }
 
 void footVarSynchronizer::run()
 {
   while (!_stop) 
   {	
-
 	if (_flagPlatformOutCommStarted && _subFootOutput.getNumPublishers()!=0)
 	{
 		if ((_platform_id!=(uint8_t) _platform_name)&&(_platform_id!=UNKNOWN))
 		{
-			ROS_ERROR("This node for variables synchronization is acting on the wrong platform");
+			ROS_ERROR("[%s footVarSync]: This node for variables synchronization is acting on the wrong platform",Platform_Names[_platform_name]);
 			break;
 		}
 		else
@@ -224,12 +427,14 @@ void footVarSynchronizer::run()
 				_ros_newState = _config.machine_state;
 				_config.controller_type = (uint8_t)_platform_controllerType;
 				_ros_controllerType = _config.controller_type;
-				_config.desired_Position_X=_platform_position[X];
-				_config.desired_Position_Y=_platform_position[Y];
-				_config.desired_Position_PITCH = _platform_position[PITCH];
-				_config.desired_Position_ROLL = _platform_position[ROLL];
-				_config.desired_Position_YAW = _platform_position[YAW];
+				// _config.desired_Position_X=_platform_position[X];
+				// _config.desired_Position_Y=_platform_position[Y];
+				// _config.desired_Position_PITCH = _platform_position[PITCH];
+				// _config.desired_Position_ROLL = _platform_position[ROLL];
+				// _config.desired_Position_YAW = _platform_position[YAW];
 				_config.use_default_gains=true;
+				_config.send_pid_gains=false;
+				_config.load_param_pid_gains=false;
 				_ros_defaultControl=true;
 				_ros_position=_platform_position;
 				_config.controlled_axis=-1;
@@ -238,30 +443,29 @@ void footVarSynchronizer::run()
 				_configPrev = _config;
 				_msgFootOutputPrev=_msgFootOutput;
 				_flagInitialConfig=true;
-				ROS_INFO("Updating default parameters from the platform in the rqt_reconfig...");
-			}
-
-			// else if (_flagInitialConfig && !_flagOutputMessageReceived && _flagWasDynReconfCalled)
-			// {
-			// 	ROS_ERROR("The %s platform is not communicating", Platform_Names[_platform_name]);
-			// 	_config=_configPrev;
-			// 	_dynRecServer.updateConfig(_config);
-			// 	_flagWasDynReconfCalled = false;
-			// }
-
-			else if(_subFootOutput.getNumPublishers()!=0)
+				ROS_INFO("[%s footVarSync]: Updating default parameters from the platform in the rqt_reconfig...",Platform_Names[_platform_name]);
+				ros::spinOnce();
+				
+			} else if(_subFootOutput.getNumPublishers()!=0)
+			{
+				checkWhichPIDGainsToUse();
+				// cout<<_myPIDCategory<<endl;
+				if (!_ros_defaultControl && _flagLoadPIDGains)
+				{ 
+					controlGainsDefault(-1);
+					_flagUpdateConfig = true;
+				}
+				if (_flagWasDynReconfCalled)
 				{
+					updateInternalVariables();
 					changeParamCheck();
-					if (_flagWasDynReconfCalled)
-					{
-						changeParamCheck();
-						_flagParamsActionsTaken = false;
-						requestDoActionsParams();
-						if (_flagParamsActionsTaken)
+					_flagParamsActionsTaken = false;
+					requestDoActionsParams();
+					if (_flagParamsActionsTaken)
 						{ updateConfigAfterParamsChanged();}
 					_flagWasDynReconfCalled = false;
-					}
-				changedPlatformCheck();
+				}
+				
 				if (_flagOutputMessageReceived)
 				{
 					changedPlatformCheck();
@@ -270,6 +474,7 @@ void footVarSynchronizer::run()
 					if (_flagPlatformActionsTaken) {updateConfigAfterPlatformChanged();}
 					_flagOutputMessageReceived = false;
 				}
+				
 
 				if (_flagParamsActionsTaken)
 				{
@@ -290,7 +495,7 @@ void footVarSynchronizer::run()
 					if (abs(_ros_forceModified.segment(0,3).norm()) > HUMAN_ON_PLATFORM_THRESHOLD) {
 						if(!_flagHumanOnPlatform)
 						{ 
-							ROS_INFO("Probably there is a human on the platform"); 
+							ROS_INFO("[%s footVarSync]: Probably there is a human on the platform",Platform_Names[_platform_name]); 
 							_flagHumanOnPlatform=true;
 						}
 					}
@@ -298,7 +503,7 @@ void footVarSynchronizer::run()
 					{
 						if(_flagHumanOnPlatform)
 						{ 
-							ROS_INFO("Probably there is NOT a human on the platform"); 
+							ROS_INFO("[%s footVarSync]: Probably there is NOT a human on the platform",Platform_Names[_platform_name]); 
 							_flagHumanOnPlatform=false;
 						}
 					}
@@ -328,12 +533,138 @@ void footVarSynchronizer::run()
         ros::spinOnce();
 	_loopRate.sleep();
   }
-  ROS_INFO("Parameters setting and variables synchronization stoped");
+  ROS_INFO("[%s footVarSync]: Parameters setting and variables synchronization stoped",Platform_Names[_platform_name]);
   ros::spinOnce();
   _loopRate.sleep();
   ros::shutdown();
 }
 
+
+
+void footVarSynchronizer::checkWhichPIDGainsToUse()
+{	
+	if (_mixedPlatformOn)
+	{	
+		if(_platform_machineState==TELEOPERATION)
+		{
+			if ((Platform_Name) _mainPlatform == _platform_id)
+			{
+				_myPIDCategory = _msgTwoFeetOneTool.currentControlMode == (uint8_t) TOOL_POSITION_CTRL ? MP_TOOL_POS_PID : MP_TOOL_SPEED_PID;
+			}else
+			{
+				_myPIDCategory=MP_TOOL_MIXED_PID;
+			}
+		}
+		else if(_platform_machineState==ROBOT_STATE_CONTROL)
+		{
+			_myPIDCategory=S_ROBOT_CTRL_PID;
+		}
+	}else 
+	{	
+		if(_platform_machineState==TELEOPERATION)
+		{
+			_myPIDCategory=S_TELEOP_PID;
+		}
+		else if(_platform_machineState==ROBOT_STATE_CONTROL)
+		{
+			_myPIDCategory=S_ROBOT_CTRL_PID;
+		}
+	}
+}
+
+void footVarSynchronizer::updateInternalVariables()
+{
+	_ros_newState = (uint8_t)_config.machine_state;
+
+	_ros_controlledAxis = (int8_t) _config.controlled_axis;
+	_ros_controllerType = (uint8_t) _config.controller_type;
+	_ros_defaultControl = (bool) _config.use_default_gains;
+	_flagSendPIDGains = (bool) _config.send_pid_gains;
+	_flagLoadPIDGains = (bool) _config.load_param_pid_gains;
+    _flagControlThisPosition = (bool) _config.send_this_position;
+    _flagControlZeroEffort = (bool)_config.send_zero_effort;
+    _flagCapturePlatformPosition = (bool)_config.capture_platform_position;
+
+    if (_flagControlThisPosition) {
+      _ros_position << _config.desired_Position_Y,
+          _config.desired_Position_X, _config.desired_Position_PITCH,
+          _config.desired_Position_ROLL, _config.desired_Position_YAW;
+      ROS_DEBUG("Updating_POSITION");
+	}
+
+	if (_flagControlZeroEffort) {
+		_ros_effort.setConstant(0.0f);
+        ROS_DEBUG("Sending zero torque to the platform");
+	}
+
+    _ros_effortComp[NORMAL]=(uint8_t) _config.effortComp_normal;
+	_ros_effortComp[SOFT_LIMITS]=(uint8_t) _config.effortComp_softLimits;
+	_ros_effortComp[CUSTOM_IMPEDANCE]=(uint8_t) _config.effortComp_customImpedance;
+	_ros_effortComp[COMPENSATION]=(uint8_t) _config.effortComp_compensation;
+	_ros_effortComp[FEEDFORWARD]=(uint8_t) _config.effortComp_feedforward;
+
+		if (_config.compensate_leg)
+		{
+			if (!_flagCompensateLeg)
+			{
+				ROS_INFO("[%s footVarSync]: Compensating the Leg",Platform_Names[_platform_name]);
+				_flagCompensateLeg=true;
+			}
+		}
+		else
+		{
+			if (_flagCompensateLeg)
+			{
+				ROS_INFO("[%s footVarSync]: Not Compensating the Leg Anymore",Platform_Names[_platform_name]);
+				_flagCompensateLeg=false;
+			}
+		}
+		if (_flagSendPIDGains && (_platform_machineState==TELEOPERATION || _platform_machineState==ROBOT_STATE_CONTROL) ){
+			if (_platform_controllerType==POSITION_CTRL)
+			{
+				_ros_posP[X]=_config.kp_X; 
+				_ros_posP[Y]=_config.kp_Y;
+				_ros_posP[PITCH]=_config.kp_PITCH;
+				_ros_posP[ROLL]=_config.kp_ROLL;
+				_ros_posP[YAW]=_config.kp_YAW;
+
+				_ros_posI[X]=_config.ki_X; 
+				_ros_posI[Y]=_config.ki_Y;
+				_ros_posI[PITCH]=_config.ki_PITCH;
+				_ros_posI[ROLL]=_config.ki_ROLL;
+				_ros_posI[YAW]=_config.ki_YAW;
+
+				_ros_posD[X]=_config.kd_X; 
+				_ros_posD[Y]=_config.kd_Y;
+				_ros_posD[PITCH]=_config.kd_PITCH;
+				_ros_posD[ROLL]=_config.kd_ROLL;
+				_ros_posD[YAW]=_config.kd_YAW;
+			} else if (_platform_controllerType==SPEED_CTRL)
+			{
+				_ros_speedP[X]=_config.kp_X; 
+				_ros_speedP[Y]=_config.kp_Y;
+				_ros_speedP[PITCH]=_config.kp_PITCH;
+				_ros_speedP[ROLL]=_config.kp_ROLL;
+				_ros_speedP[YAW]=_config.kp_YAW;
+
+				_ros_speedI[X]=_config.ki_X; 
+				_ros_speedI[Y]=_config.ki_Y;
+				_ros_speedI[PITCH]=_config.ki_PITCH;
+				_ros_speedI[ROLL]=_config.ki_ROLL;
+				_ros_speedI[YAW]=_config.ki_YAW;
+
+				_ros_speedD[X]=_config.kd_X; 
+				_ros_speedD[Y]=_config.kd_Y;
+				_ros_speedD[PITCH]=_config.kd_PITCH;
+				_ros_speedD[ROLL]=_config.kd_ROLL;
+				_ros_speedD[YAW]=_config.kd_YAW;
+			}
+		}else{
+			// TO DO ADD THE GAINS DEPENDING ON THE TOOL
+		}
+		
+
+}
 void footVarSynchronizer::changeParamCheck()
 {
 	//! Start with assumptions
@@ -355,9 +686,9 @@ void footVarSynchronizer::changeParamCheck()
 
 	// Check Effort Components
 
-	if ( (_config.effortComp_rcmMotion == _configPrev.effortComp_rcmMotion) &&
+	if ( (_config.effortComp_softLimits == _configPrev.effortComp_softLimits) &&
 		 (_config.effortComp_compensation == _configPrev.effortComp_compensation) &&
-		 (_config.effortComp_constrains == _configPrev.effortComp_constrains) &&
+		 (_config.effortComp_customImpedance == _configPrev.effortComp_customImpedance) &&
 		 (_config.effortComp_feedforward == _configPrev.effortComp_feedforward) &&
 		 (_config.effortComp_normal == _configPrev.effortComp_normal)  )
 	{
@@ -412,11 +743,11 @@ void footVarSynchronizer::changeParamCheck()
 	}
 
 	// Check Desired Position
-	if (fabs(_config.desired_Position_X - _configPrev.desired_Position_X) *
-		fabs(_config.desired_Position_Y - _configPrev.desired_Position_Y) *
-		fabs(_config.desired_Position_PITCH - _configPrev.desired_Position_PITCH) *
-		fabs(_config.desired_Position_ROLL - _configPrev.desired_Position_ROLL) *
-		fabs(_config.desired_Position_YAW - _configPrev.desired_Position_YAW) < FLT_EPSILON)
+	if (fabs(_config.desired_Position_X - _configPrev.desired_Position_X) +
+		fabs(_config.desired_Position_Y - _configPrev.desired_Position_Y) +
+		fabs(_config.desired_Position_PITCH - _configPrev.desired_Position_PITCH) +
+		fabs(_config.desired_Position_ROLL - _configPrev.desired_Position_ROLL) +
+		fabs(_config.desired_Position_YAW - _configPrev.desired_Position_YAW) <= FLT_EPSILON)
 		{ _flagIsParamStillSame[Params_Category::DES_POS] = true; }
 	
 	else { _flagIsParamStillSame[Params_Category::DES_POS] = false;	}
@@ -432,77 +763,44 @@ void footVarSynchronizer::changeParamCheck()
 	}
 	// Check PID Gains Position
 
-	// if ((_config.kp_Position_X == _configPrev.kp_Position_X) &&
-	// 	(_config.kp_Position_Y == _configPrev.kp_Position_Y) &&
-	// 	(_config.kp_Position_PITCH == _configPrev.kp_Position_PITCH) &&
-	// 	(_config.kp_Position_ROLL == _configPrev.kp_Position_ROLL) &&
-	// 	(_config.kp_Position_YAW == _configPrev.kp_Position_YAW) &&
-	// 	(_config.kp_Position_Y == _configPrev.kp_Position_Y) &&
-	// 	(_config.ki_Position_X == _configPrev.ki_Position_X) &&
-	// 	(_config.ki_Position_Y == _configPrev.ki_Position_Y) &&
-	// 	(_config.ki_Position_PITCH == _configPrev.ki_Position_PITCH) &&
-	// 	(_config.ki_Position_ROLL == _configPrev.ki_Position_ROLL) &&
-	// 	(_config.ki_Position_YAW == _configPrev.ki_Position_YAW) &&
-	// 	(_config.kd_Position_X == _configPrev.kd_Position_X) &&
-	// 	(_config.kd_Position_Y == _configPrev.kd_Position_Y) &&
-	// 	(_config.kd_Position_PITCH == _configPrev.kd_Position_PITCH) &&
-	// 	(_config.kd_Position_ROLL == _configPrev.kd_Position_ROLL) &&
-	// 	(_config.kd_Position_YAW == _configPrev.kd_Position_YAW) )
-		
-	if (fabs(_config.kp_Position_X - _configPrev.kp_Position_X) *
-		fabs(_config.kp_Position_Y - _configPrev.kp_Position_Y) *
-		fabs(_config.kp_Position_PITCH - _configPrev.kp_Position_PITCH) *
-		fabs(_config.kp_Position_ROLL - _configPrev.kp_Position_ROLL) *
-		fabs(_config.kp_Position_YAW - _configPrev.kp_Position_YAW) *
-		fabs(_config.kp_Position_Y - _configPrev.kp_Position_Y) *
-		fabs(_config.ki_Position_X - _configPrev.ki_Position_X) *
-		fabs(_config.ki_Position_Y - _configPrev.ki_Position_Y) *
-		fabs(_config.ki_Position_PITCH - _configPrev.ki_Position_PITCH) *
-		fabs(_config.ki_Position_ROLL - _configPrev.ki_Position_ROLL) *
-		fabs(_config.ki_Position_YAW - _configPrev.ki_Position_YAW) *
-		fabs(_config.kd_Position_X - _configPrev.kd_Position_X) *
-		fabs(_config.kd_Position_Y - _configPrev.kd_Position_Y) *
-		fabs(_config.kd_Position_PITCH - _configPrev.kd_Position_PITCH) *
-		fabs(_config.kd_Position_ROLL - _configPrev.kd_Position_ROLL) *
-		fabs(_config.kd_Position_YAW - _configPrev.kd_Position_YAW) < FLT_EPSILON)
+	if (fabs(_config.kp_X - _configPrev.kp_X) +
+		fabs(_config.kp_Y - _configPrev.kp_Y) +
+		fabs(_config.kp_PITCH - _configPrev.kp_PITCH) +
+		fabs(_config.kp_ROLL - _configPrev.kp_ROLL) +
+		fabs(_config.kp_YAW - _configPrev.kp_YAW) +
+		fabs(_config.kp_Y - _configPrev.kp_Y) +
+		fabs(_config.ki_X - _configPrev.ki_X) +
+		fabs(_config.ki_Y - _configPrev.ki_Y) +
+		fabs(_config.ki_PITCH - _configPrev.ki_PITCH) +
+		fabs(_config.ki_ROLL - _configPrev.ki_ROLL) +
+		fabs(_config.ki_YAW - _configPrev.ki_YAW) +
+		fabs(_config.kd_X - _configPrev.kd_X) +
+		fabs(_config.kd_Y - _configPrev.kd_Y) +
+		fabs(_config.kd_PITCH - _configPrev.kd_PITCH) +
+		fabs(_config.kd_ROLL - _configPrev.kd_ROLL) +
+		fabs(_config.kd_YAW - _configPrev.kd_YAW) <= FLT_EPSILON)
 
-	{
-		_flagIsParamStillSame[Params_Category::PID_POS] = true;
+	{	
+		if(_platform_controllerType==POSITION_CTRL)
+		{
+			_flagIsParamStillSame[Params_Category::PID_POS] = true;
+		}else if(_platform_controllerType==SPEED_CTRL)
+		{
+			_flagIsParamStillSame[Params_Category::PID_SPEED] = true;
+		}
 	}
 
 	else
 	{
-		_flagIsParamStillSame[Params_Category::PID_POS] = false;
+		// std::cout<<"boo"<<std::endl;
+		if(_platform_controllerType==POSITION_CTRL)
+		{
+			_flagIsParamStillSame[Params_Category::PID_POS] = false;
+		}else if(_platform_controllerType==SPEED_CTRL)
+		{
+			_flagIsParamStillSame[Params_Category::PID_SPEED] = false;
+		}
 	}
-
-	// Check PID Gains Speed
-
-	if (fabs(_config.kp_Speed_X - _configPrev.kp_Speed_X) *
-		fabs(_config.kp_Speed_Y - _configPrev.kp_Speed_Y) *
-		fabs(_config.kp_Speed_PITCH - _configPrev.kp_Speed_PITCH) *
-		fabs(_config.kp_Speed_ROLL - _configPrev.kp_Speed_ROLL) *
-		fabs(_config.kp_Speed_YAW - _configPrev.kp_Speed_YAW) *
-		fabs(_config.kp_Speed_Y - _configPrev.kp_Speed_Y) *
-		fabs(_config.ki_Speed_X - _configPrev.ki_Speed_X) *
-		fabs(_config.ki_Speed_Y - _configPrev.ki_Speed_Y) *
-		fabs(_config.ki_Speed_PITCH - _configPrev.ki_Speed_PITCH) *
-		fabs(_config.ki_Speed_ROLL - _configPrev.ki_Speed_ROLL) *
-		fabs(_config.ki_Speed_YAW - _configPrev.ki_Speed_YAW) *
-		fabs(_config.kd_Speed_X - _configPrev.kd_Speed_X) *
-		fabs(_config.kd_Speed_Y - _configPrev.kd_Speed_Y) *
-		fabs(_config.kd_Speed_PITCH - _configPrev.kd_Speed_PITCH) *
-		fabs(_config.kd_Speed_ROLL - _configPrev.kd_Speed_ROLL) *
-		fabs(_config.kd_Speed_YAW - _configPrev.kd_Speed_YAW) < FLT_EPSILON)
-
-	{
-		_flagIsParamStillSame[Params_Category::PID_SPEED] = true;
-	}
-
-	else
-	{
-		_flagIsParamStillSame[Params_Category::PID_SPEED] = false;
-	}
-
 }
 
 void footVarSynchronizer::changedPlatformCheck()
@@ -517,11 +815,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check Position
 
-	if (fabs(_msgFootOutput.platform_position[0] - _msgFootOutputPrev.platform_position[0]) *
-		fabs(_msgFootOutput.platform_position[1] - _msgFootOutputPrev.platform_position[1]) *
-		fabs(_msgFootOutput.platform_position[2] - _msgFootOutputPrev.platform_position[2]) * 
-		fabs(_msgFootOutput.platform_position[3] - _msgFootOutputPrev.platform_position[3]) *
-		fabs(_msgFootOutput.platform_position[4] - _msgFootOutputPrev.platform_position[4]) <FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_position[0] - _msgFootOutputPrev.platform_position[0]) +
+		fabs(_msgFootOutput.platform_position[1] - _msgFootOutputPrev.platform_position[1]) +
+		fabs(_msgFootOutput.platform_position[2] - _msgFootOutputPrev.platform_position[2]) + 
+		fabs(_msgFootOutput.platform_position[3] - _msgFootOutputPrev.platform_position[3]) +
+		fabs(_msgFootOutput.platform_position[4] - _msgFootOutputPrev.platform_position[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_POS] = true;
 	}
@@ -532,11 +830,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check Speed
 
-	if (fabs(_msgFootOutput.platform_speed[0] - _msgFootOutputPrev.platform_speed[0]) *
-		fabs(_msgFootOutput.platform_speed[1] - _msgFootOutputPrev.platform_speed[1]) *
-		fabs(_msgFootOutput.platform_speed[2] - _msgFootOutputPrev.platform_speed[2]) * 
-		fabs(_msgFootOutput.platform_speed[3] - _msgFootOutputPrev.platform_speed[3]) *
-		fabs(_msgFootOutput.platform_speed[4] - _msgFootOutputPrev.platform_speed[4]) < FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_speed[0] - _msgFootOutputPrev.platform_speed[0]) +
+		fabs(_msgFootOutput.platform_speed[1] - _msgFootOutputPrev.platform_speed[1]) +
+		fabs(_msgFootOutput.platform_speed[2] - _msgFootOutputPrev.platform_speed[2]) + 
+		fabs(_msgFootOutput.platform_speed[3] - _msgFootOutputPrev.platform_speed[3]) +
+		fabs(_msgFootOutput.platform_speed[4] - _msgFootOutputPrev.platform_speed[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_SPEED] = true;
 	}
@@ -547,11 +845,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check EffortD
 
-	if (fabs(_msgFootOutput.platform_effortD[0] - _msgFootOutputPrev.platform_effortD[0]) *
-		fabs(_msgFootOutput.platform_effortD[1] - _msgFootOutputPrev.platform_effortD[1]) *
-		fabs(_msgFootOutput.platform_effortD[2] - _msgFootOutputPrev.platform_effortD[2]) * 
-		fabs(_msgFootOutput.platform_effortD[3] - _msgFootOutputPrev.platform_effortD[3]) *
-		fabs(_msgFootOutput.platform_effortD[4] - _msgFootOutputPrev.platform_effortD[4]) <FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_effortD[0] - _msgFootOutputPrev.platform_effortD[0]) +
+		fabs(_msgFootOutput.platform_effortD[1] - _msgFootOutputPrev.platform_effortD[1]) +
+		fabs(_msgFootOutput.platform_effortD[2] - _msgFootOutputPrev.platform_effortD[2]) + 
+		fabs(_msgFootOutput.platform_effortD[3] - _msgFootOutputPrev.platform_effortD[3]) +
+		fabs(_msgFootOutput.platform_effortD[4] - _msgFootOutputPrev.platform_effortD[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTD] = true;
 	}
@@ -562,11 +860,11 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// Check EffortM
 
-	if (fabs(_msgFootOutput.platform_effortM[0] - _msgFootOutputPrev.platform_effortM[0]) *
-		fabs(_msgFootOutput.platform_effortM[1] - _msgFootOutputPrev.platform_effortM[1]) *
-		fabs(_msgFootOutput.platform_effortM[2] - _msgFootOutputPrev.platform_effortM[2]) * 
-		fabs(_msgFootOutput.platform_effortM[3] - _msgFootOutputPrev.platform_effortM[3]) *
-		fabs(_msgFootOutput.platform_effortM[4] - _msgFootOutputPrev.platform_effortM[4]) <FLT_EPSILON)
+	if (fabs(_msgFootOutput.platform_effortM[0] - _msgFootOutputPrev.platform_effortM[0]) +
+		fabs(_msgFootOutput.platform_effortM[1] - _msgFootOutputPrev.platform_effortM[1]) +
+		fabs(_msgFootOutput.platform_effortM[2] - _msgFootOutputPrev.platform_effortM[2]) + 
+		fabs(_msgFootOutput.platform_effortM[3] - _msgFootOutputPrev.platform_effortM[3]) +
+		fabs(_msgFootOutput.platform_effortM[4] - _msgFootOutputPrev.platform_effortM[4]) <= FLT_EPSILON)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTM] = true;
 	}
@@ -583,8 +881,8 @@ void footVarSynchronizer::changedPlatformCheck()
 	}
 	else
 	{
+		ROS_INFO("[%s footVarSync]: The Platform changed its state!",Platform_Names[_platform_name]);
 		_flagIsPlatformStillSame[FootOutput_Category::FO_M_STATE] = false;
-		ROS_INFO("The Platform changed its state!");
 	}
 
 	// Check Controller Type
@@ -596,7 +894,7 @@ void footVarSynchronizer::changedPlatformCheck()
 	else
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_C_TYPE] = false;
-		ROS_INFO("The Platform changed its controller type!");
+		ROS_INFO("[%s footVarSync]: The Platform changed its controller type!",Platform_Names[_platform_name]);
 	}
 
 }
@@ -606,11 +904,7 @@ void footVarSynchronizer::updateConfigAfterParamsChanged()
 	{
 		_flagUpdateConfig = false;
 
-		if (_ros_defaultControl)
-		{
-			controlGainsDefault(-1);
-			_flagUpdateConfig = true;
-		}
+	
 
 		if (_flagPositionOnlyPublished && _flagControlThisPosition)
 		{
@@ -651,7 +945,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 	void footVarSynchronizer::requestDoActionsParams()
 	{
 
-		if (_config.machine_state == TELEOPERATION &&
+		if (_config.machine_state == (int) TELEOPERATION &&
 			_flagCapturePlatformPosition)
 		{
 			_config.desired_Position_X = C_WS_LIMIT_X;
@@ -672,12 +966,12 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 			requestSetState();
 			_flagParamsActionsTaken=true;
 			if (_flagResponseSetState){ //! Verify the service went through
-				ROS_INFO("A new state has been sent to the platform ");
-  				ROS_INFO("Resetting GAINS ");
+				ROS_INFO("[%s footVarSync]: A new state has been sent to the platform ",Platform_Names[_platform_name]);
+  				ROS_INFO("[%s footVarSync]: Resetting GAINS ",Platform_Names[_platform_name]);
 				return;
 			}
 			else{
-				ROS_INFO("The state machine of the platform is already up to date ");
+				ROS_INFO("[%s footVarSync]: The state machine of the platform is already up to date ",Platform_Names[_platform_name]);
 			}
 
 		}
@@ -697,9 +991,9 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 				{
 					if (!_flagIsParamStillSame[Params_Category::C_AXIS]){
 						if (_config.controlled_axis==-1)
-						{ ROS_INFO("The controlled axis has changed to: ALL" );}
+						{ ROS_INFO("[%s footVarSync]: The controlled axis has changed to: ALL" ,Platform_Names[_platform_name]);}
 						else {
-						  ROS_INFO("The controlled axis has changed to: %s", Axis_names[_config.controlled_axis]);
+						  ROS_INFO("[%s footVarSync]: The controlled axis has changed to: %s",Platform_Names[_platform_name], Axis_names[_config.controlled_axis]);
 						}
 					}
 				}
@@ -714,9 +1008,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 	{
 		_flagPositionOnlyPublished = false;
 		requestSetController();
-		if (_ros_newState==TELEOPERATION)
-		{_ros_position=_ros_position.cwiseAbs();}
-        ROS_INFO("A new desired position has been published (no acknowledgement)!");
+        ROS_INFO("[%s footVarSync]: A new desired position has been published (no acknowledgement)!",Platform_Names[_platform_name]);
 		_flagParamsActionsTaken= true;
 	}
 	else if (_flagControlThisPosition && _flagCapturePlatformPosition)
@@ -728,7 +1020,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 		_flagEffortOnlyPublished = false;
 		requestSetController();
 		publishFootInput(&_flagEffortOnlyPublished);
-		ROS_INFO("Zero torque send (no "
+		ROS_INFO("[%s footVarSync]: Zero torque send (no,Platform_Names[_platform_name] "
 				"acknowledgement)!");
 		_flagParamsActionsTaken = true;
 	} 
@@ -737,7 +1029,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 void footVarSynchronizer::requestDoActionsPlatform()
 {
 	if ((!_flagIsPlatformStillSame[FootOutput_Category::FO_M_STATE]) 
-		// && (_flagIsParamStillSame[Params_Category::M_STATE])
+	//	 && (_flagIsParamStillSame[Params_Category::M_STATE])
 	)
 	{
 		_config.machine_state=_platform_machineState;
@@ -746,7 +1038,7 @@ void footVarSynchronizer::requestDoActionsPlatform()
 	}
 
 	if ((!_flagIsPlatformStillSame[FootOutput_Category::FO_C_TYPE]) 
-		// && (_flagIsParamStillSame[Params_Category::C_TYPE]) 
+	//	 && (_flagIsParamStillSame[Params_Category::C_TYPE]) 
 		)
 	{
 		_config.controller_type = _platform_controllerType;
@@ -757,7 +1049,7 @@ void footVarSynchronizer::requestDoActionsPlatform()
 	 if (
 		(!_flagIsPlatformStillSame[FootOutput_Category::FO_POS]
 		 && _flagCapturePlatformPosition) 
-		// && (_flagIsParamStillSame[Params_Category::DES_POS])
+	//	 && (_flagIsParamStillSame[Params_Category::DES_POS])
 		)
 	{
 		if (_ros_newState!=TELEOPERATION){
@@ -766,7 +1058,6 @@ void footVarSynchronizer::requestDoActionsPlatform()
 			_config.desired_Position_PITCH = _platform_position[PITCH];
 			_config.desired_Position_ROLL = _platform_position[ROLL];
 			_config.desired_Position_YAW = _platform_position[YAW];
-			_ros_position=_platform_position;
 		}
 			_flagPlatformActionsTaken= true;
 	}
@@ -778,20 +1069,39 @@ void footVarSynchronizer::processAllPublishers()
 	_msgTotalDesiredFootInput.ros_effort.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_speed.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_position.fill(0.0f);
+	_msgTotalDesiredFootInput.ros_kp.fill(0.0f);
+	_msgTotalDesiredFootInput.ros_ki.fill(0.0f);
+	_msgTotalDesiredFootInput.ros_kd.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_filterAxisForce.fill(1.0f);
 	
-	for (unsigned int i=0; i<_nbDesiredFootInputPublishers; i++)
+	bool inputsRead=true;
+
+	for (size_t i = 0; i < _nbDesiredFootInputPublishers; i++)
 	{
-		if (_flagDesiredFootInputsRead[i] && _subDesiredFootInput[i].getNumPublishers()!=0)
+		inputsRead = inputsRead && _flagDesiredFootInputsRead[i];
+	}
+	
+	if (inputsRead)
+	{
+
+		for (unsigned int i=0; i<_nbDesiredFootInputPublishers; i++)
 		{
-			for (unsigned int j=0; j<NB_PLATFORM_AXIS; j++)
+			if (_flagDesiredFootInputsRead[i] && _subDesiredFootInput[i].getNumPublishers()!=0)
 			{
-				_msgTotalDesiredFootInput.ros_effort[j] += _msgDesiredFootInput[i].ros_effort[j];
-				_msgTotalDesiredFootInput.ros_speed[j] += _msgDesiredFootInput[i].ros_speed[j];
-				_msgTotalDesiredFootInput.ros_position[j] += _msgDesiredFootInput[i].ros_position[j];
-				_msgTotalDesiredFootInput.ros_filterAxisForce[j] *= _msgDesiredFootInput[i].ros_filterAxisForce[j];
-			}
-		}	
+				for (unsigned int j=0; j<NB_PLATFORM_AXIS; j++)
+				{
+					if (_platform_controllerType==POSITION_CTRL)
+					{
+						_msgTotalDesiredFootInput.ros_position[j] += _msgDesiredFootInput[i].ros_position[j];
+					}else if (_platform_controllerType==SPEED_CTRL)
+					{
+						_msgTotalDesiredFootInput.ros_speed[j] += _msgDesiredFootInput[i].ros_speed[j];
+					}
+					_msgTotalDesiredFootInput.ros_effort[j] += _msgDesiredFootInput[i].ros_effort[j];
+					_msgTotalDesiredFootInput.ros_filterAxisForce[j] *= _msgDesiredFootInput[i].ros_filterAxisForce[j];
+				}
+			}	
+		}
 	}
 }
 
@@ -799,25 +1109,64 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
   //! Keep send the same valuest that the platform is broadcasting
   processAllPublishers();	
  // _mutex.lock();
+ if (!_stop)
+ {
   for (int k = 0; k < NB_PLATFORM_AXIS; k++) {
     _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k] + _msgTotalDesiredFootInput.ros_position[rosAxis[k]];
     _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k] + _msgTotalDesiredFootInput.ros_speed[rosAxis[k]] ;
     _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + _msgTotalDesiredFootInput.ros_effort[rosAxis[k]];
 	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] * _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]];
+	
+	if (_platform_controllerType==POSITION_CTRL)
+	{
+		_msgFootInput.ros_kp[rosAxis[k]] = _ros_posP[k];
+		_msgFootInput.ros_ki[rosAxis[k]] = _ros_posI[k];
+		_msgFootInput.ros_kd[rosAxis[k]] = _ros_posD[k];
+	} else if (_platform_controllerType==SPEED_CTRL)
+	{
+		_msgFootInput.ros_kp[rosAxis[k]] = _ros_speedP[k];
+		_msgFootInput.ros_ki[rosAxis[k]] = _ros_speedI[k];
+		_msgFootInput.ros_kd[rosAxis[k]] = _ros_speedD[k];
+	}
   }
   if (_flagForceModifiedConnected && _subForceModified.getNumPublishers()!=0)
   {
 	for (int k = 0; k < NB_AXIS_WRENCH; k++) {
 		_msgFootInput.ros_forceSensor[k] = _ros_forceSensor_controlled[k]; // rosAxis not applied
   	}
+  }else
+  {
+	for (int k = 0; k < NB_AXIS_WRENCH; k++) {
+		_msgFootInput.ros_forceSensor[k] = 0.0; // rosAxis not applied
+  	}
   }
+ }
+ else
+ {
+	 _msgFootInput.ros_effort.fill(0.0f);
+	 _msgFootInput.ros_filterAxisForce.fill(0.0f);
+	 _msgFootInput.ros_forceSensor.fill(0.0f);
+	 _msgFootInput.ros_kp.fill(0.0f);
+	 _msgFootInput.ros_ki.fill(0.0f);
+	 _msgFootInput.ros_kd.fill(0.0f);
+	 for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+	 {
+		 _msgFootInput.ros_position[i] = _platform_position[i];
+	 }
+	 _msgFootInput.ros_speed.fill(0.0f);
+	 _msgFootInput.ros_effort.fill(0.0f);
+ }
+
   _pubFootInput.publish(_msgFootInput);
-  *flagVariableOnly_ = true;
+  if (flagVariableOnly_!=NULL)
+  {
+  	*flagVariableOnly_ = true;
+  }
   //_mutex.unlock();
 }
 
 
-void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v3::ConstPtr& msg)
+void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg)
 {
 	_msgFootOutput = *msg;
 	_flagOutputMessageReceived=true;
@@ -829,8 +1178,8 @@ void footVarSynchronizer::fetchFootOutput(const custom_msgs::FootOutputMsg_v3::C
 			_platform_effortD[k]=msg->platform_effortD[rosAxis[k]];
 			_platform_effortM[k]=msg->platform_effortM[rosAxis[k]];
 		}	
-	_platform_machineState= (footVarSynchronizer::State) msg->platform_machineState;
-	_platform_controllerType= (footVarSynchronizer::Controller) msg->platform_controllerType;
+	_platform_machineState= (State) msg->platform_machineState;
+	_platform_controllerType= (Controller) msg->platform_controllerType;
 	if(!_flagPlatformOutCommStarted)
 	{_flagPlatformOutCommStarted=true;}
 } 
@@ -840,6 +1189,7 @@ void footVarSynchronizer::requestSetState(){
 	//_mutex.lock();
 	_flagSetStateRequested=true;
 	_srvSetState.request.ros_machineState=_ros_newState;
+	_srvSetState.request.ros_effortComp.resize(NB_EFFORT_COMPONENTS);
 	for (int j=0; j<NB_EFFORT_COMPONENTS; j++)
 	{
 		_srvSetState.request.ros_effortComp[j]=_ros_effortComp[j];
@@ -858,104 +1208,29 @@ void footVarSynchronizer::requestSetController(){
 	_srvSetController.request.ros_defaultControl=_ros_defaultControl;
 	_srvSetController.request.ros_controlledAxis=_ros_controlledAxis;
 
-		for (int k=0; k<NB_AXIS; k++)
-		{
-			_srvSetController.request.ros_posP[rosAxis[k]]=_ros_posP[k];
-			_srvSetController.request.ros_posI[rosAxis[k]]=_ros_posI[k];
-			_srvSetController.request.ros_posD[rosAxis[k]]=_ros_posD[k];
+	// for (int k=0; k<NB_AXIS; k++)
+	// {
+	// 	_srvSetController.request.ros_posP[rosAxis[k]]=_ros_posP[k];
+	// 	_srvSetController.request.ros_posI[rosAxis[k]]=_ros_posI[k];
+	// 	_srvSetController.request.ros_posD[rosAxis[k]]=_ros_posD[k];
 
-			_srvSetController.request.ros_speedP[rosAxis[k]]=_ros_speedP[k];
-			_srvSetController.request.ros_speedI[rosAxis[k]]=_ros_speedI[k];
-			_srvSetController.request.ros_speedD[rosAxis[k]]=_ros_speedD[k];
-		}
+	// 	_srvSetController.request.ros_speedP[rosAxis[k]]=_ros_speedP[k];
+	// 	_srvSetController.request.ros_speedI[rosAxis[k]]=_ros_speedI[k];
+	// 	_srvSetController.request.ros_speedD[rosAxis[k]]=_ros_speedD[k];
+	// }
 
 	_clientSetController.call(_srvSetController);
-	
+	ROS_INFO("[%s footVarSync]: Set Controller Request. Updating the parameters of the machine state",Platform_Names[_platform_name]);
 	_flagResponseSetController = _srvSetController.response.platform_controlOk;
+
 	//_mutex.unlock();
 }
 
 
 void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level)
 {
-//   ROS_INFO("Reconfigure request. Updating the parameters of the machine state");
+//   ROS_INFO("[%s footVarSync]: Reconfigure request. Updating the parameters of the machine state",Platform_Names[_platform_name]);
   	_flagWasDynReconfCalled=true;
-	_ros_newState = (uint8_t)config.machine_state;
-
-	_ros_controlledAxis = (int8_t) config.controlled_axis;
-	_ros_controllerType = (uint8_t) config.controller_type;
-	_ros_defaultControl = (bool) config.use_default_gains;
-
-    _flagControlThisPosition = (bool) config.send_this_position;
-    _flagControlZeroEffort = (bool)config.send_zero_effort;
-    _flagCapturePlatformPosition = (bool)config.capture_platform_position;
-
-    if (_flagControlThisPosition) {
-      _ros_position << config.desired_Position_Y,
-          config.desired_Position_X, config.desired_Position_PITCH,
-          config.desired_Position_ROLL, config.desired_Position_YAW;
-      ROS_DEBUG("Updating_POSITION");
-	}
-
-	if (_flagControlZeroEffort) {
-		_ros_effort.setConstant(0.0f);
-        ROS_DEBUG("Sending zero torque to the platform");
-	}
-
-    _ros_effortComp[NORMAL]=(uint8_t) config.effortComp_normal;
-	_ros_effortComp[CONSTRAINS]=(uint8_t) config.effortComp_constrains;
-	_ros_effortComp[COMPENSATION]=(uint8_t) config.effortComp_compensation;
-	_ros_effortComp[RCM_MOTION]=(uint8_t) config.effortComp_rcmMotion;
-	_ros_effortComp[FEEDFORWARD]=(uint8_t) config.effortComp_feedforward;
-
-		if (config.compensate_leg)
-		{
-			ROS_INFO("Compensating the Leg");
-			_flagCompensateLeg=true;
-		}
-		else
-		{
-			if (_flagCompensateLeg)
-			{
-			 ROS_INFO("Not Compensating the Leg Anymore");
-			_flagCompensateLeg=false;
-			}
-		}
-		
-		_ros_posP[X]=config.kp_Position_X; 
-		_ros_posP[Y]=config.kp_Position_Y;
-		_ros_posP[PITCH]=config.kp_Position_PITCH;
-		_ros_posP[ROLL]=config.kp_Position_ROLL;
-		_ros_posP[YAW]=config.kp_Position_YAW;
-
-		_ros_posI[X]=config.ki_Position_X; 
-		_ros_posI[Y]=config.ki_Position_Y;
-		_ros_posI[PITCH]=config.ki_Position_PITCH;
-		_ros_posI[ROLL]=config.ki_Position_ROLL;
-		_ros_posI[YAW]=config.ki_Position_YAW;
-
-		_ros_posD[X]=config.kd_Position_X; 
-		_ros_posD[Y]=config.kd_Position_Y;
-		_ros_posD[PITCH]=config.kd_Position_PITCH;
-		_ros_posD[ROLL]=config.kd_Position_ROLL;
-		_ros_posD[YAW]=config.kd_Position_YAW;
-		
-		_ros_speedP[X]=config.kp_Speed_X; 
-		_ros_speedP[Y]=config.kp_Speed_Y;
-		_ros_speedP[PITCH]=config.kp_Speed_PITCH;
-		_ros_speedP[ROLL]=config.kp_Speed_ROLL;
-		_ros_speedP[YAW]=config.kp_Speed_YAW;
-		_ros_speedI[X]=config.ki_Speed_X; 
-		_ros_speedI[Y]=config.ki_Speed_Y;
-		_ros_speedI[PITCH]=config.ki_Speed_PITCH;
-		_ros_speedI[ROLL]=config.ki_Speed_ROLL;
-		_ros_speedI[YAW]=config.ki_Speed_YAW;
-		_ros_speedD[X]=config.kd_Speed_X; 
-		_ros_speedD[Y]=config.kd_Speed_Y;
-		_ros_speedD[PITCH]=config.kd_Speed_PITCH;
-		_ros_speedD[ROLL]=config.kd_Speed_ROLL;
-		_ros_speedD[YAW]=config.kd_Speed_YAW;
-
 	_config = config;
 }
 
@@ -971,69 +1246,64 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 
 	else
 	{
-		float scale = 0.0;
-		if (axis_ < PITCH)
+		if (_platform_controllerType=POSITION_CTRL)
 		{
-			scale = SCALE_GAINS_LINEAR_POSITION;
-		}
-		else
-		{
-			scale = SCALE_GAINS_ANGULAR_POSITION;
-		}
-		switch (axis_)
-		{
-		case (X):
-		{
-			_config.kp_Position_X = GT_KP_POSITION_X / scale;
-			_config.ki_Position_X = GT_KI_POSITION_X / scale;
-			_config.kd_Position_X = GT_KD_POSITION_X / scale;
-			_ros_posP[X] = _config.kp_Position_X;
-			_ros_posI[X] = _config.ki_Position_X;
-			_ros_posD[X] = _config.kd_Position_X;
-			break;
-		}
-		case (Y):
-		{
-			_config.kp_Position_Y = GT_KP_POSITION_Y / scale;
-			_config.ki_Position_Y = GT_KI_POSITION_Y / scale;
-			_config.kd_Position_Y = GT_KD_POSITION_Y / scale;
-			_ros_posP[Y] = _config.kp_Position_Y;
-			_ros_posI[Y] = _config.ki_Position_Y;
-			_ros_posD[Y] = _config.kd_Position_Y;
-			break;
-		}
-		case (PITCH):
-		{
-			_config.kp_Position_PITCH = GT_KP_POSITION_PITCH / scale;
-			_config.ki_Position_PITCH = GT_KI_POSITION_PITCH / scale;
-			_config.kd_Position_PITCH = GT_KD_POSITION_PITCH / scale;
-			_ros_posP[PITCH] = _config.kp_Position_PITCH;
-			_ros_posI[PITCH] = _config.ki_Position_PITCH;
-			_ros_posD[PITCH] = _config.kd_Position_PITCH;
-			break;
-		}
-		case (ROLL):
-		{
-			_config.kp_Position_ROLL = GT_KP_POSITION_ROLL / scale;
-			_config.ki_Position_ROLL = GT_KI_POSITION_ROLL / scale;
-			_config.kd_Position_ROLL = GT_KD_POSITION_ROLL / scale;
-			_ros_posP[ROLL] = _config.kp_Position_ROLL;
-			_ros_posI[ROLL] = _config.ki_Position_ROLL;
-			_ros_posD[ROLL] = _config.kd_Position_ROLL;
-			break;
-		}
-		case (YAW):
-		{
-			_config.kp_Position_YAW = GT_KP_POSITION_YAW / scale;
-			_config.ki_Position_YAW = GT_KI_POSITION_YAW / scale;
-			_config.kd_Position_YAW = GT_KD_POSITION_YAW / scale;
-			_ros_posP[YAW] = _config.kp_Position_YAW;
-			_ros_posI[YAW] = _config.ki_Position_YAW;
-			_ros_posD[YAW] = _config.kd_Position_YAW;
-			break;
-		}
+			switch (axis_)
+			{
+				case (X):
+				{
+					_config.kp_X = _ros_paramP[_myPIDCategory][X];
+					_config.ki_X = _ros_paramI[_myPIDCategory][X];
+					_config.kd_X = _ros_paramD[_myPIDCategory][X];
+					_ros_posP[X] = Utils_math<double>::bound(_config.kp_X,0,5000.0);
+					_ros_posI[X] = Utils_math<double>::bound(_config.ki_X,0,5000.0);
+					_ros_posD[X] = Utils_math<double>::bound(_config.kd_X,0,30.0);
+					break;
+				}
+				case (Y):
+				{
+					_config.kp_Y = _ros_paramP[_myPIDCategory][Y];
+					_config.ki_Y = _ros_paramI[_myPIDCategory][Y];
+					_config.kd_Y = _ros_paramD[_myPIDCategory][Y];
+					_ros_posP[Y] = Utils_math<double>::bound(_config.kp_Y,0,5000.0);
+					_ros_posI[Y] = Utils_math<double>::bound(_config.ki_Y,0,5000.0);
+					_ros_posD[Y] = Utils_math<double>::bound(_config.kd_Y,0,30.0);
+					break;
+				}
+				case (PITCH):
+				{
+					_config.kp_PITCH = _ros_paramP[_myPIDCategory][PITCH];
+					_config.ki_PITCH = _ros_paramI[_myPIDCategory][PITCH];
+					_config.kd_PITCH = _ros_paramD[_myPIDCategory][PITCH];
+					_ros_posP[PITCH] = Utils_math<double>::bound(_config.kp_PITCH,0,10000.0);
+					_ros_posI[PITCH] = Utils_math<double>::bound(_config.ki_PITCH,0,10000.0);
+					_ros_posD[PITCH] = Utils_math<double>::bound(_config.kd_PITCH,0,100.0);
+					break;
+				}
+				case (ROLL):
+				{
+					_config.kp_ROLL = _ros_paramP[_myPIDCategory][ROLL];
+					_config.ki_ROLL = _ros_paramI[_myPIDCategory][ROLL];
+					_config.kd_ROLL = _ros_paramD[_myPIDCategory][ROLL];
+					_ros_posP[ROLL] = Utils_math<double>::bound(_config.kp_ROLL,0,10000);
+					_ros_posI[ROLL] = Utils_math<double>::bound(_config.ki_ROLL,0,10000);
+					_ros_posD[ROLL] = Utils_math<double>::bound(_config.kd_ROLL,0,100);
+					break;
+				}
+				case (YAW):
+				{
+					_config.kp_YAW = _ros_paramP[_myPIDCategory][YAW];
+					_config.ki_YAW = _ros_paramI[_myPIDCategory][YAW];
+					_config.kd_YAW = _ros_paramD[_myPIDCategory][YAW];
+					_ros_posP[YAW] = Utils_math<double>::bound(_config.kp_YAW,0,10000);
+					_ros_posI[YAW] = Utils_math<double>::bound(_config.ki_YAW,0,10000);
+					_ros_posD[YAW] = Utils_math<double>::bound(_config.kd_YAW,0,100);
+					break;
+				}
+			}
 		}
 	}
+		
 }
 
 void footVarSynchronizer::resetDesiredPositionToCurrent(int axis_)
@@ -1092,14 +1362,14 @@ void footVarSynchronizer::readLegGravityCompWrench(const geometry_msgs::WrenchSt
   _legWrenchGravityComp(4) = msg->wrench.torque.y;
   _legWrenchGravityComp(5) = msg->wrench.torque.z;
   if (!_flagLegCompWrenchRead) {
-   // ROS_INFO("Receiving Leg Compensation Torques");
+   // ROS_INFO("[%s footVarSync]: Receiving Leg Compensation Torques",Platform_Names[_platform_name]);
   }
   _flagLegCompWrenchRead = true;
 }
 
 
 
-void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg_v5::ConstPtr &msg) {
+void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg::ConstPtr &msg) {
     
 	for (unsigned int i = 0; i<NB_AXIS; i++)
 	{
@@ -1107,15 +1377,19 @@ void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg_v5::
 	}
 
   if (!_flagLegCompTorquesRead) {
-    ROS_INFO("Receiving Leg Compensation Torques");
+    ROS_INFO("[%s footVarSync]: Receiving Leg Compensation Torques",Platform_Names[_platform_name]);
   }
   _flagLegCompTorquesRead = true;
 }
 
-void footVarSynchronizer::readDesiredFootInputs(const custom_msgs::FootInputMsg_v5::ConstPtr &msg,unsigned int n_)
+
+void footVarSynchronizer::readDesiredFootInputs(const custom_msgs::FootInputMsg::ConstPtr &msg,unsigned int n_)
 {
 	
 	_msgDesiredFootInput[n_].ros_effort = msg->ros_effort;
+	_msgDesiredFootInput[n_].ros_kp = msg->ros_kp;
+	_msgDesiredFootInput[n_].ros_ki = msg->ros_ki;
+	_msgDesiredFootInput[n_].ros_kd = msg->ros_kd;
 	_msgDesiredFootInput[n_].ros_forceSensor = msg->ros_forceSensor;
 	_msgDesiredFootInput[n_].ros_position = msg->ros_position;
 	_msgDesiredFootInput[n_].ros_speed = msg->ros_speed;
@@ -1124,4 +1398,10 @@ void footVarSynchronizer::readDesiredFootInputs(const custom_msgs::FootInputMsg_
   	  ROS_INFO_ONCE("Receiving messages of foot input. Pub #%i", n_);
   	}
   _flagDesiredFootInputsRead[n_] = true;
+}
+
+void footVarSynchronizer::readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg)
+{
+	me->_msgTwoFeetOneTool = *msg;
+	_flagTwoFeetOneToolRead=true;
 }

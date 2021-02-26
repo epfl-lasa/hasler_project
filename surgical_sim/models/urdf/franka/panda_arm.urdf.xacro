@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
+
+	<xacro:arg name="gazebo" default="true"/>
+	<xacro:arg name="arm_id" default="right"/>
+  <xacro:arg name="origin.x" default="0"/>
+  <xacro:arg name="origin.y" default="0"/>
+  <xacro:arg name="origin.z" default="0"/>
+  <xacro:arg name="origin.ax" default="0"/>
+  <xacro:arg name="origin.ay" default="0"/>
+  <xacro:arg name="origin.az" default="0"/>
+  
+  <gazebo reference="world">
+  </gazebo>
+
+  <xacro:include filename="$(find surgical_sim)/models/urdf/franka/panda_arm.xacro" >
+  	<xacro:arg name="gazebo" value="${gazebo}"/>
+  </xacro:include>
+
+  <xacro:panda_arm connected_to='world' arm_id="$(arg arm_id)" xyz='$(arg origin.x) $(arg origin.y) $(arg origin.z)' rpy='$(arg origin.ax) $(arg origin.ay) $(arg origin.az)'/>
+  
+</robot>

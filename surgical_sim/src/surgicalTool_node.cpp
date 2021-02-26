@@ -11,16 +11,16 @@ int main(int argc, char **argv) {
 
   std::string tool_name;
 
-  double frequency = 1000.0f;
+  double frequency = 500.0f;
 
   ros::NodeHandle nh_("~");
   nh_.getParam("toolID", tool_name);
   nh_.getParam("publish_frequency", frequency);
 
     if (tool_name.compare("right") == 0) {
-      tool_id_ = surgicalTool::RIGHT;
+      tool_id_ = surgicalTool::RIGHT_TOOL;
     } else if (tool_name.compare("left") == 0) {
-      tool_id_ = surgicalTool::LEFT;
+      tool_id_ = surgicalTool::LEFT_TOOL;
     } else {
       ROS_ERROR("You didn't enter a toolID left or right");
       return -1;
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     
     return -1;
   } else {
-    surgicalTool.run();
+   surgicalTool.run();
   }
   return 0;
 }

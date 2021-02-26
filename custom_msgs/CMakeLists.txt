@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  sensor_msgs
   message_generation
   message_runtime
 )
@@ -20,28 +21,22 @@ add_message_files(
   FILES 
   SurgicalTaskStateMsg.msg
 	FootInputMsg.msg
-  FootInputMsg_v2.msg
-  FootInputMsg_v3.msg
-  FootInputMsg_v5.msg
-	FootOutputMsg.msg
-  FootOutputMsg_v2.msg
-  FootOutputMsg_v3.msg
-	FeetOutputMsg.msg
-  FeetOutputMsg_v2.msg)
+  FootOutputMsg.msg
+  FeetOutputMsg.msg
+  TwoFeetOneToolMsg.msg)
 
 add_service_files(
   FILES
   setControllerSrv.srv
   setStateSrv.srv
-  setStateSrv_v2.srv
 )
 
-generate_messages(DEPENDENCIES std_msgs geometry_msgs)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
 
 catkin_package(
   INCLUDE_DIRS
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs message_generation 
+  CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs sensor_msgs message_generation 
  )
 
 

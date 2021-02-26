@@ -369,25 +369,48 @@ T Utils_math<T>::wrapToZero(T x, T a, T b)
 template<typename T>
 T Utils_math<T>::bound(T x, T a, T b)
 {
-  if(x > b)
+  if (std::isnan(x))
   {
-    return b;
-  }
-  else if(x<a)
+
+    return 0.0f;
+
+  } else
   {
-    return a;
-  }
-  else
-  {
-    return x;
+    if(x > b)
+    {
+      return b;
+    }
+    else if(x<a)
+    {
+      return a;
+    }
+    else
+    {
+      return x;
+    }
   }
 }
 
 template<typename T>
 T Utils_math<T>::map(T x, T a, T b, T c, T d)
 {
-  return bound( ((x - a) * (d-c)/(b-a)) + c , c , d);
+  if (d>c)
+  {  
+    return bound( ((x - a) * (d-c)/(b-a)) + c , c , d);
+  } 
+  else
+  {
+    return bound( ((x - a) * (d-c)/(b-a)) + c , d , c);
+  }
 }
+
+
+template<typename T>
+bool Utils_math<T>::isInRange(T x, T a, T b)
+{
+  return x < a ? false : x > b ? false : true;
+}
+
 
 template<typename T>
 Eigen::Matrix<T,Eigen::Dynamic,1> Utils_math<T>::bound(Eigen::Matrix<T,Eigen::Dynamic,1> x, T limit)

@@ -1,0 +1,50 @@
+/left_panda:
+  # Publish all joint states -----------------------------------
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 300
+    joints_names:
+      - left_panda_joint1
+      - left_panda_joint2
+      - left_panda_joint3
+      - left_panda_joint4
+      - left_panda_joint5
+      - left_panda_joint6
+      - left_panda_joint7
+
+  joint_position_controller:
+    type: position_controllers/JointGroupPositionController
+    robot_description: /left_panda/robot_description
+    joints:
+      - left_panda_joint1
+      - left_panda_joint2
+      - left_panda_joint3
+      - left_panda_joint4
+      - left_panda_joint5
+      - left_panda_joint6
+      - left_panda_joint7
+    # left_panda_joint1: 
+    #   pid: {p: 10000, i: 0, d: 50,  i_clamp_min: -10.0, i_clamp_max: 10.0 }
+    # left_panda_joint2: 
+    #   pid: {p: 10000, i: 0, d: 500, i_clamp_min: -10.0, i_clamp_max: 10.0 }
+    # left_panda_joint3: 
+    #   pid: {p: 1000, i: 0, d: 10, i_clamp_min: -10.0, i_clamp_max: 10.0 }
+    # left_panda_joint4: 
+    #   pid: {p: 1000, i: 0, d: 50, i_clamp_min: -10.0, i_clamp_max: 10.0 }
+    # left_panda_joint5: 
+    #   pid: {p: 100, i: 0 , d: 10 , i_clamp_min: -10.0, i_clamp_max: 10.0 }
+    # left_panda_joint6: 
+    #   pid: {p: 100, i: 0 , d: 10 , i_clamp_min: -10.0, i_clamp_max: 10.0 }
+    # left_panda_joint7: 
+    #   pid: {p: 10, i: 0.5 , d: 0.1, i_clamp_min: -10.0, i_clamp_max: 10.0 }
+
+  # /gazebo_ros_control:
+  #   pid_gains:
+  #     left_panda_joint1: {p: 10000, i: 10, d: 50 , i_clamp_min: -150.0, i_clamp_max: 150.0}
+  #     left_panda_joint2: {p: 10000, i: 10, d: 500, i_clamp_min: -150.0, i_clamp_max: 150.0}
+  #     left_panda_joint3: {p: 10000, i: 10, d: 10, i_clamp_min: -150.0, i_clamp_max: 150.0}
+  #     left_panda_joint4: {p: 1000, i: 0, d: 50, i_clamp_min: -150.0, i_clamp_max: 150.0}
+  #     left_panda_joint5: {p: 1000, i: 0, d: 10, i_clamp_min: -150.0, i_clamp_max: 150.0}
+  #     left_panda_joint6: {p: 10000, i: 0, d: 10, i_clamp_min: -150.0, i_clamp_max: 150.0}
+  #     left_panda_joint7: {p: 1000, i: 0.5, d: 1.0, i_clamp_min: -150.0, i_clamp_max: 150.0}
+  

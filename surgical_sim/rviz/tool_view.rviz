@@ -8,9 +8,9 @@ Panels:
         - /Status1
         - /TF1
         - /TF1/Frames1
-        - /RobotModel1
+        - /Image1
       Splitter Ratio: 0.715415001
-    Tree Height: 544
+    Tree Height: 347
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -58,31 +58,81 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        tool_base_link:
+        chair_base_link:
           Value: true
-        tool_main_link:
+        chair_intermediate_link1:
           Value: true
-        tool_pitch_link:
+        chair_intermediate_link2:
           Value: true
-        tool_roll_link:
+        right_leg_ankle_pitch_link:
           Value: true
-        tool_tip_link:
+        right_leg_ankle_roll_link:
           Value: true
-        tool_tip_link_ee:
+        right_leg_ankle_yaw_link:
           Value: true
-        tool_wrist_forceps_link:
+        right_leg_foot_base:
           Value: true
-        tool_wrist_forceps_link_2_left:
+        right_leg_foot_tip:
           Value: true
-        tool_wrist_forceps_link_2_right:
+        right_leg_hip_adduction_link:
           Value: true
-        tool_wrist_forceps_link_shaft:
+        right_leg_hip_base_link:
           Value: true
-        tool_wrist_link:
+        right_leg_hip_extension_link:
           Value: true
-        tool_wrist_shaft_link:
+        right_leg_hip_roll_link:
           Value: true
-        tool_yaw_link:
+        right_leg_knee_extension_link:
+          Value: true
+        right_leg_virtual_pedal_tip:
+          Value: true
+        right_platform_base_link:
+          Value: true
+        right_platform_fSensor:
+          Value: true
+        right_platform_foot_rest:
+          Value: true
+        right_platform_pedal_tip:
+          Value: true
+        right_platform_pitch:
+          Value: true
+        right_platform_roll:
+          Value: true
+        right_platform_virtual_ankle:
+          Value: true
+        right_platform_x:
+          Value: true
+        right_platform_y:
+          Value: true
+        right_platform_yaw:
+          Value: true
+        right_platform_z_link:
+          Value: true
+        right_tool_base_link:
+          Value: true
+        right_tool_main_link:
+          Value: true
+        right_tool_pitch_link:
+          Value: true
+        right_tool_roll_link:
+          Value: true
+        right_tool_tip_link:
+          Value: true
+        right_tool_tip_link_ee:
+          Value: true
+        right_tool_wrist_forceps_link:
+          Value: true
+        right_tool_wrist_forceps_link_2_left:
+          Value: true
+        right_tool_wrist_forceps_link_2_right:
+          Value: true
+        right_tool_wrist_forceps_link_shaft:
+          Value: true
+        right_tool_wrist_link:
+          Value: true
+        right_tool_wrist_shaft_link:
+          Value: true
+        right_tool_yaw_link:
           Value: true
         world:
           Value: true
@@ -93,21 +143,49 @@ Visualization Manager:
       Show Names: false
       Tree:
         world:
-          tool_base_link:
-            tool_pitch_link:
-              tool_roll_link:
-                tool_yaw_link:
-                  tool_main_link:
-                    tool_wrist_link:
-                      tool_wrist_shaft_link:
-                        tool_wrist_forceps_link:
-                          tool_wrist_forceps_link_shaft:
-                            tool_tip_link:
-                              tool_tip_link_ee:
-                                {}
-                            tool_wrist_forceps_link_2_left:
+          chair_intermediate_link1:
+            chair_intermediate_link2:
+              chair_base_link:
+                right_leg_hip_base_link:
+                  right_leg_hip_adduction_link:
+                    right_leg_hip_extension_link:
+                      right_leg_hip_roll_link:
+                        right_leg_knee_extension_link:
+                          right_leg_ankle_pitch_link:
+                            right_leg_ankle_roll_link:
+                              right_leg_ankle_yaw_link:
+                                right_leg_foot_base:
+                                  right_leg_foot_tip:
+                                    right_leg_virtual_pedal_tip:
+                                      {}
+          right_platform_base_link:
+            right_platform_y:
+              right_platform_x:
+                right_platform_z_link:
+                  right_platform_pitch:
+                    right_platform_roll:
+                      right_platform_yaw:
+                        right_platform_fSensor:
+                          right_platform_foot_rest:
+                            right_platform_pedal_tip:
                               {}
-                            tool_wrist_forceps_link_2_right:
+                            right_platform_virtual_ankle:
+                              {}
+          right_tool_base_link:
+            right_tool_pitch_link:
+              right_tool_roll_link:
+                right_tool_yaw_link:
+                  right_tool_main_link:
+                    right_tool_wrist_link:
+                      right_tool_wrist_shaft_link:
+                        right_tool_wrist_forceps_link:
+                          right_tool_wrist_forceps_link_shaft:
+                            right_tool_tip_link:
+                              right_tool_tip_link_ee:
+                                {}
+                            right_tool_wrist_forceps_link_2_left:
+                              {}
+                            right_tool_wrist_forceps_link_2_right:
                               {}
       Update Interval: 0
       Value: true
@@ -116,71 +194,71 @@ Visualization Manager:
       Collision Enabled: false
       Enabled: true
       Links:
-        /world:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        tool_base_link:
+        right_tool_base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        tool_main_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        tool_pitch_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_roll_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_tip_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_tip_link_ee:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        tool_wrist_forceps_link:
+        right_tool_main_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_forceps_link_2_left:
+        right_tool_pitch_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_roll_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_tip_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_tip_link_ee:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_tool_wrist_forceps_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_forceps_link_2_right:
+        right_tool_wrist_forceps_link_2_left:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_forceps_link_shaft:
+        right_tool_wrist_forceps_link_2_right:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_link:
+        right_tool_wrist_forceps_link_shaft:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_wrist_shaft_link:
+        right_tool_wrist_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        tool_yaw_link:
+        right_tool_wrist_shaft_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_tool_yaw_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -190,6 +268,18 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
+    - Class: rviz/Image
+      Enabled: false
+      Image Topic: /right_tool/camera/image_raw
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -215,25 +305,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.650167465
+      Distance: 0.617444634
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.0147798611
-        Y: 0.986040056
-        Z: 0.876815677
+        X: -0.246195063
+        Y: 0.756616771
+        Z: 1.27292705
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.57539773
+      Pitch: 0.25039801
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.75359678
+      Yaw: 5.72360516
     Saved:
       - Class: rviz/Orbit
         Distance: 1.1899302
@@ -257,11 +347,13 @@ Visualization Manager:
         Yaw: 4.4535861
 Window Geometry:
   Displays:
-    collapsed: false
+    collapsed: true
   Height: 846
-  Hide Left Dock: false
+  Hide Left Dock: true
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd000000040000000000000179000002b8fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000002e100000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000002e000002b8000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c000002610000000100000111000002b8fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000002e000002b8000000b700fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004bf00000040fc0100000002fb0000000800540069006d00650100000000000004bf0000038300fffffffb0000000800540069006d0065010000000000000450000000000000000000000227000002b800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Image:
+    collapsed: true
+  QMainWindow State: 000000ff00000000fd000000040000000000000179000002b8fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000002e100000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073000000002e000001f3000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d0061006700650000000228000000be0000001800ffffff0000000100000111000002b8fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000002e000002b8000000b700fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004bf00000040fc0100000002fb0000000800540069006d00650100000000000004bf0000038300fffffffb0000000800540069006d00650100000000000004500000000000000000000003a7000002b800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -271,5 +363,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1215
-  X: 65
-  Y: 131
+  X: 705
+  Y: 48

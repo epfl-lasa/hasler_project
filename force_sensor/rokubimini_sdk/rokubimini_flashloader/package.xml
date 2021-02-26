@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+
+  <name>rokubimini_flashloader</name>
+  <version>0.1.0</version>
+  <description>rokubimini ethercat flashloader.</description>
+  
+  <license>Proprietary</license>
+  <author email="markus.staeuble@mavt.ethz.ch">Markus Staeuble</author>
+  <maintainer email="markus.staeuble@mavt.ethz.ch">Markus Staeuble</maintainer>
+  <url type="website">https://bitbucket.org/leggedrobotics/rokubimini_firmware_updater</url>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>soem_rsl</depend>
+  
+</package>
