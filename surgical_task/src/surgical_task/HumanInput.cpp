@@ -102,11 +102,16 @@ void SurgicalTask::computeTrocarInput(int r, int h)
     if(_linearMapping[r] == POSITION_POSITION)
     {
       // X, Y, Z, SELF_ROTATION, EXTRA_DOF <= Y, -X, PITCH, -YAW, ROLL
-      R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-           -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+      R << 0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+           1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
            0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
            0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
            0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
+      // R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+      //      -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+      //      0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
       _trocarInput[h] = R*_footPose[h];
 
       if(_clutching && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
@@ -147,25 +152,43 @@ void SurgicalTask::computeTrocarInput(int r, int h)
     else
     {
       // V_UP, V_RIGHT, V_INSERTION, W_SELF_ROTATION <= PITCH, -ROLL, Y, -YAW
-      R << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-           0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
-           0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+      R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+           1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+           0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
            0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
-           1.0f, 0.0f, 0.0f, 0.0f, 0.0f;
+           0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
+      // R << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+      //      0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+      //      1.0f, 0.0f, 0.0f, 0.0f, 0.0f;
       _trocarInput[h] = R*_footPose[h];
 
       // Apply deadzone on foot position
-      _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
-      _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), -_footInterfaceDeadZone[FOOT_ROLL], _footInterfaceDeadZone[FOOT_ROLL]);
-      _trocarInput[h](V_INSERTION) = Utils<float>::deadZone(_trocarInput[h](V_INSERTION), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
+      _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
+      _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), -_footInterfaceDeadZone[FOOT_X], _footInterfaceDeadZone[FOOT_X]);
+      _trocarInput[h](V_INSERTION) = Utils<float>::deadZone(_trocarInput[h](V_INSERTION), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
       _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
 
       // Scale human input between -1 and 1
-      _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
-      _trocarInput[h](V_RIGHT) = Utils<float>::bound(2*_trocarInput[h](V_RIGHT)/(_footInterfaceRange[h][FOOT_ROLL]-2*_footInterfaceDeadZone[FOOT_ROLL]), -1.0f, 1.0f);
-      _trocarInput[h](V_INSERTION) = Utils<float>::bound(2*_trocarInput[h](V_INSERTION)/(_footInterfaceRange[h][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
+      _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
+      _trocarInput[h](V_RIGHT) = Utils<float>::bound(2*_trocarInput[h](V_RIGHT)/(_footInterfaceRange[h][FOOT_X]-2*_footInterfaceDeadZone[FOOT_X]), -1.0f, 1.0f);
+      _trocarInput[h](V_INSERTION) = Utils<float>::bound(2*_trocarInput[h](V_INSERTION)/(_footInterfaceRange[h][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
       _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
-      _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_X], -1.0f, 1.0f);      
+      _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_ROLL], -1.0f, 1.0f);      
+
+      // // Apply deadzone on foot position
+      // _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), -_footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_PITCH]);
+      // _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), -_footInterfaceDeadZone[FOOT_ROLL], _footInterfaceDeadZone[FOOT_ROLL]);
+      // _trocarInput[h](V_INSERTION) = Utils<float>::deadZone(_trocarInput[h](V_INSERTION), -_footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_Y]);
+      // _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), -_footInterfaceDeadZone[FOOT_YAW], _footInterfaceDeadZone[FOOT_YAW]);
+
+      // // Scale human input between -1 and 1
+      // _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_PITCH]-2*_footInterfaceDeadZone[FOOT_PITCH]), -1.0f, 1.0f);
+      // _trocarInput[h](V_RIGHT) = Utils<float>::bound(2*_trocarInput[h](V_RIGHT)/(_footInterfaceRange[h][FOOT_ROLL]-2*_footInterfaceDeadZone[FOOT_ROLL]), -1.0f, 1.0f);
+      // _trocarInput[h](V_INSERTION) = Utils<float>::bound(2*_trocarInput[h](V_INSERTION)/(_footInterfaceRange[h][FOOT_Y]-2*_footInterfaceDeadZone[FOOT_Y]), -1.0f, 1.0f);
+      // _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-2*_footInterfaceDeadZone[FOOT_YAW]), -1.0f, 1.0f);
+      // _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_X], -1.0f, 1.0f);      
 
       if(_wait && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
@@ -187,7 +210,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
             1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+            0.0f, 0.4, 0.0f, 0.0f, 1.0f,
             0.0f, 0.0f, 0.0f, 1.0f, 0.0f;          
     
       _trocarInput[h] = R*_footPose[h];
