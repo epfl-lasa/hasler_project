@@ -6,12 +6,15 @@
   <arg name="virtual_platforms"   default="true" />
   <arg name="rviz" default="false"/>
   <arg name="rvizconfig"          default="$(find leg_as_robot)/rviz/base/legs_platforms.rviz" />
+  <arg name="port1"               default="$(arg id1)_platform"/>
+  <arg name="port2"               default="$(arg id2)_platform"/>
 
   <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
     <arg name="id"                 value="$(arg id1)"/>  
     <arg name="rviz"               value="false"/>  
     <arg name="virtual_platform"   value="$(arg virtual_platforms)" />
     <arg name="inc_chair"          value="true"/>
+    <arg name="port"          value="$(arg port1)"/>
   </include>
 
   <include file="$(find leg_as_robot)/launch/leg_and_platform.launch">
@@ -20,6 +23,7 @@
     <arg name="virtual_platform"   value="$(arg virtual_platforms)" />
     <arg name="inc_chair"          value="false"/>
     <arg name="rvizconfig"         value="$(arg rvizconfig)"/>
+    <arg name="port"          value="$(arg port2)"/>
     
   </include>
   

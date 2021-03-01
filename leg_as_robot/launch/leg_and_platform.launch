@@ -7,6 +7,7 @@
   <arg name="virtual_platform"   default="true" />
   <arg name="inc_chair"          default="true"/>
   <arg name="rviz"               default="false"/>
+  <arg name="port"               default="$(arg id)_platform"/>
   
 	<include file="$(find foot_platform_ros)/launch/platform_ros.launch">
       <arg name="id"                 value="$(arg id)" />
@@ -14,6 +15,7 @@
       <arg name="rviz"               value="false"/>
       <arg name="offset_x"           value="0.25" if="$(eval arg('id')=='right')"/>
       <arg name="offset_x"           value="-0.25" if="$(eval arg('id')=='left')"/>
+      <arg name="port"               value="$(arg port)"/>
       <!-- <arg name="offset_y"           value="0.47046"/> -->
       <arg name="offset_y"           value="0.44"/>
       <arg name="offset_z"           value="0.0"/>
