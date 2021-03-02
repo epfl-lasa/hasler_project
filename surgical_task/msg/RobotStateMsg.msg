@@ -22,5 +22,5 @@ float32 dEEEE
 bool toolCollisionConstraintActive
 float32 dToolTool
 bool workspaceCollisionConstraintActive
-
+float32 desiredGripperPosition
 

@@ -41,6 +41,7 @@
 #include "QpSolverRCMCollision2.h"
 #include "CvxgenSolverRCM.h"
 #include <pthread.h>
+#include "custom_msgs/TwoFeetOneToolMsg.h"
 
 
 
@@ -118,6 +119,7 @@ class SurgicalTask
     ros::Publisher _pubStiffness[NB_ROBOTS];
     ros::Publisher _pubSurgicalTaskState;
     ros::Publisher _pubRobotState[NB_ROBOTS];
+    ros::Publisher _pubTwoFeetOneTool;
     
     // Messages declaration
     geometry_msgs::Pose _msgRealPose;
@@ -133,6 +135,7 @@ class SurgicalTask
     std_msgs::Float64MultiArray _msgStiffness;  
     surgical_task::SurgicalTaskStateMsg _msgSurgicalTaskState;
     surgical_task::RobotStateMsg _msgRobotState;
+    custom_msgs::TwoFeetOneToolMsg _msgTwoFeetOneTool;
 
     // Tool characteristics
     float _toolMass[NB_ROBOTS];                            // Tool mass [kg]
@@ -222,8 +225,14 @@ class SurgicalTask
     float _eeSafetyCollisionRadius;
     float _toolSafetyCollisionDistance;
     bool _enableWorkspaceCollisionAvoidance;
-
-
+    int _switchingAxis;
+    std::vector<float> _switchingThreshold;
+    int _clutchingAxis;
+    float _clutchingActivationThreshold;
+    float _clutchingDeactivationThreshold;
+    int _gripperControlAxis;
+    Eigen::Matrix<float,5,5> _footPPMapping;
+    Eigen::Matrix<float,5,5> _footPVMapping;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -280,6 +289,7 @@ class SurgicalTask
     Eigen::Matrix<float,5,1> _footPose[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footPoseFiltered[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _trocarInput[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _oldTrocarInput[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footWrench[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)

@@ -276,7 +276,10 @@ void SurgicalTask::operationStep(int r, int h)
   }
 
   // Compute desired gripper position
-  _desiredGripperPosition[r] = _gripperRange*(1.0f-std::max(0.0f,_trocarInput[h](EXTRA_DOF)));
+  if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT)
+  {
+    _desiredGripperPosition[r] = _gripperRange*(1.0f-std::max(0.0f,_trocarInput[h](EXTRA_DOF)));
+  }
 
   if (_controlStrategy[r] == PASSIVE_DS)
   {

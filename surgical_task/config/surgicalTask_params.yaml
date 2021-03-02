@@ -27,6 +27,27 @@ SurgicalTask/jointImpedanceStiffnessGain: [700, 700, 700, 700, 500, 500, 300]
 # Dominant human input (0: LEFT / 1: RIGHT)
 SurgicalTask/dominantInput: 1
 
+# Switching robot axis of the non-dominant foot in the DOMINANT_FOOT_TWO_ROBOTS mode
+# (X = 0, Y = 1, PITCH = 2, ROLL = 3, YAW = 4)
+SurgicalTask/switchingAxis: 0
+
+# Switching threshold for each robot in the DOMINANT_FOOT_TWO_ROBOTS mode
+SurgicalTask/switchingThreshold: [0.7, 0.7]
+
+# Clutching axis of the non-dominant foot in the DOMINANT_FOOT_TWO_ROBOTS mode
+# (X = 0, Y = 1, PITCH = 2, ROLL = 3, YAW = 4)
+SurgicalTask/clutchingAxis: 1
+
+# Clutching activation threshold of the non-dominant foot in the DOMINANT_FOOT_TWO_ROBOTS mode
+SurgicalTask/clutchingActivationThreshold: 0.7
+
+# Clutching deactivation threshold of the non-dominant foot in the DOMINANT_FOOT_TWO_ROBOTS mode
+SurgicalTask/clutchingDeactivationThreshold: 0.7
+
+# Gripper control axis of the non-dominant foot in the DOMINANT_FOOT_TWO_ROBOTS mode
+SurgicalTask/gripperControlAxis: 2
+
+
 # Use sim
 SurgicalTask/useSim: false
 
@@ -163,3 +184,16 @@ SurgicalTask/toolSafetyCollisionDistance: 0.04
 # Enable workspace collision avoidance in QP RCM solver
 SurgicalTask/enableWorkspaceCollisionAvoidance: true
 
+
+SurgicalTask/footPPMapping: [0.0, -1.0, 0.0, 0.0, 0.0,
+                             1.0, 0.0, 0.0, 0.0, 0.0,
+                             0.0, 0.0, -1.0, 0.0, 0.0,
+                             0.0, 0.0, 0.0, 0.0, -1.0,
+                             0.0, 0.0, 0.0, 1.0, 0.0]
+
+
+SurgicalTask/footPVMapping: [0.0, 1.0, 0.0, 0.0, 0.0,
+                             1.0, 0.0, 0.0, 0.0, 0.0,
+                             0.0, 0.0, -1.0, 0.0, 0.0,
+                             0.0, 0.0, 0.0, 0.0, -1.0,
+                             0.0, 0.0, 0.0, 1.0, 0.0]

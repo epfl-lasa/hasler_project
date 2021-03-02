@@ -17,6 +17,7 @@ void SurgicalTask::processHumanInput()
 void SurgicalTask::dominantFootTwoRobots()
 {
 
+  _oldTrocarInput[_nonDominantInputID] = _trocarInput[_nonDominantInputID];
 	// Get non dominant foot input
  	_trocarInput[_nonDominantInputID] = _footPose[_nonDominantInputID];
 
@@ -29,50 +30,109 @@ void SurgicalTask::dominantFootTwoRobots()
     }  
   }
 
-  // Check for switching to left robot
-  if(_trocarInput[_nonDominantInputID](X) < -0.7f)
+
+
+  if(std::fabs(_trocarInput[_nonDominantInputID](_switchingAxis)) > std::fabs(_switchingThreshold[_currentRobot]) &&
+     std::fabs(_oldTrocarInput[_nonDominantInputID](_switchingAxis)) < std::fabs(_switchingThreshold[_currentRobot]) &&
+     _trocarInput[_nonDominantInputID](_switchingAxis)*_switchingThreshold[_currentRobot]>0)
   {
-  	// If left robot has position position mapping, we directly switch otherwise we wait for the foot to come back
-  	// zero => haptic cues might be needed
     if(_currentRobot == RIGHT && _linearMapping[LEFT] == POSITION_POSITION)
     {
       _switching = true;
+      _currentRobot = LEFT;
     }
     else if(_currentRobot == RIGHT && _linearMapping[LEFT] == POSITION_VELOCITY)
     {
       _wait = true;
+      _currentRobot = LEFT;
     }
-    _currentRobot = LEFT;
-  }
-  else if(_trocarInput[_nonDominantInputID](X) > 0.7f)
-  {
-    if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_POSITION)
+    else if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_POSITION)
     {
       _switching = true;
+      _currentRobot = RIGHT;
     }
     else if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_VELOCITY)
     {
       _wait = true;
+      _currentRobot = RIGHT;
     }
-    _currentRobot = RIGHT;
   }
+
+  // Check for switching to left robot
+  // if(_trocarInput[_nonDominantInputID](X) < -0.7f)
+  // {
+  // 	// If left robot has position position mapping, we directly switch otherwise we wait for the foot to come back
+  // 	// zero => haptic cues might be needed
+  //   if(_currentRobot == RIGHT && _linearMapping[LEFT] == POSITION_POSITION)
+  //   {
+  //     _switching = true;
+  //   }
+  //   else if(_currentRobot == RIGHT && _linearMapping[LEFT] == POSITION_VELOCITY)
+  //   {
+  //     _wait = true;
+  //   }
+  //   _currentRobot = LEFT;
+  // }
+  // else if(_trocarInput[_nonDominantInputID](X) > 0.7f)
+  // {
+  //   if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_POSITION)
+  //   {
+  //     _switching = true;
+  //   }
+  //   else if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_VELOCITY)
+  //   {
+  //     _wait = true;
+  //   }
+  //   _currentRobot = RIGHT;
+  // }
 
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: Tool clutching offset: " << _toolClutchingOffset.transpose() << std::endl;
   }
 
+
+
+
   // Check for clutching (only for robot with POSITION-POSITION mapping)
-  if(_trocarInput[_nonDominantInputID](Y) < -0.7f && _linearMapping[_currentRobot]== POSITION_POSITION)
+
+  if(std::fabs(_trocarInput[_nonDominantInputID](_clutchingAxis)) > std::fabs(_clutchingDeactivationThreshold) &&
+     std::fabs(_oldTrocarInput[_nonDominantInputID](_clutchingAxis)) < std::fabs(_clutchingDeactivationThreshold) &&
+     _trocarInput[_nonDominantInputID](_clutchingAxis)*_clutchingDeactivationThreshold>0 &&
+     _linearMapping[_currentRobot]== POSITION_POSITION && _clutching)
   {
     _clutching = false;
   }
-  else if(_trocarInput[_nonDominantInputID](Y) > 0.7f && _linearMapping[_currentRobot]== POSITION_POSITION)
+  else if(std::fabs(_trocarInput[_nonDominantInputID](_clutchingAxis)) > std::fabs(_clutchingActivationThreshold) &&
+          std::fabs(_oldTrocarInput[_nonDominantInputID](_clutchingAxis)) < std::fabs(_clutchingActivationThreshold) &&
+          _trocarInput[_nonDominantInputID](_clutchingAxis)*_clutchingActivationThreshold>0 &&
+          _linearMapping[_currentRobot]== POSITION_POSITION && !_clutching)
   {
     _clutching = true;
-  	_toolClutchingOffset.segment(0,3) = _desiredOffsetPPM[_currentRobot]; 
-  	_toolClutchingOffset(SELF_ROTATION) = _desiredAnglePPM[_currentRobot];
+    _toolClutchingOffset.segment(0,3) = _desiredOffsetPPM[_currentRobot]; 
+    _toolClutchingOffset(SELF_ROTATION) = _desiredAnglePPM[_currentRobot];
   }
+
+
+  if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && _linearMapping[_currentRobot] == POSITION_POSITION
+     && _controlPhase[_currentRobot] == OPERATION)
+  {
+    _desiredGripperPosition[_currentRobot] = _gripperRange*(1.0f-std::max(0.0f,-_trocarInput[_nonDominantInputID](_gripperControlAxis)));
+  } 
+  else
+  {
+    _desiredGripperPosition[_currentRobot] = 0.0f;
+  }
+  // if(_trocarInput[_nonDominantInputID](Y) < -0.7f && _linearMapping[_currentRobot]== POSITION_POSITION)
+  // {
+  //   _clutching = false;
+  // }
+  // else if(_trocarInput[_nonDominantInputID](Y) > 0.7f && _linearMapping[_currentRobot]== POSITION_POSITION)
+  // {
+  //   _clutching = true;
+  // 	_toolClutchingOffset.segment(0,3) = _desiredOffsetPPM[_currentRobot]; 
+  // 	_toolClutchingOffset(SELF_ROTATION) = _desiredAnglePPM[_currentRobot];
+  // }
 
   computeTrocarInput(_currentRobot,_dominantInputID);
 }
@@ -102,11 +162,12 @@ void SurgicalTask::computeTrocarInput(int r, int h)
     if(_linearMapping[r] == POSITION_POSITION)
     {
       // X, Y, Z, SELF_ROTATION, EXTRA_DOF <= Y, -X, PITCH, -YAW, ROLL
-      R << 0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-           1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-           0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
-           0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
-           0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
+      R = _footPPMapping;
+      // R << 0.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+      //      1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+      //      0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
       // R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
       //      -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
       //      0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
@@ -152,11 +213,12 @@ void SurgicalTask::computeTrocarInput(int r, int h)
     else
     {
       // V_UP, V_RIGHT, V_INSERTION, W_SELF_ROTATION <= PITCH, -ROLL, Y, -YAW
-      R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-           1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-           0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
-           0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
-           0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
+      R = _footPVMapping;
+      // R << 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+      //      1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+      //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+      //      0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
       // R << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
       //      0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
       //      0.0f, 1.0f, 0.0f, 0.0f, 0.0f,

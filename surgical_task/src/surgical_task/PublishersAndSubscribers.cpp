@@ -147,6 +147,11 @@ void SurgicalTask::initializeSubscribersAndPublishers()
   _pubSurgicalTaskState = _nh.advertise<surgical_task::SurgicalTaskStateMsg>("surgical_task/state", 1);
 
 
+  if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+  {
+    _pubTwoFeetOneTool = _nh.advertise<custom_msgs::TwoFeetOneToolMsg>("surgical_task/sdfsd",1);
+  }
+
   _subOptitrackPose[RIGHT_ROBOT_BASIS] = _nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/right_robot/pose", 1, boost::bind(&SurgicalTask::updateOptitrackPose,this,_1,RIGHT_ROBOT_BASIS),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackPose[LEFT_ROBOT_BASIS] = _nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/left_robot/pose", 1, boost::bind(&SurgicalTask::updateOptitrackPose,this,_1,LEFT_ROBOT_BASIS),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
   _subOptitrackPose[LEFT_HUMAN_TOOL] = _nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/left_tool/pose", 1, boost::bind(&SurgicalTask::updateOptitrackPose,this,_1,LEFT_HUMAN_TOOL),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
@@ -348,6 +353,7 @@ void SurgicalTask::publishData()
       _msgRobotState.toolCollisionConstraintActive = _qpResult[r].toolCollisionConstraintActive;
       _msgRobotState.dToolTool = _rToolCollision[r].norm();
       _msgRobotState.workspaceCollisionConstraintActive = _qpResult[r].workspaceCollisionConstraintActive;
+      _msgRobotState.desiredGripperPosition = _desiredGripperPosition[r];
 
       for(int m = 0; m < 3; m++)
       {
@@ -387,6 +393,28 @@ void SurgicalTask::publishData()
   _msgSurgicalTaskState.wait = _wait;
 
   _pubSurgicalTaskState.publish(_msgSurgicalTaskState);
+
+  if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+  {
+    if(_currentRobot == LEFT)
+    {
+      _msgTwoFeetOneTool.currentTool = 2;
+    }
+    else if(_currentRobot == RIGHT)
+    {
+      _msgTwoFeetOneTool.currentTool = 1;
+    }
+
+    if(_linearMapping[_currentRobot] == POSITION_VELOCITY)
+    {
+      _msgTwoFeetOneTool.currentControlMode = 1;
+    }
+    else if(_linearMapping[_currentRobot] == POSITION_POSITION)
+    {
+      _msgTwoFeetOneTool.currentControlMode = 0;
+    }
+    _pubTwoFeetOneTool.publish(_msgTwoFeetOneTool);
+  }
 }
 
 

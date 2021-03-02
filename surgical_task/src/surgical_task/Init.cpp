@@ -86,6 +86,74 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
+  if (!_nh.getParam("SurgicalTask/switchingAxis", _switchingAxis))
+  {
+    ROS_ERROR("Couldn't retrieve the switching axis");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Switching axis: %d\n", (int) _switchingAxis);
+  }
+
+
+  _switchingThreshold.resize(NB_ROBOTS);
+  if (!_nh.getParam("SurgicalTask/switchingThreshold", _switchingThreshold))
+  {
+    ROS_ERROR("Couldn't retrieve the switching thresholds ");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Switching thresholds: %f %f\n", _switchingThreshold[LEFT], _switchingThreshold[RIGHT]);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/clutchingAxis", _clutchingAxis))
+  {
+    ROS_ERROR("Couldn't retrieve the clutching axis");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Clutching axis: %d\n", (int) _clutchingAxis);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/clutchingActivationThreshold", _clutchingActivationThreshold))
+  {
+    ROS_ERROR("Couldn't retrieve the clutching activation threshold");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Clutching activation threshold: %f\n", _clutchingActivationThreshold);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/clutchingDeactivationThreshold", _clutchingDeactivationThreshold))
+  {
+    ROS_ERROR("Couldn't retrieve the clutching deactivation threshold");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Clutching deactivation threshold: %f\n", _clutchingDeactivationThreshold);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/gripperControlAxis", _gripperControlAxis))
+  {
+    ROS_ERROR("Couldn't retrieve the gripper control axis");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Gripper control axis: %d\n", (int) _gripperControlAxis);
+  }
+
+
+
   _linearMapping.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/linearMapping", _linearMapping))
   {
@@ -571,6 +639,32 @@ bool SurgicalTask::readConfigurationParameters()
   else
   {
     ROS_INFO("Enable Workspace collision avoidance: %d\n", (int) _enableWorkspaceCollisionAvoidance);
+  }
+
+
+  temp.resize(25);
+  if (!_nh.getParam("SurgicalTask/footPPMapping", temp))
+  {
+    ROS_ERROR("Couldn't retrieve the foot PP mapping matrix");
+    return false;
+  }
+  else
+  {
+    _footPPMapping = Eigen::Map<Eigen::Matrix<float,5,5,Eigen::RowMajor>>(temp.data(),5,5);
+    std::cout << "Foot PP mapping matrix: " << std::endl;
+    std::cout << _footPPMapping << std::endl;
+  }
+
+  if (!_nh.getParam("SurgicalTask/footPVMapping", temp))
+  {
+    ROS_ERROR("Couldn't retrieve the foot PV mapping matrix");
+    return false;
+  }
+  else
+  {
+    _footPVMapping = Eigen::Map<Eigen::Matrix<float,5,5,Eigen::RowMajor>>(temp.data(),5,5);
+    std::cout << "Foot PV mapping matrix: " << std::endl;
+    std::cout << _footPVMapping << std::endl;
   }
 
   return true;
