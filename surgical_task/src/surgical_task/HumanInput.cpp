@@ -18,7 +18,9 @@ void SurgicalTask::dominantFootTwoRobots()
 {
 
   _oldTrocarInput[_nonDominantInputID] = _trocarInput[_nonDominantInputID];
-	// Get non dominant foot input
+  _oldTrocarInput[_dominantInputID] = _trocarInput[_dominantInputID];
+	
+  // Get non dominant foot input
  	_trocarInput[_nonDominantInputID] = _footPose[_nonDominantInputID];
 
   if(_humanInputDevice[_nonDominantInputID] == FOOT)
@@ -147,6 +149,7 @@ void SurgicalTask::singleFootSingleRobot()
   {
     if(_useRobot[h])
     {
+      _oldTrocarInput[h] = _trocarInput[h];
     	computeTrocarInput(h, h);
     }
   }

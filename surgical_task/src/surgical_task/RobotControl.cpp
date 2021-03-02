@@ -497,15 +497,28 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     if(r==LEFT && _allowTaskAdaptation)
     {
-      if(_useTaskAdaptation && _trocarInput[h](EXTRA_DOF)>0.6f)
+      if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationDeactivationThreshold) &&
+         std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationDeactivationThreshold) &&
+         _trocarInput[h](EXTRA_DOF)*_taskAdaptationDeactivationThreshold>0 && _useTaskAdaptation)
       {
         _useTaskAdaptation = false;
       }
-      if(!_useTaskAdaptation && _trocarInput[h](EXTRA_DOF) <-0.6f)
+      else if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationActivationThreshold) &&
+              std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationActivationThreshold) &&
+              _trocarInput[h](EXTRA_DOF)*_taskAdaptationActivationThreshold>0 && !_useTaskAdaptation)
       {
         initializeBeliefs(r);
         _useTaskAdaptation = true;
       }
+      // if(_useTaskAdaptation && _trocarInput[h](EXTRA_DOF)>0.6f)
+      // {
+      //   _useTaskAdaptation = false;
+      // }
+      // if(!_useTaskAdaptation && _trocarInput[h](EXTRA_DOF) <-0.6f)
+      // {
+      //   initializeBeliefs(r);
+      //   _useTaskAdaptation = true;
+      // }
       if(_useTaskAdaptation)
       {
         taskAdaptation(r, h);

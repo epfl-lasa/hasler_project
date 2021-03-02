@@ -504,6 +504,28 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
+  if (!_nh.getParam("SurgicalTask/taskAdaptationActivationThreshold", _taskAdaptationActivationThreshold))
+  {
+    ROS_ERROR("Couldn't retrieve the task adaptation activation threshold");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Task adaptation activation threshold: %f\n", _taskAdaptationActivationThreshold);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/taskAdaptationDeactivationThreshold", _taskAdaptationDeactivationThreshold))
+  {
+    ROS_ERROR("Couldn't retrieve the task adaptation deactivation threshold");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Task adaptation deactivation threshold: %f\n", _taskAdaptationDeactivationThreshold);
+  }
+
+
   if (!_nh.getParam("SurgicalTask/taskAdaptationAlignmentGain", _taskAdaptationAlignmentGain))
   {
     ROS_ERROR("Couldn't retrieve the task adaptation alignment gain");

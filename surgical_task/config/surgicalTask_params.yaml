@@ -145,6 +145,12 @@ SurgicalTask/trocarSpaceSelfRotationRange: 160
 # Tool tracking system used for track the position of the surgeon tools (0: CAMERA_BASED, 1: OPTITRACK_BASED)
 SurgicalTask/toolsTracking: 0
 
+# Threshold to activate task adaptation
+SurgicalTask/taskAdaptationActivationThreshold: 0.6
+
+# Threshold to deactivate task adaptation
+SurgicalTask/taskAdaptationDeactivationThreshold: 0.6
+
 # Task adaptation alignment gain
 SurgicalTask/taskAdaptationAlignmentGain: 2.0
 

@@ -233,6 +233,8 @@ class SurgicalTask
     int _gripperControlAxis;
     Eigen::Matrix<float,5,5> _footPPMapping;
     Eigen::Matrix<float,5,5> _footPVMapping;
+    float _taskAdaptationActivationThreshold;
+    float _taskAdaptationDeactivationThreshold;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
