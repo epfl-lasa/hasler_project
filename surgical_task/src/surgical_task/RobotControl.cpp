@@ -234,7 +234,7 @@ void SurgicalTask::insertionStep(int r, int h)
 
   _inputAlignedWithOrigin[r] = false;
 
-  _desiredGripperPosition[r] = 0.0f;
+  _desiredGripperPosition[r] = _gripperRange;
 }
 
 
@@ -278,7 +278,7 @@ void SurgicalTask::operationStep(int r, int h)
   // Compute desired gripper position
   if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT)
   {
-    _desiredGripperPosition[r] = _gripperRange*(1.0f-std::max(0.0f,_trocarInput[h](EXTRA_DOF)));
+    _desiredGripperPosition[r] = _gripperRange*(std::max(0.0f,_trocarInput[h](EXTRA_DOF)));
   }
 
   if (_controlStrategy[r] == PASSIVE_DS)
@@ -384,7 +384,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     Eigen::Vector3f gains;
     gains << _trocarSpaceVelocityGains[V_UP], _trocarSpaceVelocityGains[V_RIGHT], _trocarSpaceVelocityGains[V_INSERTION];
 
-    _vdTool[r] = _wRb[r]*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
+    _vdTool[r] = _wRb[r]*_eeCameraMapping*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
 
     if(_useSafetyLimits)
     {
@@ -647,15 +647,15 @@ void SurgicalTask::computeHapticFeedback(int r)
     case POSITION_POSITION:
     {
       _FdFoot[r].setConstant(0.0f);
-      if(_controlPhase[r] == OPERATION && _inputAlignedWithOrigin[r]==false)
-      {
-        _FdFoot[r] = Utils<float>::bound(200.0f*(_x[r]-(_xd0[r]+_desiredOffsetPPM[r])),15.0f)+2.0f*_wRb[r]*_filteredWrench[r].segment(0,3);   
-        // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
-      }
-      else if(_controlPhase[r] == OPERATION && _inputAlignedWithOrigin[r]==true)
-      {
-        _FdFoot[r] = 2.0f*_wRb[r]*_filteredWrench[r].segment(0,3);
-      }
+      // if(_controlPhase[r] == OPERATION && _inputAlignedWithOrigin[r]==false)
+      // {
+      //   _FdFoot[r] = Utils<float>::bound(200.0f*(_x[r]-(_xd0[r]+_desiredOffsetPPM[r])),15.0f)+2.0f*_wRb[r]*_filteredWrench[r].segment(0,3);   
+      //   // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
+      // }
+      // else if(_controlPhase[r] == OPERATION && _inputAlignedWithOrigin[r]==true)
+      // {
+      //   _FdFoot[r] = 2.0f*_wRb[r]*_filteredWrench[r].segment(0,3);
+      // }
       break;
     }
     default:

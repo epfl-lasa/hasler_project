@@ -149,7 +149,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
 
   if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
   {
-    _pubTwoFeetOneTool = _nh.advertise<custom_msgs::TwoFeetOneToolMsg>("surgical_task/sdfsd",1);
+    _pubTwoFeetOneTool = _nh.advertise<custom_msgs::TwoFeetOneToolMsg>("mixed_platform/platform_state",1);
   }
 
   _subOptitrackPose[RIGHT_ROBOT_BASIS] = _nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/right_robot/pose", 1, boost::bind(&SurgicalTask::updateOptitrackPose,this,_1,RIGHT_ROBOT_BASIS),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
@@ -209,7 +209,7 @@ void SurgicalTask::checkAllSubscribers()
   }
   else if (!_useSim && _toolsTracking == CAMERA_BASED)
   {
-    _trackingOK = _firstColorMarkersPosition;
+    _trackingOK = _firstColorMarkersPosition || !_allowTaskAdaptation;
   }
 
   _allSubscribersOK = robotStatusOK[LEFT] && robotStatusOK[RIGHT] && _trackingOK;// && (_useSim ||_firstGripper);
@@ -337,7 +337,8 @@ void SurgicalTask::publishData()
 
       if(r==RIGHT)
       {
-        _msgGripperInput.ros_dPosition = _desiredGripperPosition[r];
+        _msgGripperInput.ros_desAngle = _desiredGripperPosition[r];
+        _msgGripperInput.ros_desTorque = 0.0f;
         _pubGripper.publish(_msgGripperInput);
       }
 
@@ -385,7 +386,7 @@ void SurgicalTask::publishData()
   _msgSurgicalTaskState.humanInputMode = _humanInputMode;
   _msgSurgicalTaskState.currentRobot = _currentRobot;
   _msgSurgicalTaskState.useTaskAdaptation = _useTaskAdaptation;
-  for(int m = 0; m < 3; m++)
+  for(int m = 0; m < _beliefsC.size(); m++)
   {
     _msgSurgicalTaskState.beliefsC[m] = _beliefsC(m);
   }
@@ -493,11 +494,11 @@ void SurgicalTask::updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int r)
 
   if(msg->buttons[4] && !msg->buttons[5])
   {
-    _msgGripperInput.ros_dPosition = 0;
+    _msgGripperInput.ros_desAngle = 0;
   }
   else if(!msg->buttons[4] && msg->buttons[5])
   {
-    _msgGripperInput.ros_dPosition = 20;
+    _msgGripperInput.ros_desAngle = 20;
   }
 
   if(!_firstHumanInput[r])
@@ -685,7 +686,9 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
       _colorMarkersStatus[k] = msg->data[3*k+2];
       if(_colorMarkersStatus[k])
       {
-        _colorMarkersPosition.row(k) << msg->data[3*k], msg->data[3*k+1], 0.0f; 
+        Eigen::Vector3f temp;
+        temp << msg->data[3*k], msg->data[3*k+1], 0.0f;
+        _colorMarkersPosition.row(k) = (_eeCameraMapping*temp).transpose(); 
       }
       else
       {

@@ -2,18 +2,18 @@
 SurgicalTask/debug: false
 
 # Use robot [LEFT, RIGHT]
-SurgicalTask/useRobot: [true, false]
+SurgicalTask/useRobot: [true, true]
 
 SurgicalTask/useFranka: true
 
 # Human input device [LEFT, RIGHT] (0: JOYSTICK / 1: FOOT)
-SurgicalTask/humanInputDevice: [0, 0]
+SurgicalTask/humanInputDevice: [1, 1]
 
 # Human input mode (0: SINGLE_FOOT_SINGLE_ROBOT 1: DOMINANT_FOOT_TWO_ROBOTS)
-SurgicalTask/humanInputMode: 0
+SurgicalTask/humanInputMode: 1
 
 # Linear mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
-SurgicalTask/linearMapping: [0, 0]
+SurgicalTask/linearMapping: [0, 1]
 
 # Self rotation mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
 SurgicalTask/selfRotationMapping: [0, 0]
@@ -55,14 +55,14 @@ SurgicalTask/useSim: false
 # SurgicalTask/toolOffsetFromEE: [0.513, 0.54]
 # SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
 # SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
-SurgicalTask/toolOffsetFromEE: [0.398, 0.53]
+SurgicalTask/toolOffsetFromEE: [0.398, 0.552]
 # SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
 
 # Insertion distance in position velocity mapping [LEFT, RIGHT]
 SurgicalTask/insertionDistancePVM: [-0.03, -0.03]
 
 # Left foot interface range
-SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 40, 30, 35]
+SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 20, 30, 35]
 
 # Left foot interface range
 SurgicalTask/rightFootInterfaceRange: [0.195, 0.18, 34, 30, 35]
@@ -108,11 +108,11 @@ SurgicalTask/trocarSpaceMinZOffset: [-0.145, -0.05]
 #                                   0.0, -0.04, -0.05]
 
 SurgicalTask/insertionOffsetPPM: [0.0, 0.04, -0.05,
-                                  0.0, 0.04, -0.07]
+                                  0.0, -0.08, -0.1]
 
 # Offset range in operation phase for position position mapping
 SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.05,
-                                       0.12, 0.12, 0.1]
+                                       0.16, 0.16, 0.1]
 
 # Min offset limits in operation phase for position velocity mapping 
 SurgicalTask/operationMinOffsetPVM: [-0.06, -0.01, -0.1,
@@ -125,7 +125,6 @@ SurgicalTask/operationMaxOffsetPVM: [0.06, 0.08, 0,
                                      0.06, 0.01, 0]
 # SurgicalTask/operationMaxOffsetPVM: [0.06, 0.01, 0,
 #                                      0.06, 0.08, 0]
-
 
 # Trocar space linear ds gain in position position mapping
 SurgicalTask/trocarSpaceLinearDSFixedGain: 1.0
@@ -146,10 +145,10 @@ SurgicalTask/trocarSpaceSelfRotationRange: 160
 SurgicalTask/toolsTracking: 0
 
 # Threshold to activate task adaptation
-SurgicalTask/taskAdaptationActivationThreshold: 0.6
+SurgicalTask/taskAdaptationActivationThreshold: 0.7
 
 # Threshold to deactivate task adaptation
-SurgicalTask/taskAdaptationDeactivationThreshold: 0.6
+SurgicalTask/taskAdaptationDeactivationThreshold: 0.7
 
 # Task adaptation alignment gain
 SurgicalTask/taskAdaptationAlignmentGain: 2.0
@@ -170,7 +169,7 @@ SurgicalTask/taskAdaptationExponentialGain: 10
 SurgicalTask/taskAdaptationOverallGain: 1.0
 
 # Gripper range
-SurgicalTask/gripperRange: 20.0
+SurgicalTask/gripperRange: 60.0
 
 # Enable EE collision avoidance in QP RCM solver
 SurgicalTask/enableEECollisionAvoidance: true
@@ -185,7 +184,7 @@ SurgicalTask/eeSafetyCollisionRadius: 0.1
 SurgicalTask/enableToolCollisionAvoidance: true
 
 # Safety collision distance between the tool and the obstacle
-SurgicalTask/toolSafetyCollisionDistance: 0.04
+SurgicalTask/toolSafetyCollisionDistance: 0.03
 
 # Enable workspace collision avoidance in QP RCM solver
 SurgicalTask/enableWorkspaceCollisionAvoidance: true
@@ -203,3 +202,7 @@ SurgicalTask/footPVMapping: [0.0, 1.0, 0.0, 0.0, 0.0,
                              0.0, 0.0, -1.0, 0.0, 0.0,
                              0.0, 0.0, 0.0, 0.0, -1.0,
                              0.0, 0.0, 0.0, 1.0, 0.0]
+
+SurgicalTask/eeCameraMapping: [0.0, -1.0, 0.0,
+                               1.0, 0.0, 0.0,
+                               0.0, 0.0, 1.0]

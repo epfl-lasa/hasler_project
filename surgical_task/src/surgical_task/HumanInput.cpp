@@ -113,17 +113,31 @@ void SurgicalTask::dominantFootTwoRobots()
     _clutching = true;
     _toolClutchingOffset.segment(0,3) = _desiredOffsetPPM[_currentRobot]; 
     _toolClutchingOffset(SELF_ROTATION) = _desiredAnglePPM[_currentRobot];
+    _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
   }
 
 
   if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && _linearMapping[_currentRobot] == POSITION_POSITION
      && _controlPhase[_currentRobot] == OPERATION)
   {
-    _desiredGripperPosition[_currentRobot] = _gripperRange*(1.0f-std::max(0.0f,-_trocarInput[_nonDominantInputID](_gripperControlAxis)));
+    _desiredGripperPosition[_currentRobot] = _gripperRange*std::max(0.0f,-_trocarInput[_nonDominantInputID](_gripperControlAxis));
+
+    // if(_clutching)
+    // {
+    //   _trocarInput[_nonDominantInputID](_gripperControlAxis) = _footPose[_nonDominantInputID](_gripperControlAxis);
+    //   _trocarInput[_nonDominantInputID](_gripperControlAxis) = Utils<float>::bound(2*_trocarInput[_nonDominantInputID](_gripperControlAxis)/_footInterfaceRange[_nonDominantInputID][_gripperControlAxis], -2.0f, 2.0f);
+    // }
+
+    // if(!_clutching)
+    // {
+
+    // _desiredGripperPosition[_currentRobot] = Utils<float>::bound(-_gripperRange*_trocarInput[_nonDominantInputID](_gripperControlAxis)+_gripperClutchingOffset,
+    //                                                              0.0, _gripperRange);
+    // }
   } 
   else
   {
-    _desiredGripperPosition[_currentRobot] = 0.0f;
+    _desiredGripperPosition[_currentRobot] = _gripperRange;
   }
   // if(_trocarInput[_nonDominantInputID](Y) < -0.7f && _linearMapping[_currentRobot]== POSITION_POSITION)
   // {
@@ -189,6 +203,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         _humanClutchingOffset = _trocarInput[h];
     		_toolClutchingOffset.segment(0,3) = _desiredOffsetPPM[_currentRobot]; 
     		_toolClutchingOffset(SELF_ROTATION) = _desiredAnglePPM[_currentRobot];
+        _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
       }
 
       if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
@@ -197,14 +212,14 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       }
 
       // Scale human input between -1 and 1
-      _trocarInput[h](X) = Utils<float>::bound(2*_trocarInput[h](X)/_footInterfaceRange[h][FOOT_Y], -1.0f, 1.0f);
-      _trocarInput[h](Y) = Utils<float>::bound(2*_trocarInput[h](Y)/_footInterfaceRange[h][FOOT_X], -1.0f, 1.0f);
-      _trocarInput[h](Z) = Utils<float>::bound(2*_trocarInput[h](Z)/_footInterfaceRange[h][FOOT_PITCH], -1.0f, 1.0f);
+      _trocarInput[h](X) = Utils<float>::bound(2*_trocarInput[h](X)/_footInterfaceRange[h][FOOT_Y], -2.0f, 2.0f);
+      _trocarInput[h](Y) = Utils<float>::bound(2*_trocarInput[h](Y)/_footInterfaceRange[h][FOOT_X], -2.0f, 2.0f);
+      _trocarInput[h](Z) = Utils<float>::bound(2*_trocarInput[h](Z)/_footInterfaceRange[h][FOOT_PITCH], -2.0f, 2.0f);
       // If a linear position-position mapping is desired for the foot we allow for a poosition-position or position-velocity
       // mapping for the self rotation 
       if(_selfRotationMapping[h]==POSITION_POSITION)
       {
-        _trocarInput[h](SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](SELF_ROTATION)/_footInterfaceRange[h][FOOT_YAW], -1.0f, 1.0f);
+        _trocarInput[h](SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](SELF_ROTATION)/_footInterfaceRange[h][FOOT_YAW], -2.0f, 2.0f);
       }
       else
       {
@@ -291,6 +306,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         _humanClutchingOffset = _trocarInput[h];
     		_toolClutchingOffset.segment(0,3) = _desiredOffsetPPM[_currentRobot]; 
     		_toolClutchingOffset(SELF_ROTATION) = _desiredAnglePPM[_currentRobot];
+        _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
       }
 
       if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)

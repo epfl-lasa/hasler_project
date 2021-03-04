@@ -689,6 +689,18 @@ bool SurgicalTask::readConfigurationParameters()
     std::cout << _footPVMapping << std::endl;
   }
 
+  temp.resize(9);
+  if (!_nh.getParam("SurgicalTask/eeCameraMapping", temp))
+  {
+    ROS_ERROR("Couldn't retrieve the EE Camera mapping matrix");
+    return false;
+  }
+  else
+  {
+    _eeCameraMapping = Eigen::Map<Eigen::Matrix<float,3,3,Eigen::RowMajor>>(temp.data(),3,3);
+    std::cout << "EE-camera mapping matrix: " << std::endl;
+    std::cout << _eeCameraMapping << std::endl;
+  }
   return true;
 }
 
@@ -746,7 +758,7 @@ void SurgicalTask::initializeTaskParameters()
     _footOffset[r].setConstant(0.0f);
     _desiredOffsetPPM[r].setConstant(0.0f);
     _desiredAnglePPM[r] = 0.0f;
-    _desiredGripperPosition[r] = 0.0f;
+    _desiredGripperPosition[r] = _gripperRange;
     _dRCMTool[r] = 0.0f;
 
     _stiffness[r].setConstant(0.0f);
@@ -790,6 +802,8 @@ void SurgicalTask::initializeTaskParameters()
   _clutching = false;
   _humanClutchingOffset.setConstant(0.0f);
   _toolClutchingOffset.setConstant(0.0f);
+  _gripperClutchingOffset = 0.0f;
+  _humanGripperClutchingOffset = 0.0f;
   _attractorOffset.setConstant(0.0f);
 
   if(!_useSim)
@@ -841,7 +855,9 @@ void SurgicalTask::initializeTaskParameters()
     _nbTasks++;
   }
 
+
   _beliefsC.resize(_nbTasks);
+  std::cerr << _beliefsC.size() << std::endl;
   _beliefsC.setConstant(0.0f);
   _beliefsC(0) = 1.0f;
   _dbeliefsC.resize(_nbTasks);

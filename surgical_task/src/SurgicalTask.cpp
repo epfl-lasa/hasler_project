@@ -122,14 +122,14 @@ void SurgicalTask::run()
     _qd[r] = _q[r];  
     _desiredFootWrench[r].setConstant(0.0f);  
     _stiffness[r].setConstant(0.0f);
-    _desiredGripperPosition[r] = 0.0f;
+    _desiredGripperPosition[r] = _gripperRange;
     for(int m = 0; m < 7; m++)
     {
       _ikJoints[r][m] = _currentJoints[r](m);
     }
   }
 
-  _msgGripperInput.ros_dPosition = 0.0f;
+  _msgGripperInput.ros_desAngle = 0.0f;
 
   publishData();
   ros::spinOnce();
@@ -159,9 +159,17 @@ void SurgicalTask::step()
       std::cerr << "[SurgicalTask]: DOMINANT INPUT: " << (int) _currentRobot << std::endl;
     }
     
-    if(_useRobot[_currentRobot])
+    for(int r = 0; r < NB_ROBOTS; r++)
     {
-      robotControlStep(_currentRobot,_dominantInputID);
+      if(_useRobot[r] && r == _currentRobot)
+      {
+        robotControlStep(r,_dominantInputID);
+      }
+      else if(_useRobot[r] && r != _currentRobot)
+      {
+        // Update trocar information
+        updateTrocarInformation(r);
+      }
     }
   }
   else if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT)

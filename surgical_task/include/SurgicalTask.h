@@ -235,6 +235,7 @@ class SurgicalTask
     Eigen::Matrix<float,5,5> _footPVMapping;
     float _taskAdaptationActivationThreshold;
     float _taskAdaptationDeactivationThreshold;
+    Eigen::Matrix3f _eeCameraMapping;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -305,6 +306,8 @@ class SurgicalTask
     Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _humanClutchingOffset;
     Eigen::Vector4f _toolClutchingOffset;
+    float _gripperClutchingOffset;
+    float _humanGripperClutchingOffset;
     Eigen::Vector3f _xdTool[NB_ROBOTS];
     Eigen::VectorXf _ikJoints[NB_ROBOTS];
     Eigen::Vector3f _xIK[NB_ROBOTS];                         // Position [m] (3x1)

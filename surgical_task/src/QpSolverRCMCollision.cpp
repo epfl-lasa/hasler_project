@@ -285,7 +285,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 		  float ds = _eeSafetyCollisionDistance, di = 2.0f*_eeSafetyCollisionDistance;
 		  _lbA(_idEECollisionConstraint) = -0.5*(rEEObstacle.norm()-ds)/(di-ds);
 
-		  if(_lbA(_idEECollisionConstraint)>-1e-3f)
+		  if(_lbA(_idEECollisionConstraint)>-5e-3f)
 		  {
 		  	result.eeCollisionConstraintActive = true;
 		  }
@@ -296,7 +296,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  {  
 	  	float ds = _toolSafetyCollisionDistance, di = 2.0f*_toolSafetyCollisionDistance;
 	  	_lbA(_idToolCollisionConstraint) = -0.5*(rToolObstacle.norm()-ds)/(di-ds);
-		  if(_lbA(_idToolCollisionConstraint)>-1e-3f)
+		  if(_lbA(_idToolCollisionConstraint)>-5e-3f)
 		  {
 		  	result.toolCollisionConstraintActive = true;
 		  }
@@ -325,9 +325,9 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.5*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+5) = 1000.0f;
 
-		  if(_lbA(_idWorkspaceCollisionConstraint)>-1e-3f || _lbA(_idWorkspaceCollisionConstraint+1)>-1e-3f ||
-		  	 _lbA(_idWorkspaceCollisionConstraint+2)>-1e-3f || _lbA(_idWorkspaceCollisionConstraint+3)>-1e-3f ||
-		  	 _lbA(_idWorkspaceCollisionConstraint+4)>-1e-3f || _lbA(_idWorkspaceCollisionConstraint+5)>-1e-3f)
+		  if(_lbA(_idWorkspaceCollisionConstraint)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+1)>-5e-3f ||
+		  	 _lbA(_idWorkspaceCollisionConstraint+2)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+3)>-5e-3f ||
+		  	 _lbA(_idWorkspaceCollisionConstraint+4)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+5)>-5e-3f)
 		  {
 		  	result.workspaceCollisionConstraintActive = true;
 		  }

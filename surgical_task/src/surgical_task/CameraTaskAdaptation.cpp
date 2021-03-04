@@ -87,7 +87,8 @@ void SurgicalTask::taskAdaptation(int r, int h)
   ////////////////////////////////////
   Eigen::Vector3f vH;
 
-  vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
+  vH = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_wRb[r]*_eeCameraMapping*_trocarInput[h].segment(0,3);
+  // vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
   
   if(_debug)
   {
