@@ -36,11 +36,12 @@ void SurgicalTask::dominantFootTwoRobots()
 
   if(std::fabs(_trocarInput[_nonDominantInputID](_switchingAxis)) > std::fabs(_switchingThreshold[_currentRobot]) &&
      std::fabs(_oldTrocarInput[_nonDominantInputID](_switchingAxis)) < std::fabs(_switchingThreshold[_currentRobot]) &&
-     _trocarInput[_nonDominantInputID](_switchingAxis)*_switchingThreshold[_currentRobot]>0)
+     _trocarInput[_nonDominantInputID](_switchingAxis)*_switchingThreshold[_currentRobot]>0 && !_clutching)
   {
     if(_currentRobot == RIGHT && _linearMapping[LEFT] == POSITION_POSITION)
     {
       _switching = true;
+      _wait = false;
       _currentRobot = LEFT;
     }
     else if(_currentRobot == RIGHT && _linearMapping[LEFT] == POSITION_VELOCITY)
@@ -51,6 +52,7 @@ void SurgicalTask::dominantFootTwoRobots()
     else if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_POSITION)
     {
       _switching = true;
+      _wait = false;
       _currentRobot = RIGHT;
     }
     else if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_VELOCITY)

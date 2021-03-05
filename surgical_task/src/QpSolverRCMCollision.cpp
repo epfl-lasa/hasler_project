@@ -140,7 +140,7 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointMax(4) = 2.8973f;
 	  _jointMax(5) = 3.7525f;
 	  _jointMax(6) = 2.8973f;
-	  _jointMax =  _jointMax.array()-5.0f*M_PI/180.0f;
+	  _jointMax =  _jointMax.array()-6.0f*M_PI/180.0f;
 
 	  _jointMin(0) = -2.8973f;
 	  _jointMin(1) = -1.7628f;
@@ -149,7 +149,7 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointMin(4) = -2.8973f;
 	  _jointMin(5) = -0.0175f;
 	  _jointMin(6) = -2.8973f;
-	  _jointMin =  _jointMin.array()+5.0f*M_PI/180.0f;
+	  _jointMin =  _jointMin.array()+6.0f*M_PI/180.0f;
 
 
 	  _jointVelocitiesLimits(0) = 2.1750f;
@@ -235,8 +235,10 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  J(_nbTasks-1,_nbJoints-1) = 1.0f;
 
 	  _H.setConstant(0.0f);
-	  _H.block(0,0,_nbJoints,_nbJoints) = Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
+	  _H.block(0,0,_nbJoints,_nbJoints) = (1+100*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
 	  _H.block(_nbJoints,_nbJoints,_nbSlacks,_nbSlacks) = _slackGains.asDiagonal();
+
+	  _g.segment(0,_nbJoints) = -2.0f*dt*100*(((_jointMin+_jointMax)/2.0f)-joints);
 
 	  _A.setConstant(0.0f);
 	  _A.block(0,0,_nbTasks,_nbJoints) = J;
