@@ -31,7 +31,7 @@
   <!-- load all controller configurations to rosparam server -->  
 
   <group ns="$(arg id)_panda">
-    <param name="robot_description" command="$(find xacro)/xacro --check-order --inorder $(arg pandaUrdfFile) arm_id:=$(arg id) origin.x:=$(arg robotOrigin.x) origin.y:=$(arg robotOrigin.y) origin.z:=$(arg robotOrigin.z) origin.ax:=$(arg robotOrigin.ax) origin.ay:=$(arg robotOrigin.ay) origin.az:=$(arg robotOrigin.az)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) arm_id:=$(arg id) origin_x:=$(arg robotOrigin.x) origin_y:=$(arg robotOrigin.y) origin_z:=$(arg robotOrigin.z) origin_ax:=$(arg robotOrigin.ax) origin_ay:=$(arg robotOrigin.ay) origin_az:=$(arg robotOrigin.az)"/>
 
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg id)_panda/robot_description -urdf -model $(arg id)_panda -unpause"/>
 

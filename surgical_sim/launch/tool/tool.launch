@@ -27,7 +27,7 @@
   </group>
 
     <group ns="$(arg id)_tool">
-        <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) toolID:=$(arg id) originTrocar.x:=$(arg originTrocar_x) originTrocar.y:=$(arg originTrocar_y) originTrocar.z:=$(arg originTrocar_z)"/>
+        <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_forceps:=$(arg w_forceps) toolID:=$(arg id) originTrocar_x:=$(arg originTrocar_x) originTrocar_y:=$(arg originTrocar_y) originTrocar_z:=$(arg originTrocar_z)"/>
 
         <include file="$(find surgical_sim)/launch/tool/tool.controller.launch">
               <arg name="w_forceps" value="$(arg w_forceps)" />

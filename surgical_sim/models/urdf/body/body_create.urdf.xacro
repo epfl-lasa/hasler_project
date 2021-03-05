@@ -7,12 +7,12 @@
 
   <xacro:arg name="with_liver" default="false"/>
   <xacro:arg name="attached_to" default="world"/>
-  <xacro:arg name="bodyOrigin.x" default="0.0"/>
-  <xacro:arg name="bodyOrigin.y" default="0.5"/>
-  <xacro:arg name="bodyOrigin.z" default="1.1"/>
-  <xacro:arg name="bodyOrigin.ax" default="0.0"/>
-  <xacro:arg name="bodyOrigin.ay" default="0.0"/>
-  <xacro:arg name="bodyOrigin.az" default="0.0"/>  
+  <xacro:arg name="bodyOrigin_x" default="0.0"/>
+  <xacro:arg name="bodyOrigin_y" default="0.5"/>
+  <xacro:arg name="bodyOrigin_z" default="1.1"/>
+  <xacro:arg name="bodyOrigin_ax" default="0.0"/>
+  <xacro:arg name="bodyOrigin_ay" default="0.0"/>
+  <xacro:arg name="bodyOrigin_az" default="0.0"/>  
  
  <!--                                                   -->
 
@@ -20,8 +20,8 @@
 
    <xacro:create_torso
         parent_link="$(arg attached_to)"
-        xyz="$(arg bodyOrigin.x) $(arg bodyOrigin.y) $(arg bodyOrigin.z)" 
-        rpy="$(arg bodyOrigin.ax) $(arg bodyOrigin.ay) $(arg bodyOrigin.az)"/>
+        xyz="$(arg bodyOrigin_x) $(arg bodyOrigin_y) $(arg bodyOrigin_z)" 
+        rpy="$(arg bodyOrigin_ax) $(arg bodyOrigin_ay) $(arg bodyOrigin_az)"/>
 
   <!-- <xacro:if value="$(arg with_liver)">
     <xacro:attach_liver
