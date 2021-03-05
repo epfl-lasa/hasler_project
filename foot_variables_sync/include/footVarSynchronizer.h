@@ -38,7 +38,7 @@ class footVarSynchronizer
     public:
         enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2}; 
         
-        enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,MP_TOOL_POS_PID,MP_TOOL_SPEED_PID,MP_TOOL_MIXED_PID,NB_POS_PID_C};   
+        enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,MP_TOOL_POS_PID,MP_TOOL_SPEED_PID,MP_TOOL_MIXED_PID,EXT_PID, NB_POS_PID_C};   
         enum Tool_Control {TOOL_POSITION_CTRL,TOOL_SPEED_CTRL};
 	private:
         enum Params_Category {M_STATE, EFF_COMP, C_AXIS, C_TYPE, FLAG_SENDPOS,FLAG_CAPTUREPOS, DES_POS, FLAG_GAINS, PID_POS, PID_SPEED};
@@ -47,7 +47,7 @@ class footVarSynchronizer
         
         
     // ros variables  
-
+    bool _flagPIDGainsByInput;
     bool _mixedPlatformOn;
 
     ros::NodeHandle _n;
@@ -161,6 +161,13 @@ class footVarSynchronizer
         float _ros_paramI[NB_POS_PID_C][NB_PLATFORM_AXIS];
         float _ros_paramD[NB_POS_PID_C][NB_PLATFORM_AXIS];
 
+        const float _ros_posP_Max[NB_PLATFORM_AXIS] = {3000.0,3000.0,5000.0,5000.0,5000.0};
+        const float _ros_posI_Max[NB_PLATFORM_AXIS] = {3000.0,3000.0,5000.0,5000.0,5000.0};
+        const float _ros_posD_Max[NB_PLATFORM_AXIS] = {45.0,45.0,200.0,200.0,200.0};
+
+        const float _ros_speedP_Max[NB_PLATFORM_AXIS] = {1000.0,1000.0,1000.0,1000.0,1000.0};
+        const float _ros_speedI_Max[NB_PLATFORM_AXIS] = {1000.0,1000.0,1000.0,1000.0,1000.0};
+        const float _ros_speedD_Max[NB_PLATFORM_AXIS] = {1000.0,1000.0,1000.0,1000.0,1000.0};
         // Other variables
     private:
 
@@ -251,8 +258,9 @@ class footVarSynchronizer
     void correctForceForLegCompensation();
     void processAllPublishers();
 
-    void readDesiredFootInputs(const custom_msgs::FootInputMsg::ConstPtr &msg, unsigned int n_);
 
+    void readDesiredFootInputs(const custom_msgs::FootInputMsg::ConstPtr &msg, unsigned int n_);
+    void getPIDParams();
 
     static void stopNode(int sig);
 };

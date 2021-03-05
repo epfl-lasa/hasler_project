@@ -1,0 +1,8 @@
+<launch>
+	<arg name="id" default="right"/>
+
+	<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="$(arg id)" />
+	<rosparam file="$(find foot_variables_sync)/config/pid_states.yaml" command="load" ns="$(arg id)" />
+	<rosparam file="$(find foot_variables_sync)/config/tool_control.yaml" command="load" ns="$(arg id)" />
+
+</launch>
