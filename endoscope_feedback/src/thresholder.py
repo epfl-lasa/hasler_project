@@ -89,6 +89,7 @@ while(1):
     # Display output image
     cv2.imshow('image',output)
     cv2.imshow('mask',mask)
+    cv2.imshow('input',image)
     # cv2.imshow('original',image)
     # if len(contours)!=0:
     #     c = max(contours, key = cv2.contourArea)

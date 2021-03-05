@@ -303,8 +303,10 @@ class ToolsTracker:
     # self.upperHsvRed = np.array([10,255,255]) 
     # self.lowerHsvRed = np.array([112,0,0]) 
     # self.upperHsvRed = np.array([179,110,255]) 
-    self.lowerHsvRed = np.array([0,120,50]) 
+    self.lowerHsvRed = np.array([0,120,60]) 
     self.upperHsvRed = np.array([7,255,255]) 
+    # self.lowerHsvRed = np.array([0,120,0]) 
+    # self.upperHsvRed = np.array([179,255,255]) 
 
     self.lowerHsvOrange = np.array([0,80,125]) 
     self.upperHsvOrange = np.array([179,255,255]) 
@@ -320,8 +322,12 @@ class ToolsTracker:
     # self.upperHsvGreen = np.array([100, 255, 170]) 
     # self.lowerHsvGreen = np.array([80, 60, 80]) 
     # self.upperHsvGreen = np.array([105, 255, 140]) 
-    self.lowerHsvGreen = np.array([31, 70, 30]) 
-    self.upperHsvGreen = np.array([50, 255, 255]) 
+    # self.lowerHsvGreen = np.array([25, 117, 30]) 
+    # self.upperHsvGreen = np.array([44, 255, 255]) 
+    self.lowerHsvGreen = np.array([25, 117, 20]) 
+    self.upperHsvGreen = np.array([54, 255, 255]) 
+    # self.lowerHsvGreen = np.array([31, 0, 0]) 
+    # self.upperHsvGreen = np.array([70, 255, 255]) 
 
 
     # self.lowerHsvRed = np.array([0,0,40]) 
@@ -331,8 +337,12 @@ class ToolsTracker:
 
     # self.lowerHsvYellow = np.array([0,0,0])
     # self.upperHsvYellow = np.array([80,255,255])
-    self.lowerHsvYellow = np.array([17,107,40])
-    self.upperHsvYellow = np.array([30,255,255])
+    # self.lowerHsvYellow = np.array([17,130,170])
+    # self.upperHsvYellow = np.array([25,255,255])
+    self.lowerHsvYellow = np.array([13,170,120])
+    self.upperHsvYellow = np.array([25,255,255])
+    # self.lowerHsvYellow = np.array([10,120,0])
+    # self.upperHsvYellow = np.array([179,255,255])
 
     self.kernel = np.ones((5 ,5), np.uint8)
 
@@ -399,12 +409,13 @@ class ToolsTracker:
       c = max(contours, key = cv2.contourArea)
       M = cv2.moments(c)
 
-      if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
+      # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
+      if(M["m00"]>500 and M["m00"]<100000):
           cX = int(M["m10"] / M["m00"])
           cY = int(M["m01"] / M["m00"])
 
           d = np.sqrt(pow(cX-self.markersPosition[id][0],2)+pow(cY-self.markersPosition[id][1],2))
-          if (d < 100 and self.markersPosition[id][2] == 1) or (self.markersPosition[id][2] == 0) or not self.firstMarkerDetection[id]:
+          if (d < 200 and self.markersPosition[id][2] == 1) or (self.markersPosition[id][2] == 0) or not self.firstMarkerDetection[id]:
             self.markersPosition[id][0] = int(self.alpha*float(self.markersPosition[id][0])+(1-self.alpha)*float(cX))
             self.markersPosition[id][1] = int(self.alpha*float(self.markersPosition[id][1])+(1-self.alpha)*float(cY))
             self.markersPositionTransformed[id][0] = -2.0*(float(self.markersPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
@@ -417,6 +428,7 @@ class ToolsTracker:
       else:
         self.markersPosition[id][2] = 0
         self.markersPositionTransformed[id][2] = 0
+
     else:
       self.markersPosition[id][2] = 0
       self.markersPositionTransformed[id][2] = 0
@@ -427,7 +439,7 @@ class ToolsTracker:
   def checkForSaturation(self, image):
     for k in range(0,len(self.markersPosition)):
       if self.markersPosition[k][2]:
-        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 190:
+        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 220:
           print("Saturation: ", k, image[self.markersPosition[k][1],self.markersPosition[k][0]].mean())
           self.markersPosition[k][2] = 0
           self.markersPositionTransformed[k][2] = 0
