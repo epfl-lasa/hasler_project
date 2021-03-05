@@ -15,15 +15,17 @@ _n(n_1),
 _platform_name(platform_id),
 _loopRate(frequency),
 _dt(1.0f/frequency)
-{
 
+{
+	_flagPIDGainsByInput=false;
 	me=this;
 	_stop = false;
 	_flagControlThisPosition=false;
+	
 	_flagSendPIDGains=false;
 	_flagLoadPIDGains=false;
-
 	_flagControlZeroEffort=false;
+
 	_flagCapturePlatformPosition = false;
 	_flagWasDynReconfCalled= false;
 	_flagOutputMessageReceived=false;
@@ -133,194 +135,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
       ROS_ERROR(" [%s footVarSync]: No mixedPlatformMode  param",Platform_Names[_platform_name]); 
     } 
 
-	if (_mixedPlatformOn)
-	{
-		std::string mainPlatform_="right";
-		if (!_n.getParam("/mixed_platform/mainPlatform", mainPlatform_))
-		{ 
-		ROS_ERROR(" [%s footVarSync]: No /mixed_platform/mainPlatform  param",Platform_Names[_platform_name]); 
-		} 
-
-		_mainPlatform = mainPlatform_.compare("right")==0 ? RIGHT_PLATFORM_ID : LEFT_PLATFORM_ID;
-		
-		std::vector<double> pToolPosControl_;
-		std::vector<double> dToolPosControl_;
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/p", pToolPosControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/p",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramP[MP_TOOL_POS_PID][i] = pToolPosControl_[i];
-			}
-		}
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/d", dToolPosControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/d",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramD[MP_TOOL_POS_PID][i] = dToolPosControl_[i];
-			}
-		}
-
-		std::vector<double> pToolSpeedControl_;
-		std::vector<double> dToolSpeedControl_;
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/p", pToolSpeedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/p",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramP[MP_TOOL_SPEED_PID][i] = pToolSpeedControl_[i];
-			}
-		}
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/d", dToolSpeedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/d",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramD[MP_TOOL_SPEED_PID][i] = dToolSpeedControl_[i];
-			}
-		}
-		
-		std::vector<double> pToolMixedControl_;
-		std::vector<double> dToolMixedControl_;
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/p", pToolMixedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/p",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramP[MP_TOOL_MIXED_PID][i] = pToolMixedControl_[i];
-			}
-		}
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/d", dToolMixedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/d",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramD[MP_TOOL_MIXED_PID][i] = dToolMixedControl_[i];
-			}
-		}
-
-			std::string toolControlTopic_ = "/mixedPlatform/platformState";
-			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/topic", toolControlTopic_))
-			{ 
-			
-				ROS_ERROR("[%s footVarSync]: Missing /toolControl/topic",Platform_Names[_platform_name]); 
-			}
-			else
-			{
-				_subPlatformControlFromTool = _n.subscribe<custom_msgs::TwoFeetOneToolMsg>(toolControlTopic_, 1, boost::bind(&footVarSynchronizer::readTwoFeetOneToolMsg, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-			}
-	
-	}
-	
-	std::vector<double> pTeloperation_;
-	std::vector<double> iTeloperation_;
-	std::vector<double> dTeloperation_;
-	
-	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/p", pTeloperation_))
-	{ 
-		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/p",Platform_Names[_platform_name]); 
-	}
-	else
-	{
-		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-		{
-
-			_ros_paramP[S_TELEOP_PID][i] = pTeloperation_[i];
-		}
-	}
-	
-	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/i", iTeloperation_))
-	{ 
-	
-		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/i",Platform_Names[_platform_name]); 
-	}
-	else
-	{
-		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-		{
-			_ros_paramI[S_TELEOP_PID][i] = iTeloperation_[i];
-		}
-	}
-	
-	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/d", dTeloperation_))
-	{ 
-		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/d",Platform_Names[_platform_name]); 
-	}
-	else
-	{
-		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-		{
-			_ros_paramD[S_TELEOP_PID][i] = dTeloperation_[i];
-		}
-	}
-
-	std::vector<double> pRobotStControl_;
-	std::vector<double> iRobotStControl_;
-	std::vector<double> dRobotStControl_;
-	
-	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/p", pRobotStControl_))
-	{ 
-		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/p",Platform_Names[_platform_name]); 
-	}
-	else
-	{
-		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-		{
-			_ros_paramP[S_ROBOT_CTRL_PID][i] = pRobotStControl_[i];
-		}
-	}
-	
-	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/i", iRobotStControl_))
-	{ 
-	
-		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/i",Platform_Names[_platform_name]); 
-	}
-	else
-	{
-		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-		{
-			_ros_paramI[S_ROBOT_CTRL_PID][i] = iRobotStControl_[i];
-		}
-	}
-	
-	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/d", dRobotStControl_))
-	{ 
-		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/d",Platform_Names[_platform_name]); 
-	}
-	else
-	{
-		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-		{
-			_ros_paramD[S_ROBOT_CTRL_PID][i] = dRobotStControl_[i];
-		}
-	}
-
-	
+	getPIDParams();
 
 	
 	std::vector<std::string> _fiPublishers;			
@@ -580,6 +395,10 @@ void footVarSynchronizer::updateInternalVariables()
 	_ros_controllerType = (uint8_t) _config.controller_type;
 	_ros_defaultControl = (bool) _config.use_default_gains;
 	_flagSendPIDGains = (bool) _config.send_pid_gains;
+	if ((bool) _config.load_param_pid_gains && !_flagLoadPIDGains)
+	{
+		getPIDParams();
+	}
 	_flagLoadPIDGains = (bool) _config.load_param_pid_gains;
     _flagControlThisPosition = (bool) _config.send_this_position;
     _flagControlZeroEffort = (bool)_config.send_zero_effort;
@@ -1097,9 +916,22 @@ void footVarSynchronizer::processAllPublishers()
 					{
 						_msgTotalDesiredFootInput.ros_speed[j] += _msgDesiredFootInput[i].ros_speed[j];
 					}
+					if (_platform_machineState==TELEOPERATION)
+					{
+						if (fabs(_msgDesiredFootInput[i].ros_kp[j])>FLT_EPSILON
+							|| fabs(_msgDesiredFootInput[i].ros_ki[j])>FLT_EPSILON ||
+							fabs(_msgDesiredFootInput[i].ros_kd[j])>FLT_EPSILON)
+							{
+								_flagPIDGainsByInput=true;
+								_msgTotalDesiredFootInput.ros_kp[j] += _msgDesiredFootInput[i].ros_kp[j];			
+								_msgTotalDesiredFootInput.ros_ki[j] += _msgDesiredFootInput[i].ros_ki[j];			
+								_msgTotalDesiredFootInput.ros_kd[j] += _msgDesiredFootInput[i].ros_kd[j];			
+							}
+					}
 					_msgTotalDesiredFootInput.ros_effort[j] += _msgDesiredFootInput[i].ros_effort[j];
 					_msgTotalDesiredFootInput.ros_filterAxisForce[j] *= _msgDesiredFootInput[i].ros_filterAxisForce[j];
 				}
+				
 			}	
 		}
 	}
@@ -1117,17 +949,34 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
     _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + _msgTotalDesiredFootInput.ros_effort[rosAxis[k]];
 	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] * _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]];
 	
-	if (_platform_controllerType==POSITION_CTRL)
+	if (!_flagPIDGainsByInput)
 	{
-		_msgFootInput.ros_kp[rosAxis[k]] = _ros_posP[k];
-		_msgFootInput.ros_ki[rosAxis[k]] = _ros_posI[k];
-		_msgFootInput.ros_kd[rosAxis[k]] = _ros_posD[k];
-	} else if (_platform_controllerType==SPEED_CTRL)
+		if (_platform_controllerType==POSITION_CTRL)
+		{
+			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_posP[k],0.0,_ros_posP_Max[k]);
+			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_posI[k],0.0,_ros_posI_Max[k]);
+			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_posD[k],0.0,_ros_posD_Max[k]);
+		} else if (_platform_controllerType==SPEED_CTRL)
+		{
+			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_speedP[k],0.0,_ros_speedP_Max[k]);
+			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_speedI[k],0.0,_ros_speedI_Max[k]);
+			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_speedD[k],0.0,_ros_speedD_Max[k]);
+		}
+	}else
 	{
-		_msgFootInput.ros_kp[rosAxis[k]] = _ros_speedP[k];
-		_msgFootInput.ros_ki[rosAxis[k]] = _ros_speedI[k];
-		_msgFootInput.ros_kd[rosAxis[k]] = _ros_speedD[k];
+		if (_platform_controllerType==POSITION_CTRL)
+		{
+			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_posP_Max[k]);
+			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_posI_Max[k]);
+			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_posD_Max[k]);
+		} else if (_platform_controllerType==SPEED_CTRL)
+		{
+			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_speedP_Max[k]);
+			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_speedI_Max[k]);
+			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_speedD_Max[k]);
+		}
 	}
+	
   }
   if (_flagForceModifiedConnected && _subForceModified.getNumPublishers()!=0)
   {
@@ -1404,4 +1253,194 @@ void footVarSynchronizer::readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToo
 {
 	me->_msgTwoFeetOneTool = *msg;
 	_flagTwoFeetOneToolRead=true;
+}
+
+void footVarSynchronizer::getPIDParams(){
+	if (_mixedPlatformOn)
+	{
+		std::string mainPlatform_="right";
+		if (!_n.getParam("/mixed_platform/mainPlatform", mainPlatform_))
+		{ 
+		ROS_ERROR(" [%s footVarSync]: No /mixed_platform/mainPlatform  param",Platform_Names[_platform_name]); 
+		} 
+
+		_mainPlatform = mainPlatform_.compare("right")==0 ? RIGHT_PLATFORM_ID : LEFT_PLATFORM_ID;
+		
+		std::vector<double> pToolPosControl_;
+		std::vector<double> dToolPosControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/p", pToolPosControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_POS_PID][i] = pToolPosControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/d", dToolPosControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_POS_PID][i] = dToolPosControl_[i];
+			}
+		}
+
+		std::vector<double> pToolSpeedControl_;
+		std::vector<double> dToolSpeedControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/p", pToolSpeedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_SPEED_PID][i] = pToolSpeedControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/d", dToolSpeedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_SPEED_PID][i] = dToolSpeedControl_[i];
+			}
+		}
+		
+		std::vector<double> pToolMixedControl_;
+		std::vector<double> dToolMixedControl_;
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/p", pToolMixedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/p",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP[MP_TOOL_MIXED_PID][i] = pToolMixedControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/d", dToolMixedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[MP_TOOL_MIXED_PID][i] = dToolMixedControl_[i];
+			}
+		}
+
+			std::string toolControlTopic_ = "/mixedPlatform/platformState";
+			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/topic", toolControlTopic_))
+			{ 
+			
+				ROS_ERROR("[%s footVarSync]: Missing /toolControl/topic",Platform_Names[_platform_name]); 
+			}
+			else
+			{
+				_subPlatformControlFromTool = _n.subscribe<custom_msgs::TwoFeetOneToolMsg>(toolControlTopic_, 1, boost::bind(&footVarSynchronizer::readTwoFeetOneToolMsg, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+			}
+	
+	}
+	
+	std::vector<double> pTeloperation_;
+	std::vector<double> iTeloperation_;
+	std::vector<double> dTeloperation_;
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/p", pTeloperation_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/p",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+
+			_ros_paramP[S_TELEOP_PID][i] = pTeloperation_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/i", iTeloperation_))
+	{ 
+	
+		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/i",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramI[S_TELEOP_PID][i] = iTeloperation_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/teleoperation/d", dTeloperation_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/teleoperation/d",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramD[S_TELEOP_PID][i] = dTeloperation_[i];
+		}
+	}
+
+	std::vector<double> pRobotStControl_;
+	std::vector<double> iRobotStControl_;
+	std::vector<double> dRobotStControl_;
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/p", pRobotStControl_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/p",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramP[S_ROBOT_CTRL_PID][i] = pRobotStControl_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/i", iRobotStControl_))
+	{ 
+	
+		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/i",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramI[S_ROBOT_CTRL_PID][i] = iRobotStControl_[i];
+		}
+	}
+	
+	if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/state/robot_control/d", dRobotStControl_))
+	{ 
+		ROS_ERROR("[%s footVarSync]: Missing state/robot_control/d",Platform_Names[_platform_name]); 
+	}
+	else
+	{
+		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+		{
+			_ros_paramD[S_ROBOT_CTRL_PID][i] = dRobotStControl_[i];
+		}
+	}
+
 }

@@ -719,7 +719,7 @@ void sharedControlGrasp::readSurgicalTaskState(const custom_msgs::SurgicalTaskSt
 void sharedControlGrasp::readGripperOutput(const custom_msgs_gripper::GripperOutputMsgConstPtr& msg)
 {
     _realGripperPosition = msg->gripper_position;
-    _realGripperErrorPos = msg->gripper_dPosition - _realGripperPosition;
+    _realGripperErrorPos = msg->gripper_desPosition - _realGripperPosition;
     
     if (!_flagGripperOutputMsgReceived)
     {

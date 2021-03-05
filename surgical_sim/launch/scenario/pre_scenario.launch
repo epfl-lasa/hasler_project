@@ -1,0 +1,16 @@
+
+<launch>
+ <arg name="gazeboGUI" default="false"/>
+ <arg name="w_name" default="$(find surgical_sim)/worlds/surgical_sim.world"/>
+
+
+  <include file="$(find surgical_sim)/launch/robot.gazebo.launch">
+      <arg name="gazeboBringUp" default="true"/>
+      <arg name="gui" default="$(arg gazeboGUI)"/>
+      <arg name="w_name" value="$(arg w_name)"/>
+  </include> 
+
+  
+</launch>
+
+
