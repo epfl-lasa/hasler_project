@@ -22,8 +22,8 @@
 #include "visualization_msgs/Marker.h"
 #include <dynamic_reconfigure/server.h>
 #include "robotic_experiments/feetTelemanipulation_paramsConfig.h"
-#include "custom_msgs/FootInputMsg_v2.h"
-#include "custom_msgs/FootOutputMsg_v2.h"
+#include "custom_msgs/FootInputMsg.h"
+#include "custom_msgs/FootOutputMsg.h"
 #include "Eigen/Eigen"
 
 #define NB_ROBOTS 2
@@ -78,7 +78,7 @@ class CartesianFeetTelemanipulation
 		geometry_msgs::Twist _msgDesiredTwist;
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
-		custom_msgs::FootInputMsg_v2 _msgFootInput;
+		custom_msgs::FootInputMsg _msgFootInput;
 		
 		// Tool characteristics
 		float _toolMass;														// Tool mass [kg]
@@ -242,7 +242,7 @@ class CartesianFeetTelemanipulation
     void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg, int k); 
 
     // Callback to update data from foot interface
-		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
+		void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k); 
 
     // Callback for dynamic reconfigure
     void dynamicReconfigureCallback(robotic_experiments::feetTelemanipulation_paramsConfig &config, uint32_t level);

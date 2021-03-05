@@ -21,9 +21,9 @@
 #include "std_msgs/Float32.h"
 #include "visualization_msgs/Marker.h"
 #include <dynamic_reconfigure/server.h>
+#include "custom_msgs/FootInputMsg.h"
+#include "custom_msgs/FootOutputMsg.h"
 #include "robotic_experiments/feetTelemanipulation_paramsConfig.h"
-#include "custom_msgs/FootInputMsg_v2.h"
-#include "custom_msgs/FootOutputMsg_v2.h"
 #include "Eigen/Eigen"
 #include "sensor_msgs/Joy.h"
 #include "sensor_msgs/JointState.h"
@@ -88,7 +88,7 @@ class TrocarFeetTelemanipulation
 		geometry_msgs::Twist _msgDesiredTwist;
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 		geometry_msgs::Wrench _msgDesiredFootWrench;
-		custom_msgs::FootInputMsg_v2 _msgFootInput;
+		custom_msgs::FootInputMsg _msgFootInput;
 		std_msgs::Float32MultiArray _msgNullspaceCommand;		
 		
 		// Tool characteristics
@@ -276,7 +276,7 @@ class TrocarFeetTelemanipulation
     void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg, int k); 
 
     // Callback to update data from foot interface
-		void updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k); 
+		void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k); 
 
 		void updateJoystick(const sensor_msgs::Joy::ConstPtr& joy, int k);
 

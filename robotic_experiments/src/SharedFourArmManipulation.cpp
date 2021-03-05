@@ -170,7 +170,7 @@ bool SharedFourArmManipulation::init()
     _subRobotPose[LEFT] = _nh.subscribe<geometry_msgs::Pose>("/lwr2/ee_pose", 1, boost::bind(&SharedFourArmManipulation::updateRobotPose,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     _subRobotTwist[LEFT] = _nh.subscribe<geometry_msgs::Twist>("/lwr2/ee_vel", 1, boost::bind(&SharedFourArmManipulation::updateRobotTwist,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     _subDampingMatrix[LEFT] = _nh.subscribe<std_msgs::Float32MultiArray>("/lwr2/joint_controllers/passive_ds_damping_matrix", 1, boost::bind(&SharedFourArmManipulation::updateDampingMatrix,this,_1,LEFT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
-    _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg_v2>("/FI_Output/Left",1, boost::bind(&SharedFourArmManipulation::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&SharedFourArmManipulation::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     
     if(!_useSim)
     {
@@ -181,7 +181,7 @@ bool SharedFourArmManipulation::init()
     _pubDesiredTwist[LEFT] = _nh.advertise<geometry_msgs::Twist>("/lwr2/joint_controllers/passive_ds_command_vel", 1);
     _pubDesiredOrientation[LEFT] = _nh.advertise<geometry_msgs::Quaternion>("/lwr2/joint_controllers/passive_ds_command_orient", 1);
     _pubFilteredWrench[LEFT] = _nh.advertise<geometry_msgs::WrenchStamped>("SharedFourArmManipulation/filteredWrenchLeft", 1);
-    _pubFootInput[LEFT] = _nh.advertise<custom_msgs::FootInputMsg_v2>("/FI_Input/Left", 1);
+    _pubFootInput[LEFT] = _nh.advertise<custom_msgs::FootInputMsg>("/FI_Input/Left", 1);
     _pubNormalForce[LEFT] = _nh.advertise<std_msgs::Float32>("SharedFourArmManipulation/normalForceLeft", 1);
   }
 
@@ -190,7 +190,7 @@ bool SharedFourArmManipulation::init()
     _subRobotPose[RIGHT] = _nh.subscribe<geometry_msgs::Pose>("/lwr/ee_pose", 1, boost::bind(&SharedFourArmManipulation::updateRobotPose,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     _subRobotTwist[RIGHT] = _nh.subscribe<geometry_msgs::Twist>("/lwr/ee_vel", 1, boost::bind(&SharedFourArmManipulation::updateRobotTwist,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     _subDampingMatrix[RIGHT] = _nh.subscribe<std_msgs::Float32MultiArray>("/lwr/joint_controllers/passive_ds_damping_matrix", 1, boost::bind(&SharedFourArmManipulation::updateDampingMatrix,this,_1,RIGHT),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
-    _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg_v2>("/FI_Output/Right",1, boost::bind(&SharedFourArmManipulation::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+    _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&SharedFourArmManipulation::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
    
     if(!_useSim)
     {
@@ -201,7 +201,7 @@ bool SharedFourArmManipulation::init()
     _pubDesiredOrientation[RIGHT] = _nh.advertise<geometry_msgs::Quaternion>("/lwr/joint_controllers/passive_ds_command_orient", 1);
     _pubFilteredWrench[RIGHT] = _nh.advertise<geometry_msgs::WrenchStamped>("SharedFourArmManipulation/filteredWrenchRight", 1);
     _pubNormalForce[RIGHT] = _nh.advertise<std_msgs::Float32>("SharedFourArmManipulation/normalForceRight", 1);
-    _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg_v2>("/FI_Input/Right", 1);
+    _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg>("/FI_Input/Right", 1);
   }
 
   // Dynamic reconfigure definition
@@ -1402,7 +1402,7 @@ void SharedFourArmManipulation::updateDampingMatrix(const std_msgs::Float32Multi
 }
 
 
-void SharedFourArmManipulation::updateFootOutput(const custom_msgs::FootOutputMsg_v2::ConstPtr& msg, int k)
+void SharedFourArmManipulation::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k)
 {
 
   for(int m = 0; m < 5; m++)
