@@ -79,22 +79,58 @@ void SurgicalTask::updateTrocarInformation(int r)
   float den = 1.0f-std::pow(e1.dot(e2),2.0f);
 
 
+
   if(den > FLT_EPSILON)
   {
     l1 = -(r21.dot(e1)-e1.dot(e2)*r21.dot(e2))/den;
-    l1 = std::max(0.0f, std::min(l1, _toolOffsetFromEE[r]));
     l2 = (r21.dot(e2)-e1.dot(e2)*r21.dot(e1))/den;
-    if(r == LEFT)
+
+    std::cerr << r << " " << l1 << " " << l2 << std::endl;
+
+    float l2Max = (r == LEFT) ? _toolOffsetFromEE[RIGHT] : _toolOffsetFromEE[LEFT];
+    if(l1 > _toolOffsetFromEE[r] && l2 > l2Max)
     {
-      l2 = std::max(0.0f, std::min(l2, _toolOffsetFromEE[RIGHT]));
+      l1 = _toolOffsetFromEE[r];
+      l2 = l2Max;
     }
-    else
+    else if(l1 > _toolOffsetFromEE[r] && l2 <= l2Max)
     {
-      l2 = std::max(0.0f, std::min(l2, _toolOffsetFromEE[LEFT]));
+      l1 = _toolOffsetFromEE[r];
+      l2 = r21.dot(e2)+l1*e1.dot(e2);
     }
+    else if(l1 <= _toolOffsetFromEE[r] && l2 > l2Max)
+    {
+      l2 = l2Max;
+      l1 = l2*e1.dot(e2)-r21.dot(e1);
+    }
+
+    // l1 = std::max(0.0f, std::min(l1, _toolOffsetFromEE[r]));
+    // l2 = r21.dot(e2)+l1*e1.dot(e2);
+
+    // if(r == LEFT)
+    // {
+
+    //   l2 = std::max(0.0f, std::min(l2, _toolOffsetFromEE[RIGHT]));
+    // }
+    // else
+    // {
+    //   l2 = std::max(0.0f, std::min(l2, _toolOffsetFromEE[LEFT]));
+    // }
+    l1 = std::max(0.0f,l1);    
+    l2 = std::max(0.0f,l2);
 
     _rToolCollision[r] = r21+l1*e1-l2*e2;
     _toolCollisionOffset[r] = l1;
+
+    std::cerr << r << " " << _rToolCollision[r].dot(_wRb[LEFT].col(2)) << " " << _rToolCollision[r].dot(_wRb[RIGHT].col(2)) <<  std::endl;
+    if(r == LEFT)
+    {
+      std::cerr << l1 << " " << l2 << " " << (_x[LEFT]-_xEE[RIGHT]).dot(_wRb[RIGHT].col(2)) <<  std::endl;
+    }
+    else
+    {
+      std::cerr << l1 << " " << l2 << " " << (_x[RIGHT]-_xEE[LEFT]).dot(_wRb[LEFT].col(2)) <<  std::endl;      
+    }
   }
   else
   {

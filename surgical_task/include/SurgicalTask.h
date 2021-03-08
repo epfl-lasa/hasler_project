@@ -23,7 +23,7 @@
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Joy.h"
 #include "visualization_msgs/Marker.h"
-#include "visualization_msgs/Marker.h"
+#include "visualization_msgs/MarkerArray.h"
 #include "custom_msgs/FootInputMsg.h"
 #include "custom_msgs/FootOutputMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
@@ -120,6 +120,7 @@ class SurgicalTask
     ros::Publisher _pubSurgicalTaskState;
     ros::Publisher _pubRobotState[NB_ROBOTS];
     ros::Publisher _pubTwoFeetOneTool;
+    ros::Publisher _pubCollisionSpheres;
     
     // Messages declaration
     geometry_msgs::Pose _msgRealPose;

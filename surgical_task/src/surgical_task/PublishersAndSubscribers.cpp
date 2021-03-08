@@ -146,6 +146,8 @@ void SurgicalTask::initializeSubscribersAndPublishers()
 
   _pubSurgicalTaskState = _nh.advertise<surgical_task::SurgicalTaskStateMsg>("surgical_task/state", 1);
 
+  _pubCollisionSpheres = _nh.advertise<visualization_msgs::MarkerArray>("surgical_task/tool_collision", 1);
+
 
   if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
   {
@@ -386,6 +388,7 @@ void SurgicalTask::publishData()
   _msgSurgicalTaskState.humanInputMode = _humanInputMode;
   _msgSurgicalTaskState.currentRobot = _currentRobot;
   _msgSurgicalTaskState.useTaskAdaptation = _useTaskAdaptation;
+  _msgSurgicalTaskState.beliefsC.resize(_beliefsC.size());
   for(int m = 0; m < _beliefsC.size(); m++)
   {
     _msgSurgicalTaskState.beliefsC[m] = _beliefsC(m);
@@ -416,6 +419,46 @@ void SurgicalTask::publishData()
     }
     _pubTwoFeetOneTool.publish(_msgTwoFeetOneTool);
   }
+
+  visualization_msgs::MarkerArray markerArray;
+  visualization_msgs::Marker marker;
+  marker.color.r = 0.0;
+  marker.color.g = 1.0;
+  marker.color.b = 0.0;
+  marker.color.a = 1.0; // Don't forget to set the alpha!
+  marker.type = visualization_msgs::Marker::SPHERE;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.header.frame_id = "world";
+  marker.header.stamp = ros::Time();
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
+
+  for(int r =0; r < NB_ROBOTS; r++)
+  {
+    marker.id = r;
+    marker.scale.x = 2.0f*_eeSafetyCollisionRadius;
+    marker.scale.y = 2.0f*_eeSafetyCollisionRadius;
+    marker.scale.z = 2.0f*_eeSafetyCollisionRadius;
+    marker.pose.position.x = _xEE[r](0);
+    marker.pose.position.y = _xEE[r](1);
+    marker.pose.position.z = _xEE[r](2);
+    markerArray.markers.push_back(marker);
+
+    marker.id = r+2;
+    marker.scale.x = _toolSafetyCollisionDistance;
+    marker.scale.y = _toolSafetyCollisionDistance;
+    marker.scale.z = _toolSafetyCollisionDistance;
+    marker.pose.position.x = _xEE[r](0)+_toolCollisionOffset[r]*_wRb[r](0,2);
+    marker.pose.position.y = _xEE[r](1)+_toolCollisionOffset[r]*_wRb[r](1,2);
+    marker.pose.position.z = _xEE[r](2)+_toolCollisionOffset[r]*_wRb[r](2,2);
+    markerArray.markers.push_back(marker);
+  }
+
+  _pubCollisionSpheres.publish(markerArray);
+
+
 }
 
 
