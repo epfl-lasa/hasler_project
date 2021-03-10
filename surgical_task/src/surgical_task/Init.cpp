@@ -653,6 +653,18 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Tool safety collision distance: %f\n", _toolSafetyCollisionDistance);
   }
 
+
+  if (!_nh.getParam("SurgicalTask/toolSafetyCollisionRadius", _toolSafetyCollisionRadius))
+  {
+    ROS_ERROR("Couldn't retrieve the tool safety collision radius");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Tool safety collision radius: %f\n", _toolSafetyCollisionRadius);
+  }
+
+
   if (!_nh.getParam("SurgicalTask/enableWorkspaceCollisionAvoidance", _enableWorkspaceCollisionAvoidance))
   {
     ROS_ERROR("Couldn't retrieve the enable Workspace collision avoidance boolean");

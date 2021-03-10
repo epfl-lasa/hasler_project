@@ -186,6 +186,9 @@ SurgicalTask/enableToolCollisionAvoidance: true
 # Safety collision distance between the tool and the obstacle
 SurgicalTask/toolSafetyCollisionDistance: 0.03
 
+# Safety tool tool collision sphere radius 
+SurgicalTask/toolSafetyCollisionRadius: 0.01
+
 # Enable workspace collision avoidance in QP RCM solver
 SurgicalTask/enableWorkspaceCollisionAvoidance: true
 

@@ -352,9 +352,9 @@ void SurgicalTask::publishData()
       _msgRobotState.ikRes = _qpResult[r].res;
       _msgRobotState.selfRotationMapping = _selfRotationCommand[r];
       _msgRobotState.eeCollisionConstraintActive = _qpResult[r].eeCollisionConstraintActive;
-      _msgRobotState.dEEEE  = _rEECollision[r].norm();
+      _msgRobotState.dEEEE  = _dEECollision[r];
       _msgRobotState.toolCollisionConstraintActive = _qpResult[r].toolCollisionConstraintActive;
-      _msgRobotState.dToolTool = _rToolCollision[r].norm();
+      _msgRobotState.dToolTool = _dToolCollision[r];
       _msgRobotState.workspaceCollisionConstraintActive = _qpResult[r].workspaceCollisionConstraintActive;
       _msgRobotState.desiredGripperPosition = _desiredGripperPosition[r];
 
@@ -447,12 +447,14 @@ void SurgicalTask::publishData()
     markerArray.markers.push_back(marker);
 
     marker.id = r+2;
-    marker.scale.x = _toolSafetyCollisionDistance;
-    marker.scale.y = _toolSafetyCollisionDistance;
-    marker.scale.z = _toolSafetyCollisionDistance;
-    marker.pose.position.x = _xEE[r](0)+_toolCollisionOffset[r]*_wRb[r](0,2);
-    marker.pose.position.y = _xEE[r](1)+_toolCollisionOffset[r]*_wRb[r](1,2);
-    marker.pose.position.z = _xEE[r](2)+_toolCollisionOffset[r]*_wRb[r](2,2);
+    marker.scale.x = 2.0f*_toolSafetyCollisionRadius;
+    marker.scale.y = 2.0f*_toolSafetyCollisionRadius;
+    marker.scale.z = 2.0f*_toolSafetyCollisionRadius;
+    Eigen::Vector3f temp;
+    temp = _xEE[r]+_toolCollisionOffset[r]+_toolSafetyCollisionRadius*_rToolCollision[r].normalized();
+    marker.pose.position.x = temp(0);
+    marker.pose.position.y = temp(1);
+    marker.pose.position.z = temp(2);
     markerArray.markers.push_back(marker);
   }
 

@@ -61,19 +61,20 @@ void SurgicalTask::updateTrocarInformation(int r)
   Eigen::Vector3f r21, e1, e2;
   if(r == LEFT)
   {
-    _rEECollision[r] = _xEE[r]-_xEE[RIGHT];
+    r21 = _xEE[r]-_xEE[RIGHT];
     e1 = _wRb[r].col(2);
     e2 = _wRb[RIGHT].col(2);
   }
   else if (r == RIGHT)
   {
-    _rEECollision[r] = _xEE[r]-_xEE[LEFT];
+    r21 = _xEE[r]-_xEE[LEFT];
     e1 = _wRb[r].col(2);
     e2 = _wRb[LEFT].col(2);
   }
 
-  r21 = _rEECollision[r];
-
+  _rEECollision[r] = (r21.norm()-2.0f*_eeSafetyCollisionRadius)*r21.normalized();
+  _nEECollision[r] = r21.normalized();
+  _dEECollision[r] = r21.norm()-2.0f*_eeSafetyCollisionRadius;
 
   float l1 = 0.0f, l2 = 0.0f;
   float den = 1.0f-std::pow(e1.dot(e2),2.0f);
@@ -101,17 +102,22 @@ void SurgicalTask::updateTrocarInformation(int r)
     l2 = std::max(0.0f, std::min(l2, l2Max));
 
     _rToolCollision[r] = r21+l1*e1-l2*e2;
-    _toolCollisionOffset[r] = l1;
+    _toolCollisionOffset[r] = l1*e1-_rToolCollision[r].normalized()*_toolSafetyCollisionRadius;
   }
   else
   {
     _rToolCollision[r] = r21;
-    _toolCollisionOffset[r] = _toolOffsetFromEE[r];
+    _toolCollisionOffset[r] = _toolOffsetFromEE[r]*e1-_rToolCollision[r].normalized()*_toolSafetyCollisionRadius;
   }
+
+  // _rToolCollision[r] = (_rToolCollision[r].norm()-2*_toolSafetyCollisionRadius)*_rToolCollision[r].normalized();
+
+  _nToolCollision[r] = _rToolCollision[r].normalized();
+  _dToolCollision[r] = _rToolCollision[r].norm()-2*_toolSafetyCollisionRadius;
 
   if(_debug)
   {
-  	std::cerr << "[SurgicalTask]: " << r << ": Distance EE-Robot: " << _rEECollision[r].norm() << " " << _rEECollision[r].norm()-2*0.1f <<std::endl;
+  	std::cerr << "[SurgicalTask]: " << r << ": Distance EE-Robot: " << _rEECollision[r].norm() << " " << _rEECollision[r].norm() <<std::endl;
     std::cerr << "[SurgicalTask]: " << r << ": Distance Tool-Tool: " << _rToolCollision[r].transpose() << _rToolCollision[r].norm() << " " << l1 << " " << l2 <<std::endl;    
   }
 }
@@ -219,8 +225,8 @@ void SurgicalTask::insertionStep(int r, int h)
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                             (_rEECollision[r].norm()-2.0f*_eeSafetyCollisionRadius)*_rEECollision[r].normalized(), _rToolCollision[r],
-                                             _toolCollisionOffset[r]);
+                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
     if(_debug)
     {
       std::cerr << "[SurgicalTask]: " << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
@@ -348,8 +354,8 @@ void SurgicalTask::operationStep(int r, int h)
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
                                               _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                              (_rEECollision[r].norm()-2.0f*_eeSafetyCollisionRadius)*_rEECollision[r].normalized(), _rToolCollision[r],
-                                             _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
+                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 

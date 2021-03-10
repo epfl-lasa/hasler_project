@@ -225,6 +225,7 @@ class SurgicalTask
     float _eeSafetyCollisionDistance;
     float _eeSafetyCollisionRadius;
     float _toolSafetyCollisionDistance;
+    float _toolSafetyCollisionRadius;
     bool _enableWorkspaceCollisionAvoidance;
     int _switchingAxis;
     std::vector<float> _switchingThreshold;
@@ -378,7 +379,11 @@ class SurgicalTask
     bool _allFramesOK = false;
     Eigen::Vector3f _rEECollision[NB_ROBOTS];
     Eigen::Vector3f _rToolCollision[NB_ROBOTS];
-    float _toolCollisionOffset[NB_ROBOTS];
+    Eigen::Vector3f _nToolCollision[NB_ROBOTS];
+    float _dToolCollision[NB_ROBOTS];
+    Eigen::Vector3f _nEECollision[NB_ROBOTS];
+    float _dEECollision[NB_ROBOTS];
+    Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
 
   public:
 
