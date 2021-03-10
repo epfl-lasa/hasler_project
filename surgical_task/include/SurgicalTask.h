@@ -64,6 +64,8 @@ class SurgicalTask
 
     enum Robot {LEFT = 0, RIGHT = 1};
 
+    enum Tool {CAMERA = 0, RETRACTOR = 1};
+
     enum ControlPhase {INSERTION = 0, OPERATION = 1};
 
     enum ControlStrategy {PASSIVE_DS = 0, JOINT_IMPEDANCE = 1};
@@ -238,6 +240,8 @@ class SurgicalTask
     float _taskAdaptationActivationThreshold;
     float _taskAdaptationDeactivationThreshold;
     Eigen::Matrix3f _eeCameraMapping;
+    std::vector<int> _tool;
+    std::vector<int> _humanInputID;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];

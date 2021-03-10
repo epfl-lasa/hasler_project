@@ -26,6 +26,17 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Use robot: %d %d\n", (int) _useRobot[LEFT], (int)_useRobot[RIGHT]);
   }
 
+  _tool.resize(NB_ROBOTS);
+  if (!_nh.getParam("SurgicalTask/tool", _tool))
+  {
+    ROS_ERROR("Couldn't retrieve the tool ID boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Tool ID: %d %d\n", (int) _tool[LEFT], (int)_tool[RIGHT]);
+  }
+
 
   if (!_nh.getParam("SurgicalTask/useFranka", _useFranka))
   {
@@ -58,6 +69,18 @@ bool SurgicalTask::readConfigurationParameters()
   else
   {
     ROS_INFO("Human input mode: %d\n", (int) _humanInputMode);
+  }
+
+
+  _humanInputID.resize(NB_ROBOTS);
+  if (!_nh.getParam("SurgicalTask/humanInputID", _humanInputID))
+  {
+    ROS_ERROR("Couldn't retrieve the human input ID boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Human Input ID: %d %d\n", (int) _humanInputID[LEFT], (int)_humanInputID[RIGHT]);
   }
 
 

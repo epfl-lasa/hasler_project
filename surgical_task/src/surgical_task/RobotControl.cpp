@@ -493,7 +493,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     if(_debug)
     {
-      std::cerr << "[SurgicalTask]: " << r << " Current offset: " << (_xIK[r]-_xd0[r]).transpose();
+      std::cerr << "[SurgicalTask]: " << r << " Current offset: " << (_xIK[r]-_xd0[r]).transpose() << std::endl;
     }
 
     _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
@@ -508,7 +508,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     }
 
 
-    if(r==LEFT && _allowTaskAdaptation)
+    if(_tool[r]==CAMERA && _allowTaskAdaptation)
     {
       if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationDeactivationThreshold) &&
          std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationDeactivationThreshold) &&
