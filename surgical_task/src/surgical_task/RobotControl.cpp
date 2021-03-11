@@ -267,7 +267,7 @@ void SurgicalTask::operationStep(int r, int h)
   }
 
   // Scale the desired velocity components normal to the tool depending on the penetration depth
-  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*3.0f/_toolOffsetFromEE[r],1.0f);
+  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
 
   if(_debug)
   {
@@ -541,7 +541,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     if(_dRCMTool[r]> _insertionDistancePVM[r] && (_wRb[r].col(2)).dot(_vdTool[r])<0.0f)
     {
-      _vdTool[r].setConstant(0.0f);
+      _vdTool[r] = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_vdTool[r];
     }
 
   }
