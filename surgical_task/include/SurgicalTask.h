@@ -242,6 +242,7 @@ class SurgicalTask
     Eigen::Matrix3f _eeCameraMapping;
     std::vector<int> _tool;
     std::vector<int> _humanInputID;
+    float _markerFilterGain;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -259,6 +260,7 @@ class SurgicalTask
     float _humanToolLength[2];
     Eigen::Vector3f _humanToolPosition[2];
     Eigen::MatrixXf _colorMarkersPosition;
+    Eigen::MatrixXf _colorMarkersFilteredPosition;
     Eigen::VectorXi _colorMarkersStatus;
     int _humanToolStatus[2];
     Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];

@@ -150,6 +150,9 @@ SurgicalTask/trocarSpaceSelfRotationRange: 160
 # Tool tracking system used for track the position of the surgeon tools (0: CAMERA_BASED, 1: OPTITRACK_BASED)
 SurgicalTask/toolsTracking: 0
 
+# Filter gain for the color marker in camera based tracking ([0,1])
+SurgicalTask/markerFilterGain: 0.5
+
 # Threshold to activate task adaptation
 SurgicalTask/taskAdaptationActivationThreshold: 0.7
 

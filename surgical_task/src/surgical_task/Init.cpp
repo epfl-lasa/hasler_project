@@ -527,6 +527,18 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
+  if (!_nh.getParam("SurgicalTask/markerFilterGain", _markerFilterGain))
+  {
+    ROS_ERROR("Couldn't retrieve the marker filter gain");
+    return false;
+  }
+  else
+  {
+    _markerFilterGain = Utils<float>::bound(_markerFilterGain,0.0f,1.0f);
+    ROS_INFO("Marker filter gain: %f\n", _markerFilterGain);
+  }
+
+
   if (!_nh.getParam("SurgicalTask/taskAdaptationActivationThreshold", _taskAdaptationActivationThreshold))
   {
     ROS_ERROR("Couldn't retrieve the task adaptation activation threshold");

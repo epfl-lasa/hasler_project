@@ -718,6 +718,9 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
     _dbeliefsC.setConstant(0.0f);
 
     _colorMarkersPosition.resize(_nbTasks, 3);
+    _colorMarkersPosition.setConstant(0.0f);
+    _colorMarkersFilteredPosition.resize(_nbTasks, 3);
+    _colorMarkersFilteredPosition.setConstant(0.0f);
     _colorMarkersStatus.resize(_nbTasks);
 
     _firstColorMarkersPosition = true;
@@ -739,6 +742,7 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
       {
         _colorMarkersPosition.row(k).setConstant(0.0f);
       }
+      _colorMarkersFilteredPosition.row(k) = _markerFilterGain*_colorMarkersFilteredPosition.row(k)+(1.0f-_markerFilterGain)*_colorMarkersPosition.row(k);
     }
 
   }

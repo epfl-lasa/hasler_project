@@ -64,7 +64,7 @@ void SurgicalTask::initializeBeliefs(int r)
 
 	    for(int k = 0; k < tempID.size(); k++)
 	    {
-	      error(k) = _colorMarkersPosition.row(tempID[k]).norm();
+	      error(k) = _colorMarkersFilteredPosition.row(tempID[k]).norm();
 	    }
       
       float minValue = error.array().minCoeff(&indexMin);
@@ -191,7 +191,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	  {
 	    float alpha = 0.05f; 
 
-	    errork.row(k) = (_wRb[r]*_colorMarkersPosition.row(k).transpose()).transpose();
+	    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
       
       if(_debug)
