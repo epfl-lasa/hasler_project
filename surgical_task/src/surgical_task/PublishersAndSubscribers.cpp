@@ -26,11 +26,25 @@ void SurgicalTask::initializeSubscribersAndPublishers()
   
     if(_humanInputDevice[LEFT] == JOYSTICK)
     {
-      _subJoystick[LEFT] = _nh.subscribe<sensor_msgs::Joy>("/left/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      if(_humanInputID[LEFT] == LEFT)
+      {
+        _subJoystick[LEFT] = _nh.subscribe<sensor_msgs::Joy>("/left/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }
+      else
+      {
+        _subJoystick[RIGHT] = _nh.subscribe<sensor_msgs::Joy>("/right/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }
     }
     else
     {
-      _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      if(_humanInputID[LEFT] == LEFT)
+      {
+        _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }
+      else
+      {
+        _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }
     }
 
     // Publisher definitions
@@ -96,11 +110,25 @@ void SurgicalTask::initializeSubscribersAndPublishers()
    
     if(_humanInputDevice[RIGHT] == JOYSTICK)
     {
-      _subJoystick[RIGHT] = _nh.subscribe<sensor_msgs::Joy>("/right/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      if(_humanInputID[LEFT] == LEFT)
+      {
+        _subJoystick[LEFT] = _nh.subscribe<sensor_msgs::Joy>("/left/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }
+      else
+      {
+        _subJoystick[RIGHT] = _nh.subscribe<sensor_msgs::Joy>("/right/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,RIGHT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }    
     }
     else
     {
-      _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      if(_humanInputID[LEFT] == LEFT)
+      {
+        _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }
+      else
+      {
+        _subFootOutput[RIGHT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Right",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      }      
       _subFootSharedGrasping[RIGHT] = _nh.subscribe<custom_msgs_gripper::SharedGraspingMsg>("/right/sharedGrasping",1, boost::bind(&SurgicalTask::updateFootSharedGrasping,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
     }
 
@@ -173,7 +201,7 @@ void SurgicalTask::checkAllSubscribers()
     robotStatusOK[k] = !_useRobot[k] || (_firstRobotPose[k] &&  _firstRobotTwist[k]
                       // && _firstDampingMatrix[k] 
                       && _firstJointsUpdate[k] 
-                      && _firstHumanInput[k]);
+                      && _firstHumanInput[_humanInputID[k]]);
                       // && (_useSim || _wrenchBiasOK[k]);
 
     if(!robotStatusOK[k])
@@ -181,7 +209,7 @@ void SurgicalTask::checkAllSubscribers()
       std::cerr << k << ": Status: " << "use: " << _useRobot[k] 
                 << " pose: " << _firstRobotPose[k] << " twist: " << _firstRobotTwist[k]
                 << " damp: " << _firstDampingMatrix[k] << " joints: " << _firstJointsUpdate[k]
-                << " human: " << _firstHumanInput[k]
+                << " human: " << _firstHumanInput[_humanInputID[k]]
                 << " sim/wrench: " << (_useSim || _wrenchBiasOK[k]) << std::endl;
     }
   }
@@ -371,7 +399,7 @@ void SurgicalTask::publishData()
 
       for(int m = 0; m < 5; m++)
       {
-        _msgRobotState.humanInput[m] = _trocarInput[r](m);
+        _msgRobotState.humanInput[m] = _trocarInput[_humanInputID[r]](m);
       }
 
       for(int m = 0; m < 7; m++)
@@ -721,6 +749,8 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
     _colorMarkersPosition.setConstant(0.0f);
     _colorMarkersFilteredPosition.resize(_nbTasks, 3);
     _colorMarkersFilteredPosition.setConstant(0.0f);
+    _colorMarkersFilteredPosition2.resize(_nbTasks, 3);
+    _colorMarkersFilteredPosition2.setConstant(0.0f);
     _colorMarkersStatus.resize(_nbTasks);
 
     _firstColorMarkersPosition = true;
@@ -736,13 +766,19 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
       {
         Eigen::Vector3f temp;
         temp << msg->data[3*k], msg->data[3*k+1], 0.0f;
-        _colorMarkersPosition.row(k) = (_eeCameraMapping*temp).transpose(); 
+        _colorMarkersPosition.row(k) = (_eeCameraMapping*temp).transpose();
+        _colorMarkersFilteredPosition2.row(k) = _markerFilterGain*_colorMarkersFilteredPosition2.row(k)+(1.0f-_markerFilterGain)*_colorMarkersPosition.row(k);
+        _colorMarkersFilteredPosition(k,0) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,0),-0.3f,0.3f); 
+        _colorMarkersFilteredPosition(k,1) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,1),-0.2f,0.2f); 
       }
       else
       {
         _colorMarkersPosition.row(k).setConstant(0.0f);
+        _colorMarkersFilteredPosition.row(k).setConstant(0.0f);
+        _colorMarkersFilteredPosition2.row(k).setConstant(0.0f);
       }
-      _colorMarkersFilteredPosition.row(k) = _markerFilterGain*_colorMarkersFilteredPosition.row(k)+(1.0f-_markerFilterGain)*_colorMarkersPosition.row(k);
+
+
     }
 
   }
