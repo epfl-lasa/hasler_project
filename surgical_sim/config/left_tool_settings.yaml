@@ -1,5 +1,5 @@
 /left_tool:
-  interactionMode: 'mixed' # individual, mixed
+  interactionMode: 'individual' # individual, mixed
   toolType: 'camera'
   toolControl: 'speed'
   toolSelfRotationControl: 'speed'

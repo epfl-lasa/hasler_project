@@ -132,46 +132,46 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   }
   _msgJointCommands.data.resize(_nDOF);
   //std::cout<<_myInput<<endl;
-  _toolJoints = new KDL::JntArray(NB_TOOL_AXIS_RED);
-  _toolJoints->data.setZero();
-  _toolJointsFull = new KDL::JntArray(_nDOF);
-  _toolJointsFull->data.setZero();
-  _toolJointsInit = new KDL::JntArray(NB_TOOL_AXIS_RED);
-  _toolJointsInit->data.setZero();
+  _toolJoints.resize(NB_TOOL_AXIS_RED);
+  _toolJoints.data.setZero();
+  _toolJointsFull.resize(_nDOF);
+  _toolJointsFull.data.setZero();
+  _toolJointsInit.resize(NB_TOOL_AXIS_RED);
+  _toolJointsInit.data.setZero();
   if (_tool_id==RIGHT_TOOL)
   {
-    _toolJoints->data<<1.270095140171179e-12, -0.6202494859926144, 1.5707963267948974, 0.10162325267042625;
-    _toolJointsInit->data<<1.270095140171179e-12, -0.6202494859926144, 1.5707963267948974, 0.10162325267042625;
+    _toolJoints.data<<1.270095140171179e-12, -0.6202494859926144, 1.5707963267948974, 0.10162325267042625;
+    _toolJointsInit.data<<1.270095140171179e-12, -0.6202494859926144, 1.5707963267948974, 0.10162325267042625;
   }
   else
   {
-    _toolJoints->data<<-0.09072372302531484, 0.8903616344174168, 1.5038493544012193, 0.13449672820206968;
-    _toolJointsInit->data<<-0.09072372302531484, 0.8903616344174168, 1.5038493544012193, 0.13449672820206968;
+    _toolJoints.data<<-0.09072372302531484, 0.8903616344174168, 1.5038493544012193, 0.13449672820206968;
+    _toolJointsInit.data<<-0.09072372302531484, 0.8903616344174168, 1.5038493544012193, 0.13449672820206968;
   } 
 
 
 
   
-  _legJointLims[L_MIN] = new KDL::JntArray(NB_LEG_AXIS);
-  _legJointLims[L_MIN]->data.setZero();
-  _legJointLims[L_MAX] = new KDL::JntArray(NB_LEG_AXIS);
-  _legJointLims[L_MAX]->data.setZero();
+  _legJointLims[L_MIN].resize(NB_LEG_AXIS);
+  _legJointLims[L_MIN].data.setZero();
+  _legJointLims[L_MAX].resize(NB_LEG_AXIS);
+  _legJointLims[L_MAX].data.setZero();
 
-  _platformJointLims[L_MIN] = new KDL::JntArray(NB_PLATFORM_AXIS);
-  _platformJointLims[L_MIN]->data.setZero();
-  _platformJointLims[L_MAX] = new KDL::JntArray(NB_PLATFORM_AXIS);
-  _platformJointLims[L_MAX]->data.setZero();
-  // _platformJointLimsDelta = new KDL::JntArray(NB_PLATFORM_AXIS);
+  _platformJointLims[L_MIN].resize(NB_PLATFORM_AXIS);
+  _platformJointLims[L_MIN].data.setZero();
+  _platformJointLims[L_MAX].resize(NB_PLATFORM_AXIS);
+  _platformJointLims[L_MAX].data.setZero();
+  // _platformJointLimsDelta.resize(NB_PLATFORM_AXIS);
 
-  _toolJointLims[L_MIN] = new KDL::JntArray(NB_TOOL_AXIS_RED);
-  _toolJointLims[L_MAX] = new KDL::JntArray(NB_TOOL_AXIS_RED);
-  _toolJointLimsAll[L_MIN] = new KDL::JntArray(_nDOF);
-  _toolJointLimsAll[L_MAX] = new KDL::JntArray(_nDOF);
+  _toolJointLims[L_MIN].resize(NB_TOOL_AXIS_RED);
+  _toolJointLims[L_MAX].resize(NB_TOOL_AXIS_RED);
+  _toolJointLimsAll[L_MIN].resize(_nDOF);
+  _toolJointLimsAll[L_MAX].resize(_nDOF);
 
-  _toolJointLims[L_MIN]->data.setZero();
-  _toolJointLims[L_MAX]->data.setZero();
-  _toolJointLimsAll[L_MIN]->data.setZero();
-  _toolJointLimsAll[L_MAX]->data.setZero();
+  _toolJointLims[L_MIN].data.setZero();
+  _toolJointLims[L_MAX].data.setZero();
+  _toolJointLimsAll[L_MIN].data.setZero();
+  _toolJointLimsAll[L_MAX].data.setZero();
 
   _weightedJointSpaceMassMatrix.setIdentity();
   _weightedTaskSpaceMassMatrix.setIdentity();
@@ -254,8 +254,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     {
       for (unsigned int i = 0; i<NB_LEG_AXIS; i++)
       {
-        _legJointLims[L_MIN]->data(i) = _legModel.getJoint("/"+std::string(Tool_Names[_tool_id]) + "_" + Leg_Axis_Names[i])->limits->lower;
-        _legJointLims[L_MAX]->data(i) = _legModel.getJoint("/"+std::string(Tool_Names[_tool_id]) + "_" + Leg_Axis_Names[i])->limits->upper;
+        _legJointLims[L_MIN].data(i) = _legModel.getJoint("/"+std::string(Tool_Names[_tool_id]) + "_" + Leg_Axis_Names[i])->limits->lower;
+        _legJointLims[L_MAX].data(i) = _legModel.getJoint("/"+std::string(Tool_Names[_tool_id]) + "_" + Leg_Axis_Names[i])->limits->upper;
       }
     }
     
@@ -272,10 +272,10 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     {
       for (unsigned int i = 0; i<NB_PLATFORM_AXIS; i++)
       {
-        _platformJointLims[L_MIN]->data(i) = _platformModel.getJoint(std::string(Tool_Names[_tool_id]) + "_" + std::string(Platform_Axis_Names[i]))->limits->lower;
-        //cout<<_platformJointLims[L_MIN]->data(i)<<endl;
-        _platformJointLims[L_MAX]->data(i) = _platformModel.getJoint( std::string(Tool_Names[_tool_id]) + "_" + std::string(Platform_Axis_Names[i]))->limits->upper;
-        //cout<<_platformJointLims[L_MAX]->data(i)<<endl;
+        _platformJointLims[L_MIN].data(i) = _platformModel.getJoint(std::string(Tool_Names[_tool_id]) + "_" + std::string(Platform_Axis_Names[i]))->limits->lower;
+        //cout<<_platformJointLims[L_MIN].data(i)<<endl;
+        _platformJointLims[L_MAX].data(i) = _platformModel.getJoint( std::string(Tool_Names[_tool_id]) + "_" + std::string(Platform_Axis_Names[i]))->limits->upper;
+        //cout<<_platformJointLims[L_MAX].data(i)<<endl;
       }
     }
 
@@ -449,32 +449,32 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
   for (unsigned int joint_=0; joint_ < _nDOF; joint_++ )
   {
-    _toolJointLimsAll[L_MIN]->data(joint_) = _myModel.getJoint(std::string(Tool_Names[_tool_id]) + "_" + Tool_Axis_Names[joint_])->limits->lower;
-    _toolJointLimsAll[L_MAX]->data(joint_) = _myModel.getJoint(std::string(Tool_Names[_tool_id]) + "_" + Tool_Axis_Names[joint_])->limits->upper;
+    _toolJointLimsAll[L_MIN].data(joint_) = _myModel.getJoint(std::string(Tool_Names[_tool_id]) + "_" + Tool_Axis_Names[joint_])->limits->lower;
+    _toolJointLimsAll[L_MAX].data(joint_) = _myModel.getJoint(std::string(Tool_Names[_tool_id]) + "_" + Tool_Axis_Names[joint_])->limits->upper;
       
     if (joint_<NB_TOOL_AXIS_RED)
     {
-      _toolJointLims[L_MIN]->data(joint_) = _toolJointLimsAll[L_MIN]->data(joint_) ;
-      _toolJointLims[L_MAX]->data(joint_) = _toolJointLimsAll[L_MAX]->data(joint_) ;
+      _toolJointLims[L_MIN].data(joint_) = _toolJointLimsAll[L_MIN].data(joint_) ;
+      _toolJointLims[L_MAX].data(joint_) = _toolJointLimsAll[L_MAX].data(joint_) ;
     }
     if (_tool_id==LEFT_TOOL){
-     _toolJointLims[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI - 1.5*M_PI_2; 
-     _toolJointLims[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI - 0.0*M_PI_2;
-     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI - 1.5*M_PI_2; 
-     _toolJointLimsAll[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI - 0.0*M_PI_2;
+     _toolJointLims[L_MIN].data(tool_joint3_yaw) = -1.6*M_PI - 1.5*M_PI_2; 
+     _toolJointLims[L_MAX].data(tool_joint3_yaw) =  1.6*M_PI - 0.0*M_PI_2;
+     _toolJointLimsAll[L_MIN].data(tool_joint3_yaw) = -1.6*M_PI - 1.5*M_PI_2; 
+     _toolJointLimsAll[L_MAX].data(tool_joint3_yaw) =  1.6*M_PI - 0.0*M_PI_2;
     }
     if (_tool_id==RIGHT_TOOL){
-     _toolJointLims[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI + 0.0*M_PI_2; 
-     _toolJointLims[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI + 1.5*M_PI_2;
-     _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw) = -1.6*M_PI + 0.0*M_PI_2; 
-     _toolJointLimsAll[L_MAX]->data(tool_joint3_yaw) =  1.6*M_PI + 1.5*M_PI_2;
+     _toolJointLims[L_MIN].data(tool_joint3_yaw) = -1.6*M_PI + 0.0*M_PI_2; 
+     _toolJointLims[L_MAX].data(tool_joint3_yaw) =  1.6*M_PI + 1.5*M_PI_2;
+     _toolJointLimsAll[L_MIN].data(tool_joint3_yaw) = -1.6*M_PI + 0.0*M_PI_2; 
+     _toolJointLimsAll[L_MAX].data(tool_joint3_yaw) =  1.6*M_PI + 1.5*M_PI_2;
     }
   }
 
 
   /****************************** Inverse Kinematics of the tool ***********************************/
       _myVelIKSolver_wrist = new KDL::ChainIkSolverVel_wdls(_myToolBaseToWristChain,0.001,200);
-      _myPosIkSolver_wrist= new KDL::ChainIkSolverPos_NR_JL(_myToolBaseToWristChain,*me->_toolJointLims[L_MIN], *me->_toolJointLims[L_MAX], *_myFKSolver_wrist,*_myVelIKSolver_wrist,200,0.001);
+      _myPosIkSolver_wrist= new KDL::ChainIkSolverPos_NR_JL(_myToolBaseToWristChain,me->_toolJointLims[L_MIN], me->_toolJointLims[L_MAX], *_myFKSolver_wrist,*_myVelIKSolver_wrist,200,0.001);
       
       
       _weightedTaskSpaceMassMatrix.block(3,3,3,3).diagonal()<< FLT_EPSILON, FLT_EPSILON, FLT_EPSILON;
@@ -566,10 +566,6 @@ void surgicalTool::run() {
             {
                 case PLATFORM_INPUT:
                 {
-            //       //computeWithPlatformTask4DoF();
-            //       //computeWithPlatformJoints4DoF();
-                
-                    
                       calculateDesiredFrame();
                       performInverseKinematics();                  
                 break; 
@@ -629,7 +625,7 @@ void surgicalTool::publishToolJointCommands() {
   {
    for (size_t i = 0; i < _nDOF; i++)
     { 
-        _msgJointCommands.data[i] =  Utils_math<double>::bound(me->_toolJointsAll(i), me->_toolJointLimsAll[L_MIN]->data(i),me->_toolJointLimsAll[L_MAX]->data(i));
+        _msgJointCommands.data[i] =  Utils_math<double>::bound(me->_toolJointsAll(i), me->_toolJointLimsAll[L_MIN].data(i),me->_toolJointLimsAll[L_MAX].data(i));
     }
 
   _pubToolJointCommands.publish(_msgJointCommands);
@@ -792,15 +788,15 @@ void surgicalTool::publishToolTipPose(){
 
 
 void surgicalTool::performInverseKinematics(){
-  *me->_toolJointsInit = *me->_toolJoints;
-  int ret = _myPosIkSolver_wrist->CartToJnt(*me->_toolJointsInit,_desiredToolEEFrame,*me->_toolJoints);
+  _toolJointsInit.data = _toolJoints.data;
+  int ret = _myPosIkSolver_wrist->CartToJnt(me->_toolJointsInit,_desiredToolEEFrame,me->_toolJoints);
 
   if (ret<0)
   {
     if (_mySolutionFound) 
     {  
       ROS_ERROR("[%s tool]: No tool IK solutions for the tool  found yet... move around to find one", Tool_Names[_tool_id]);
-      *me->_toolJoints = *me->_toolJointsInit;
+      _toolJoints.data = _toolJointsInit.data;
       _mySolutionFound=false;
     }
   }
@@ -808,7 +804,7 @@ void surgicalTool::performInverseKinematics(){
     if(!_mySolutionFound)
     {
       ROS_INFO(" [%s tool]: Solutions of tool  IK found again!", Tool_Names[_tool_id]);
-      *me->_toolJointsInit = *me->_toolJoints;
+      _toolJointsInit.data = _toolJoints.data;
       _mySolutionFound=true;
     }
    }
@@ -817,9 +813,9 @@ void surgicalTool::performInverseKinematics(){
   
   if(_tool_selfRotation==R_POSITION)  
   {
-    _toolJoints->data(tool_joint3_yaw) = -Utils_math<double>::map( _platformJoints(p_yaw) + _platformJointsOffset(p_yaw) , 
+    _toolJoints.data(tool_joint3_yaw) = -Utils_math<double>::map( _platformJoints(p_yaw) + _platformJointsOffset(p_yaw) , 
                                     _desiredPlatformWSLims(p_yaw,L_MIN),_desiredPlatformWSLims(p_yaw,L_MAX), 
-                                    _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw),_toolJointLimsAll[L_MAX]->data(tool_joint3_yaw)) ;
+                                    _toolJointLimsAll[L_MIN].data(tool_joint3_yaw),_toolJointLimsAll[L_MAX].data(tool_joint3_yaw)) ;
   } else  {
     double speedControlGainSelfRotationMod = 0.0;
     
@@ -830,11 +826,11 @@ void surgicalTool::performInverseKinematics(){
         speedControlGainSelfRotationMod = _platformJoints(p_yaw) < _deadZoneValues(p_yaw,L_MIN) ? 20.0*_speedControlGainSelfRotation : _speedControlGainSelfRotation;
     }
 
-     _toolJoints->data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw) + _platformJointsOffset(p_yaw),_deadZoneValues(p_yaw,L_MIN),_deadZoneValues(p_yaw,L_MAX)), 
+     _toolJoints.data(tool_joint3_yaw) = _toolJointsAllPrev(tool_joint3_yaw) - Utils_math<double>::map( Utils_math<double>::deadZone(_platformJoints(p_yaw) + _platformJointsOffset(p_yaw),_deadZoneValues(p_yaw,L_MIN),_deadZoneValues(p_yaw,L_MAX)), 
                                     _desiredPlatformWSLims(p_yaw,L_MIN),_desiredPlatformWSLims(p_yaw,L_MAX), -1.0, 1.0) * _speedControlGainSelfRotation * _dt ;
-    // cout<<_toolJoints->data(tool_joint3_yaw)<<endl;     
+    // cout<<_toolJoints.data(tool_joint3_yaw)<<endl;     
    }
-    _toolJoints->data(tool_joint3_yaw) = Utils_math<double>::bound(_toolJoints->data(tool_joint3_yaw), _toolJointLimsAll[L_MIN]->data(tool_joint3_yaw),_toolJointLimsAll[L_MAX]->data(tool_joint3_yaw));                             
+    _toolJoints.data(tool_joint3_yaw) = Utils_math<double>::bound(_toolJoints.data(tool_joint3_yaw), _toolJointLimsAll[L_MIN].data(tool_joint3_yaw),_toolJointLimsAll[L_MAX].data(tool_joint3_yaw));                             
 
   if (_tool_type==FORCEPS)
     {
@@ -844,38 +840,38 @@ void surgicalTool::performInverseKinematics(){
       {
         _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) + _platformJointsOffset(p_roll),
                                                     _desiredPlatformWSLims(p_roll,L_MIN),_desiredPlatformWSLims(p_roll,L_MAX), 
-                                                    _toolJointLimsAll[L_MAX]->data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN]->data(tool_joint5_wrist_open_angle)));
+                                                    _toolJointLimsAll[L_MAX].data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN].data(tool_joint5_wrist_open_angle)));
       } else //! MIXED_MODE
       {
         _toolJointsAll(tool_joint5_wrist_open_angle) = _hAxisFilterGrasp->update (Utils_math<double>::map(_platformJoints(p_roll) + _platformJointsOffset(p_roll),
                                             _desiredPlatformWSLims(_graspITofAuxPlatform,L_MAX),_desiredPlatformWSLims(_graspITofAuxPlatform,L_MIN), 
-                                            _toolJointLimsAll[L_MAX]->data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN]->data(tool_joint5_wrist_open_angle)));
+                                            _toolJointLimsAll[L_MAX].data(tool_joint5_wrist_open_angle), _toolJointLimsAll[L_MIN].data(tool_joint5_wrist_open_angle)));
       }
       // cout<<_toolJointsAll(tool_joint5_wrist_open_angle)<<endl;                                                    
       _toolJointsAll(tool_joint5_wrist_open_angle_mimic) = _toolJointsAll(tool_joint5_wrist_open_angle) ;
     }
  
-  _toolJointsPosFiltered =  _hAxisFilterPos->update(_toolJoints->data.segment(0,NB_TOOL_AXIS_RED));
+  _toolJointsPosFiltered =  _hAxisFilterPos->update(_toolJoints.data.segment(0,NB_TOOL_AXIS_RED));
   _toolJointsAll.segment(0, NB_TOOL_AXIS_RED) = _toolJointsPosFiltered;
-  _toolJointsAll.cwiseMin(_toolJointLimsAll[L_MAX]->data).cwiseMax(_toolJointLimsAll[L_MIN]->data);
+  _toolJointsAll.cwiseMin(_toolJointLimsAll[L_MAX].data).cwiseMax(_toolJointLimsAll[L_MIN].data);
 
 }
 
 void surgicalTool::performChainForwardKinematics() 
 {
   KDL::Frame frame_;
-  //cout<<_toolJoints->data.transpose()<<endl;
+  //cout<<_toolJoints.data.transpose()<<endl;
   for (unsigned int i = 0; i < _mySegments.size(); i++) {
-      _myFKSolver_wrist->JntToCart(*me->_toolJoints, frame_, i + 1);
+      _myFKSolver_wrist->JntToCart(_toolJoints, frame_, i + 1);
       _myFrames[i]=frame_; 
     //  cout<<_myFrames[i].p.data[0]<<" "<<_myFrames[i].p.data[1]<<" "<<_myFrames[i].p.data[2]<<endl;
   }
   KDL::Frame frameTip_;
   _myFrames_tip.resize(_mySegmentsTip.size());
-  _toolJointsFull->data=_toolJointsAll;
-  //cout<<_toolJointsFull->data.transpose()<<endl;
+  _toolJointsFull.data=_toolJointsAll;
+  //cout<<_toolJointsFull.data.transpose()<<endl;
   for (unsigned int j = 0; j < _mySegmentsTip.size(); j++) {
-      _myFKSolver_tip->JntToCart(*me->_toolJointsFull, frameTip_, j + 1);
+      _myFKSolver_tip->JntToCart(me->_toolJointsFull, frameTip_, j + 1);
       // cout<<frameTip_.p.data[0]<<" "<<frameTip_.p.data[1]<<" "<<frameTip_.p.data[2]<<endl;
       _myFrames_tip[j] = frameTip_;
   }  
@@ -960,9 +956,9 @@ void surgicalTool::readCurrentToolJoints(const sensor_msgs::JointState::ConstPtr
     ROS_INFO("[%s tool]: Current joints received by the tool", Tool_Names[_tool_id]);
       for (size_t i = 0; i < NB_TOOL_AXIS_RED; i++)
       {
-        _toolJoints->data[i] = msg->position[i];
+        _toolJoints.data[i] = msg->position[i];
       }
-      _toolJointsInit->data = _toolJoints->data;
+      _toolJointsInit.data = _toolJoints.data;
   }
   _flagCurrentToolJointsRead = true;
 

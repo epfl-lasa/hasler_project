@@ -123,13 +123,13 @@ private:
   Eigen::Matrix<double,NB_PLATFORM_AXIS,NB_LIMS> _deadZoneValues;
   Eigen::Matrix<double,NB_CART_AXIS,NB_LIMS> _cartesianLimits;
 
-  KDL::JntArray* _toolJoints; KDL::JntArray* _toolJointsOffset;
-  KDL::JntArray* _toolJointsFull;
-  KDL::JntArray* _toolJointsInit;
-  KDL::JntArray* _toolJointLims[NB_LIMS];
-  KDL::JntArray* _toolJointLimsAll[NB_LIMS];
-  KDL::JntArray* _legJointLims[NB_LIMS];
-  KDL::JntArray* _platformJointLims[NB_LIMS];
+  KDL::JntArray _toolJoints; KDL::JntArray* _toolJointsOffset;
+  KDL::JntArray _toolJointsFull;
+  KDL::JntArray _toolJointsInit;
+  KDL::JntArray _toolJointLims[NB_LIMS];
+  KDL::JntArray _toolJointLimsAll[NB_LIMS];
+  KDL::JntArray _legJointLims[NB_LIMS];
+  KDL::JntArray _platformJointLims[NB_LIMS];
   //KDL::JntArray* _platformJointLimsDelta;
   Eigen::Matrix<double,NB_AXIS_WRENCH,1> _supportWrenchEigen;
   Eigen::Matrix<double,NB_AXIS_POSITIONING,1> _thresholds;

@@ -6,24 +6,24 @@
   <arg name="attached_to" default="world" />
   <arg name="rviz" default="true"/>
   <arg name="rvizConfig" default="$(find surgical_sim)/rviz/body_view.rviz"/>
-  <arg name="bodyOrigin.x" default="0.0"/>
-  <arg name="bodyOrigin.y" default="0.5"/>
-  <arg name="bodyOrigin.z" default="1.1"/>
-  <arg name="bodyOrigin.ax" default="0.0"/>
-  <arg name="bodyOrigin.ay" default="0.0"/>
-  <arg name="bodyOrigin.az" default="0.0"/> 
+  <arg name="bodyOrigin_x" default="0.0"/>
+  <arg name="bodyOrigin_y" default="0.5"/>
+  <arg name="bodyOrigin_z" default="1.1"/>
+  <arg name="bodyOrigin_ax" default="0.0"/>
+  <arg name="bodyOrigin_ay" default="0.0"/>
+  <arg name="bodyOrigin_az" default="0.0"/> 
   <arg name="spawn_delay" default="0"/>
    
 
    <group ns="body">
      <param name="robot_description" command="rosrun xacro xacro --inorder $(arg model) with_liver:=$(arg w_liver) 
                                               attached_to:=$(arg attached_to)
-                                              bodyOrigin.x:=$(arg bodyOrigin.x)
-                                              bodyOrigin.y:=$(arg bodyOrigin.y)
-                                              bodyOrigin.z:=$(arg bodyOrigin.z)
-                                              bodyOrigin.ax:=$(arg bodyOrigin.ax)
-                                              bodyOrigin.ay:=$(arg bodyOrigin.ay)
-                                              bodyOrigin.az:=$(arg bodyOrigin.az)
+                                              bodyOrigin_x:=$(arg bodyOrigin_x)
+                                              bodyOrigin_y:=$(arg bodyOrigin_y)
+                                              bodyOrigin_z:=$(arg bodyOrigin_z)
+                                              bodyOrigin_ax:=$(arg bodyOrigin_ax)
+                                              bodyOrigin_ay:=$(arg bodyOrigin_ay)
+                                              bodyOrigin_az:=$(arg bodyOrigin_az)
                                               "/>
      <node pkg="robot_state_publisher" type="robot_state_publisher"  name="body_state_publisher"/>
    </group>

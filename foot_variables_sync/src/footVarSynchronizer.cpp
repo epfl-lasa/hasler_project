@@ -145,15 +145,16 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 		ROS_ERROR("[%s footVarSync]: Missing fi_input/topics param",Platform_Names[_platform_name]); 
 	}
 
-	int _nbDesiredFootInputPublishers = _fiPublishers.size();
+	_nbDesiredFootInputPublishers = _fiPublishers.size();
+	std::cout<<_nbDesiredFootInputPublishers<<std::endl;
 	
-	if (_nbDesiredFootInputPublishers!=0)
+	if (_nbDesiredFootInputPublishers>0)
 	{
 		_subDesiredFootInput.resize(_nbDesiredFootInputPublishers);
 		_msgDesiredFootInput.resize(_nbDesiredFootInputPublishers);
 		_flagDesiredFootInputsRead.resize(_nbDesiredFootInputPublishers);
 		ROS_INFO("[%s footVarSync]: The list of publishers for the platform input are: ",Platform_Names[_platform_name]);
-		for (unsigned int i  = 0; i<_nbDesiredFootInputPublishers; i++)
+		for (size_t i  = 0; i<_nbDesiredFootInputPublishers; i++)
 		{	
 			_flagDesiredFootInputsRead[i]=false;
 			ROS_INFO("[%s footVarSync]: Topic %i: %s",Platform_Names[_platform_name],i,_fiPublishers[i].c_str());
@@ -892,22 +893,11 @@ void footVarSynchronizer::processAllPublishers()
 	_msgTotalDesiredFootInput.ros_ki.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_kd.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_filterAxisForce.fill(1.0f);
-	
-	bool inputsRead=true;
-
-	for (size_t i = 0; i < _nbDesiredFootInputPublishers; i++)
+	for (size_t i=0; i< (size_t) _nbDesiredFootInputPublishers; i++)
 	{
-		inputsRead = inputsRead && _flagDesiredFootInputsRead[i];
-	}
-	
-	if (inputsRead)
-	{
-
-		for (unsigned int i=0; i<_nbDesiredFootInputPublishers; i++)
-		{
-			if (_flagDesiredFootInputsRead[i] && _subDesiredFootInput[i].getNumPublishers()!=0)
-			{
-				for (unsigned int j=0; j<NB_PLATFORM_AXIS; j++)
+			if (_flagDesiredFootInputsRead[i] && _subDesiredFootInput[i].getNumPublishers()>0)
+			{	
+				for (size_t j=0; j<NB_PLATFORM_AXIS; j++)
 				{
 					if (_platform_controllerType==POSITION_CTRL)
 					{
@@ -930,10 +920,10 @@ void footVarSynchronizer::processAllPublishers()
 					}
 					_msgTotalDesiredFootInput.ros_effort[j] += _msgDesiredFootInput[i].ros_effort[j];
 					_msgTotalDesiredFootInput.ros_filterAxisForce[j] *= _msgDesiredFootInput[i].ros_filterAxisForce[j];
+					
 				}
 				
 			}	
-		}
 	}
 }
 
@@ -946,7 +936,7 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
   for (int k = 0; k < NB_PLATFORM_AXIS; k++) {
     _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k] + _msgTotalDesiredFootInput.ros_position[rosAxis[k]];
     _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k] + _msgTotalDesiredFootInput.ros_speed[rosAxis[k]] ;
-    _msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + _msgTotalDesiredFootInput.ros_effort[rosAxis[k]];
+    _msgFootInput.ros_effort[rosAxis[k]] =  _flagHumanOnPlatform ? _ros_effort[k] + _msgTotalDesiredFootInput.ros_effort[rosAxis[k]] : 0.0f;
 	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] * _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]];
 	
 	if (!_flagPIDGainsByInput)
@@ -1220,7 +1210,7 @@ void footVarSynchronizer::readLegGravityCompWrench(const geometry_msgs::WrenchSt
 
 void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg::ConstPtr &msg) {
     
-	for (unsigned int i = 0; i<NB_AXIS; i++)
+	for (size_t i = 0; i<NB_AXIS; i++)
 	{
 		_leg_grav_comp_effort(i) = msg->ros_effort[rosAxis[i]];
 	}
@@ -1245,8 +1235,10 @@ void footVarSynchronizer::readDesiredFootInputs(const custom_msgs::FootInputMsg:
 	_msgDesiredFootInput[n_].ros_filterAxisForce = msg->ros_filterAxisForce;
   	if (!_flagDesiredFootInputsRead[n_]) {
   	  ROS_INFO_ONCE("Receiving messages of foot input. Pub #%i", n_);
+		
   	}
   _flagDesiredFootInputsRead[n_] = true;
+
 }
 
 void footVarSynchronizer::readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg)

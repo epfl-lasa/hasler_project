@@ -1,5 +1,5 @@
 /right_tool:
-  interactionMode: 'mixed' # individual, mixed
+  interactionMode: 'individual' # individual, mixed
   toolType: 'forceps'
   toolControl: 'position'
   toolSelfRotationControl: 'speed'

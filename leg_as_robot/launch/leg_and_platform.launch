@@ -7,7 +7,7 @@
   <arg name="virtual_platform"   default="true" />
   <arg name="inc_chair"          default="true"/>
   <arg name="rviz"               default="false"/>
-  <arg name="port"               default="$(arg id)_platform"/>
+  <arg name="port"               default="/dev/$(arg id)_platform"/>
   
 	<include file="$(find foot_platform_ros)/launch/platform_ros.launch">
       <arg name="id"                 value="$(arg id)" />

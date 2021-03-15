@@ -161,8 +161,8 @@ class footVarSynchronizer
         float _ros_paramI[NB_POS_PID_C][NB_PLATFORM_AXIS];
         float _ros_paramD[NB_POS_PID_C][NB_PLATFORM_AXIS];
 
-        const float _ros_posP_Max[NB_PLATFORM_AXIS] = {3000.0,3000.0,5000.0,5000.0,5000.0};
-        const float _ros_posI_Max[NB_PLATFORM_AXIS] = {3000.0,3000.0,5000.0,5000.0,5000.0};
+        const float _ros_posP_Max[NB_PLATFORM_AXIS] = {3000.0,3000.0,10000.0,10000.0,10000.0};
+        const float _ros_posI_Max[NB_PLATFORM_AXIS] = {3000.0,3000.0,10000.0,10000.0,10000.0};
         const float _ros_posD_Max[NB_PLATFORM_AXIS] = {45.0,45.0,200.0,200.0,200.0};
 
         const float _ros_speedP_Max[NB_PLATFORM_AXIS] = {1000.0,1000.0,1000.0,1000.0,1000.0};

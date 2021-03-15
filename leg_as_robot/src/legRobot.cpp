@@ -364,7 +364,7 @@ void legRobot::publishNetCoG() {
   //! Keep send the same valuest that the leg is broadcasting
   // _mutex.lock();
   std::string frame_name;
-   frame_name = _leg_id==RIGHT ? "/right_platform_base_link" : "/left_platform_base_link"; 
+   frame_name = _leg_id==RIGHT ? "right_platform_base_link" : "left_platform_base_link"; 
   _msgNetCoG.header.stamp = ros::Time::now();
   _msgNetCoG.header.frame_id = frame_name; 
   _msgNetCoG.point.x = _netCoG(0);
@@ -394,8 +394,8 @@ void legRobot::publishFootBaseGravityWrench() {
   if(!_stop)
   {
     std::string frame_name;
-    frame_name = _leg_id == RIGHT ? "/right_leg_foot_base"
-                                  : "/left_leg_foot_base";
+    frame_name = _leg_id == RIGHT ? "right_leg_foot_base"
+                                  : "left_leg_foot_base";
     _msgFootBaseWrench.header.stamp = ros::Time::now();
     _msgFootBaseWrench.header.frame_id = frame_name;
     _msgFootBaseWrench.wrench.force.x = _supportWrenchEigen(0);
@@ -408,8 +408,8 @@ void legRobot::publishFootBaseGravityWrench() {
 
   {
     std::string frame_name;
-    frame_name = _leg_id == RIGHT ? "/right_leg_foot_base"
-                                  : "/left_leg_foot_base";
+    frame_name = _leg_id == RIGHT ? "right_leg_foot_base"
+                                  : "left_leg_foot_base";
     _msgFootBaseWrench.header.stamp = ros::Time::now();
     _msgFootBaseWrench.header.frame_id = frame_name;
     _msgFootBaseWrench.wrench.force.x = 0.0f;
@@ -476,8 +476,8 @@ void legRobot::publishManipulabilityEllipsoidRot() {
   Quaternion<double> svdSingQuaternion(svdVectors);
   std::string frame_name;
   std::string ns_name;
-  frame_name = _leg_id == RIGHT ? "/right_leg_hip_base_link" : "/left_leg_hip_base_link";
-  // ns_name = _leg_id == RIGHT ? "/right" : "/left";
+  frame_name = _leg_id == RIGHT ? "right_leg_hip_base_link" : "left_leg_hip_base_link";
+  // ns_name = _leg_id == RIGHT ? "right" : "left";
   _msgManipEllipsoidRot.header.frame_id = frame_name;
   _msgManipEllipsoidRot.header.stamp = ros::Time::now();
   _msgManipEllipsoidRot.ns = ns_name;
@@ -511,8 +511,8 @@ void legRobot::publishManipulabilityEllipsoidLin() {
   Quaternion<double> svdSingQuaternion(svdVectors);
   std::string frame_name;
   std::string ns_name;
-  frame_name = _leg_id == RIGHT ? "/right_leg_hip_base_link" : "/left_leg_hip_base_link";
-  // ns_name = _leg_id == RIGHT ? "/right" : "/left";
+  frame_name = _leg_id == RIGHT ? "right_leg_hip_base_link" : "left_leg_hip_base_link";
+  // ns_name = _leg_id == RIGHT ? "right" : "left";
   _msgManipEllipsoidLin.header.frame_id = frame_name;
   _msgManipEllipsoidLin.header.stamp = ros::Time::now();
   _msgManipEllipsoidLin.ns = ns_name;
