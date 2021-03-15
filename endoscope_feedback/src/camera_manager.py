@@ -125,27 +125,29 @@ class CameraManager:
                                                                           | self.toolsTracker.maskYellow)
 
 
-        # self.toolsTracker.markersPosition[0] = np.array([630,470,1])
+        # self.toolsTracker.tipPosition[0] = np.array([630,470,1])
         self.displayMarkersPosition(self.outputImage) 
         self.displaySurgicalTaskState(self.outputImage)
 
         msg = Int16MultiArray()
-        msg.data = np.concatenate((self.toolsTracker.markersPosition[0], self.toolsTracker.markersPosition[1], 
-                                   self.toolsTracker.markersPosition[2]), axis=None)
+        msg.data = np.concatenate((self.toolsTracker.tipPosition[0], self.toolsTracker.tipPosition[1], 
+                                   self.toolsTracker.tipPosition[2]), axis=None)
         msg.layout.dim.append(MultiArrayDimension())
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPosition.publish(msg)
         
         msg = Float64MultiArray()
-        msg.data = np.concatenate((self.toolsTracker.markersPositionTransformed[0], self.toolsTracker.markersPositionTransformed[1],
-                                   self.toolsTracker.markersPositionTransformed[2]), axis=None)
+        msg.data = np.concatenate((self.toolsTracker.tipPositionTransformed[0], self.toolsTracker.tipPositionTransformed[1],
+                                   self.toolsTracker.tipPositionTransformed[2]), axis=None)
         msg.layout.dim.append(MultiArrayDimension())
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPositionTransformed.publish(msg)
 
         cv2.imshow('output', self.outputImage) 
         cv2.imshow('maskRed', self.toolsTracker.maskRed) 
+        cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
         cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
+        # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
         cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
         # cv2.imshow('result', result) 
         
@@ -155,24 +157,46 @@ class CameraManager:
       self.rate.sleep()
 
 
-  def displayMarkersPosition(self, image):
-    for k in range(0,len(self.toolsTracker.markersPosition)):
+  # def displayMarkersPosition(self, image):
+  #   for k in range(0,len(self.toolsTracker.tipPosition)):
+  #     color = (255, 255, 255)
+  #     if self.toolsTracker.tipPosition[k][2]:
+  #       color = self.markerColor
+  #       if self.useTaskAdaptation and (1.0-self.beliefsC[k])<1e-3:
+  #         color = (255, 0, 255)
+
+
+  #     cv2.drawMarker(image, (self.toolsTracker.tipPosition[k][0], self.toolsTracker.tipPosition[k][1]), color,
+  #                              cv2.MARKER_CROSS, 20, 2)
+
+  #     pY = self.toolsTracker.tipPosition[k][1] - 25
+  #     if pY < 10:
+  #       pY = self.toolsTracker.tipPosition[k][1] + 25
+
+  #     cv2.putText(image, self.markerText[k], (self.toolsTracker.tipPosition[k][0], pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
+
+
+  def displayMarkersPosition(self, image, showTip=False):
+    for k in range(0,len(self.toolsTracker.tipPosition)):
       color = (255, 255, 255)
-      if self.toolsTracker.markersPosition[k][2]:
+      if self.toolsTracker.tipPosition[k][2]:
         color = self.markerColor
-        if self.useTaskAdaptation and (1.0-self.beliefsC[k])<1e-3:
-          color = (255, 0, 255)
+        if self.useTaskAdaptation:
+          trackedColor = (255,0,255)
+          color = (1-self.beliefsC[k])*np.array(color).astype(np.float32)+self.beliefsC[k]*np.array(trackedColor).astype(np.float32)
+          color = color.astype(int).tolist()
 
+      position = self.toolsTracker.markerPosition[k][0:2]
+      if showTip:
+        position = self.toolsTracker.tipPosition[k][0:2]
 
-      cv2.drawMarker(image, (self.toolsTracker.markersPosition[k][0], self.toolsTracker.markersPosition[k][1]), color,
-                               cv2.MARKER_CROSS, 20, 2)
+      cv2.drawMarker(image, (int(position[0]), int(position[1])), color,cv2.MARKER_CROSS, 20, 2)
 
-      pY = self.toolsTracker.markersPosition[k][1] - 25
+      pY = int(position[1]) - 25
       if pY < 10:
-        pY = self.toolsTracker.markersPosition[k][1] + 25
+        pY = int(position[1]) + 25
 
-      cv2.putText(image, self.markerText[k], (self.toolsTracker.markersPosition[k][0], pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
-
+      cv2.putText(image, self.markerText[k], (int(position[0]), pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
 
   def displaySurgicalTaskState(self,image):
     for k in range(0,2):
@@ -294,8 +318,11 @@ class CameraManager:
 
 class ToolsTracker:
   def __init__(self):
-    self.lowerHsvBlue = np.array([90,54,160])     
-    self.upperHsvBlue = np.array([108,255,255])
+    self.lowerHsvBlue = np.array([97,20,20])     
+    self.upperHsvBlue = np.array([120,255,255])
+
+    self.lowerHsvCyan = np.array([40,0,0])     
+    self.upperHsvCyan = np.array([97,255,255])
 
     # self.lowerHsvRed = np.array([150,60,0]) 
     # self.upperHsvRed = np.array([255,255,255]) 
@@ -303,11 +330,10 @@ class ToolsTracker:
     # self.upperHsvRed = np.array([10,255,255]) 
     # self.lowerHsvRed = np.array([112,0,0]) 
     # self.upperHsvRed = np.array([179,110,255]) 
-    self.lowerHsvRed = np.array([0,120,50]) 
-    self.upperHsvRed = np.array([7,255,255]) 
-
-    self.lowerHsvOrange = np.array([0,80,125]) 
-    self.upperHsvOrange = np.array([179,255,255]) 
+    self.lowerHsvRed = np.array([0,0,20]) 
+    self.upperHsvRed = np.array([8,255,255]) 
+    # self.lowerHsvRed = np.array([0,120,0]) 
+    # self.upperHsvRed = np.array([179,255,255]) 
 
     # self.lowerHsvGreen = np.array([50,40, 0]) 
     # self.upperHsvGreen = np.array([97, 255, 255]) 
@@ -320,8 +346,12 @@ class ToolsTracker:
     # self.upperHsvGreen = np.array([100, 255, 170]) 
     # self.lowerHsvGreen = np.array([80, 60, 80]) 
     # self.upperHsvGreen = np.array([105, 255, 140]) 
-    self.lowerHsvGreen = np.array([31, 70, 30]) 
-    self.upperHsvGreen = np.array([50, 255, 255]) 
+    # self.lowerHsvGreen = np.array([25, 117, 30]) 
+    # self.upperHsvGreen = np.array([44, 255, 255]) 
+    self.lowerHsvGreen = np.array([23, 120, 30]) 
+    self.upperHsvGreen = np.array([80, 255, 255]) 
+    # self.lowerHsvGreen = np.array([31, 0, 0]) 
+    # self.upperHsvGreen = np.array([70, 255, 255]) 
 
 
     # self.lowerHsvRed = np.array([0,0,40]) 
@@ -331,25 +361,45 @@ class ToolsTracker:
 
     # self.lowerHsvYellow = np.array([0,0,0])
     # self.upperHsvYellow = np.array([80,255,255])
-    self.lowerHsvYellow = np.array([17,107,40])
-    self.upperHsvYellow = np.array([30,255,255])
+    # self.lowerHsvYellow = np.array([17,130,170])
+    # self.upperHsvYellow = np.array([25,255,255])
+    # self.lowerHsvYellow = np.array([13,170,120])
+    # self.upperHsvYellow = np.array([25,255,255])
+    self.lowerHsvYellow = np.array([17,160,120])
+    self.upperHsvYellow = np.array([24,255,255])
+    # self.lowerHsvYellow = np.array([10,120,0])
+    # self.upperHsvYellow = np.array([179,255,255])
+
+    self.lowerHsvOrange = np.array([8,190,100])
+    self.upperHsvOrange = np.array([17,255,255])
+
+    self.lowerHsvPink = np.array([0,0,0])
+    self.upperHsvPink = np.array([8,217,255])
 
     self.kernel = np.ones((5 ,5), np.uint8)
 
-    self.markersPosition = np.array([(0, 0, 0),
-                                     (0, 0, 0),
-                                     (0, 0, 0)])
+    self.markerPosition = np.array([(0, 0, 0),
+                                    (0, 0, 0),
+                                    (0, 0, 0)])
 
-    # self.markersPositionWindow = 
-    self.markersPositionTransformed = np.array([(0.0, 0.0, 0),
-                                                (0.0, 0.0, 0),
-                                                (0.0, 0.0, 0)])
+    self.tipPosition = np.array([(0, 0, 0),
+                                 (0, 0, 0),
+                                 (0, 0, 0)])
+
+    self.dir = np.array([(0.0, 0.0),
+                         (0.0, 0.0),
+                         (0.0, 0.0)])
+
+    self.tipPositionTransformed = np.array([(0.0, 0.0, 0),
+                                            (0.0, 0.0, 0),
+                                            (0.0, 0.0, 0)])
 
     self.firstMarkerDetection = [False, False, False]
 
-
+    self.markerLength = [0.0, 0.0, 0.0]
 
     self.alpha = 0
+    self.scale = 2.0
 
     self.maskRed = []
     self.maskGreen = []
@@ -360,10 +410,12 @@ class ToolsTracker:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) 
 
     # Apply red filter
-    self.maskRed = self.colorFilter(hsv, imageSize, self.lowerHsvRed, self.upperHsvRed, 0)
+    self.maskRed, self.maskBlue = self.colorFilterTip(hsv, imageSize, self.lowerHsvRed, self.upperHsvRed, self.lowerHsvBlue, self.upperHsvBlue, 0)
+    # self.maskRed = self.colorFilter(hsv, imageSize, self.lowerHsvRed, self.upperHsvRed, 0)
 
     # Apply green filter
-    self.maskGreen = self.colorFilter(hsv, imageSize, self.lowerHsvGreen, self.upperHsvGreen, 1)
+    self.maskGreen, self.maskOrange = self.colorFilterTip(hsv, imageSize, self.lowerHsvGreen, self.upperHsvGreen, self.lowerHsvOrange, self.upperHsvOrange, 1)
+    # self.maskGreen = self.colorFilter(hsv, imageSize, self.lowerHsvGreen, self.upperHsvGreen, 1)
 
 
     # Apply yellow filter
@@ -373,8 +425,8 @@ class ToolsTracker:
     # Check for saturation
     self.checkForSaturation(image)
 
-    # print("Red: ", image[self.markersPosition[0][1],self.markersPosition[0][0]].mean(), hsv[self.markersPosition[0][1],self.markersPosition[0][0],2])
-    # print("Green: ", image[self.markersPosition[1][1],self.markersPosition[1][0]].mean(), hsv[self.markersPosition[0][1],self.markersPosition[0][0],2])
+    # print("Red: ", image[self.tipPosition[0][1],self.tipPosition[0][0]].mean(), hsv[self.tipPosition[0][1],self.tipPosition[0][0],2])
+    # print("Green: ", image[self.tipPosition[1][1],self.tipPosition[1][0]].mean(), hsv[self.tipPosition[0][1],self.tipPosition[0][0],2])
 
 
   def colorFilter(self, hsv, imageSize, lowerHsvColor, upperHsvColor, id):
@@ -399,38 +451,162 @@ class ToolsTracker:
       c = max(contours, key = cv2.contourArea)
       M = cv2.moments(c)
 
-      if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
-          cX = int(M["m10"] / M["m00"])
-          cY = int(M["m01"] / M["m00"])
+      # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
+      if(M["m00"]>500 and M["m00"]<100000):
+        # (x,y),(width,height),angle = cv2.fitEllipse(c)
+        # print(id, angle, width,height)
+        # # center,size,angle = cv2.minAreaRect(c)
+        # print(angle)
+        # print(id, x,y, angle, MA, ma)
+        # print(id, angle, size)
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        # print(cX,cY)
+        # cX = cX+np.sin(angle*np.pi/180)*height/2
+        # cY = cY-np.cos(angle*np.pi/180)*height/2
+        # cX = cX+np.cos(angle*np.pi/180)*height/2
+        # cY = cY+np.sin(angle*np.pi/180)*height/2
 
-          d = np.sqrt(pow(cX-self.markersPosition[id][0],2)+pow(cY-self.markersPosition[id][1],2))
-          if (d < 100 and self.markersPosition[id][2] == 1) or (self.markersPosition[id][2] == 0) or not self.firstMarkerDetection[id]:
-            self.markersPosition[id][0] = int(self.alpha*float(self.markersPosition[id][0])+(1-self.alpha)*float(cX))
-            self.markersPosition[id][1] = int(self.alpha*float(self.markersPosition[id][1])+(1-self.alpha)*float(cY))
-            self.markersPositionTransformed[id][0] = -2.0*(float(self.markersPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
-            self.markersPositionTransformed[id][1] = 2.0*float(float(self.markersPosition[id][0]-imageSize[0]/2.0)/imageSize[0])
-            self.markersPosition[id][2] = 1
-            self.markersPositionTransformed[id][2] = 1
 
-            if not self.firstMarkerDetection[id]:
-              self.firstMarkerDetection[id] = True 
+        d = np.sqrt(pow(cX-self.tipPosition[id][0],2)+pow(cY-self.tipPosition[id][1],2))
+        if (d < 200 and self.tipPosition[id][2] == 1) or (self.tipPosition[id][2] == 0) or not self.firstMarkerDetection[id]:
+          self.tipPosition[id][0] = int(self.alpha*float(self.tipPosition[id][0])+(1-self.alpha)*float(cX))
+          self.tipPosition[id][1] = int(self.alpha*float(self.tipPosition[id][1])+(1-self.alpha)*float(cY))
+          self.tipPositionTransformed[id][0] = -2.0*(float(self.tipPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
+          self.tipPositionTransformed[id][1] = 2.0*float(float(self.tipPosition[id][0]-imageSize[0]/2.0)/imageSize[0])
+          self.tipPosition[id][2] = 1
+          self.tipPositionTransformed[id][2] = 1
+
+          if not self.firstMarkerDetection[id]:
+            self.firstMarkerDetection[id] = True 
       else:
-        self.markersPosition[id][2] = 0
-        self.markersPositionTransformed[id][2] = 0
+        self.tipPosition[id][2] = 0
+        self.tipPositionTransformed[id][2] = 0
+
     else:
-      self.markersPosition[id][2] = 0
-      self.markersPositionTransformed[id][2] = 0
+      self.tipPosition[id][2] = 0
+      self.tipPositionTransformed[id][2] = 0
 
     return mask
 
 
+  def colorFilterTip(self, hsv, imageSize, lowerHsvColorTip, upperHsvColorTip, lowerHsvColorBase, upperHsvColorBase, id):
+
+    maskBase = cv2.inRange(hsv, lowerHsvColorBase, upperHsvColorBase) 
+
+    maskBase = cv2.morphologyEx(maskBase, cv2.MORPH_OPEN, self.kernel)
+
+    # maskTip = cv2.morphologyEx(maskTip, cv2.MORPH_CLOSE, self.kernel)
+
+    variance = cv2.Laplacian(maskBase, cv2.CV_64F).var()
+    # print("variance: ", variance)
+
+    # check OpenCV version
+    major = cv2.__version__.split('.')[0]
+    if major == '3':
+      ret, contours, hierarchy = cv2.findContours(maskBase, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+      contours, hierarchy = cv2.findContours(maskBase, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # _, contours, _ = cv2.findContours(maskTip,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+    xBase = np.array((0,0))
+    baseMarkerDetected = False
+    if len(contours)!=0:
+      c = max(contours, key = cv2.contourArea)
+      M = cv2.moments(c)
+
+      # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
+      if(M["m00"]>500 and M["m00"]<100000):
+        xBase[0] = int(M["m10"] / M["m00"])
+        xBase[1] = int(M["m01"] / M["m00"])
+        baseMarkerDetected = True
+
+    maskTip = cv2.inRange(hsv, lowerHsvColorTip, upperHsvColorTip) 
+
+    maskTip = cv2.morphologyEx(maskTip, cv2.MORPH_OPEN, self.kernel)
+
+    # maskTip = cv2.morphologyEx(maskTip, cv2.MORPH_CLOSE, self.kernel)
+
+    variance = cv2.Laplacian(maskTip, cv2.CV_64F).var()
+    # print("variance: ", variance)
+
+    # check OpenCV version
+    major = cv2.__version__.split('.')[0]
+    if major == '3':
+      ret, contours, hierarchy = cv2.findContours(maskTip, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+      contours, hierarchy = cv2.findContours(maskTip, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # _, contours, _ = cv2.findContours(maskTip,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+    if len(contours)!=0:
+      c = max(contours, key = cv2.contourArea)
+      M = cv2.moments(c)
+
+      # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
+      if(M["m00"]>500 and M["m00"]<100000):
+        # self.markerLength[id] = 0*self.markerLength[id]+1*size
+        self.markerLength[id] = np.sqrt(M["m00"]/(13*6))*13
+        # print(id, angle, width,height)
+        # center,(_,self.markerLength[id]),angle = cv2.minAreaRect(c)
+        # print(angle)
+        # print(id, x,y, angle, MA, ma)
+        # print(id, angle, size)
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+
+        # cX = cX+np.sin(angle*np.pi/180)*height/2
+        # cY = cY-np.cos(angle*np.pi/180)*height/2
+        # cX = cX+np.cos(angle*np.pi/180)*height/2
+        # cY = cY+np.sin(angle*np.pi/180)*height/2
+
+
+        # d = np.sqrt(pow(cX-self.tipPosition[id][0],2)+pow(cY-self.tipPosition[id][1],2))
+        # if (d < 300 and self.tipPosition[id][2] == 1) or (self.tipPosition[id][2] == 0) or not self.firstMarkerDetection[id]:
+        self.markerPosition[id][0] = int(self.alpha*float(self.markerPosition[id][0])+(1.0-self.alpha)*float(cX))
+        self.markerPosition[id][1] = int(self.alpha*float(self.markerPosition[id][1])+(1.0-self.alpha)*float(cY))
+        if baseMarkerDetected:
+          self.dir[id] = (self.markerPosition[id][0:2]-xBase)/np.linalg.norm(self.markerPosition[id][0:2]-xBase) 
+          self.dir[id] = self.dir[id]/np.linalg.norm(self.dir[id])
+          # print(self.dir[id].T, self.markerLength[id], np.sqrt(M["m00"]/(13*6))*13)
+          # print(self.markerLength[id])
+          # temp = (cX,cY)
+          # print(temp-xBase, np.linalg.norm(temp-xBase))
+          # print(baseMarkerDetected, self.dir[id])
+        self.tipPosition[id] = self.markerPosition[id]
+        self.tipPosition[id][0] = self.tipPosition[id][0]+int(self.dir[id][0]*self.scale*self.markerLength[id])
+        self.tipPosition[id][1] = self.tipPosition[id][1]+int(self.dir[id][1]*self.scale*self.markerLength[id])
+        self.tipPosition[id][0] = np.clip(self.tipPosition[id][0],0,imageSize[0]-1)
+        self.tipPosition[id][1] = np.clip(self.tipPosition[id][1],0,imageSize[1]-1)
+        self.tipPositionTransformed[id][0] = -2.0*(float(self.tipPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
+        self.tipPositionTransformed[id][1] = 2.0*float(float(self.tipPosition[id][0]-imageSize[0]/2.0)/imageSize[0])
+        self.tipPosition[id][2] = 1
+        self.tipPositionTransformed[id][2] = 1
+
+        if not self.firstMarkerDetection[id]:
+          self.firstMarkerDetection[id] = True 
+      else:
+        self.tipPosition[id][2] = 0
+        self.tipPositionTransformed[id][2] = 0
+
+    else:
+      self.tipPosition[id][2] = 0
+      self.tipPositionTransformed[id][2] = 0
+
+    return maskTip, maskBase
+
+
   def checkForSaturation(self, image):
-    for k in range(0,len(self.markersPosition)):
-      if self.markersPosition[k][2]:
-        if image[self.markersPosition[k][1],self.markersPosition[k][0]].mean() > 190:
-          print("Saturation: ", k, image[self.markersPosition[k][1],self.markersPosition[k][0]].mean())
-          self.markersPosition[k][2] = 0
-          self.markersPositionTransformed[k][2] = 0
+    for k in range(0,len(self.tipPosition)):
+      if self.tipPosition[k][2]:
+        temp = self.tipPosition[k][0:2]-self.dir[k]*self.scale*self.markerLength[k]
+        temp[0] = np.clip(temp[0],0,image.shape[1]-1)
+        temp[1] = np.clip(temp[1],0,image.shape[0]-1)
+
+        intensity = image[int(temp[1]),int(temp[0])].mean()
+        if intensity > 220:
+          print("Saturation: ", k, intensity)
+          self.tipPosition[k][2] = 0
+          self.tipPositionTransformed[k][2] = 0
 
 
 if __name__ == '__main__':

@@ -8,6 +8,8 @@ void SurgicalTask::initializeBeliefs(int r)
 
   _beliefsC.setConstant(0.0f);
 
+  int otherRobot = (r == LEFT) ? RIGHT : LEFT;
+
   if(_useSim || (!_useSim && _toolsTracking == OPTITRACK_BASED))
   {
   	error.resize(_nbTasks);
@@ -16,17 +18,17 @@ void SurgicalTask::initializeBeliefs(int r)
 
   	for(int k = 0; k < _nbTasks; k++)
   	{
-  		if(_useSim && !(_useRobot[RIGHT] && k == _nbTasks-1))
+  		if(_useSim && !(_useRobot[otherRobot] && k == _nbTasks-1))
   		{
 				xAk.row(k) = _pillarsPosition.row(k);
   		}
-  		else if(!_useSim && !(_useRobot[RIGHT] && k == _nbTasks-1))
+  		else if(!_useSim && !(_useRobot[otherRobot] && k == _nbTasks-1))
   		{
 				xAk.row(k) = _humanToolPosition[k].transpose();
   		}
   		else
   		{
-				xAk.row(k) = _x[RIGHT];
+				xAk.row(k) = _x[otherRobot];
   		}
 
 			error(k) = (Utils<float>::orthogonalProjector(_wRb[r].col(2))*(xAk.row(k).transpose()-_x[r])).norm();
@@ -62,7 +64,7 @@ void SurgicalTask::initializeBeliefs(int r)
 
 	    for(int k = 0; k < tempID.size(); k++)
 	    {
-	      error(k) = _colorMarkersPosition.row(tempID[k]).norm();
+	      error(k) = _colorMarkersFilteredPosition.row(tempID[k]).norm();
 	    }
       
       float minValue = error.array().minCoeff(&indexMin);
@@ -109,6 +111,8 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	  
   Eigen::MatrixXf::Index indexMax;
 
+  int otherRobot = (r == LEFT) ? RIGHT : LEFT;
+
   if(_useSim || (!_useSim && _toolsTracking == OPTITRACK_BASED))
   {
 	  Eigen::MatrixXf xAk;
@@ -117,17 +121,17 @@ void SurgicalTask::taskAdaptation(int r, int h)
   	// Set attractor for all tasks
 	 	for(int k = 0; k < _nbTasks; k++)
   	{
-  		if(_useSim && !(_useRobot[RIGHT] && k == _nbTasks-1))
+  		if(_useSim && !(_useRobot[otherRobot] && k == _nbTasks-1))
   		{
 				xAk.row(k) = _pillarsPosition.row(k);
   		}
-  		else if(!_useSim && !(_useRobot[RIGHT] && k == _nbTasks-1))
+  		else if(!_useSim && !(_useRobot[otherRobot] && k == _nbTasks-1))
   		{
 				xAk.row(k) = _humanToolPosition[k].transpose();
   		}
   		else
   		{
-				xAk.row(k) = _x[RIGHT];
+				xAk.row(k) = _x[otherRobot];
   		}
   	}
 
@@ -187,7 +191,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	  {
 	    float alpha = 0.05f; 
 
-	    errork.row(k) = (_wRb[r]*_colorMarkersPosition.row(k).transpose()).transpose();
+	    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
       
       if(_debug)

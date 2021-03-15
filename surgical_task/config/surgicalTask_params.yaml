@@ -4,6 +4,9 @@ SurgicalTask/debug: false
 # Use robot [LEFT, RIGHT]
 SurgicalTask/useRobot: [true, true]
 
+# Tool ID [LEFT, RIGHT]: (0: CAMERA, 1: RETRACTOR)
+SurgicalTask/tool: [0, 1]
+
 SurgicalTask/useFranka: true
 
 # Human input device [LEFT, RIGHT] (0: JOYSTICK / 1: FOOT)
@@ -11,6 +14,9 @@ SurgicalTask/humanInputDevice: [1, 1]
 
 # Human input mode (0: SINGLE_FOOT_SINGLE_ROBOT 1: DOMINANT_FOOT_TWO_ROBOTS)
 SurgicalTask/humanInputMode: 1
+
+# Human input id for both robots [LEFT, RIGHT] (0: LEFT, 1: RIGHT) 
+SurgicalTask/humanInputID: [0, 1]
 
 # Linear mapping [LEFT, RIGHT] (0: POSITION_VELOCITY / 1: POSITION_POSITION) 
 SurgicalTask/linearMapping: [0, 1]
@@ -144,6 +150,9 @@ SurgicalTask/trocarSpaceSelfRotationRange: 160
 # Tool tracking system used for track the position of the surgeon tools (0: CAMERA_BASED, 1: OPTITRACK_BASED)
 SurgicalTask/toolsTracking: 0
 
+# Filter gain for the color marker in camera based tracking ([0,1])
+SurgicalTask/markerFilterGain: 0.5
+
 # Threshold to activate task adaptation
 SurgicalTask/taskAdaptationActivationThreshold: 0.7
 
@@ -185,6 +194,9 @@ SurgicalTask/enableToolCollisionAvoidance: true
 
 # Safety collision distance between the tool and the obstacle
 SurgicalTask/toolSafetyCollisionDistance: 0.03
+
+# Safety tool tool collision sphere radius 
+SurgicalTask/toolSafetyCollisionRadius: 0.01
 
 # Enable workspace collision avoidance in QP RCM solver
 SurgicalTask/enableWorkspaceCollisionAvoidance: true

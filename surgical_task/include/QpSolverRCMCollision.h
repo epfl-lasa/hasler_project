@@ -94,8 +94,9 @@ class QpSolverRCMCollision
 
 		Result step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::Vector3f xTrocar, float toolOffset, Eigen::Vector3f vdTool, float phid,
 		            float dt, Eigen::Vector3f xRobotBasis = Eigen::Vector3f::Zero(), Eigen::Matrix3f wRRobotBasis = Eigen::Matrix3f::Identity(), 
-	                float depthGain = 1.0f, Eigen::Vector3f rEEObstacle = Eigen::Vector3f::Zero(), Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(),
-	                float toolCollisionOffset = 0.0f, bool useWorkspaceLimits = false, Eigen::Vector3f currentOffset = Eigen::Vector3f::Zero());
+	                float depthGain = 1.0f, Eigen::Vector3f rEEObstacle = Eigen::Vector3f::Zero(), float dEEObstacle = 0.0f, Eigen::Vector3f eeCollisionOffset = Eigen::Vector3f::Zero(),
+	                Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(), float dToolObstacle = 0.0f, Eigen::Vector3f toolCollisionOffset = Eigen::Vector3f::Zero(), 
+	                bool useWorkspaceLimits = false, Eigen::Vector3f currentOffset = Eigen::Vector3f::Zero());
 
 
 		void setParameters(float rcmGain, float toolGain, Eigen::VectorXf slackGains,

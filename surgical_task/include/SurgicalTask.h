@@ -23,7 +23,7 @@
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Joy.h"
 #include "visualization_msgs/Marker.h"
-#include "visualization_msgs/Marker.h"
+#include "visualization_msgs/MarkerArray.h"
 #include "custom_msgs/FootInputMsg.h"
 #include "custom_msgs/FootOutputMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
@@ -63,6 +63,8 @@ class SurgicalTask
   public: 
 
     enum Robot {LEFT = 0, RIGHT = 1};
+
+    enum Tool {CAMERA = 0, RETRACTOR = 1};
 
     enum ControlPhase {INSERTION = 0, OPERATION = 1};
 
@@ -120,6 +122,7 @@ class SurgicalTask
     ros::Publisher _pubSurgicalTaskState;
     ros::Publisher _pubRobotState[NB_ROBOTS];
     ros::Publisher _pubTwoFeetOneTool;
+    ros::Publisher _pubCollisionSpheres;
     
     // Messages declaration
     geometry_msgs::Pose _msgRealPose;
@@ -224,6 +227,7 @@ class SurgicalTask
     float _eeSafetyCollisionDistance;
     float _eeSafetyCollisionRadius;
     float _toolSafetyCollisionDistance;
+    float _toolSafetyCollisionRadius;
     bool _enableWorkspaceCollisionAvoidance;
     int _switchingAxis;
     std::vector<float> _switchingThreshold;
@@ -236,6 +240,9 @@ class SurgicalTask
     float _taskAdaptationActivationThreshold;
     float _taskAdaptationDeactivationThreshold;
     Eigen::Matrix3f _eeCameraMapping;
+    std::vector<int> _tool;
+    std::vector<int> _humanInputID;
+    float _markerFilterGain;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -253,6 +260,7 @@ class SurgicalTask
     float _humanToolLength[2];
     Eigen::Vector3f _humanToolPosition[2];
     Eigen::MatrixXf _colorMarkersPosition;
+    Eigen::MatrixXf _colorMarkersFilteredPosition;
     Eigen::VectorXi _colorMarkersStatus;
     int _humanToolStatus[2];
     Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];
@@ -377,7 +385,11 @@ class SurgicalTask
     bool _allFramesOK = false;
     Eigen::Vector3f _rEECollision[NB_ROBOTS];
     Eigen::Vector3f _rToolCollision[NB_ROBOTS];
-    float _toolCollisionOffset[NB_ROBOTS];
+    Eigen::Vector3f _nToolCollision[NB_ROBOTS];
+    float _dToolCollision[NB_ROBOTS];
+    Eigen::Vector3f _nEECollision[NB_ROBOTS];
+    float _dEECollision[NB_ROBOTS];
+    Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
 
   public:
 

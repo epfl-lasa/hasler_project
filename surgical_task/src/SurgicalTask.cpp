@@ -178,7 +178,7 @@ void SurgicalTask::step()
     {
       if(_useRobot[r])
       {
-        robotControlStep(r, r);
+        robotControlStep(r, _humanInputID[r]);
       }
     }
   }
