@@ -566,7 +566,13 @@ void surgicalTool::run() {
             {
                 case PLATFORM_INPUT:
                 {
+
                       calculateDesiredFrame();
+
+            //       //computeWithPlatformTask4DoF();
+            //       //computeWithPlatformJoints4DoF();
+                
+                    
                       performInverseKinematics();                  
                 break; 
                 }
@@ -788,6 +794,7 @@ void surgicalTool::publishToolTipPose(){
 
 
 void surgicalTool::performInverseKinematics(){
+  
   _toolJointsInit.data = _toolJoints.data;
   int ret = _myPosIkSolver_wrist->CartToJnt(me->_toolJointsInit,_desiredToolEEFrame,me->_toolJoints);
 
