@@ -261,6 +261,7 @@ class SurgicalTask
     Eigen::Vector3f _humanToolPosition[2];
     Eigen::MatrixXf _colorMarkersPosition;
     Eigen::MatrixXf _colorMarkersFilteredPosition;
+    Eigen::MatrixXf _colorMarkersFilteredPosition2;
     Eigen::VectorXi _colorMarkersStatus;
     int _humanToolStatus[2];
     Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];
