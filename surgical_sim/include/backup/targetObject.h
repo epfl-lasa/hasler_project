@@ -222,8 +222,8 @@ private:
   ros::Subscriber _subPlatformJointStates[NB_TOOLS];
   ros::Subscriber _subForceFootRestWorld[NB_TOOLS];
 
-  vibrator* _myVibrator[NB_TOOLS];
-  smoothSignals* _mySmoothSignals[NB_TOOLS];
+  vibrator<double>* _myVibrator[NB_TOOLS];
+  smoothSignals<double>* _mySmoothSignals[NB_TOOLS];
   
   //KDL 
 

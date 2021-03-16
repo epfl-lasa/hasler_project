@@ -239,8 +239,8 @@ private:
   ros::Subscriber _subPlatformROSInput;
   ros::Subscriber _subUnbiasedJointTorques;
 
-  vibrator* _myVibrator;
-  smoothSignals* _mySmoothSignals;
+  vibrator<double>* _myVibrator;
+  smoothSignals<double>* _mySmoothSignals;
   
   //KDL 
 

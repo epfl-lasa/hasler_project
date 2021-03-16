@@ -1,9 +1,12 @@
 #include "smoothSignals.h"
 
 
-smoothSignals *smoothSignals::me = NULL;
 
-smoothSignals::smoothSignals(smoothSignals_Type type, double* output, double duration) 
+template<typename T>
+smoothSignals<T> *smoothSignals<T>::me = NULL;
+
+template<typename T>
+smoothSignals<T>::smoothSignals(smoothSignals_Type type, T* output, T duration) 
 : _myType(type),_signalOutput(output), _myDuration(duration){
 
      me = this;
@@ -13,13 +16,13 @@ smoothSignals::smoothSignals(smoothSignals_Type type, double* output, double dur
      _durationBias=0.0;
      _myElapsedTime = ros::Duration(0.0);
 }
-
-smoothSignals::~smoothSignals()
+template<typename T>
+smoothSignals<T>::~smoothSignals()
 {
   delete(_signalOutput);
 }
- 
-void smoothSignals::update(ros::Time myCurrentTime)
+template<typename T> 
+void smoothSignals<T>::update(ros::Time myCurrentTime)
 {
     
     switch (_myStatus)
@@ -32,7 +35,7 @@ void smoothSignals::update(ros::Time myCurrentTime)
                     {
                     case SMOOTH_FALL:
                     {
-                        *_signalOutput = Utils_math<double>::smoothFall(_myElapsedTime.toSec(),0,_myDuration);
+                        *_signalOutput = Utils_math<T>::smoothFall(_myElapsedTime.toSec(),0,_myDuration);
                         if (_myElapsedTime.toSec()>=_myDuration)
                         {
                             _myStatus = FINISHED;
@@ -43,7 +46,7 @@ void smoothSignals::update(ros::Time myCurrentTime)
                     
                     case SMOOTH_RISE:
                     {
-                        *_signalOutput = Utils_math<double>::smoothRise(_myElapsedTime.toSec(),0,_myDuration);
+                        *_signalOutput = Utils_math<T>::smoothRise(_myElapsedTime.toSec(),0,_myDuration);
                         if (_myElapsedTime.toSec()>=_myDuration)
                         {
                             _myStatus = FINISHED;
@@ -54,7 +57,7 @@ void smoothSignals::update(ros::Time myCurrentTime)
 
                       case SMOOTH_RISE_FALL:
                     {
-                        *_signalOutput = Utils_math<double>::smoothRiseFall(_myElapsedTime.toSec(),0,_myDuration/2.0, _myDuration/2.0,_myDuration);
+                        *_signalOutput = Utils_math<T>::smoothRiseFall(_myElapsedTime.toSec(),0,_myDuration/2.0, _myDuration/2.0,_myDuration);
                         if (_myElapsedTime.toSec()>=_myDuration)
                         {
                             _myStatus = FINISHED;
@@ -67,12 +70,12 @@ void smoothSignals::update(ros::Time myCurrentTime)
                     {
                         if (*_signalOutput<=0.0001)
                         {
-                            *_signalOutput = Utils_math<double>::smoothRise(_myElapsedTime.toSec(),0,500.0*_myDuration);
+                            *_signalOutput = Utils_math<T>::smoothRise(_myElapsedTime.toSec(),0,500.0*_myDuration);
                             _durationBias = _myElapsedTime.toSec();
                         }
                         else
                         {
-                            *_signalOutput = 0.001 + Utils_math<double>::smoothRise(_myElapsedTime.toSec(),_durationBias,_durationBias+_myDuration);
+                            *_signalOutput = 0.001 + Utils_math<T>::smoothRise(_myElapsedTime.toSec(),_durationBias,_durationBias+_myDuration);
                             if (_myElapsedTime.toSec()>=_myDuration + _durationBias)
                             {
                               _myStatus = FINISHED;
@@ -88,7 +91,7 @@ void smoothSignals::update(ros::Time myCurrentTime)
                     }
        
                 
-                    *_signalOutput = Utils_math<double>::bound(*_signalOutput,0.0,1.0);
+                    *_signalOutput = Utils_math<T>::bound(*_signalOutput,0.0,1.0);
 
                     break;
                 }
@@ -107,14 +110,14 @@ void smoothSignals::update(ros::Time myCurrentTime)
                 }
         }  
 }
-
-bool smoothSignals::run(ros::Time myCurrentTime)
+template<typename T>
+bool smoothSignals<T>::run(ros::Time myCurrentTime)
 {
     update(myCurrentTime);
     return _flagTrigger;
 }
-
-void smoothSignals::start()
+template<typename T>
+void smoothSignals<T>::start()
 {
     if(!_flagTrigger)
     {
@@ -122,8 +125,8 @@ void smoothSignals::start()
         _flagReset = false;
     }
 }
-
-void smoothSignals::reset(){
+template<typename T>
+void smoothSignals<T>::reset(){
 
     if(!_flagReset)
     {
@@ -132,14 +135,14 @@ void smoothSignals::reset(){
        _flagReset=true;
     }
 }
-
-bool smoothSignals::finished()
+template<typename T>
+bool smoothSignals<T>::finished()
 {
     return _myStatus==FINISHED;
 }
 
-
-void smoothSignals::changeParams(smoothSignals_Type type, double duration)
+template<typename T>
+void smoothSignals<T>::changeParams(smoothSignals_Type type, T duration)
 {
     _myDuration=duration;
     _myType=type;
@@ -162,5 +165,8 @@ void smoothSignals::changeParams(smoothSignals_Type type, double duration)
         break;
     }
 
-    
+   
 }
+
+template class smoothSignals<float>;
+template class smoothSignals<double>;

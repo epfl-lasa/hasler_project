@@ -19,10 +19,18 @@
 using namespace std;
 using namespace Eigen;
 
+
+template<typename T = double>
 class vibrator {
 
 private:
-  
+
+
+
+  const T defaultVibMagnitude = -240.0; //![N / m/s]
+  const T defaultVibDecayRate = 60; //! [1/s]
+  const T defaultVibFrequency = 32.6; //! [Hz]
+ 
   static vibrator *me;
 
   LP_Filterd* _vibFilter;
@@ -31,12 +39,12 @@ private:
 
   enum vibrator_Types {DECAYING_SINE, SINE, CHIRP, SQUARE, SAWTOOTH};
 
-  double _vibMagnitude, _vibDecayRate, _vibFrequency;
+  T _vibMagnitude, _vibDecayRate, _vibFrequency;
 
   
-  double* _vibInput;
-  double _vibInputInit; //!e.g. initial attack speed
-  double* _vibOutput;
+  T* _vibInput;
+  T _vibInputInit; //!e.g. initial attack speed
+  T* _vibOutput;
 
   vibrator_Status _myStatus;
 
@@ -49,13 +57,13 @@ private:
   
   // METHODS
 public:
-  vibrator(double* input, double* output,double magnitude, double decayRate, double frequency, double filterGain);
-  vibrator(double* input, double* output, double magnitude);
+  vibrator(T* input, T* output,T magnitude, T decayRate, T frequency, T filterGain);
+  vibrator(T* input, T* output, T magnitude);
   bool run(ros::Time myCurrentTime);
   bool finished();
 
   void start();
-  void changeParams(double magnitude, double decayRate, double frequency);
+  void changeParams(T magnitude, T decayRate, T frequency);
   void reset();
   ~vibrator();
 

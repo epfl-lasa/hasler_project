@@ -61,9 +61,10 @@ class footVarSynchronizer
     
     // Subscribers declarations
     ros::Subscriber _subFootOutput;            // FootOutputMsg
-    ros::Subscriber _subForceSensor;            // geometry_msgs/WrenchStamped.h
-    ros::Subscriber _subForceModified;            // geometry_msgs/WrenchStamped.h
-    ros::Subscriber _subLegGravCompTorques;           //custom_msgs/FootInputMsg
+    ros::Subscriber _subForceSensor;           // geometry_msgs/WrenchStamped.h
+    ros::Subscriber _subForceModified;         // geometry_msgs/WrenchStamped.h
+    ros::Subscriber _subTorquesModified;       //custom_msgs/FootInputMsg
+    ros::Subscriber _subLegGravCompTorques;    //custom_msgs/FootInputMsg
     
     ros::Subscriber _subLegGravCompWrench;    // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subPlatformControlFromTool; // mixed platform
@@ -124,6 +125,7 @@ class footVarSynchronizer
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_position;
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_speed;
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_effort;
+            Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_effortM;
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_filterAxisFS;
 
             Eigen::Matrix<float, NB_PLATFORM_AXIS, 1> _leg_grav_comp_effort;
@@ -252,6 +254,7 @@ class footVarSynchronizer
     // void readForceSensor(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     // void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void readTorquesModified(const custom_msgs::FootOutputMsg::ConstPtr &msg);
     void readLegGravCompFI(const custom_msgs::FootInputMsg::ConstPtr &msg);
     void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg);

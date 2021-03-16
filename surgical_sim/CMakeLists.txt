@@ -68,7 +68,7 @@ target_link_libraries(pandaControllerSim ${catkin_LIBRARIES})
 add_executable(targetObject src/protocol/targetObject.cpp src/protocol/targetObject_node.cpp)
 target_link_libraries(targetObject ${catkin_LIBRARIES})
 
-add_executable(sharedGrasp src/protocol/sharedControlGrasp.cpp src/protocol/sharedControlGrasp_node.cpp src/protocol/vibrator.cpp src/protocol/smoothSignals.cpp)
+add_executable(sharedGrasp src/protocol/sharedControlGrasp.cpp src/protocol/sharedControlGrasp_node.cpp)
 target_link_libraries(sharedGrasp ${catkin_LIBRARIES})
 
 install(PROGRAMS scripts/init_franka_right.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

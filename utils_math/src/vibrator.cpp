@@ -1,12 +1,10 @@
 #include "vibrator.h"
-const double defaultVibMagnitude = -240.0; //![N / m/s]
-const double defaultVibDecayRate = 60; //! [1/s]
-const double defaultVibFrequency = 32.6; //! [Hz]
 
+template<typename T>
+vibrator<T> *vibrator<T>::me = NULL;
 
-vibrator *vibrator::me = NULL;
-
-vibrator::vibrator(double* input, double* output,double magnitude, double decayRate, double frequency, double filterGain) 
+template<typename T>
+vibrator<T>::vibrator(T* input, T* output,T magnitude, T decayRate, T frequency, T filterGain) 
 : _vibInput(input), _vibOutput(output){
     _vibMagnitude = magnitude; 
     _vibDecayRate = decayRate;
@@ -22,19 +20,22 @@ vibrator::vibrator(double* input, double* output,double magnitude, double decayR
      _myDuration = ros::Duration(0.0);
 }
 
-vibrator::vibrator(double* input, double* output, double magnitude) : vibrator::vibrator(input, output,magnitude, defaultVibDecayRate, defaultVibFrequency, 0.5) 
+template<typename T>
+vibrator<T>::vibrator(T* input, T* output, T magnitude) : vibrator<T>::vibrator(input, output,magnitude, defaultVibDecayRate, defaultVibFrequency, 0.5) 
 {
 
 }
 
-vibrator::~vibrator()
+template<typename T>
+vibrator<T>::~vibrator()
 {
   delete(_vibFilter);
   delete(_vibInput);
   delete(_vibOutput);
 }
- 
-void vibrator::update(ros::Time myCurrentTime)
+
+template<typename T> 
+void vibrator<T>::update(ros::Time myCurrentTime)
 {
     switch (_myStatus)
         {
@@ -42,7 +43,7 @@ void vibrator::update(ros::Time myCurrentTime)
                 {
                     _myDuration = (myCurrentTime - _myStartTime);
                     //cout<<_myDuration<<endl;
-                    double vibration = 1.0f * _vibMagnitude * exp(-_vibDecayRate * (_myDuration.toSec())) *
+                    T vibration = 1.0f * _vibMagnitude * exp(-_vibDecayRate * (_myDuration.toSec())) *
                                             sin(2 * M_PI * _vibFrequency * _myDuration.toSec());
 
                     *_vibOutput = _vibFilter->update(vibration);
@@ -74,13 +75,15 @@ void vibrator::update(ros::Time myCurrentTime)
         }  
 }
 
-bool vibrator::run(ros::Time myCurrentTime)
+template<typename T>
+bool vibrator<T>::run(ros::Time myCurrentTime)
 {
     update(myCurrentTime);
     return _flagTrigger;
 }
 
-void vibrator::start()
+template<typename T>
+void vibrator<T>::start()
 {
     if(!_flagTrigger)
     {
@@ -89,7 +92,8 @@ void vibrator::start()
     }
 }
 
-void vibrator::reset(){
+template<typename T>
+void vibrator<T>::reset(){
 
     if(!_flagReset)
     {
@@ -99,15 +103,20 @@ void vibrator::reset(){
     }
 }
 
-bool vibrator::finished()
+template<typename T>
+bool vibrator<T>::finished()
 {
     return _myStatus==FINISHED;
 }
 
 
-void vibrator::changeParams(double magnitude, double decayRate, double frequency)
+template<typename T>
+void vibrator<T>::changeParams(T magnitude, T decayRate, T frequency)
 {
     _vibMagnitude = magnitude;
     _vibDecayRate = decayRate;
     _vibFrequency = frequency;
 }
+
+template class vibrator<float>;
+template class vibrator<double>;

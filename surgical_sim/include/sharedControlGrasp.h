@@ -175,9 +175,9 @@ private:
   ros::Subscriber _subSurgicalTaskStates;
   ros::Subscriber _subGripperOutput;
 
-  vibrator* _myVibrator;
-  smoothSignals* _mySmoothSignalsPos;
-  smoothSignals* _mySmoothSignalsGrasp;
+  vibrator<double>* _myVibrator;
+  smoothSignals<double>* _mySmoothSignalsPos;
+  smoothSignals<double>* _mySmoothSignalsGrasp;
   ros::Time _startTimeForKeepingGrasp;
   ros::Time _startTimeForReleasingGrasp;
   ros::Time _startTimeForChangingGainsToZero;

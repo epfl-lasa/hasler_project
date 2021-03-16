@@ -5,18 +5,18 @@
   <!-- The robot name is required for gazebo to spawn a model. -->
   <arg name="rightRobotName" default="right_panda"/>
   <arg name="leftRobotName" default="left_panda"/>
-  <arg name="rightRobotOrigin.x" default="0"/>
-  <arg name="rightRobotOrigin.y" default="-0.5"/>
-  <arg name="rightRobotOrigin.z" default="0"/>
-  <arg name="rightRobotOrigin.ax" default="0"/>
-  <arg name="rightRobotOrigin.ay" default="0"/>
-  <arg name="rightRobotOrigin.az" default="3.14159265359"/>
-  <arg name="leftRobotOrigin.x" default="0"/>
-  <arg name="leftRobotOrigin.y" default="0.5"/>
-  <arg name="leftRobotOrigin.z" default="0"/>
-  <arg name="leftRobotOrigin.ax" default="0"/>
-  <arg name="leftRobotOrigin.ay" default="0"/>
-  <arg name="leftRobotOrigin.az" default="3.14159265359"/>
+  <arg name="rightRobotOrigin_x" default="0"/>
+  <arg name="rightRobotOrigin_y" default="-0.5"/>
+  <arg name="rightRobotOrigin_z" default="0"/>
+  <arg name="rightRobotOrigin_ax" default="0"/>
+  <arg name="rightRobotOrigin_ay" default="0"/>
+  <arg name="rightRobotOrigin_az" default="3.14159265359"/>
+  <arg name="leftRobotOrigin_x" default="0"/>
+  <arg name="leftRobotOrigin_y" default="0.5"/>
+  <arg name="leftRobotOrigin_z" default="0"/>
+  <arg name="leftRobotOrigin_ax" default="0"/>
+  <arg name="leftRobotOrigin_ay" default="0"/>
+  <arg name="leftRobotOrigin_az" default="3.14159265359"/>
 
   <arg name="surgicalFrame.x" default="-0.4"/>
   <arg name="surgicalFrame.y" default="0"/>
@@ -76,7 +76,7 @@
 
 
   <group ns="left_panda">
-    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) robotName:=$(arg leftRobotName) origin_x:=$(arg leftRobotOrigin.x) origin_y:=$(arg leftRobotOrigin.y) origin_z:=$(arg leftRobotOrigin.z) origin_ax:=$(arg leftRobotOrigin.ax) origin_ay:=$(arg leftRobotOrigin.ay) origin_az:=$(arg leftRobotOrigin.az)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) robotName:=$(arg leftRobotName) origin_x:=$(arg leftRobotOrigin_x) origin_y:=$(arg leftRobotOrigin_y) origin_z:=$(arg leftRobotOrigin_z) origin_ax:=$(arg leftRobotOrigin_ax) origin_ay:=$(arg leftRobotOrigin_ay) origin_az:=$(arg leftRobotOrigin_az)"/>
 
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg leftRobotName)/robot_description -urdf -model $(arg leftRobotName) -J $(arg leftRobotName)_joint4 -1.57 -J $(arg leftRobotName)_joint6 1.57 -unpause"/>
 
@@ -88,7 +88,7 @@
 
 
   <group ns="right_panda">
-    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) robotName:=$(arg rightRobotName) origin_x:=$(arg rightRobotOrigin.x) origin_y:=$(arg rightRobotOrigin.y) origin_z:=$(arg rightRobotOrigin.z) origin_ax:=$(arg rightRobotOrigin.ax) origin_ay:=$(arg rightRobotOrigin.ay) origin_az:=$(arg rightRobotOrigin.az)"/>
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg pandaUrdfFile) robotName:=$(arg rightRobotName) origin_x:=$(arg rightRobotOrigin_x) origin_y:=$(arg rightRobotOrigin_y) origin_z:=$(arg rightRobotOrigin_z) origin_ax:=$(arg rightRobotOrigin_ax) origin_ay:=$(arg rightRobotOrigin_ay) origin_az:=$(arg rightRobotOrigin_az)"/>
 
     <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param /$(arg rightRobotName)/robot_description -urdf -model $(arg rightRobotName) -J $(arg rightRobotName)_joint4 -1.57 -J $(arg rightRobotName)_joint6 1.57 -unpause"/>
 

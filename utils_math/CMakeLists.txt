@@ -24,8 +24,8 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-FILE(GLOB SRCS src/Utils_math.cpp src/LP_Filterd.cpp src/MatLP_Filterd.cpp src/PIDd.cpp)
-FILE(GLOB INCS include/Utils_math.h include/LP_Filterd.h  include/ MatLP_Filterd.h include/PIDd.h)
+FILE(GLOB SRCS src/Utils_math.cpp src/LP_Filterd.cpp src/MatLP_Filterd.cpp src/PIDd.cpp src/smoothSignals.cpp src/vibrator.cpp)
+FILE(GLOB INCS include/Utils_math.h include/LP_Filterd.h  include/ MatLP_Filterd.h include/PIDd.h include/smoothSignals.h include/vibrator.h)
 
 add_library(utils_math ${SRCS} ${INCS})
 target_link_libraries(utils_math ${catkin_LIBRARIES})

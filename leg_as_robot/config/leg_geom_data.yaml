@@ -13,9 +13,10 @@ shin_length:  0.380
 ankle_to_foot_base_z: 0.100
 ankle_to_foot_base_x: 0.020
 foot_base_to_foot_tip: 0.15621
-body_weight: 80
+body_weight: 87
 hip_width: 0.24
-hip_height: 1.035 
+hip_height: 0.98
+#hip_height: 1.035 
 
 #These you can measure in the subject and update
 #walid amanhoud #s5 

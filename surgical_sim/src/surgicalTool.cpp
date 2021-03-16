@@ -177,8 +177,11 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
   _weightedTaskSpaceMassMatrix.setIdentity();
   _myJacobian.resize(NB_TOOL_AXIS_RED);
 
+
+  _desiredToolEEFrame.Identity();
   _desiredToolEEFrame.M.Identity();
   _desiredToolEEFrame.p.Zero();
+
   _desiredToolEEFrameOffset.setZero();
   
 
@@ -473,8 +476,8 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
 
 
   /****************************** Inverse Kinematics of the tool ***********************************/
-      _myVelIKSolver_wrist = new KDL::ChainIkSolverVel_wdls(_myToolBaseToWristChain,0.001,200);
-      _myPosIkSolver_wrist= new KDL::ChainIkSolverPos_NR_JL(_myToolBaseToWristChain,me->_toolJointLims[L_MIN], me->_toolJointLims[L_MAX], *_myFKSolver_wrist,*_myVelIKSolver_wrist,200,0.001);
+      _myVelIKSolver_wrist = new KDL::ChainIkSolverVel_wdls(_myToolBaseToWristChain);
+      _myPosIkSolver_wrist= new KDL::ChainIkSolverPos_NR_JL(_myToolBaseToWristChain,_toolJointLims[L_MIN], _toolJointLims[L_MAX], *_myFKSolver_wrist,*_myVelIKSolver_wrist);
       
       
       _weightedTaskSpaceMassMatrix.block(3,3,3,3).diagonal()<< FLT_EPSILON, FLT_EPSILON, FLT_EPSILON;
@@ -618,7 +621,7 @@ void surgicalTool::publishToolJointStates() {
     _msgJointStates.name[k] = std::string(Tool_Names[_tool_id]) + "_" + Tool_Axis_Names[k];
     _msgJointStates.velocity[k] = _toolJointsAllSpeed(k);
     _msgJointStates.effort[k] = 0.0;
-    _msgJointStates.position[k] = me->_toolJointsAll(k);
+    _msgJointStates.position[k] = _toolJointsAll(k);
   }
   _pubToolJointStates.publish(_msgJointStates);
   // _mutex.unlock();
@@ -631,7 +634,7 @@ void surgicalTool::publishToolJointCommands() {
   {
    for (size_t i = 0; i < _nDOF; i++)
     { 
-        _msgJointCommands.data[i] =  Utils_math<double>::bound(me->_toolJointsAll(i), me->_toolJointLimsAll[L_MIN].data(i),me->_toolJointLimsAll[L_MAX].data(i));
+        _msgJointCommands.data[i] =  Utils_math<double>::bound(_toolJointsAll(i), _toolJointLimsAll[L_MIN].data(i),_toolJointLimsAll[L_MAX].data(i));
     }
 
   _pubToolJointCommands.publish(_msgJointCommands);
@@ -796,7 +799,7 @@ void surgicalTool::publishToolTipPose(){
 void surgicalTool::performInverseKinematics(){
   
   _toolJointsInit.data = _toolJoints.data;
-  int ret = _myPosIkSolver_wrist->CartToJnt(me->_toolJointsInit,_desiredToolEEFrame,me->_toolJoints);
+  int ret = _myPosIkSolver_wrist->CartToJnt(_toolJointsInit,_desiredToolEEFrame,_toolJoints);
 
   if (ret<0)
   {
@@ -878,7 +881,7 @@ void surgicalTool::performChainForwardKinematics()
   _toolJointsFull.data=_toolJointsAll;
   //cout<<_toolJointsFull.data.transpose()<<endl;
   for (unsigned int j = 0; j < _mySegmentsTip.size(); j++) {
-      _myFKSolver_tip->JntToCart(me->_toolJointsFull, frameTip_, j + 1);
+      _myFKSolver_tip->JntToCart(_toolJointsFull, frameTip_, j + 1);
       // cout<<frameTip_.p.data[0]<<" "<<frameTip_.p.data[1]<<" "<<frameTip_.p.data[2]<<endl;
       _myFrames_tip[j] = frameTip_;
   }  

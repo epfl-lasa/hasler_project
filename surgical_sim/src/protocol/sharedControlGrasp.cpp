@@ -191,9 +191,9 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
   }
 
     // _myVibrator = new vibrator(&_toolJointSpeed(tool_wrist_open_angle), &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
-  _myVibrator = new vibrator(&_vibInput, &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
-  _mySmoothSignalsPos = new smoothSignals(smoothSignals::SMOOTH_RISE, &_hapticAxisFilterPos,3.0); 
-  _mySmoothSignalsGrasp = new smoothSignals(smoothSignals::SMOOTH_RISE, &_hapticAxisFilterGrasp,3.0); 
+  _myVibrator = new vibrator<double>(&_vibInput, &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
+  _mySmoothSignalsPos = new smoothSignals<double>(smoothSignals<double>::SMOOTH_RISE, &_hapticAxisFilterPos,3.0); 
+  _mySmoothSignalsGrasp = new smoothSignals<double>(smoothSignals<double>::SMOOTH_RISE, &_hapticAxisFilterGrasp,3.0); 
   _flagGraspingStarted=false;
   _flagHoldingGraspStarted=false;
   _flagPositioningStarted=false;
@@ -630,23 +630,23 @@ void sharedControlGrasp::publishSharedGrasp()
           {
             // _msgSharedGrasp.sGrasp_hFilters.fill(1.0);
             // _msgSharedGrasp.sGrasp_hFilters[p_roll]=1.0;
-            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_RISE,0.1);
-            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+            _mySmoothSignalsPos->changeParams(smoothSignals<double>::SMOOTH_RISE,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals<double>::SMOOTH_RISE,0.1);
           break;
           }
           case A_GRASPING:
           {
             // _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
             // _msgSharedGrasp.sGrasp_hFilters[p_roll]=1.0;              
-            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
-            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+            _mySmoothSignalsPos->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals<double>::SMOOTH_RISE,0.1);
           break;
           }
         case A_HOLDING_GRASP:
           {
             // _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
-            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
-            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+            _mySmoothSignalsPos->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
               break;
           }
           
@@ -655,8 +655,8 @@ void sharedControlGrasp::publishSharedGrasp()
           {
             // _msgSharedGrasp.sGrasp_hFilters.fill(1.0);
             // _msgSharedGrasp.sGrasp_hFilters[p_roll]=0.0; 
-            _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_RISE,0.1);
-            _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+            _mySmoothSignalsPos->changeParams(smoothSignals<double>::SMOOTH_RISE,0.1);
+            _mySmoothSignalsGrasp->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
           break;
           }
         case A_FETCHING_OLD_GRASP:
@@ -664,8 +664,8 @@ void sharedControlGrasp::publishSharedGrasp()
           //  _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
           //  _msgSharedGrasp.sGrasp_hFilters[p_roll]=0.0; 
 
-          _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
-          _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_FALL,0.1);
+          _mySmoothSignalsPos->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
+          _mySmoothSignalsGrasp->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
 
           break;
 
@@ -675,8 +675,8 @@ void sharedControlGrasp::publishSharedGrasp()
         {
           //  _msgSharedGrasp.sGrasp_hFilters.fill(0.0);
           //  _msgSharedGrasp.sGrasp_hFilters[p_roll]=1.0; 
-          _mySmoothSignalsPos->changeParams(smoothSignals::SMOOTH_FALL,0.1);
-          _mySmoothSignalsGrasp->changeParams(smoothSignals::SMOOTH_RISE,0.1);
+          _mySmoothSignalsPos->changeParams(smoothSignals<double>::SMOOTH_FALL,0.1);
+          _mySmoothSignalsGrasp->changeParams(smoothSignals<double>::SMOOTH_RISE,0.1);
           break;
         }
         }

@@ -371,9 +371,7 @@ T Utils_math<T>::bound(T x, T a, T b)
 {
   if (std::isnan(x))
   {
-
-    return 0.0f;
-
+    return (T) ((a+b)/2.0);
   } else
   {
     if(x > b)
@@ -475,5 +473,6 @@ Eigen::Matrix<T,4,4> Utils_math<T>::getForwardKinematics(Eigen::Matrix<T,7,1> jo
 }
 
 
+template class Utils_math<int>;
 template class Utils_math<float>;
 template class Utils_math<double>;
