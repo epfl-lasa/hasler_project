@@ -161,12 +161,12 @@ void SurgicalTask::singleFootSingleRobot()
 
   Eigen::Matrix<float,5,5> R;
 
-  for(int h = 0; h < NB_ROBOTS; h++)
+  for(int r = 0; r < NB_ROBOTS; r++)
   {
-    if(_useRobot[h])
+    if(_useRobot[r])
     {
-      _oldTrocarInput[h] = _trocarInput[h];
-    	computeTrocarInput(h, h);
+      _oldTrocarInput[_humanInputID[r]] = _trocarInput[_humanInputID[r]];
+    	computeTrocarInput(r, _humanInputID[r]);
     }
   }
 }

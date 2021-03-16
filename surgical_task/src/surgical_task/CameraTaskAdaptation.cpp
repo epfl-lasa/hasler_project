@@ -64,7 +64,7 @@ void SurgicalTask::initializeBeliefs(int r)
 
 	    for(int k = 0; k < tempID.size(); k++)
 	    {
-	      error(k) = _colorMarkersFilteredPosition.row(tempID[k]).norm();
+	      error(k) = _colorMarkersFilteredPosition2.row(tempID[k]).norm();
 	    }
       
       float minValue = error.array().minCoeff(&indexMin);
@@ -191,12 +191,12 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	  {
 	    float alpha = 0.05f; 
 
-	    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
+	    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition2.row(k).transpose()).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
       
       if(_debug)
       {
-        std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << std::endl;
+        std::cerr << "[SurgicalTask]: " << r << " Target " << k << " alpha: " << alpha << " error: " << errork.row(k).transpose() << std::endl;
       }
 
 	    // Compute desired task adapted velocity
@@ -241,7 +241,8 @@ void SurgicalTask::taskAdaptation(int r, int h)
   // std::cerr << r << ": a: " << _dbeliefsC.transpose() << std::endl;
   float dbmax = _dbeliefsC.array().maxCoeff(&indexMax);
 
-  if(std::fabs(1.0f-_beliefsC(indexMax))< FLT_EPSILON && std::fabs(_beliefsC.sum()-1)<FLT_EPSILON)
+  if((std::fabs(1.0f-_beliefsC(indexMax))< FLT_EPSILON && std::fabs(_beliefsC.sum()-1)<FLT_EPSILON) 
+     || _colorMarkersStatus[indexMax] == 0)
   {
     _dbeliefsC.setConstant(0.0f);
   }
@@ -304,6 +305,11 @@ void SurgicalTask::taskAdaptation(int r, int h)
   _vda.setConstant(0.0f);
   for(int k = 0; k < _nbTasks; k++)
   {
+
+    float alpha = 0.05f; 
+
+    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
+    vdk.row(k) = alpha*errork.row(k);
     _vda += _beliefsC(k)*vdk.row(k);
   }
 
