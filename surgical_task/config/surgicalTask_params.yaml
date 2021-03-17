@@ -180,6 +180,12 @@ SurgicalTask/taskAdaptationOverallGain: 1.0
 # Gripper range
 SurgicalTask/gripperRange: 60.0
 
+# EE linear velocity limit
+SurgicalTask/eeLinearVelocityLimit: 0.25
+
+# EE angular velocity limit
+SurgicalTask/eeAngularVelocityLimit: 1.5
+
 # Enable EE collision avoidance in QP RCM solver
 SurgicalTask/enableEECollisionAvoidance: true
 

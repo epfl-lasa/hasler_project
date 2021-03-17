@@ -638,6 +638,28 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
+  if (!_nh.getParam("SurgicalTask/eeLinearVelocityLimit", _eeLinearVelocityLimit))
+  {
+    ROS_ERROR("Couldn't retrieve the EE linear velocity Limit");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("EE linear velocity Limit: %f\n", _eeLinearVelocityLimit);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/eeAngularVelocityLimit", _eeAngularVelocityLimit))
+  {
+    ROS_ERROR("Couldn't retrieve the EE angular velocity Limit");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("EE angular velocity Limit: %f\n", _eeAngularVelocityLimit);
+  }
+
+
   if (!_nh.getParam("SurgicalTask/enableEECollisionAvoidance", _enableEECollisionAvoidance))
   {
     ROS_ERROR("Couldn't retrieve the EE enable collision avoidance boolean");
@@ -971,14 +993,16 @@ void SurgicalTask::initializeTaskParameters()
   {
     if(_linearMapping[r] == POSITION_VELOCITY)
     {
-      _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+      _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
+                                                          _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
                                                           _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
                                                           _operationMaxOffsetPVM[r]);        
     }
     else
     {
-      _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+      _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
+                                                          _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
     }
   }

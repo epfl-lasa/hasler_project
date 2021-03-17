@@ -61,7 +61,7 @@ class QpSolverRCMCollision
     float _toolGain;
     Eigen::VectorXf _slackGains, _slackLimits;
 
-    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits;
+    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits, _eeVelocityLimits;
 
     SQProblem* _sqp;
 
@@ -76,6 +76,9 @@ class QpSolverRCMCollision
 
 		float _eeSafetyCollisionDistance;
 		float _toolSafetyCollisionDistance;
+    float _eeLinearVelocityLimit;
+    float _eeAngularVelocityLimit;
+
 
 		Eigen::Vector3f _workspaceMinOffset;
 		Eigen::Vector3f _workspaceMaxOffset;
@@ -83,10 +86,10 @@ class QpSolverRCMCollision
     static QpSolverRCMCollision* me;
 
 	public:
-		QpSolverRCMCollision(bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
-			                 bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f,
-			                 bool enableWorkspaceCollisionAvoidance = false, Eigen::Vector3f workspaceMinOffset = Eigen::Vector3f::Zero(), 
-			                 Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero());
+		QpSolverRCMCollision(float eeLinearVelocityLimit = 0.25f, float eeAngularVelocityLimit = 1.5f, bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
+			                   bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f,
+			                   bool enableWorkspaceCollisionAvoidance = false, Eigen::Vector3f workspaceMinOffset = Eigen::Vector3f::Zero(), 
+			                   Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero());
 
 		~QpSolverRCMCollision();
 

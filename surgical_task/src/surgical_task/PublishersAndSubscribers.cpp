@@ -110,7 +110,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
    
     if(_humanInputDevice[RIGHT] == JOYSTICK)
     {
-      if(_humanInputID[LEFT] == LEFT)
+      if(_humanInputID[RIGHT] == LEFT)
       {
         _subJoystick[LEFT] = _nh.subscribe<sensor_msgs::Joy>("/left/joy",1, boost::bind(&SurgicalTask::updateJoystick,this,_1,LEFT),ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       }
@@ -121,7 +121,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
     }
     else
     {
-      if(_humanInputID[LEFT] == LEFT)
+      if(_humanInputID[RIGHT] == LEFT)
       {
         _subFootOutput[LEFT] = _nh.subscribe<custom_msgs::FootOutputMsg>("/FI_Output/Left",1, boost::bind(&SurgicalTask::updateFootOutput,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       }

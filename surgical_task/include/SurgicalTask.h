@@ -243,6 +243,8 @@ class SurgicalTask
     std::vector<int> _tool;
     std::vector<int> _humanInputID;
     float _markerFilterGain;
+    float _eeLinearVelocityLimit;
+    float _eeAngularVelocityLimit;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
