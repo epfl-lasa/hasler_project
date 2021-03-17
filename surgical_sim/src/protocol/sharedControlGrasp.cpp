@@ -597,7 +597,7 @@ void sharedControlGrasp::publishFootInput()
 {
     _msgFootInput.ros_effort.fill(0.0f);
     _msgFootInput.ros_position.fill(0.0f);
-    _msgFootInput.ros_forceSensor.fill(0.0f);
+    _msgFootInput.ros_effortM.fill(0.0f);
     _msgFootInput.ros_speed.fill(0.0f);
     _msgFootInput.ros_filterAxisForce.fill(1.0f); 
     
