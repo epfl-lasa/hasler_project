@@ -1,10 +1,22 @@
 #include "QpSolverRCMCollision2.h"
 
 
-QpSolverRCMCollision2::QpSolverRCMCollision2():_nbTasks(7), _nbJoints(7), _nbSlacks(7), 
-                              				   _nbVariables(7), _nbConstraints(8),
-                              				   _rcmTolerance(1e-3), _toolTolerance(1e-3), _phiTolerance(1e-2)
+QpSolverRCMCollision2::QpSolverRCMCollision2(float eeLinearVelocityLimit, float eeAngularVelocityLimit, bool enableEECollisionAvoidance, 
+	                                          float eeSafetyCollisionDistance, bool enableToolCollisionAvoidance, float toolSafetyCollisionDistance,
+			                                      bool enableWorkspaceCollisionAvoidance, Eigen::Vector3f workspaceMinOffset, Eigen::Vector3f workspaceMaxOffset):
+																	         _eeLinearVelocityLimit(eeLinearVelocityLimit),
+																					 _eeAngularVelocityLimit(eeAngularVelocityLimit),
+																					 _enableEECollisionAvoidance(enableEECollisionAvoidance), 
+																					 _eeSafetyCollisionDistance(eeSafetyCollisionDistance),
+																					 _enableToolCollisionAvoidance(enableToolCollisionAvoidance),
+																					 _toolSafetyCollisionDistance(toolSafetyCollisionDistance),
+																					 _enableWorkspaceCollisionAvoidance(enableWorkspaceCollisionAvoidance),
+																					 _workspaceMinOffset(workspaceMinOffset), _workspaceMaxOffset(workspaceMaxOffset),
+																					 _nbTasks(7), _nbJoints(7), _nbSlacks(7), 
+		                          		         _nbVariables(7), _nbConstraints(14),
+		                          	        	 _rcmTolerance(1e-3), _toolTolerance(1e-3), _phiTolerance(1e-2)
 {
+	_debug = true;
 	_rcmGain = 1.0f;
 	_toolGain = 1.0f;
 
@@ -17,7 +29,31 @@ QpSolverRCMCollision2::QpSolverRCMCollision2():_nbTasks(7), _nbJoints(7), _nbSla
 	_jointMax.resize(_nbJoints);
 	_jointVelocitiesLimits.resize(_nbJoints);
 
+
+	_eeVelocityLimits.resize(6);
+	_eeVelocityLimits.segment(0,3).setConstant(std::sqrt(_eeLinearVelocityLimit*_eeLinearVelocityLimit/3.0f));
+	_eeVelocityLimits.segment(3,3).setConstant(_eeAngularVelocityLimit);
+
 	setRobot(Utils<float>::ROBOT_ID::KUKA_LWR);
+
+	if(_enableEECollisionAvoidance)
+	{	
+		_nbConstraints++;
+		_idEECollisionConstraint = _nbConstraints-1;
+	}
+
+	if(_enableToolCollisionAvoidance)
+	{
+		_nbConstraints++;
+		_idToolCollisionConstraint = _nbConstraints-1;
+	}
+
+	if(_enableWorkspaceCollisionAvoidance)
+	  {
+			_nbConstraints++;
+			_idWorkspaceCollisionConstraint = _nbConstraints-1;
+			_nbConstraints+=5;  	
+	  }	
 
 	_H.resize(_nbVariables,_nbVariables);
 	_A.resize(_nbConstraints, _nbVariables);
@@ -110,6 +146,7 @@ void QpSolverRCMCollision2::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointMax(4) = 2.8973f;
 	  _jointMax(5) = 3.7525f;
 	  _jointMax(6) = 2.8973f;
+	  _jointMax =  _jointMax.array()-6.0f*M_PI/180.0f;
 
 	  _jointMin(0) = -2.8973f;
 	  _jointMin(1) = -1.7628f;
@@ -118,6 +155,7 @@ void QpSolverRCMCollision2::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointMin(4) = -2.8973f;
 	  _jointMin(5) = -0.0175f;
 	  _jointMin(6) = -2.8973f;
+	  _jointMin =  _jointMin.array()+6.0f*M_PI/180.0f;
 
 	  _jointVelocitiesLimits(0) = 2.1750f;
 	  _jointVelocitiesLimits(1) = 2.1750f;
@@ -131,16 +169,24 @@ void QpSolverRCMCollision2::setRobot(Utils<float>::ROBOT_ID robotID)
 }
 
 
-bool QpSolverRCMCollision2::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, 
-	                     Eigen::Vector3f xTrocar, float toolOffset, Eigen::Vector3f vdTool, float omegad, float dt,
-	                     Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis, float depthGain,
-	                     Eigen::Vector3f obstacleDir, float obstacleDistance)
+QpSolverRCMCollision2::Result QpSolverRCMCollision2::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::Vector3f xTrocar, float toolOffset, 
+																                          Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis,
+																									  		  float depthGain, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
+																												  Eigen::Vector3f rToolObstacle, float dToolObstacle, Eigen::Vector3f toolCollisionOffset,
+																												  bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset)
 {
 
 
   // // we need this, because QPOases changes these values
   // double max_time = _max_time;
   // int max_iters = _max_iters;
+
+  Result result;
+  result.res = false;
+	result.eeCollisionConstraintActive = false;
+	result.toolCollisionConstraintActive = false;
+	result.workspaceCollisionConstraintActive = false;
+
   int count = 0;
 	Eigen::VectorXf error(_nbTasks);
 	joints.resize(_nbJoints);
@@ -159,133 +205,235 @@ bool QpSolverRCMCollision2::step(Eigen::VectorXf &joints, Eigen::VectorXf joints
 	_rcmGain = 20.0f;
 	// std::cerr << "rcmGain: " << _rcmGain << std::endl;
 
-
-  Eigen::Matrix4f Hfk;
-  Hfk = Utils<float>::getForwardKinematics(joints, _robotID);
-
-  Eigen::Vector3f xEE, xRCM, xTool, zEE;
-  Eigen::Matrix3f wRb;
-
-  xEE = wRRobotBasis*Hfk.block(0,3,3,1) + xRobotBasis;
-  wRb = wRRobotBasis*Hfk.block(0,0,3,3);
-  zEE = wRb.col(2);
-
-  xRCM = xEE+(xTrocar-xEE).dot(wRb.col(2))*wRb.col(2);
-  xTool = xEE+toolOffset*wRb.col(2);
-
-  // error << (xdTool-xTrocar).normalized()-zEE, _toolGain*(xdTool-xTool), phid-joints(_nbJoints-1);
-
-  Eigen::Vector3f bou;
-  bou = (xTrocar-xRCM);
-
-  error << _rcmGain*wRRobotBasis.transpose()*bou, _toolGain*wRRobotBasis.transpose()*vdTool, omegad;
-  // if(count==1)
-  // {
-  // 	std::cerr << "bou: "<< error.transpose() << std::endl;
-  // }
-
-  // if(checkConvergence(error))
-  // {
-  // 	break;
-  // }
-
-  Eigen::MatrixXf Jee(3, _nbJoints), Jrcm(3,_nbJoints), Jtool(3,_nbJoints);
-
-  Jee = Utils<float>::getGeometricJacobian(joints,Eigen::Vector3f::Zero(),_robotID).block(0,0,3,7);
-  Jrcm  = Utils<float>::getGeometricJacobian(joints,wRRobotBasis.transpose()*(xRCM-xEE),_robotID).block(0,0,3,7);
-  Jtool  = Utils<float>::getGeometricJacobian(joints,wRRobotBasis.transpose()*(xTool-xEE),_robotID).block(0,0,3,7);
-
-  Eigen::MatrixXf J(_nbTasks,_nbJoints);
-  J.setConstant(0.0f);
-  J.block(0,0,3,7) = Jrcm;
-  J.block(3,0,3,7) = Jtool;
-
-  J(_nbTasks-1,_nbJoints-1) = 1.0f;
-
-  if(count==1)
+  while(count<1)
   {
-		// std::cerr << "input error: "<< (error-J*jointVelocities).transpose() << std::endl;	  
-	}
+  	count++;
+
+	  Eigen::Matrix4f Hfk;
+	  Hfk = Utils<float>::getForwardKinematics(joints, _robotID);
+
+	  Eigen::Vector3f xEE, xRCM, xTool, zEE;
+	  Eigen::Matrix3f wRb;
+
+	  xEE = wRRobotBasis*Hfk.block(0,3,3,1) + xRobotBasis;
+	  wRb = wRRobotBasis*Hfk.block(0,0,3,3);
+	  zEE = wRb.col(2);
+
+	  xRCM = xEE+(xTrocar-xEE).dot(wRb.col(2))*wRb.col(2);
+	  xTool = xEE+toolOffset*wRb.col(2);
+
+	  // error << (xdTool-xTrocar).normalized()-zEE, _toolGain*(xdTool-xTool), phid-joints(_nbJoints-1);
+
+	  Eigen::Vector3f bou;
+	  bou = (xTrocar-xRCM);
+
+	  error << _rcmGain*wRRobotBasis.transpose()*bou, _toolGain*wRRobotBasis.transpose()*vdTool, omegad;
 
 
-	_H = J.transpose()*J+0.0001f*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
+	  Eigen::MatrixXf Jee(6,_nbJoints), JeeCollision(3, _nbJoints), Jrcm(3,_nbJoints), Jtool(3,_nbJoints), JtoolCollision(3,_nbJoints);
+	  Jee = Utils<float>::getGeometricJacobian(joints, Eigen::Vector3f::Zero(), _robotID);
+	  JeeCollision = Utils<float>::getGeometricJacobian(joints,wRRobotBasis.transpose()*eeCollisionOffset,_robotID).block(0,0,3,7);
+	  Jrcm  = Utils<float>::getGeometricJacobian(joints,wRRobotBasis.transpose()*(xRCM-xEE),_robotID).block(0,0,3,7);
+	  Jtool  = Utils<float>::getGeometricJacobian(joints,wRRobotBasis.transpose()*(xTool-xEE),_robotID).block(0,0,3,7);
+	  JtoolCollision = Utils<float>::getGeometricJacobian(joints,wRRobotBasis.transpose()*toolCollisionOffset,_robotID).block(0,0,3,7);
 
-  _g = -J.transpose()*error;
+	  Eigen::MatrixXf J(_nbTasks,_nbJoints);
+	  J.setConstant(0.0f);
+	  J.block(0,0,3,7) = Jrcm;
+	  J.block(3,0,3,7) = Jtool;
 
-  _A.block(0,0,_nbJoints,_nbJoints) = dt*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
-  _A.block(_nbJoints,0,1,_nbJoints) = (wRRobotBasis.transpose()*obstacleDir).transpose()*Jee;
-	  
-	_ubA.segment(0,_nbJoints) = _jointMax-joints;
-	_lbA.segment(0,_nbJoints) = _jointMin-joints;
-  float ds = 0.05f, di = 0.1f;
-
-  _lbA(_nbJoints) = -0.5*(obstacleDistance-ds)/(di-ds);
-  _ubA(_nbJoints) = 1000.0f;
-
-	_ub = _jointVelocitiesLimits; 
-	_lb = -_jointVelocitiesLimits;
+	  J(_nbTasks-1,_nbJoints-1) = 1.0f;
 
 
+		_H = J.transpose()*J+(0.0001f+0.01*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
 
-  copyQpOASESVariables();
+	  _g = -J.transpose()*error-dt*0.01*(((_jointMin+_jointMax)/2.0f)-joints);
 
-  qpOASES::SymSparseMat H_mat(_H.rows(), _H.cols(), _H.cols(), _H_qp);
-  H_mat.createDiagInfo();
-  qpOASES::SparseMatrix A_mat(_A.rows(), _A.cols(), _A.cols(), _A_qp);
+	  _A.block(0,0,_nbJoints,_nbJoints) = dt*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);  
+		_A.block(_nbJoints,0,6,_nbJoints) = Jee;
 
-  int max_iters = 1000;
-  double max_time = 0.005f;
+		if(_enableEECollisionAvoidance && rEEObstacle.norm() > 1e-3f)
+	  {
+	  	_A.block(_idEECollisionConstraint,0,1,_nbJoints) = (wRRobotBasis.transpose()*rEEObstacle.normalized()).transpose()*JeeCollision;
+	  }
+	  if(_enableToolCollisionAvoidance && rToolObstacle.norm() > 1e-3f)
+	  {
+	  	_A.block(_idToolCollisionConstraint,0,1,_nbJoints) = (wRRobotBasis.transpose()*rToolObstacle.normalized()).transpose()*JtoolCollision;
+	  }
 
-  // if(count==1)
-  {
+	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
+		{
+			Eigen::Vector3f dir;
+			dir << 0.0f,0.0f,1.0f;
+			_A.block(_idWorkspaceCollisionConstraint,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+
+			dir << 0.0f,0.0f,-1.0f;
+			_A.block(_idWorkspaceCollisionConstraint+1,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+
+			dir << 1.0f,0.0f,0.0f;
+			_A.block(_idWorkspaceCollisionConstraint+2,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+
+			dir << -1.0f,0.0f,0.0f;
+			_A.block(_idWorkspaceCollisionConstraint+3,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+
+			dir << 0.0f,1.0f,0.0f;
+			_A.block(_idWorkspaceCollisionConstraint+4,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+
+			dir << 0.0f,-1.0f,0.0f;
+			_A.block(_idWorkspaceCollisionConstraint+5,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+
+		}
+		  
+		_ubA.segment(0,_nbJoints) = _jointMax-joints;
+		_lbA.segment(0,_nbJoints) = _jointMin-joints;
+	  _ubA.segment(_nbJoints,6) = _eeVelocityLimits;
+	  _lbA.segment(_nbJoints,6) = -_eeVelocityLimits;
+
+	  if(_enableEECollisionAvoidance && rEEObstacle.norm() > 1e-3f)
+	  {  	
+		  float ds = _eeSafetyCollisionDistance, di;
+
+		  if(std::fabs(ds) < FLT_EPSILON)
+		  {
+		  	di = 0.1f;
+		  }
+		  else
+		  {
+		  	di = 2.0f*_eeSafetyCollisionDistance;
+		  }
+		  _lbA(_idEECollisionConstraint) = -0.05*(dEEObstacle-ds)/(di-ds);
+
+		  if(-20*(di-ds)*_lbA(_idEECollisionConstraint)<1e-3f)
+		  {
+		  	result.eeCollisionConstraintActive = true;
+		  }
+		  _ubA(_idEECollisionConstraint) = 1000.0f;
+	  }
+
+	  if(_enableToolCollisionAvoidance && rToolObstacle.norm() > 1e-3f)
+	  {  
+	  	float ds = _toolSafetyCollisionDistance, di;
+
+			if(std::fabs(ds) < FLT_EPSILON)
+			{
+				di = 0.1f;
+			}
+			else
+			{
+				di = 2.0f*_toolSafetyCollisionDistance;
+			}
+
+	  	_lbA(_idToolCollisionConstraint) = -0.05*(dToolObstacle-ds)/(di-ds);
+		  if(-20*(di-ds)*_lbA(_idToolCollisionConstraint)<1e-3f)
+		  {
+		  	result.toolCollisionConstraintActive = true;
+		  }
+
+			_ubA(_idToolCollisionConstraint) = 1000.0f;
+		}
+
+	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
+	  {  
+	  	float ds = 0.0f, di = 1.e-2f;
+	  	_lbA(_idWorkspaceCollisionConstraint) = -0.5*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
+			_ubA(_idWorkspaceCollisionConstraint) = 1000.0f;
+
+	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.5*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
+			_ubA(_idWorkspaceCollisionConstraint+1) = 1000.0f;
+
+	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.5*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
+			_ubA(_idWorkspaceCollisionConstraint+2) = 1000.0f;
+
+	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.5*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
+			_ubA(_idWorkspaceCollisionConstraint+3) = 1000.0f;
+
+	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.5*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
+			_ubA(_idWorkspaceCollisionConstraint+4) = 1000.0f;
+
+	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.5*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
+			_ubA(_idWorkspaceCollisionConstraint+5) = 1000.0f;
+
+		  if(_lbA(_idWorkspaceCollisionConstraint)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+1)>-5e-3f ||
+		  	 _lbA(_idWorkspaceCollisionConstraint+2)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+3)>-5e-3f ||
+		  	 _lbA(_idWorkspaceCollisionConstraint+4)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+5)>-5e-3f)
+		  {
+		  	result.workspaceCollisionConstraintActive = true;
+		  }
+		}
+
+		_ub = _jointVelocitiesLimits; 
+		_lb = -_jointVelocitiesLimits;
+
+
+	  if(checkConvergence(error))
+	  {
+	  	result.res = true;
+	  	break;
+	  } 
+
+	  copyQpOASESVariables();
+
+	  qpOASES::SymSparseMat H_mat(_H.rows(), _H.cols(), _H.cols(), _H_qp);
+	  H_mat.createDiagInfo();
+	  qpOASES::SparseMatrix A_mat(_A.rows(), _A.cols(), _A.cols(), _A_qp);
+
+	  int max_iters = 1000;
+	  double max_time = 0.005f;
+
 		ret = _sqp->init(&H_mat, _g_qp, &A_mat, _lb_qp, _ub_qp, _lbA_qp, _ubA_qp, max_iters);
+
+	  if(ret == 0)
+	  {
+	  	result.res = true;
+	  }
+	 
+	  _sqp->getPrimalSolution(xOpt);
+
+	  for(int k = 0; k < _nbJoints; k++)
+	  {
+	  	jointVelocities(k) = xOpt[k];
+	  }
+
+		if(ret == qpOASES::SUCCESSFUL_RETURN)
+		{
+			joints += dt*jointVelocities;
+		}
+		else
+		{
+			if(_debug)
+			{
+				std::cerr << "[QpSolverRCMCollision2]: Error: " <<(int) ret << std::endl;
+			}
+		}
   }
-  // else
-  // {
-  // 	ret = _sqp->hotstart(&H_mat, _g_qp, &A_mat, _lb_qp, _ub_qp, _lbA_qp, _ubA_qp, max_iters);
-  // }
-
-  _sqp->getPrimalSolution(xOpt);
-
-  for(int k = 0; k < _nbJoints; k++)
-  {
-  	jointVelocities(k) = xOpt[k];
-  }
-
-	if(ret == qpOASES::SUCCESSFUL_RETURN)
-	{
-		joints += dt*jointVelocities;
-		std::cerr << "jdot: " << jointVelocities.transpose() << std::endl;
-		std::cerr << "jdotLim: " << _jointVelocitiesLimits.transpose() << std::endl;
-			// std::cerr << "output error: "<< (error-J*jointVelocities).transpose() << std::endl;
-	}
-	else
-	{
-		std::cerr << "Error: " <<(int) ret << std::endl;
-	}
 
 
   float sum = (joints-joints0).array().abs().sum();
   float maxDiff = (joints-joints0).array().abs().maxCoeff()*180.0f/M_PI;
-  std::cerr <<  _A.block(_nbJoints,0,1,_nbJoints)*jointVelocities << " >= " << _lbA(_nbJoints) << std::endl;
-  // std::cerr << (joints-joints0).transpose() << std::endl;
-  std::cerr <<"Nb loops: " << count << " Max joints diff: " << maxDiff << " Sum: " << sum*180.0f/M_PI<<std::endl;
+
+  if(_debug)
+  {
+		std::cerr << "[QpSolverRCMCollision2]: Collision: " << (int) result.eeCollisionConstraintActive << " " << (int) result.toolCollisionConstraintActive
+		                           << " " << (int) result.workspaceCollisionConstraintActive << std::endl;
+
+	  std::cerr <<"[QpSolverRCMCollision2]: Nb loops: " << count << " Max joints diff: " << maxDiff << " Sum: " << sum*180.0f/M_PI<<std::endl;  	
+  }
 
 
   if(maxDiff>10)
   {
   	joints = joints0;  	
-  	return false;
+		result.res = false;  
+	}
+
+
+  if(_debug)
+  {
+	  std::cerr << "[QpSolverRCMCollision2]: Error: " << error.transpose() << std::endl;
+	  std::cerr << "[QpSolverRCMCollision2]: Error: " << error.segment(0,3).norm()/_rcmGain << " " << error.segment(3,3).norm()/_toolGain << std::endl;  	
   }
 
-  std::cerr << error.transpose() << std::endl;
-  std::cerr << error.segment(0,3).norm()/_rcmGain << " " << error.segment(3,3).norm()/_toolGain << std::endl;
-  // if(!checkConvergence(error))
-  // {
-  // 	joints = joints0;
-  // 	return false;
-  // }
-  return true;	
+  return result;	
 }
 
 

@@ -998,10 +998,18 @@ void SurgicalTask::initializeTaskParameters()
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
                                                           _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
                                                           _operationMaxOffsetPVM[r]);        
+      _qpSolverRCMCollision2[r] = new QpSolverRCMCollision2(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
+                                                          _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
+                                                          _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
+                                                          _operationMaxOffsetPVM[r]);        
     }
     else
     {
       _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
+                                                          _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
+      _qpSolverRCMCollision2[r] = new QpSolverRCMCollision2(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
     }
@@ -1011,8 +1019,8 @@ void SurgicalTask::initializeTaskParameters()
   _qpSolverRCM[RIGHT].setRobot(_robotID);
   _qpSolverRCMCollision[LEFT]->setRobot(_robotID);
   _qpSolverRCMCollision[RIGHT]->setRobot(_robotID);
-  _qpSolverRCMCollision2[LEFT].setRobot(_robotID);
-  _qpSolverRCMCollision2[RIGHT].setRobot(_robotID);
+  _qpSolverRCMCollision2[LEFT]->setRobot(_robotID);
+  _qpSolverRCMCollision2[RIGHT]->setRobot(_robotID);
 }
 
 
