@@ -223,15 +223,15 @@ void SurgicalTask::insertionStep(int r, int h)
   
     _selfRotationCommand[r] = 0.0f;
 
-    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
-                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
-    
-    // _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+    // _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
     //                                          _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                          _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
     //                                          _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
+    
+    _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
     if(_debug)
     {
       std::cerr << "[SurgicalTask]: " << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
@@ -357,15 +357,15 @@ void SurgicalTask::operationStep(int r, int h)
     _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
-    
-    // _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+    // _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
     //                                           _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                           _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
     //                                           _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
+    
+    _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
@@ -544,6 +544,18 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       // }
       if(_useTaskAdaptation)
       {
+
+        // float alpha[2] = {1.0f, 1.0f};
+        // for (int k = 0; k < 2; k++)
+        // {
+        //   if(_colorMarkersStatus[k] == 1)
+        //   {
+        //     alpha[k] = Utils<float>::smoothFall(_colorMarkersFilteredPosition.row(k).norm(),0.3,0.7);
+        //   }
+        // }
+        // _vdTool[r] *= alpha[0]*alpha[1];
+        // _vdTool[r] += (1-alpha[0])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(0).transpose()
+        //               +(1-alpha[1])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(1).transpose();
         taskAdaptation(r, h);
         _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION)+_vda;
       }   

@@ -246,7 +246,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  _H.block(0,0,_nbJoints,_nbJoints) = (1+100*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
 	  _H.block(_nbJoints,_nbJoints,_nbSlacks,_nbSlacks) = _slackGains.asDiagonal();
 
-	  _g.segment(0,_nbJoints) = -2.0f*dt*100*(((_jointMin+_jointMax)/2.0f)-joints);
+	  _g.segment(0,_nbJoints) = -dt*100*(((_jointMin+_jointMax)/2.0f)-joints);
 
 	  _A.setConstant(0.0f);
 	  _A.block(0,0,_nbTasks,_nbJoints) = J;
@@ -305,9 +305,9 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 		  {
 		  	di = 2.0f*_eeSafetyCollisionDistance;
 		  }
-		  _lbA(_idEECollisionConstraint) = -0.5*(dEEObstacle-ds)/(di-ds);
+		  _lbA(_idEECollisionConstraint) = -0.05f*(dEEObstacle-ds)/(di-ds);
 
-		  if(-2*(di-ds)*_lbA(_idEECollisionConstraint)<1e-3f)
+		  if(-20.0f*(di-ds)*_lbA(_idEECollisionConstraint)<1e-3f)
 		  {
 		  	result.eeCollisionConstraintActive = true;
 		  }
@@ -327,8 +327,8 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 				di = 2.0f*_toolSafetyCollisionDistance;
 			}
 
-	  	_lbA(_idToolCollisionConstraint) = -0.5*(dToolObstacle-ds)/(di-ds);
-		  if(-2*(di-ds)*_lbA(_idToolCollisionConstraint)<1e-3f)
+	  	_lbA(_idToolCollisionConstraint) = -0.05f*(std::max(0.0f,dToolObstacle-ds))/(di-ds);
+		  if(-20.0f*(di-ds)*_lbA(_idToolCollisionConstraint)<1e-3f)
 		  {
 		  	result.toolCollisionConstraintActive = true;
 		  }
@@ -339,22 +339,22 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
 	  {  
 	  	float ds = 0.0f, di = 1.e-2f;
-	  	_lbA(_idWorkspaceCollisionConstraint) = -0.5*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint) = -0.5f*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.5*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.5f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+1) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.5*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.5f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+2) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.5*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.5f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+3) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.5*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.5f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+4) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.5*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.5f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+5) = 1000.0f;
 
 		  if(_lbA(_idWorkspaceCollisionConstraint)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+1)>-5e-3f ||

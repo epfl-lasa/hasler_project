@@ -164,7 +164,7 @@ void QpSolverRCMCollision2::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointVelocitiesLimits(4) = 2.6100f;
 	  _jointVelocitiesLimits(5) = 2.6100f;
 	  _jointVelocitiesLimits(6) = 2.6100f;	
-	  _jointVelocitiesLimits *= 0.2f;
+	  _jointVelocitiesLimits *= 0.4f;
 	}
 }
 
@@ -245,9 +245,9 @@ QpSolverRCMCollision2::Result QpSolverRCMCollision2::step(Eigen::VectorXf &joint
 	  J(_nbTasks-1,_nbJoints-1) = 1.0f;
 
 
-		_H = J.transpose()*J+(0.0001f+0.01*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
+		_H = J.transpose()*J+(0.00001f+0.001*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
 
-	  _g = -J.transpose()*error-dt*0.01*(((_jointMin+_jointMax)/2.0f)-joints);
+	  _g = -J.transpose()*error-dt*0.001*(((_jointMin+_jointMax)/2.0f)-joints);
 
 	  _A.block(0,0,_nbJoints,_nbJoints) = dt*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);  
 		_A.block(_nbJoints,0,6,_nbJoints) = Jee;

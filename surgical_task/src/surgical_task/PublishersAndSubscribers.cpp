@@ -213,7 +213,7 @@ void SurgicalTask::checkAllSubscribers()
                 << " sim/wrench: " << (_useSim || _wrenchBiasOK[k]) << std::endl;
     }
   }
-
+  
   if(_useSim)
   {
     _trackingOK = true;
@@ -365,12 +365,12 @@ void SurgicalTask::publishData()
       // msgRobotData.data[5] = _toolOffsetFromEE[r];
       // _pubRobotData[r].publish(msgRobotData);
 
-      if(r==RIGHT)
-      {
-        _msgGripperInput.ros_desAngle = _desiredGripperPosition[r];
-        _msgGripperInput.ros_desTorque = 0.0f;
-        _pubGripper.publish(_msgGripperInput);
-      }
+      // if(r==RIGHT)
+      // {
+      //   _msgGripperInput.ros_desAngle = _desiredGripperPosition[r];
+      //   _msgGripperInput.ros_desTorque = 0.0f;
+      //   _pubGripper.publish(_msgGripperInput);
+      // }
 
       _msgRobotState.controlPhase = _controlPhase[r];
       _msgRobotState.linearMapping = _linearMapping[r];
@@ -768,8 +768,11 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
         temp << msg->data[3*k], msg->data[3*k+1], 0.0f;
         _colorMarkersPosition.row(k) = (_eeCameraMapping*temp).transpose();
         _colorMarkersFilteredPosition2.row(k) = _markerFilterGain*_colorMarkersFilteredPosition2.row(k)+(1.0f-_markerFilterGain)*_colorMarkersPosition.row(k);
-        _colorMarkersFilteredPosition(k,0) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,0),-0.3f,0.3f); 
-        _colorMarkersFilteredPosition(k,1) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,1),-0.2f,0.2f); 
+        _colorMarkersFilteredPosition.row(k) = _colorMarkersFilteredPosition2.row(k);
+        // _colorMarkersFilteredPosition(k,0) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,0),-0.3f,0.3f); 
+        // _colorMarkersFilteredPosition(k,0) = Utils<float>::bound(_colorMarkersFilteredPosition(k,0)/0.7,-1.0f,1.0f); 
+        // _colorMarkersFilteredPosition(k,1) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,1),-0.2f,0.2f); 
+        // _colorMarkersFilteredPosition(k,1) = Utils<float>::bound(_colorMarkersFilteredPosition(k,1)/0.8,-1.0f,1.0f); 
       }
       else
       {

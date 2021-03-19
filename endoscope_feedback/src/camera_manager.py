@@ -93,6 +93,7 @@ class CameraManager:
     self.workspaceCollision = [False, False]
     self.beliefsC = [1,0,0]
 
+
     self.imageSize = (0,0)
 
     self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
@@ -110,24 +111,38 @@ class CameraManager:
   def run(self):
     while not rospy.is_shutdown():
       if (self.useRosCvCamera and self.firstImage) or not self.useRosCvCamera:
+        t0 = time.time()
         if self.useRosCvCamera:
           self.inputImage = self.image.copy()
         else:
           ret, self.inputImage = self.cap.read()
 
+        # print("Read camera:", time.time()-t0)
         self.imageSize = (self.inputImage.shape[1], self.inputImage.shape[0])
+
+
 
         self.outputImage = self.inputImage
 
+        t1 = time.time()
         self.toolsTracker.step(self.inputImage, self.imageSize)
 
-        result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskRed | self.toolsTracker.maskGreen 
-                                                                          | self.toolsTracker.maskYellow)
+        # print("Track tool:", time.time()-t1)
 
 
+
+        # result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskRed | self.toolsTracker.maskGreen 
+        #                                                                   | self.toolsTracker.maskYellow)
+
+
+
+        t2 = time.time()
         # self.toolsTracker.tipPosition[0] = np.array([630,470,1])
-        self.displayMarkersPosition(self.outputImage) 
+        self.displayMarkersPosition(self.outputImage, False) 
         self.displaySurgicalTaskState(self.outputImage)
+        # print("Fill images:", time.time()-t2)
+
+        t3 = time.time()
 
         msg = Int16MultiArray()
         msg.data = np.concatenate((self.toolsTracker.tipPosition[0], self.toolsTracker.tipPosition[1], 
@@ -143,16 +158,26 @@ class CameraManager:
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPositionTransformed.publish(msg)
 
+        # print("Pub data:", time.time()-t3)
+
+        t4 = time.time()
+
         cv2.imshow('output', self.outputImage) 
         cv2.imshow('maskRed', self.toolsTracker.maskRed) 
         cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
         cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
-        # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
+        cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
         cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
+        cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
         # cv2.imshow('result', result) 
         
+        # print("Show images:", time.time()-t4)
+
+        if(time.time()-t0>0.1):
+          print("Warning: camera delay !!!")
+
       if cv2.waitKey(1) & 0xFF == ord('q'):
-          break
+        break
 
       self.rate.sleep()
 
@@ -348,8 +373,8 @@ class ToolsTracker:
     # self.upperHsvGreen = np.array([105, 255, 140]) 
     # self.lowerHsvGreen = np.array([25, 117, 30]) 
     # self.upperHsvGreen = np.array([44, 255, 255]) 
-    self.lowerHsvGreen = np.array([23, 120, 30]) 
-    self.upperHsvGreen = np.array([80, 255, 255]) 
+    self.lowerHsvGreen = np.array([20, 120, 23]) 
+    self.upperHsvGreen = np.array([80, 255, 170]) 
     # self.lowerHsvGreen = np.array([31, 0, 0]) 
     # self.upperHsvGreen = np.array([70, 255, 255]) 
 
@@ -365,13 +390,13 @@ class ToolsTracker:
     # self.upperHsvYellow = np.array([25,255,255])
     # self.lowerHsvYellow = np.array([13,170,120])
     # self.upperHsvYellow = np.array([25,255,255])
-    self.lowerHsvYellow = np.array([17,160,120])
+    self.lowerHsvYellow = np.array([15,160,120])
     self.upperHsvYellow = np.array([24,255,255])
     # self.lowerHsvYellow = np.array([10,120,0])
     # self.upperHsvYellow = np.array([179,255,255])
 
     self.lowerHsvOrange = np.array([8,190,100])
-    self.upperHsvOrange = np.array([17,255,255])
+    self.upperHsvOrange = np.array([15,255,255])
 
     self.lowerHsvPink = np.array([0,0,0])
     self.upperHsvPink = np.array([8,217,255])
@@ -381,6 +406,10 @@ class ToolsTracker:
     self.markerPosition = np.array([(0, 0, 0),
                                     (0, 0, 0),
                                     (0, 0, 0)])
+
+    self.markerPositionTransformed = np.array([(0.0, 0.0, 0),
+                                               (0.0, 0.0, 0),
+                                               (0.0, 0.0, 0)])
 
     self.tipPosition = np.array([(0, 0, 0),
                                  (0, 0, 0),
@@ -394,15 +423,17 @@ class ToolsTracker:
                                             (0.0, 0.0, 0),
                                             (0.0, 0.0, 0)])
 
+    self.timeMarkerDisappear = [0.0, 0.0, 0.0]
+
     self.firstMarkerDetection = [False, False, False]
 
     self.markerLength = [0.0, 0.0, 0.0]
 
     self.alpha = 0
-    self.scale = 2.0
+    self.scale = 1.5
 
-    self.maskRed = []
-    self.maskGreen = []
+    # self.maskRed = []
+    # self.maskGreen = []
 
 
   def step(self, image, imageSize):
@@ -419,7 +450,8 @@ class ToolsTracker:
 
 
     # Apply yellow filter
-    self.maskYellow = self.colorFilter(hsv, imageSize, self.lowerHsvYellow, self.upperHsvYellow, 2)
+    self.maskYellow, self.maskCyan = self.colorFilterTip(hsv, imageSize, self.lowerHsvYellow, self.upperHsvYellow, self.lowerHsvCyan, self.upperHsvCyan, 2)
+    # self.maskYellow = self.colorFilter(hsv, imageSize, self.lowerHsvYellow, self.upperHsvYellow, 2)
 
 
     # Check for saturation
@@ -543,7 +575,8 @@ class ToolsTracker:
       M = cv2.moments(c)
 
       # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
-      if(M["m00"]>500 and M["m00"]<100000):
+      # print(M["m00"])
+      if(M["m00"]>470 and M["m00"]<100000):
         # self.markerLength[id] = 0*self.markerLength[id]+1*size
         self.markerLength[id] = np.sqrt(M["m00"]/(13*6))*13
         # print(id, angle, width,height)
@@ -564,6 +597,10 @@ class ToolsTracker:
         # if (d < 300 and self.tipPosition[id][2] == 1) or (self.tipPosition[id][2] == 0) or not self.firstMarkerDetection[id]:
         self.markerPosition[id][0] = int(self.alpha*float(self.markerPosition[id][0])+(1.0-self.alpha)*float(cX))
         self.markerPosition[id][1] = int(self.alpha*float(self.markerPosition[id][1])+(1.0-self.alpha)*float(cY))
+        self.markerPositionTransformed[id][0] = -2.0*(float(self.markerPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
+        self.markerPositionTransformed[id][1] = 2.0*float(float(self.markerPosition[id][0]-imageSize[0]/2.0)/imageSize[0])
+        self.markerPosition[id][2] = 1
+        self.markerPositionTransformed[id][2] = 1
         if baseMarkerDetected:
           self.dir[id] = (self.markerPosition[id][0:2]-xBase)/np.linalg.norm(self.markerPosition[id][0:2]-xBase) 
           self.dir[id] = self.dir[id]/np.linalg.norm(self.dir[id])
@@ -581,16 +618,29 @@ class ToolsTracker:
         self.tipPositionTransformed[id][1] = 2.0*float(float(self.tipPosition[id][0]-imageSize[0]/2.0)/imageSize[0])
         self.tipPosition[id][2] = 1
         self.tipPositionTransformed[id][2] = 1
+        self.timeMarkerDisappear[id] = -1
 
         if not self.firstMarkerDetection[id]:
           self.firstMarkerDetection[id] = True 
       else:
+        # if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
+        #   self.timeMarkerDisappear[id] = time.time()
+        # if time.time()-self.timeMarkerDisappear[id]>1:
         self.tipPosition[id][2] = 0
         self.tipPositionTransformed[id][2] = 0
+        self.markerPosition[id][2] = 0
+        self.markerPositionTransformed[id][2] = 0
+
 
     else:
+      # if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
+      #   self.timeMarkerDisappear[id] = time.time()
+      # if time.time()-self.timeMarkerDisappear[id]>0.5:
       self.tipPosition[id][2] = 0
       self.tipPositionTransformed[id][2] = 0
+      self.markerPosition[id][2] = 0
+      self.markerPositionTransformed[id][2] = 0
+
 
     return maskTip, maskBase
 
