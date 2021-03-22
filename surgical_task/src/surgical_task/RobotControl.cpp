@@ -239,15 +239,15 @@ void SurgicalTask::insertionStep(int r, int h)
     //                                          _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
     //                                          _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
     
-    _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
-                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
-
-    // _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+    // _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
     //                                          _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                          _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
     //                                          _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
+
+    _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
 
     if(_debug)
     {
@@ -379,15 +379,15 @@ void SurgicalTask::operationStep(int r, int h)
     //                                           _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
     //                                           _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
     
-    _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
-
-    // _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+    // _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
     //                                           _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
     //                                           _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
     //                                           _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
+
+    _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 

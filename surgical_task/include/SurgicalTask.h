@@ -359,9 +359,9 @@ class SurgicalTask
     QpSolverRCMCollision* _qpSolverRCMCollision[NB_ROBOTS];   
     // QpSolverRCMCollision::Result _qpResult[NB_ROBOTS];
     QpSolverRCMCollision2* _qpSolverRCMCollision2[NB_ROBOTS];    
-    QpSolverRCMCollision2::Result _qpResult[NB_ROBOTS];
+    // QpSolverRCMCollision2::Result _qpResult[NB_ROBOTS];
     QpSolverRCMCollision3* _qpSolverRCMCollision3[NB_ROBOTS];    
-    // QpSolverRCMCollision3::Result _qpResult[NB_ROBOTS];
+    QpSolverRCMCollision3::Result _qpResult[NB_ROBOTS];
 
     Eigen::VectorXi _pillarsId;
     Eigen::MatrixXf _pillarsPosition;

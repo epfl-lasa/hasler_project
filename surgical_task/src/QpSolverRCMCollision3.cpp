@@ -164,7 +164,7 @@ void QpSolverRCMCollision3::setRobot(Utils<float>::ROBOT_ID robotID)
 	  _jointVelocitiesLimits(4) = 2.6100f;
 	  _jointVelocitiesLimits(5) = 2.6100f;
 	  _jointVelocitiesLimits(6) = 2.6100f;	
-	  _jointVelocitiesLimits *= 0.4f;
+	  _jointVelocitiesLimits *= 0.2f;
 	}
 }
 
@@ -419,6 +419,10 @@ QpSolverRCMCollision3::Result QpSolverRCMCollision3::step(Eigen::VectorXf &joint
 			// 	std::cerr << "[QpSolverRCMCollision3]: Tool collision no afety stop: " << (wRRobotBasis.transpose()*rToolObstacle.normalized()).transpose()*JtoolCollision*jointVelocities << std::endl;
 			// }
 			joints += dt*jointVelocities;
+			if(_debug)
+			{
+				std::cerr << "[QpSolverRCMCollision3]: Slack: " << xOpt[7] << " " << xOpt[8] << " " << xOpt[9] << std::endl;
+			}
 		}
 		else
 		{
