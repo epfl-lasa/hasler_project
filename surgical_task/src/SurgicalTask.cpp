@@ -23,12 +23,13 @@ bool SurgicalTask::init()
   {
     return false;
   }
+  
+  // Initialize task parameters
+  initializeTaskParameters();
 
   // Initialize subscribers and publishers
   initializeSubscribersAndPublishers();
 
-  // Initialize task parameters
-  initializeTaskParameters();
 
   // Create log file
   _outputFile.open(ros::package::getPath(std::string("robotic_experiments"))+"/data_foot/surgical_task.txt");
@@ -168,7 +169,7 @@ void SurgicalTask::step()
       else if(_useRobot[r] && r != _currentRobot)
       {
         // Update trocar information
-        updateTrocarInformation(r);
+        updateRobotTaskState(r);
       }
     }
   }

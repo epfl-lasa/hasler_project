@@ -73,8 +73,12 @@ SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 20, 30, 35]
 # Left foot interface range
 SurgicalTask/rightFootInterfaceRange: [0.195, 0.18, 34, 30, 35]
 
-# Foot interface deadzone in position velocity mapping
-SurgicalTask/footInterfaceDeadZone: [0.03, 0.03, 5, 5, 7]
+# Foot interfaces deadzone in position velocity mapping
+SurgicalTask/leftFootInterfaceMinDeadZone: [-0.01, -0.03, -5, -5, -10]
+SurgicalTask/leftFootInterfaceMaxDeadZone: [0.03, 0.01, 5, 5, 15]
+
+SurgicalTask/rightFootInterfaceMinDeadZone: [-0.03, -0.03, -5, -5, -10]
+SurgicalTask/rightFootInterfaceMaxDeadZone: [0.03, 0.03, 5, 5, 10]
 
 # Velocity gains in trocar space when using the position velocity mapping (up, right, insertion, self rotation)
 SurgicalTask/trocarSpaceVelocityGains: [0.05, 0.05, 0.1, 1]
@@ -94,19 +98,6 @@ SurgicalTask/toolTipLinearVelocityLimit: 0.05
 # Tool tip angular velocity limit
 SurgicalTask/toolTipSelfAngularVelocityLimit: 1.5
 
-# Trocar space pyramid base size in position position mapping
-SurgicalTask/trocarSpacePyramidBaseSize: [0.12, 0.12]
-
-# Trocar space pyramid base offset in position position mapping
-SurgicalTask/trocarSpacePyramidBaseOffset: [0.04, -0.05, -0.09,
-                                            0.02, 0.05, -0.07]
-
-# SurgicalTask/trocarSpacePyramidBaseOffset: [0.0, 0, 0,
-#                                             0.0, 0.0, -0.07]
-
-# Trocar space pyramid min z offset offset in position position mapping
-# SurgicalTask/trocarSpaceMinZOffset: [-0.09, -0.08]
-SurgicalTask/trocarSpaceMinZOffset: [-0.145, -0.05]
 
 
 # Insertion phase offset for position position mapping

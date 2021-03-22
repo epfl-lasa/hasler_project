@@ -18,7 +18,7 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
                                            _rcmTolerance(1e-3), _toolTolerance(1e-3), _phiTolerance(1e-2)
 {
 
-	_debug = false;
+	_debug = true;
 	_rcmGain = 1.0f;
 	_toolGain = 1.0f;
 
@@ -243,12 +243,11 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  J(_nbTasks-1,_nbJoints-1) = 1.0f;
 
 	  _H.setConstant(0.0f);
-	  _H.block(0,0,_nbJoints,_nbJoints) = (1+100*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
+	  _H.block(0,0,_nbJoints,_nbJoints) = (1+50*dt*dt)*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
 	  _H.block(_nbJoints,_nbJoints,_nbSlacks,_nbSlacks) = _slackGains.asDiagonal();
 
-	  _g.segment(0,_nbJoints) = -dt*100*(((_jointMin+_jointMax)/2.0f)-joints);
+	  _g.segment(0,_nbJoints) = -dt*50*(((_jointMin+_jointMax)/2.0f)-joints);
 
-	  _A.setConstant(0.0f);
 	  _A.block(0,0,_nbTasks,_nbJoints) = J;
 	  _A.block(0,_nbJoints,_nbTasks,_nbSlacks) = -Eigen::MatrixXf::Identity(_nbSlacks,_nbSlacks);
 	  _A.block(_nbTasks,0,_nbJoints,_nbJoints) = dt*Eigen::MatrixXf::Identity(_nbJoints,_nbJoints);
@@ -338,28 +337,28 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 
 	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
 	  {  
-	  	float ds = 0.0f, di = 1.e-2f;
-	  	_lbA(_idWorkspaceCollisionConstraint) = -0.5f*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
+	  	float ds = 0.0f, di = 0.01f;
+	  	_lbA(_idWorkspaceCollisionConstraint) = -1.0f*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.5f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+1) = -1.0f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+1) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.5f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+2) = -1.0f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+2) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.5f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+3) = -1.0f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+3) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.5f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+4) = -1.0f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+4) = 1000.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.5f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+5) = -1.0f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+5) = 1000.0f;
 
-		  if(_lbA(_idWorkspaceCollisionConstraint)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+1)>-5e-3f ||
-		  	 _lbA(_idWorkspaceCollisionConstraint+2)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+3)>-5e-3f ||
-		  	 _lbA(_idWorkspaceCollisionConstraint+4)>-5e-3f || _lbA(_idWorkspaceCollisionConstraint+5)>-5e-3f)
+		  if(-1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint)<1e-3f || -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+1)< 1e-3f ||
+		  	 -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+2)< 1e-3f || -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+3)< 1e-3f ||
+		  	 -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-3f || -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+5)< 1e-3f)
 		  {
 		  	result.workspaceCollisionConstraintActive = true;
 		  }
@@ -409,14 +408,39 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 
 		if(ret == qpOASES::SUCCESSFUL_RETURN)
 		{
+
+			// if(_enableEECollisionAvoidance && _lbA(_idEECollisionConstraint)>0 && 
+			//    (wRRobotBasis.transpose()*rEEObstacle.normalized()).transpose()*JeeCollision*jointVelocities<0)
+			// {
+			// 	std::cerr << "[QpSolverRCMCollision]: EE collision safety stop: " << (wRRobotBasis.transpose()*rEEObstacle.normalized()).transpose()*JeeCollision*jointVelocities << std::endl;
+			// 	std::cerr << "jv: " << jointVelocities.transpose() << std::endl; 
+			// 	jointVelocities.setConstant(0.0f);
+			// }
+			// else
+			// {
+			// 	// std::cerr << "[QpSolverRCMCollision]: EE collision no safety stop: " << (wRRobotBasis.transpose()*rEEObstacle.normalized()).transpose()*JeeCollision*jointVelocities << std::endl;
+			// }
+			// if(_enableToolCollisionAvoidance && _lbA(_idToolCollisionConstraint)>0 && 
+			//    (wRRobotBasis.transpose()*rToolObstacle.normalized()).transpose()*JtoolCollision*jointVelocities<0)
+			// {
+			// 	std::cerr << "[QpSolverRCMCollision]: Tool collision safety stop: " << (wRRobotBasis.transpose()*rToolObstacle.normalized()).transpose()*JtoolCollision*jointVelocities << std::endl;
+			// 	std::cerr << "jv: " << jointVelocities.transpose() << std::endl; 
+			// 	jointVelocities.setConstant(0.0f);
+			// }
+			// else
+			// {
+			// 	// std::cerr << "[QpSolverRCMCollision]: Tool collision no afety stop: " << (wRRobotBasis.transpose()*rToolObstacle.normalized()).transpose()*JtoolCollision*jointVelocities << std::endl;
+			// 	std::cerr << "jv: " << jointVelocities.transpose() << std::endl; 
+
+			// }
   		joints += dt*jointVelocities;
 		  Eigen::VectorXf temp;
 		  temp = Jee*jointVelocities;
-		  std::cerr << "ee: " << temp.transpose() << std::endl; 
-		  std::cerr << "ee: " << temp.segment(0,3).norm() << " " << temp.segment(3,3).norm() << std::endl; 
-		  std::cerr << "tip: " << (J*jointVelocities).transpose() << std::endl; 
-		  std::cerr << "tip: " << (Jtool*jointVelocities).norm() << " " << (_toolGain*wRRobotBasis.transpose()*vdTool).transpose() << " " << omegad << std::endl; 
-		  std::cerr << "slack: " << xOpt[10] << " " << xOpt[11] << " " << xOpt[12] << " " << xOpt[13] << std::endl;
+		  // std::cerr << "ee: " << temp.transpose() << std::endl; 
+		  // std::cerr << "ee: " << temp.segment(0,3).norm() << " " << temp.segment(3,3).norm() << std::endl; 
+		  // std::cerr << "tip: " << (J*jointVelocities).transpose() << std::endl; 
+		  // std::cerr << "tip: " << (Jtool*jointVelocities).norm() << " " << (_toolGain*wRRobotBasis.transpose()*vdTool).transpose() << " " << omegad << std::endl; 
+		  // std::cerr << "slack: " << xOpt[10] << " " << xOpt[11] << " " << xOpt[12] << " " << xOpt[13] << std::endl;
 
 		}
 		else

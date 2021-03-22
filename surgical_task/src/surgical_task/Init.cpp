@@ -254,6 +254,7 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
+  _insertionDistancePVM.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/insertionDistancePVM", _insertionDistancePVM))
   {
     ROS_ERROR("Couldn't retrieve the insertion distance in position velocity mapping");
@@ -289,15 +290,48 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
-  _footInterfaceDeadZone.resize(NB_DOF_FOOT_INTERFACE);
-  if (!_nh.getParam("SurgicalTask/footInterfaceDeadZone", _footInterfaceDeadZone))
+  _footInterfaceMinDeadZone[LEFT].resize(NB_DOF_FOOT_INTERFACE);
+  if (!_nh.getParam("SurgicalTask/leftFootInterfaceMinDeadZone", _footInterfaceMinDeadZone[LEFT]))
   {
-    ROS_ERROR("Couldn't retrieve the foot interfaces deadzones");
+    ROS_ERROR("Couldn't retrieve the left foot interface min deadzones");
     return false;
   }
   else
   {
-    ROS_INFO("Foot interfaces deadzones: %f %f %f %f %f\n", _footInterfaceDeadZone[FOOT_X], _footInterfaceDeadZone[FOOT_Y], _footInterfaceDeadZone[FOOT_PITCH], _footInterfaceDeadZone[FOOT_ROLL], _footInterfaceDeadZone[FOOT_YAW]);
+    ROS_INFO("Left foot interface min deadzones: %f %f %f %f %f\n", _footInterfaceMinDeadZone[LEFT][FOOT_X], _footInterfaceMinDeadZone[LEFT][FOOT_Y], _footInterfaceMinDeadZone[LEFT][FOOT_PITCH], _footInterfaceMinDeadZone[LEFT][FOOT_ROLL], _footInterfaceMinDeadZone[LEFT][FOOT_YAW]);
+  }
+
+  _footInterfaceMaxDeadZone[LEFT].resize(NB_DOF_FOOT_INTERFACE);
+  if (!_nh.getParam("SurgicalTask/leftFootInterfaceMaxDeadZone", _footInterfaceMaxDeadZone[LEFT]))
+  {
+    ROS_ERROR("Couldn't retrieve the left foot interface max deadzones");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Left foot interface max deadzones: %f %f %f %f %f\n", _footInterfaceMaxDeadZone[LEFT][FOOT_X], _footInterfaceMaxDeadZone[LEFT][FOOT_Y], _footInterfaceMaxDeadZone[LEFT][FOOT_PITCH], _footInterfaceMaxDeadZone[LEFT][FOOT_ROLL], _footInterfaceMaxDeadZone[LEFT][FOOT_YAW]);
+  }
+
+  _footInterfaceMinDeadZone[RIGHT].resize(NB_DOF_FOOT_INTERFACE);
+  if (!_nh.getParam("SurgicalTask/rightFootInterfaceMinDeadZone", _footInterfaceMinDeadZone[RIGHT]))
+  {
+    ROS_ERROR("Couldn't retrieve the right foot interface min deadzones");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Right foot interface min deadzones: %f %f %f %f %f\n", _footInterfaceMinDeadZone[RIGHT][FOOT_X], _footInterfaceMinDeadZone[RIGHT][FOOT_Y], _footInterfaceMinDeadZone[RIGHT][FOOT_PITCH], _footInterfaceMinDeadZone[RIGHT][FOOT_ROLL], _footInterfaceMinDeadZone[RIGHT][FOOT_YAW]);
+  }
+
+  _footInterfaceMaxDeadZone[RIGHT].resize(NB_DOF_FOOT_INTERFACE);
+  if (!_nh.getParam("SurgicalTask/rightFootInterfaceMaxDeadZone", _footInterfaceMaxDeadZone[RIGHT]))
+  {
+    ROS_ERROR("Couldn't retrieve the right foot interface max deadzones");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Right foot interface max deadzones: %f %f %f %f %f\n", _footInterfaceMaxDeadZone[RIGHT][FOOT_X], _footInterfaceMaxDeadZone[RIGHT][FOOT_Y], _footInterfaceMaxDeadZone[RIGHT][FOOT_PITCH], _footInterfaceMaxDeadZone[RIGHT][FOOT_ROLL], _footInterfaceMaxDeadZone[RIGHT][FOOT_YAW]);
   }
 
 
@@ -311,7 +345,6 @@ bool SurgicalTask::readConfigurationParameters()
   {
     ROS_INFO("Trocar space velocity gains: %f %f %f %f\n", _trocarSpaceVelocityGains[V_UP], _trocarSpaceVelocityGains[V_RIGHT], _trocarSpaceVelocityGains[V_INSERTION], _trocarSpaceVelocityGains[W_SELF_ROTATION]);
   }
-
 
   if (!_nh.getParam("SurgicalTask/useSafetyLimits", _useSafetyLimits))
   {
@@ -367,44 +400,8 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Tool tip self angular velocity limit: %f\n", _toolTipSelfAngularVelocityLimit);
   }
 
-
-  if (!_nh.getParam("SurgicalTask/trocarSpacePyramidBaseSize", _trocarSpacePyramidBaseSize))
-  {
-    ROS_ERROR("Couldn't retrieve the trocar space pyramid base size");
-    return false;
-  }
-  else
-  {
-    ROS_INFO("Trocar space pyramid base size: %f %f\n", _trocarSpacePyramidBaseSize[LEFT], _trocarSpacePyramidBaseSize[RIGHT]);
-  }
-
-
   std::vector<float> temp;
   temp.resize(6);
-  if (!_nh.getParam("SurgicalTask/trocarSpacePyramidBaseOffset", temp))
-  {
-    ROS_ERROR("Couldn't retrieve the trocar space pyramid base offset");
-    return false;
-  }
-  else
-  {
-    _trocarSpacePyramidBaseOffset[LEFT] << temp[0], temp[1], temp[2];
-    _trocarSpacePyramidBaseOffset[RIGHT] << temp[3], temp[4], temp[5];
-    ROS_INFO("Trocar space square center offset: LEFT: %f %f %f RIGHT: %f %f %f", _trocarSpacePyramidBaseOffset[LEFT](0), _trocarSpacePyramidBaseOffset[LEFT](1), _trocarSpacePyramidBaseOffset[LEFT](2),
-                                                                                  _trocarSpacePyramidBaseOffset[RIGHT](0), _trocarSpacePyramidBaseOffset[RIGHT](1), _trocarSpacePyramidBaseOffset[RIGHT](2));
-  }
-
-
-  if (!_nh.getParam("SurgicalTask/trocarSpaceMinZOffset", _trocarSpaceMinZOffset))
-  {
-    ROS_ERROR("Couldn't retrieve the trocar space min z offset");
-    return false;
-  }
-  else
-  {
-    ROS_INFO("Trocar space min z offset: %f %f\n", _trocarSpaceMinZOffset[LEFT], _trocarSpaceMinZOffset[RIGHT]);
-  }
-
 
   if (!_nh.getParam("SurgicalTask/insertionOffsetPPM", temp))
   {
@@ -852,6 +849,7 @@ void SurgicalTask::initializeTaskParameters()
   _optitrackOK = false;
   _usePredefinedTrocars = false;
   _useTaskAdaptation = false;
+  _firstColorMarkersPosition = false;
 
   _markersPosition.setConstant(0.0f);
   _markersPosition0.setConstant(0.0f);
@@ -1003,6 +1001,11 @@ void SurgicalTask::initializeTaskParameters()
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
                                                           _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
                                                           _operationMaxOffsetPVM[r]);        
+      _qpSolverRCMCollision3[r] = new QpSolverRCMCollision3(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
+                                                          _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
+                                                          _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
+                                                          _operationMaxOffsetPVM[r]);        
     }
     else
     {
@@ -1010,6 +1013,9 @@ void SurgicalTask::initializeTaskParameters()
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
       _qpSolverRCMCollision2[r] = new QpSolverRCMCollision2(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
+                                                          _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
+      _qpSolverRCMCollision3[r] = new QpSolverRCMCollision3(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
     }
@@ -1021,6 +1027,8 @@ void SurgicalTask::initializeTaskParameters()
   _qpSolverRCMCollision[RIGHT]->setRobot(_robotID);
   _qpSolverRCMCollision2[LEFT]->setRobot(_robotID);
   _qpSolverRCMCollision2[RIGHT]->setRobot(_robotID);
+  _qpSolverRCMCollision3[LEFT]->setRobot(_robotID);
+  _qpSolverRCMCollision3[RIGHT]->setRobot(_robotID);
 }
 
 

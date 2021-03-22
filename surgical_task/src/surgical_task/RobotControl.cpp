@@ -4,7 +4,7 @@
 void SurgicalTask::robotControlStep(int r, int h)
 {
   // Update trocar information
-  updateTrocarInformation(r);
+  updateRobotTaskState(r);
 
   // Select robot mode
   updateControlPhase(r);
@@ -38,7 +38,7 @@ void SurgicalTask::robotControlStep(int r, int h)
 }
 
 
-void SurgicalTask::updateTrocarInformation(int r)
+void SurgicalTask::updateRobotTaskState(int r)
 {
   // Compute vector EE to trocar
   _rEETrocar[r] = _trocarPosition[r]-_xEE[r];
@@ -120,6 +120,17 @@ void SurgicalTask::updateTrocarInformation(int r)
   	std::cerr << "[SurgicalTask]: " << r << ": Distance EE-Robot: " << _rEECollision[r].norm() << " " << _rEECollision[r].norm() <<std::endl;
     std::cerr << "[SurgicalTask]: " << r << ": Distance Tool-Tool: " << _rToolCollision[r].transpose() << _rToolCollision[r].norm() << " " << l1 << " " << l2 <<std::endl;    
   }
+
+  // Compute IK tip position
+  Eigen::Matrix4f Hik;
+  Hik = Utils<float>::getForwardKinematics(_ikJoints[r],_robotID);
+  _xIK[r] = _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1)+_toolOffsetFromEE[r]*_wRRobotBasis[r]*Hik.block(0,2,3,1);
+
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: " << r << " xIK: " << _xIK[r].transpose() << std::endl;
+  }
+
 }
 
 
@@ -232,6 +243,12 @@ void SurgicalTask::insertionStep(int r, int h)
                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
+
+    // _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+    //                                          _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+    //                                          _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+    //                                          _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
+
     if(_debug)
     {
       std::cerr << "[SurgicalTask]: " << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
@@ -367,6 +384,11 @@ void SurgicalTask::operationStep(int r, int h)
                                               _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
                                               _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
 
+    // _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+    //                                           _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+    //                                           _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+    //                                           _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
+
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     if(_debug)
@@ -392,15 +414,6 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     std::cerr << "[SurgicalTask]: trocar input:  " << _trocarInput[h].transpose() << std::endl;    
   }
 
-  // Compute IK tip position
-  Eigen::Matrix4f Hik;
-  Hik = Utils<float>::getForwardKinematics(_ikJoints[r],_robotID);
-  _xIK[r] = _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1)+_toolOffsetFromEE[r]*_wRRobotBasis[r]*Hik.block(0,2,3,1);
-
-  if(_debug)
-  {
-    std::cerr << "[SurgicalTask]: " << r << " xIK: " << _xIK[r].transpose() << std::endl;
-  }
 
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
@@ -571,7 +584,6 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
   {
 
     float xMin,xMax,yMin,yMax;
-    xMin = -_trocarSpacePyramidBaseSize[r]/2.0;
 
     xMin = -_operationOffsetRangePPM[r](0)/2.0;
     xMax = _operationOffsetRangePPM[r](0)/2.0;
