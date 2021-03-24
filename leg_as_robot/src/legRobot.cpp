@@ -65,6 +65,8 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
 
   _flagFootPoseConnected =  false;
   _flagHipPoseConnected =  false;
+  
+  _flagPlatformJointStateConnected=false;
 
 
   _decimationVel=(int) (_freq/200.0); _decimationAcc= (int) (_freq/100.0);  _innerCounterVel=0; _innerCounterAcc=0;
@@ -116,6 +118,7 @@ bool legRobot::init() //! Initialization of the node. Its datatype
   _pubManipEllipsoidRot = _n.advertise<visualization_msgs::Marker>("leg_manipulability_rot", 0);
   _pubManipEllipsoidLin = _n.advertise<visualization_msgs::Marker>("leg_manipulability_lin", 0);
 
+  _subPlatformJointState = _n.subscribe<sensor_msgs::JointState>("/" + std::string(Leg_Names[_leg_id]) + "_platform/platform_joint_publisher/joint_states",1,readPlatformJointState);
   // Subscriber definitions
   signal(SIGINT, legRobot::stopNode);
 
@@ -134,24 +137,28 @@ void legRobot::stopNode(int sig) { me->_stop = true;  me->publishFootBaseGravity
 void legRobot::run() {
   
   while (!_stop) {
-    readFootBasePose();
-    readHipBasePose();
-    if (_flagFootPoseConnected) {
-      computedWeightingMatrixes();
-      performInverseKinematics();
-      publishLegJointStates();
-      computeIDTorque();
-      performChainForwardKinematics();
-      computeNetCoG();
-      computeFootBaseWrenchForwardDynamics();
-      computeLegManipulability();
-      publishManipulabilityEllipsoidRot();
-      publishManipulabilityEllipsoidLin();
-      _innerCounterVel++;
-      _innerCounterAcc++;
+    if (_flagPlatformJointStateConnected)
+    {
+      ROS_INFO_ONCE("[%s leg]: the platform joint state can be read now",Leg_Names[_leg_id]);
+      readFootBasePose();
+      readHipBasePose();
+      if (_flagFootPoseConnected) {
+        computedWeightingMatrixes();
+        performInverseKinematics();
+        publishLegJointStates();
+        computeIDTorque();
+        performChainForwardKinematics();
+        computeNetCoG();
+        computeFootBaseWrenchForwardDynamics();
+        computeLegManipulability();
+        publishManipulabilityEllipsoidRot();
+        publishManipulabilityEllipsoidLin();
+        _innerCounterVel++;
+        _innerCounterAcc++;
     }
-    ros::spinOnce();
-    _loopRate.sleep();
+    }
+      ros::spinOnce();
+      _loopRate.sleep();
   }
 
   ROS_INFO("[%s leg]: Leg state variables stopped",Leg_Names[_leg_id]);
@@ -538,3 +545,11 @@ void legRobot::publishManipulabilityEllipsoidLin() {
   _pubManipEllipsoidLin.publish(_msgManipEllipsoidLin);
   // _mutex.unlock();
 }
+
+
+void legRobot::readPlatformJointState(const sensor_msgs::JointState::ConstPtr& msg)
+{
+    me->_msgPlatformJointState = *msg;
+    me->_flagPlatformJointStateConnected=true;
+}
+

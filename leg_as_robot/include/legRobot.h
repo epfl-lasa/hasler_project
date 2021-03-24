@@ -145,21 +145,25 @@ private:
   // Publisher declaration
   ros::Publisher _pubManipEllipsoidRot;
   ros::Publisher _pubManipEllipsoidLin;
+
   ros::Publisher _pubLegJointStates;
   ros::Publisher _pubNetCoG;
   ros::Publisher _pubFootBaseWrench; //! To the foot variable synchornizer
+  ros::Subscriber _subPlatformJointState;
 
 
   // Messages
   visualization_msgs::Marker _msgManipEllipsoidRot;
   visualization_msgs::Marker _msgManipEllipsoidLin;
   sensor_msgs::JointState _msgJointStates;
+  sensor_msgs::JointState _msgPlatformJointState;
   geometry_msgs::PointStamped _msgNetCoG;
   geometry_msgs::WrenchStamped _msgFootBaseWrench;
 
   //! boolean variables
 
   bool _flagFootPoseConnected;
+  bool _flagPlatformJointStateConnected;
   bool _flagHipPoseConnected;
   bool _stop;
 
@@ -183,6 +187,8 @@ private:
 
   // bool allSubscribersOK();
   void publishLegJointStates();
+  //void processPlatformJointState(); -> no needed for the moment
+  static void readPlatformJointState(const sensor_msgs::JointState::ConstPtr& msg);
   void readFootBasePose();
   void readHipBasePose();
   void readHipWorldPose();
