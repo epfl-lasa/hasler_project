@@ -1,5 +1,5 @@
-#ifndef __QP_SOLVER_RCM_COLLISION_H__
-#define __QP_SOLVER_RCM_COLLISION_H__
+#ifndef __QP_SOLVER_RCM_COLLISION_3_H__
+#define __QP_SOLVER_RCM_COLLISION_3_H__
 
 #include "Eigen/Eigen"
 #include <qpOASES.hpp>
@@ -9,7 +9,7 @@
 
 USING_NAMESPACE_QPOASES
 
-class QpSolverRCMCollision
+class QpSolverRCMCollision3
 {
 
 	public:
@@ -21,8 +21,9 @@ class QpSolverRCMCollision
 			bool workspaceCollisionConstraintActive;
 		};
 
+
 	private:
-	
+		
 		//!ros variables
 
 		const int _nbVariables;
@@ -52,9 +53,9 @@ class QpSolverRCMCollision
 		qpOASES::real_t* _ubA_qp;
 
 
-		//!subscribers and publishers declaration    
+	//!subscribers and publishers declaration    
     //!boolean variables
-  
+    
   	bool _debug;  
     bool _first;
     float _rcmGain;
@@ -66,7 +67,7 @@ class QpSolverRCMCollision
     SQProblem* _sqp;
 
 		Utils<float>::ROBOT_ID _robotID;
-		
+
 		bool _enableEECollisionAvoidance;
 		bool _enableToolCollisionAvoidance;
 		bool _enableWorkspaceCollisionAvoidance;
@@ -76,24 +77,24 @@ class QpSolverRCMCollision
 
 		float _eeSafetyCollisionDistance;
 		float _toolSafetyCollisionDistance;
-    float _eeLinearVelocityLimit;
-    float _eeAngularVelocityLimit;
+	  float _eeLinearVelocityLimit;
+	  float _eeAngularVelocityLimit;
 
 
 		Eigen::Vector3f _workspaceMinOffset;
 		Eigen::Vector3f _workspaceMaxOffset;
 
-    static QpSolverRCMCollision* me;
+  static QpSolverRCMCollision3* me;
 
 	public:
-		QpSolverRCMCollision(float eeLinearVelocityLimit = 0.25f, float eeAngularVelocityLimit = 1.5f, bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
+		QpSolverRCMCollision3(float eeLinearVelocityLimit = 0.25f, float eeAngularVelocityLimit = 1.5f, bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
 			                   bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f,
 			                   bool enableWorkspaceCollisionAvoidance = false, Eigen::Vector3f workspaceMinOffset = Eigen::Vector3f::Zero(), 
 			                   Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero());
 
-		~QpSolverRCMCollision();
 
-		void setRobot(Utils<float>::ROBOT_ID robotID);
+
+		~QpSolverRCMCollision3();
 
 		Result step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::Vector3f xTrocar, float toolOffset, Eigen::Vector3f vdTool, float phid,
 		            float dt, Eigen::Vector3f xRobotBasis = Eigen::Vector3f::Zero(), Eigen::Matrix3f wRRobotBasis = Eigen::Matrix3f::Identity(), 
@@ -101,14 +102,16 @@ class QpSolverRCMCollision
 	                Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(), float dToolObstacle = 0.0f, Eigen::Vector3f toolCollisionOffset = Eigen::Vector3f::Zero(), 
 	                bool useWorkspaceLimits = false, Eigen::Vector3f currentOffset = Eigen::Vector3f::Zero());
 
+		void setRobot(Utils<float>::ROBOT_ID robotID);
+
 
 		void setParameters(float rcmGain, float toolGain, Eigen::VectorXf slackGains,
 			                 Eigen::VectorXf slackLimits);	
 	
 	private:
-		bool checkConvergence(Eigen::VectorXf error);
+		bool checkConvergence(Eigen::VectorXf rcmError, Eigen::VectorXf taskError);
 
 		void copyQpOASESVariables();
 
 };
-#endif  // __QP_SOLVER_RCM_COLLISION_H__/
+#endif  // __QP_SOLVER_RCM_COLLISION_3_H__/

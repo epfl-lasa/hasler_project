@@ -799,6 +799,7 @@ void surgicalTool::publishToolTipPose(){
 void surgicalTool::performInverseKinematics(){
   
   _toolJointsInit.data = _toolJoints.data;
+
   int ret = _myPosIkSolver_wrist->CartToJnt(_toolJointsInit,_desiredToolEEFrame,_toolJoints);
 
   if (ret<0)

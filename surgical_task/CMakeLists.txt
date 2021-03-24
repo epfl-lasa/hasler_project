@@ -71,7 +71,8 @@ add_library(qpSolverRCM STATIC src/QpSolverRCM.cpp include/QpSolverRCM.h
                                src/QpSolverRCM2.cpp include/QpSolverRCM2.h
                                src/QpSolverRCM3.cpp include/QpSolverRCM3.h
                                src/QpSolverRCMCollision.cpp include/QpSolverRCMCollision.h
-                               src/QpSolverRCMCollision2.cpp include/QpSolverRCMCollision2.h)
+                               src/QpSolverRCMCollision2.cpp include/QpSolverRCMCollision2.h
+                               src/QpSolverRCMCollision3.cpp include/QpSolverRCMCollision3.h)
 target_link_libraries(qpSolverRCM ${qpOASES_LIBRARIES} jacobian)
 
 add_library(cvxgenSolverRCM include/cvxgen/solver.c 

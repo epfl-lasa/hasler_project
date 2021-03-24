@@ -125,7 +125,7 @@ void FootControl::publishData()
       _msgFootInput.ros_position[m] = 0.0f;
       _msgFootInput.ros_speed[m] = 0.0f;
       _msgFootInput.ros_effort[m] = _desiredFootWrench[k](m);
-      _msgFootInput.ros_forceSensor[m] = 0.0f;
+      _msgFootInput.ros_effortM[m] = 0.0f;
       _msgFootInput.ros_filterAxisForce[m] = 1.0f;
       _msgFootInput.ros_kp[m] = 0.0f;
       _msgFootInput.ros_kd[m] = 0.0f;

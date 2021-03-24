@@ -241,8 +241,17 @@ void SurgicalTask::taskAdaptation(int r, int h)
   // std::cerr << r << ": a: " << _dbeliefsC.transpose() << std::endl;
   float dbmax = _dbeliefsC.array().maxCoeff(&indexMax);
 
+  int toolTracked = 1;
+
+  if(!_useSim && _toolsTracking == CAMERA_BASED)
+  {
+    toolTracked = _colorMarkersStatus[indexMax];
+  }
+
+
+
   if((std::fabs(1.0f-_beliefsC(indexMax))< FLT_EPSILON && std::fabs(_beliefsC.sum()-1)<FLT_EPSILON) 
-     || _colorMarkersStatus[indexMax] == 0)
+     || toolTracked == 0)
   {
     _dbeliefsC.setConstant(0.0f);
   }
@@ -307,9 +316,11 @@ void SurgicalTask::taskAdaptation(int r, int h)
   {
 
     float alpha = 0.05f; 
-
-    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
-    vdk.row(k) = alpha*errork.row(k);
+    if(!_useSim && _toolsTracking == CAMERA_BASED)
+    {
+      errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
+      vdk.row(k) = alpha*errork.row(k);
+    }
     _vda += _beliefsC(k)*vdk.row(k);
   }
 

@@ -39,6 +39,7 @@
 #include "QpSolverRCM3.h"
 #include "QpSolverRCMCollision.h"
 #include "QpSolverRCMCollision2.h"
+#include "QpSolverRCMCollision3.h"
 #include "CvxgenSolverRCM.h"
 #include <pthread.h>
 #include "custom_msgs/TwoFeetOneToolMsg.h"
@@ -186,13 +187,11 @@ class SurgicalTask
     std::vector<int> _humanInputDevice;
     std::vector<int> _controlStrategy;
     std::vector<float> _footInterfaceRange[NB_ROBOTS];    
-    std::vector<float> _footInterfaceDeadZone;
+    std::vector<float> _footInterfaceMinDeadZone[NB_ROBOTS];
+    std::vector<float> _footInterfaceMaxDeadZone[NB_ROBOTS];
     std::vector<float> _trocarSpaceVelocityGains;
     float _toolTipLinearVelocityLimit;
     float _toolTipSelfAngularVelocityLimit;
-    std::vector<float> _trocarSpacePyramidBaseSize;
-    Eigen::Vector3f _trocarSpacePyramidBaseOffset[NB_ROBOTS];
-    std::vector<float> _trocarSpaceMinZOffset;
     float _trocarSpaceLinearDSFixedGain;
     float _trocarSpaceLinearDSGaussianGain;
     float _trocarSpaceLinearDSGaussianWidth;
@@ -243,6 +242,8 @@ class SurgicalTask
     std::vector<int> _tool;
     std::vector<int> _humanInputID;
     float _markerFilterGain;
+    float _eeLinearVelocityLimit;
+    float _eeAngularVelocityLimit;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -356,8 +357,11 @@ class SurgicalTask
     QpSolverRCM3 _qpSolverRCM3[NB_ROBOTS];
     CvxgenSolverRCM _cvxgenSolverRCM;
     QpSolverRCMCollision* _qpSolverRCMCollision[NB_ROBOTS];   
-    QpSolverRCMCollision::Result _qpResult[NB_ROBOTS];
-    QpSolverRCMCollision2 _qpSolverRCMCollision2[NB_ROBOTS];    
+    // QpSolverRCMCollision::Result _qpResult[NB_ROBOTS];
+    QpSolverRCMCollision2* _qpSolverRCMCollision2[NB_ROBOTS];    
+    // QpSolverRCMCollision2::Result _qpResult[NB_ROBOTS];
+    QpSolverRCMCollision3* _qpSolverRCMCollision3[NB_ROBOTS];    
+    QpSolverRCMCollision3::Result _qpResult[NB_ROBOTS];
 
     Eigen::VectorXi _pillarsId;
     Eigen::MatrixXf _pillarsPosition;
@@ -446,8 +450,8 @@ class SurgicalTask
     // Update the human tool pose if optitrack is used
     void updateHumanToolPosition();
 
-    // Update trocar information for robot r
-    void updateTrocarInformation(int r);
+    // Update robot r task state
+    void updateRobotTaskState(int r);
 
     // Update control phase of robot r
     void updateControlPhase(int r);
