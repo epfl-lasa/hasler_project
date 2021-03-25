@@ -1,7 +1,5 @@
 <launch>
 	<arg name="id" default="right"/>
-	<arg name="mixedPlatform" default="false"/>
-	
 	<arg name="controlTools" default="true"/>
 
 	<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load" if="$(arg controlTools)"/>
@@ -12,7 +10,6 @@
 	<group ns="$(arg id)">
 		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
 			<param name="platformID" value="$(arg id)"/>
-			<param name="mixedPlatformMode" value="$(arg mixedPlatform)"/>
 			<param name="controlTools" value="$(arg controlTools)"/>
 		</node>
 	

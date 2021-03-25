@@ -70,12 +70,21 @@ surgicalTool::surgicalTool(ros::NodeHandle &n_1, double frequency,
     _myInput=PLATFORM_INPUT;
   }
   //! Get parameter of interaction mode
-  std::string interactionMode_="individual";
-  if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"interactionMode", interactionMode_))
+  // std::string interactionMode_="individual";
+  // if (!_n.getParam("/"+std::string(Tool_Names[_tool_id])+"_tool/"+"interactionMode", interactionMode_))
+  // { 
+  //     ROS_ERROR("[%s tool]: No interactionMode param",Tool_Names[_tool_id]); 
+  // }
+  // _myInteractionMode = interactionMode_.compare("mixed")==0 ? MIXED_MODE : INDIVIDUAL_MODE;
+  bool useOneFootForTwoTools = false;
+  if (!_n.getParam("/useOneFootForTwoTools", useOneFootForTwoTools))
   { 
-      ROS_ERROR("[%s tool]: No interactionMode param",Tool_Names[_tool_id]); 
+      ROS_INFO("[%s tool]: No useOneFootForTwoTools param, default to false",Tool_Names[_tool_id]); 
+  }else
+  {
+    useOneFootForTwoTools = false;
   }
-  _myInteractionMode = interactionMode_.compare("mixed")==0 ? MIXED_MODE : INDIVIDUAL_MODE;
+  _myInteractionMode= useOneFootForTwoTools ? MIXED_MODE : INDIVIDUAL_MODE;
 
   if (_myInteractionMode==MIXED_MODE)
   {
