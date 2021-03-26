@@ -135,10 +135,13 @@ footVarSynchronizer::~footVarSynchronizer()
 bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
 {	
 
-	_mixedPlatformOn=false;
-    if (!_n.getParam("/useOneFootForTwoTools", _mixedPlatformOn))
+	
+	  _mixedPlatformOn=false;
+    
+	if (!_n.getParam("/useOneFootForTwoTools", _mixedPlatformOn))
     { 
-      ROS_ERROR(" [%s footVarSync]: No /useOneFootForTwoTools  param",Platform_Names[_platform_name]); 
+      ROS_INFO(" [%s footVarSync]: No /useOneFootForTwoTools  param, default to false",Platform_Names[_platform_name]); 
+	  _mixedPlatformOn=false;
     } 
 
 	_controlTools=false;

@@ -1,5 +1,5 @@
 fi_input:
   topics: 
     - 'shared_control_publisher/foot_input'
-    - 'surgical_task/foot_input'
     - 'gripperFeedbackToPlatform'
+#   - 'surgical_task/foot_input'
