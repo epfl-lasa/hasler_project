@@ -39,9 +39,12 @@ _dt(1.0f/frequency)
 
 	_flagForceModifiedConnected=false;
 	_flagLegCompTorquesRead=false;
+	_flagInertiaCoriolisRead=false;
 	_flagLegCompWrenchRead = false;
 
 	_flagTwoFeetOneToolRead = false;
+
+	_myToolControl = TOOL_POSITION_CTRL;
 
 	for (int i=0; i<NB_PARAMS_CATEGORIES; i++){
 	_flagIsParamStillSame[i]=true;
@@ -97,7 +100,8 @@ _dt(1.0f/frequency)
 		for (size_t c = 0; c < NB_POS_PID_C; c++)
 		{
 			
-			_ros_paramP[c][k]=0.0f;
+			_ros_paramP_A[c][k]=0.0f;
+			_ros_paramP_B[c][k]=0.0f;
 			_ros_paramI[c][k]=0.0f;
 			_ros_paramD[c][k]=0.0f;
 		}
@@ -119,6 +123,7 @@ _dt(1.0f/frequency)
     _ros_controlledAxis = (int8_t)-1;
 
     _leg_grav_comp_effort.setZero();
+	_inertial_coriolis_comp_effort.setZero();
     _legWrenchGravityComp.setZero();
 
 }
@@ -130,10 +135,19 @@ footVarSynchronizer::~footVarSynchronizer()
 bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (bool) reflect the success in initialization
 {	
 
-	_mixedPlatformOn=false;
-    if (!_n.getParam("mixedPlatformMode", _mixedPlatformOn))
+	
+	  _mixedPlatformOn=false;
+    
+	if (!_n.getParam("/useOneFootForTwoTools", _mixedPlatformOn))
     { 
-      ROS_ERROR(" [%s footVarSync]: No mixedPlatformMode  param",Platform_Names[_platform_name]); 
+      ROS_INFO(" [%s footVarSync]: No /useOneFootForTwoTools  param, default to false",Platform_Names[_platform_name]); 
+	  _mixedPlatformOn=false;
+    } 
+
+	_controlTools=false;
+    if (!_n.getParam("controlTools", _controlTools))
+    { 
+      ROS_ERROR(" [%s footVarSync]: No controlTools  param",Platform_Names[_platform_name]); 
     } 
 
 	getPIDParams();
@@ -175,7 +189,9 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 
 		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());		
-
+	
+		_subInertiaCoriolisCompTorques = _n.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/foot_comp_inertia_coriolis", 1,boost::bind(&footVarSynchronizer::readInertiaCoriolisCompFI, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());		
 		
 		_subTorquesModified = _n.subscribe<custom_msgs::FootOutputMsg>("/left_platform/force_sensor_modifier/torques_modified", 1,boost::bind(&footVarSynchronizer::readTorquesModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());		
@@ -193,7 +209,11 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
 		_subLegGravCompTorques = _n.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/leg_comp_platform_effort", 1,boost::bind(&footVarSynchronizer::readLegGravCompFI, this, _1),
-					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());	
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
+		_subInertiaCoriolisCompTorques = _n.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/foot_comp_inertia_coriolis", 1,boost::bind(&footVarSynchronizer::readInertiaCoriolisCompFI, this, _1),
+					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
 		_subTorquesModified = _n.subscribe<custom_msgs::FootOutputMsg>("/right_platform/force_sensor_modifier/torques_modified", 1,boost::bind(&footVarSynchronizer::readTorquesModified, this, _1),
 					    	ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());		
 
@@ -260,7 +280,7 @@ void footVarSynchronizer::run()
 				_config.send_pid_gains=false;
 				_config.load_param_pid_gains=false;
 				_ros_defaultControl=true;
-				_ros_position=_platform_position;
+				_ros_position.setZero();
 				_config.controlled_axis=-1;
 				_dynRecServer.setConfigDefault(_config);
 				_dynRecServer.updateConfig(_config);
@@ -333,16 +353,17 @@ void footVarSynchronizer::run()
 					}
 					}
 					
-					if (_flagHumanOnPlatform && _flagCompensateLeg && _subLegGravCompTorques.getNumPublishers()!=0)
+					_ros_effort.setZero();
+
+					if (_flagHumanOnPlatform && _flagCompensateLeg && _subLegGravCompTorques.getNumPublishers()>0)
 					{	
-						_ros_effort = _leg_grav_comp_effort;
+						_ros_effort+= _leg_grav_comp_effort;
 						//cout<<_ros_effort.transpose()<<endl;
 					}
-					else
-					{
-						_ros_effort.setZero();
-					}
-				
+					// if(_ros_effortComp[COMPENSATION] && _subInertiaCoriolisCompTorques.getNumPublishers()>0)
+					// {
+					// 	_ros_effort+= _inertial_coriolis_comp_effort;
+					// }
 			}
 			
 
@@ -366,34 +387,39 @@ void footVarSynchronizer::run()
 
 
 void footVarSynchronizer::checkWhichPIDGainsToUse()
-{	
-	if (_mixedPlatformOn)
-	{	
-		if(_platform_machineState==TELEOPERATION)
-		{
-			if ((Platform_Name) _mainPlatform == _platform_id)
+{	if (_controlTools)
+	{
+		if (_mixedPlatformOn)
+		{	
+			if(_platform_machineState==TELEOPERATION)
 			{
-				_myPIDCategory = _msgTwoFeetOneTool.currentControlMode == (uint8_t) TOOL_POSITION_CTRL ? MP_TOOL_POS_PID : MP_TOOL_SPEED_PID;
-			}else
-			{
-				_myPIDCategory=MP_TOOL_MIXED_PID;
+				if ((Platform_Name) _mainPlatform == _platform_id)
+				{
+					_myPIDCategory = _msgTwoFeetOneTool.currentControlMode == (uint8_t) TOOL_POSITION_CTRL ? TOOL_POS_PID : TOOL_SPEED_PID;
+				}else
+				{
+					_myPIDCategory=MP_TOOL_MIXED_PID;
+				}
 			}
-		}
-		else if(_platform_machineState==ROBOT_STATE_CONTROL)
+			else if(_platform_machineState==ROBOT_STATE_CONTROL)
+			{
+				_myPIDCategory=S_ROBOT_CTRL_PID;
+			}
+		}else
 		{
-			_myPIDCategory=S_ROBOT_CTRL_PID;
+			_myPIDCategory = (_myToolControl ==  TOOL_POSITION_CTRL) ? TOOL_POS_PID : TOOL_SPEED_PID;
 		}
 	}else 
-	{	
-		if(_platform_machineState==TELEOPERATION)
-		{
-			_myPIDCategory=S_TELEOP_PID;
+		{	
+			if(_platform_machineState==TELEOPERATION)
+			{
+				_myPIDCategory=S_TELEOP_PID;
+			}
+			else if(_platform_machineState==ROBOT_STATE_CONTROL)
+			{
+				_myPIDCategory=S_ROBOT_CTRL_PID;
+			}
 		}
-		else if(_platform_machineState==ROBOT_STATE_CONTROL)
-		{
-			_myPIDCategory=S_ROBOT_CTRL_PID;
-		}
-	}
 }
 
 void footVarSynchronizer::updateInternalVariables()
@@ -420,10 +446,6 @@ void footVarSynchronizer::updateInternalVariables()
       ROS_DEBUG("Updating_POSITION");
 	}
 
-	if (_flagControlZeroEffort) {
-		_ros_effort.setConstant(0.0f);
-        ROS_DEBUG("Sending zero torque to the platform");
-	}
 
     _ros_effortComp[NORMAL]=(uint8_t) _config.effortComp_normal;
 	_ros_effortComp[SOFT_LIMITS]=(uint8_t) _config.effortComp_softLimits;
@@ -944,7 +966,13 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
   for (int k = 0; k < NB_PLATFORM_AXIS; k++) {
     _msgFootInput.ros_position[rosAxis[k]] = _ros_position[k] + _msgTotalDesiredFootInput.ros_position[rosAxis[k]];
     _msgFootInput.ros_speed[rosAxis[k]] = _ros_speed[k] + _msgTotalDesiredFootInput.ros_speed[rosAxis[k]] ;
-    _msgFootInput.ros_effort[rosAxis[k]] =  _flagHumanOnPlatform ? _ros_effort[k] + _msgTotalDesiredFootInput.ros_effort[rosAxis[k]] : 0.0f;
+	if (_flagControlZeroEffort) {
+		_msgFootInput.ros_effort[rosAxis[k]] =  0.0f;
+	}else{
+		_msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + ( _flagHumanOnPlatform ?  _msgTotalDesiredFootInput.ros_effort[rosAxis[k]] : 0.0f);
+	}
+    
+	
 	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] * _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]];
 	
 	if (!_flagPIDGainsByInput)
@@ -984,6 +1012,7 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 	  }
 	  
   }
+
 //   if (_flagForceModifiedConnected && _subForceModified.getNumPublishers()!=0)
 //   {
 // 	for  
@@ -997,6 +1026,7 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 // 		_msgFootInput.ros_effortM[rosAxis[k]]=_msgFootInput.ros_effortM[rosAxis[k]];
 //   	}
 //   }
+
  }
  else
  {
@@ -1066,17 +1096,6 @@ void footVarSynchronizer::requestSetController(){
 	_srvSetController.request.ros_defaultControl=_ros_defaultControl;
 	_srvSetController.request.ros_controlledAxis=_ros_controlledAxis;
 
-	// for (int k=0; k<NB_AXIS; k++)
-	// {
-	// 	_srvSetController.request.ros_posP[rosAxis[k]]=_ros_posP[k];
-	// 	_srvSetController.request.ros_posI[rosAxis[k]]=_ros_posI[k];
-	// 	_srvSetController.request.ros_posD[rosAxis[k]]=_ros_posD[k];
-
-	// 	_srvSetController.request.ros_speedP[rosAxis[k]]=_ros_speedP[k];
-	// 	_srvSetController.request.ros_speedI[rosAxis[k]]=_ros_speedI[k];
-	// 	_srvSetController.request.ros_speedD[rosAxis[k]]=_ros_speedD[k];
-	// }
-
 	_clientSetController.call(_srvSetController);
 	ROS_INFO("[%s footVarSync]: Set Controller Request. Updating the parameters of the machine state",Platform_Names[_platform_name]);
 	_flagResponseSetController = _srvSetController.response.platform_controlOk;
@@ -1109,8 +1128,15 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 			switch (axis_)
 			{
 				case (X):
-				{
-					_config.kp_X = _ros_paramP[_myPIDCategory][X];
+				{	
+					if (_platform_name == RIGHT_PLATFORM_ID)
+					{
+						_config.kp_X = Utils_math<double>::map(Utils_math<double>::smoothFall(_platform_position(X),-X_RANGE*0.05,X_RANGE*0.05),0.0,1.0,_ros_paramP_A[_myPIDCategory][X],_ros_paramP_B[_myPIDCategory][X]);
+					}
+					else
+					{
+						_config.kp_X = Utils_math<double>::map(Utils_math<double>::smoothRise(_platform_position(X),-X_RANGE*0.05,X_RANGE*0.05),0.0,1.0,_ros_paramP_A[_myPIDCategory][X],_ros_paramP_B[_myPIDCategory][X]);
+					}
 					_config.ki_X = _ros_paramI[_myPIDCategory][X];
 					_config.kd_X = _ros_paramD[_myPIDCategory][X];
 					_ros_posP[X] = Utils_math<double>::bound(_config.kp_X,0,5000.0);
@@ -1120,7 +1146,7 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 				}
 				case (Y):
 				{
-					_config.kp_Y = _ros_paramP[_myPIDCategory][Y];
+					_config.kp_Y = Utils_math<double>::map(Utils_math<double>::smoothRise(_platform_position(Y),-Y_RANGE*0.05,Y_RANGE*0.05),0.0,1.0,_ros_paramP_A[_myPIDCategory][Y],_ros_paramP_B[_myPIDCategory][Y]);
 					_config.ki_Y = _ros_paramI[_myPIDCategory][Y];
 					_config.kd_Y = _ros_paramD[_myPIDCategory][Y];
 					_ros_posP[Y] = Utils_math<double>::bound(_config.kp_Y,0,5000.0);
@@ -1130,7 +1156,7 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 				}
 				case (PITCH):
 				{
-					_config.kp_PITCH = _ros_paramP[_myPIDCategory][PITCH];
+					_config.kp_PITCH = Utils_math<double>::map(Utils_math<double>::smoothFall(_platform_position(PITCH),-PITCH_RANGE*0.1,PITCH_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][PITCH],_ros_paramP_B[_myPIDCategory][PITCH]);
 					_config.ki_PITCH = _ros_paramI[_myPIDCategory][PITCH];
 					_config.kd_PITCH = _ros_paramD[_myPIDCategory][PITCH];
 					_ros_posP[PITCH] = Utils_math<double>::bound(_config.kp_PITCH,0,10000.0);
@@ -1140,22 +1166,37 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 				}
 				case (ROLL):
 				{
-					_config.kp_ROLL = _ros_paramP[_myPIDCategory][ROLL];
+					if (_platform_name == RIGHT_PLATFORM_ID)
+					{
+						_config.kp_ROLL = Utils_math<double>::map(Utils_math<double>::smoothRise(_platform_position(ROLL),-ROLL_RANGE*0.1,ROLL_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][ROLL],_ros_paramP_B[_myPIDCategory][ROLL]);
+					}
+					else
+					{
+						_config.kp_ROLL = Utils_math<double>::map(Utils_math<double>::smoothFall(_platform_position(ROLL),-ROLL_RANGE*0.1,ROLL_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][ROLL],_ros_paramP_B[_myPIDCategory][ROLL]);
+					}
 					_config.ki_ROLL = _ros_paramI[_myPIDCategory][ROLL];
 					_config.kd_ROLL = _ros_paramD[_myPIDCategory][ROLL];
-					_ros_posP[ROLL] = Utils_math<double>::bound(_config.kp_ROLL,0,10000);
-					_ros_posI[ROLL] = Utils_math<double>::bound(_config.ki_ROLL,0,10000);
-					_ros_posD[ROLL] = Utils_math<double>::bound(_config.kd_ROLL,0,100);
+					_ros_posP[ROLL] = Utils_math<double>::bound(_config.kp_ROLL,0.0,10000.0);
+					_ros_posI[ROLL] = Utils_math<double>::bound(_config.ki_ROLL,0.0,10000.0);
+					_ros_posD[ROLL] = Utils_math<double>::bound(_config.kd_ROLL,0.0,100.0);
 					break;
 				}
 				case (YAW):
 				{
-					_config.kp_YAW = _ros_paramP[_myPIDCategory][YAW];
+					if (_platform_name == RIGHT_PLATFORM_ID)
+					{
+						_config.kp_YAW = Utils_math<double>::map(Utils_math<double>::smoothFall(_platform_position(YAW),-YAW_RANGE*0.1,YAW_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][YAW],_ros_paramP_B[_myPIDCategory][YAW]);
+					}
+					else
+					{
+						_config.kp_YAW = Utils_math<double>::map(Utils_math<double>::smoothRise(_platform_position(YAW),-YAW_RANGE*0.1,YAW_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][YAW],_ros_paramP_B[_myPIDCategory][YAW]);
+					}
+
 					_config.ki_YAW = _ros_paramI[_myPIDCategory][YAW];
 					_config.kd_YAW = _ros_paramD[_myPIDCategory][YAW];
-					_ros_posP[YAW] = Utils_math<double>::bound(_config.kp_YAW,0,10000);
-					_ros_posI[YAW] = Utils_math<double>::bound(_config.ki_YAW,0,10000);
-					_ros_posD[YAW] = Utils_math<double>::bound(_config.kd_YAW,0,100);
+					_ros_posP[YAW] = Utils_math<double>::bound(_config.kp_YAW,0.0,10000.0);
+					_ros_posI[YAW] = Utils_math<double>::bound(_config.ki_YAW,0.0,10000.0);
+					_ros_posD[YAW] = Utils_math<double>::bound(_config.kd_YAW,0.0,100.0);
 					break;
 				}
 			}
@@ -1248,6 +1289,18 @@ void footVarSynchronizer::readLegGravCompFI(const custom_msgs::FootInputMsg::Con
   _flagLegCompTorquesRead = true;
 }
 
+void footVarSynchronizer::readInertiaCoriolisCompFI(const custom_msgs::FootInputMsg::ConstPtr &msg) {
+    
+	for (size_t i = 0; i<NB_AXIS; i++)
+	{
+		_inertial_coriolis_comp_effort(i) = msg->ros_effort[rosAxis[i]];
+	}
+
+  if (!_flagInertiaCoriolisRead) {
+    ROS_INFO("[%s footVarSync]: Receiving Inertia and Coriolis of Platform Compensation Torques",Platform_Names[_platform_name]);
+  }
+  _flagInertiaCoriolisRead = true;
+}
 
 void footVarSynchronizer::readDesiredFootInputs(const custom_msgs::FootInputMsg::ConstPtr &msg,unsigned int n_)
 {
@@ -1275,110 +1328,161 @@ void footVarSynchronizer::readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToo
 }
 
 void footVarSynchronizer::getPIDParams(){
-	if (_mixedPlatformOn)
+	if (_controlTools)
 	{
-		std::string mainPlatform_="right";
-		if (!_n.getParam("/mixed_platform/mainPlatform", mainPlatform_))
+		std::string controlMode; //! Position | Speed (Joystick)
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"_tool/toolControl", controlMode))
 		{ 
-		ROS_ERROR(" [%s footVarSync]: No /mixed_platform/mainPlatform  param",Platform_Names[_platform_name]); 
-		} 
-
-		_mainPlatform = mainPlatform_.compare("right")==0 ? RIGHT_PLATFORM_ID : LEFT_PLATFORM_ID;
+		ROS_ERROR(" [%s footVarSync]: No /right_tool/toolControl  param",Platform_Names[_platform_name]); 
+		}  
+		_myToolControl =  controlMode.compare("position")==0 ? TOOL_POSITION_CTRL : TOOL_SPEED_CTRL;
+    
 		
-		std::vector<double> pToolPosControl_;
+
+		std::vector<double> pAToolPosControl_;
+		std::vector<double> pBToolPosControl_;
 		std::vector<double> dToolPosControl_;
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/p", pToolPosControl_))
+
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolPos/p_a", pAToolPosControl_))
 		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/p",Platform_Names[_platform_name]); 
+			ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolPos/p_a",Platform_Names[_platform_name]); 
 		}
 		else
 		{
 			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
 			{
-				_ros_paramP[MP_TOOL_POS_PID][i] = pToolPosControl_[i];
+				_ros_paramP_A[TOOL_POS_PID][i] = pAToolPosControl_[i];
 			}
 		}
 		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolPos/d", dToolPosControl_))
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolPos/p_b", pBToolPosControl_))
 		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolPos/d",Platform_Names[_platform_name]); 
+			ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolPos/p_b",Platform_Names[_platform_name]); 
 		}
 		else
 		{
 			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
 			{
-				_ros_paramD[MP_TOOL_POS_PID][i] = dToolPosControl_[i];
+				_ros_paramP_B[TOOL_POS_PID][i] = pBToolPosControl_[i];
 			}
 		}
 
-		std::vector<double> pToolSpeedControl_;
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolPos/d", dToolPosControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolPos/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[TOOL_POS_PID][i] = dToolPosControl_[i];
+			}
+		}
+
+		std::vector<double> pAToolSpeedControl_;
+		std::vector<double> pBToolSpeedControl_;
 		std::vector<double> dToolSpeedControl_;
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/p", pToolSpeedControl_))
+
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolSpeed/p_a", pAToolSpeedControl_))
 		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/p",Platform_Names[_platform_name]); 
+			ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolSpeed/p_a",Platform_Names[_platform_name]); 
 		}
 		else
 		{
 			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
 			{
-				_ros_paramP[MP_TOOL_SPEED_PID][i] = pToolSpeedControl_[i];
-			}
-		}
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolSpeed/d", dToolSpeedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolSpeed/d",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramD[MP_TOOL_SPEED_PID][i] = dToolSpeedControl_[i];
-			}
-		}
-		
-		std::vector<double> pToolMixedControl_;
-		std::vector<double> dToolMixedControl_;
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/p", pToolMixedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/p",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramP[MP_TOOL_MIXED_PID][i] = pToolMixedControl_[i];
-			}
-		}
-		
-		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/toolMixed/d", dToolMixedControl_))
-		{ 
-			ROS_ERROR("[%s footVarSync]: Missing /toolControl/toolMixed/d",Platform_Names[_platform_name]); 
-		}
-		else
-		{
-			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
-			{
-				_ros_paramD[MP_TOOL_MIXED_PID][i] = dToolMixedControl_[i];
+				_ros_paramP_A[TOOL_SPEED_PID][i] = pAToolSpeedControl_[i];
 			}
 		}
 
-			std::string toolControlTopic_ = "/mixedPlatform/platformState";
-			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/toolControl/topic", toolControlTopic_))
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolSpeed/p_b", pBToolSpeedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolSpeed/p_b",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramP_B[TOOL_SPEED_PID][i] = pBToolSpeedControl_[i];
+			}
+		}
+		
+		if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolSpeed/d", dToolSpeedControl_))
+		{ 
+			ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolSpeed/d",Platform_Names[_platform_name]); 
+		}
+		else
+		{
+			for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+			{
+				_ros_paramD[TOOL_SPEED_PID][i] = dToolSpeedControl_[i];
+			}
+		}
+
+		if (_mixedPlatformOn)
+		{
+			std::string mainPlatform_="right";
+			if (!_n.getParam("/mixed_platform/mainPlatform", mainPlatform_))
 			{ 
-			
-				ROS_ERROR("[%s footVarSync]: Missing /toolControl/topic",Platform_Names[_platform_name]); 
+			ROS_ERROR(" [%s footVarSync]: No /mixed_platform/mainPlatform  param",Platform_Names[_platform_name]); 
+			} 
+
+			_mainPlatform = mainPlatform_.compare("right")==0 ? RIGHT_PLATFORM_ID : LEFT_PLATFORM_ID;
+
+			std::vector<double> pAToolMixedControl_;
+			std::vector<double> pBToolMixedControl_;
+			std::vector<double> dToolMixedControl_;
+
+			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolMixed/p_a", pAToolMixedControl_))
+			{ 
+				ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolMixed/p_a",Platform_Names[_platform_name]); 
 			}
 			else
 			{
-				_subPlatformControlFromTool = _n.subscribe<custom_msgs::TwoFeetOneToolMsg>(toolControlTopic_, 1, boost::bind(&footVarSynchronizer::readTwoFeetOneToolMsg, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+				for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+				{
+					_ros_paramP_A[MP_TOOL_MIXED_PID][i] = pAToolMixedControl_[i];
+				}
 			}
-	
+
+			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolMixed/p_b", pBToolMixedControl_))
+			{ 
+				ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolMixed/p_b",Platform_Names[_platform_name]); 
+			}
+			else
+			{
+				for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+				{
+					_ros_paramP_B[MP_TOOL_MIXED_PID][i] = pBToolMixedControl_[i];
+				}
+			}
+
+			if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/toolMixed/d", dToolMixedControl_))
+			{ 
+				ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/toolMixed/d",Platform_Names[_platform_name]); 
+			}
+			else
+			{
+				for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
+				{
+					_ros_paramD[MP_TOOL_MIXED_PID][i] = dToolMixedControl_[i];
+				}
+			}
+
+				std::string toolControlTopic_ = "/mixedPlatform/platformState";
+				if (!_n.getParam("/"+std::string(Platform_Names[_platform_name])+"/fi_gains_toolControl/topic", toolControlTopic_))
+				{ 
+				
+					ROS_ERROR("[%s footVarSync]: Missing /fi_gains_toolControl/topic",Platform_Names[_platform_name]); 
+				}
+				else
+				{
+					_subPlatformControlFromTool = _n.subscribe<custom_msgs::TwoFeetOneToolMsg>(toolControlTopic_, 1, boost::bind(&footVarSynchronizer::readTwoFeetOneToolMsg, this, _1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+				}
+
+		}
 	}
-	
+
 	std::vector<double> pTeloperation_;
 	std::vector<double> iTeloperation_;
 	std::vector<double> dTeloperation_;
@@ -1391,8 +1495,9 @@ void footVarSynchronizer::getPIDParams(){
 	{
 		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
 		{
-
-			_ros_paramP[S_TELEOP_PID][i] = pTeloperation_[i];
+		
+			_ros_paramP_A[S_TELEOP_PID][i] = pTeloperation_[i];
+			_ros_paramP_B[S_TELEOP_PID][i] = pTeloperation_[i];
 		}
 	}
 	
@@ -1433,7 +1538,8 @@ void footVarSynchronizer::getPIDParams(){
 	{
 		for (size_t i = 0; i < NB_PLATFORM_AXIS; i++)
 		{
-			_ros_paramP[S_ROBOT_CTRL_PID][i] = pRobotStControl_[i];
+			_ros_paramP_A[S_ROBOT_CTRL_PID][i] = pRobotStControl_[i];
+			_ros_paramP_B[S_ROBOT_CTRL_PID][i] = pRobotStControl_[i];
 		}
 	}
 	

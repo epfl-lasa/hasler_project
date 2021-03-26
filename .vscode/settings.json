@@ -78,6 +78,14 @@
         "codecvt": "cpp",
         "condition_variable": "cpp",
         "future": "cpp",
-        "polytope": "cpp"
-    }
+        "polytope": "cpp",
+        "random": "cpp",
+        "drawable": "cpp",
+        "node": "cpp",
+        "callback": "cpp",
+        "graphicscontext": "cpp",
+        "graphicsthread": "cpp",
+        "operationthread": "cpp"
+    },
+    "python.pythonPath": "/usr/bin/python3"
 }

@@ -25,8 +25,7 @@ class smoothSignals {
 
 public:
 
-  enum smoothSignals_Type {SMOOTH_RISE, SMOOTH_FALL, SMOOTH_RISE_FALL, SMOOTH_RISE_CUT, SMOOTH_FALL_CUT};
-
+  enum smoothSignals_Type {SMOOTH_RISE, SMOOTH_FALL, SMOOTH_RISE_FALL, SMOOTH_RISE_CUT, SMOOTH_FALL_CUT, SINUSOID};
 private:
   
   static smoothSignals *me;
@@ -44,19 +43,19 @@ private:
 
   ros::Duration _myElapsedTime;
 
-  T _myDuration;
+  T _myTimeFreq;
   T _durationBias;
   
   
   // METHODS
 public:
-  smoothSignals(smoothSignals_Type type, T* output, T duration);
+  smoothSignals(smoothSignals_Type type, T* output, T TimeFreq);
   bool run(ros::Time myCurrentTime);
   
   bool finished();
 
   void start();
-  void changeParams(smoothSignals_Type type, T duration);
+  void changeParams(smoothSignals_Type type, T TimeFreq);
   void reset();
   ~smoothSignals();
 

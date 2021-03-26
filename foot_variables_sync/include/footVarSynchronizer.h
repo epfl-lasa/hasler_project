@@ -28,7 +28,7 @@
 
 #define NB_PARAMS_CATEGORIES 10
 #define NB_FO_CATEGORIES 6
-#define NB_FI_PUBLISHERS 2
+#define NB_FI_PUBLISHERS 3
 
 using namespace std;
 
@@ -38,7 +38,7 @@ class footVarSynchronizer
     public:
         enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2}; 
         
-        enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,MP_TOOL_POS_PID,MP_TOOL_SPEED_PID,MP_TOOL_MIXED_PID,EXT_PID, NB_POS_PID_C};   
+        enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,TOOL_POS_PID,TOOL_SPEED_PID,MP_TOOL_MIXED_PID,EXT_PID, NB_POS_PID_C};   
         enum Tool_Control {TOOL_POSITION_CTRL,TOOL_SPEED_CTRL};
 	private:
         enum Params_Category {M_STATE, EFF_COMP, C_AXIS, C_TYPE, FLAG_SENDPOS,FLAG_CAPTUREPOS, DES_POS, FLAG_GAINS, PID_POS, PID_SPEED};
@@ -49,6 +49,8 @@ class footVarSynchronizer
     // ros variables  
     bool _flagPIDGainsByInput;
     bool _mixedPlatformOn;
+    bool _controlTools;
+    Tool_Control _myToolControl;
 
     ros::NodeHandle _n;
     ros::Rate _loopRate;
@@ -65,6 +67,7 @@ class footVarSynchronizer
     ros::Subscriber _subForceModified;         // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subTorquesModified;       //custom_msgs/FootInputMsg
     ros::Subscriber _subLegGravCompTorques;    //custom_msgs/FootInputMsg
+    ros::Subscriber _subInertiaCoriolisCompTorques;    //custom_msgs/FootInputMsg
     
     ros::Subscriber _subLegGravCompWrench;    // geometry_msgs/WrenchStamped.h
     ros::Subscriber _subPlatformControlFromTool; // mixed platform
@@ -129,6 +132,7 @@ class footVarSynchronizer
             Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_filterAxisFS;
 
             Eigen::Matrix<float, NB_PLATFORM_AXIS, 1> _leg_grav_comp_effort;
+            Eigen::Matrix<float, NB_PLATFORM_AXIS, 1> _inertial_coriolis_comp_effort;
 
             Eigen::Matrix<float, NB_AXIS_WRENCH, 1> _ros_forceSensor_controlled;
 
@@ -159,7 +163,8 @@ class footVarSynchronizer
         Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_speedI;
         Eigen::Matrix<float,NB_PLATFORM_AXIS,1> _ros_speedD;
 
-        float _ros_paramP[NB_POS_PID_C][NB_PLATFORM_AXIS];
+        float _ros_paramP_A[NB_POS_PID_C][NB_PLATFORM_AXIS];
+        float _ros_paramP_B[NB_POS_PID_C][NB_PLATFORM_AXIS];
         float _ros_paramI[NB_POS_PID_C][NB_PLATFORM_AXIS];
         float _ros_paramD[NB_POS_PID_C][NB_PLATFORM_AXIS];
 
@@ -181,6 +186,7 @@ class footVarSynchronizer
         
 
         bool _flagLegCompTorquesRead;
+        bool _flagInertiaCoriolisRead;
         bool _flagLegCompWrenchRead;
 
         bool _flagInitialConfig;
@@ -255,6 +261,7 @@ class footVarSynchronizer
     // void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readTorquesModified(const custom_msgs::FootOutputMsg::ConstPtr &msg);
+    void readInertiaCoriolisCompFI(const custom_msgs::FootInputMsg::ConstPtr &msg);
     void readLegGravCompFI(const custom_msgs::FootInputMsg::ConstPtr &msg);
     void readLegGravityCompWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readTwoFeetOneToolMsg(const custom_msgs::TwoFeetOneToolMsg::ConstPtr &msg);

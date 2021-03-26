@@ -1,17 +1,19 @@
 <launch>
 	<arg name="id" default="right"/>
-	<arg name="mixedPlatform" default="false"/>
+	<arg name="controlTools" default="true"/>
 
+	<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load" if="$(arg controlTools)"/>
 	<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="$(arg id)" />
 	<rosparam file="$(find foot_variables_sync)/config/pid_states.yaml" command="load" ns="$(arg id)" />
-	<rosparam file="$(find foot_variables_sync)/config/tool_control.yaml" command="load" ns="$(arg id)" />
+	<rosparam file="$(find foot_variables_sync)/config/fi_gains_toolControl.yaml" command="load" ns="$(arg id)" />
 
 	<group ns="$(arg id)">
 		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
 			<param name="platformID" value="$(arg id)"/>
-			<param name="mixedPlatformMode" value="$(arg mixedPlatform)"/>
+			<param name="controlTools" value="$(arg controlTools)"/>
 		</node>
 	
 	</group>
 
 </launch>
+

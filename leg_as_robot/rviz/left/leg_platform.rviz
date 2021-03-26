@@ -13,7 +13,7 @@ Panels:
         - /PointStamped1
         - /RobotModel3
       Splitter Ratio: 0.438858688
-    Tree Height: 753
+    Tree Height: 720
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -68,60 +68,60 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        fSensor:
+        left_platform_base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        foot_rest:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        pedal_tip:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        pitch:
+        left_platform_fSensor:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        platform_base_link:
+        left_platform_foot_rest:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_platform_pedal_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_platform_pitch:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        roll:
+        left_platform_roll:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        virtual_ankle:
+        left_platform_virtual_ankle:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        x:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        y:
+        left_platform_x:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        yaw:
+        left_platform_y:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        z_link:
+        left_platform_yaw:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_platform_z_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: /left/platform_description
-      TF Prefix: left
+      Robot Description: /left_platform/robot_description
+      TF Prefix: ""
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -132,49 +132,97 @@ Visualization Manager:
         All Enabled: true
         chair_base_link:
           Value: true
-        left/ankle_pitch_link:
+        chair_intermediate_link1:
           Value: true
-        left/ankle_roll_link:
+        chair_intermediate_link2:
           Value: true
-        left/ankle_yaw_link:
+        left_leg_ankle_pitch_link:
           Value: true
-        left/fSensor:
+        left_leg_ankle_roll_link:
           Value: true
-        left/foot_base:
+        left_leg_ankle_yaw_link:
           Value: true
-        left/foot_rest:
+        left_leg_foot_base:
           Value: true
-        left/foot_tip:
+        left_leg_foot_tip:
           Value: true
-        left/hip_adduction_link:
+        left_leg_hip_adduction_link:
           Value: true
-        left/hip_base_link:
+        left_leg_hip_base_link:
           Value: true
-        left/hip_extension_link:
+        left_leg_hip_extension_link:
           Value: true
-        left/hip_roll_link:
+        left_leg_hip_roll_link:
           Value: true
-        left/knee_extension_link:
+        left_leg_knee_extension_link:
           Value: true
-        left/pedal_tip:
+        left_leg_virtual_pedal_tip:
           Value: true
-        left/pitch:
+        left_platform_base_link:
           Value: true
-        left/platform_base_link:
+        left_platform_fSensor:
           Value: true
-        left/roll:
+        left_platform_foot_rest:
           Value: true
-        left/virtual_ankle:
+        left_platform_pedal_tip:
           Value: true
-        left/virtual_pedal_tip:
+        left_platform_pitch:
           Value: true
-        left/x:
+        left_platform_roll:
           Value: true
-        left/y:
+        left_platform_virtual_ankle:
           Value: true
-        left/yaw:
+        left_platform_x:
           Value: true
-        left/z_link:
+        left_platform_y:
+          Value: true
+        left_platform_yaw:
+          Value: true
+        left_platform_z_link:
+          Value: true
+        panda_EE:
+          Value: true
+        panda_K:
+          Value: true
+        panda_link0:
+          Value: true
+        panda_link1:
+          Value: true
+        panda_link2:
+          Value: true
+        panda_link3:
+          Value: true
+        panda_link4:
+          Value: true
+        panda_link5:
+          Value: true
+        panda_link6:
+          Value: true
+        panda_link7:
+          Value: true
+        panda_link8:
+          Value: true
+        right_platform_base_link:
+          Value: true
+        right_platform_fSensor:
+          Value: true
+        right_platform_foot_rest:
+          Value: true
+        right_platform_pedal_tip:
+          Value: true
+        right_platform_pitch:
+          Value: true
+        right_platform_roll:
+          Value: true
+        right_platform_virtual_ankle:
+          Value: true
+        right_platform_x:
+          Value: true
+        right_platform_y:
+          Value: true
+        right_platform_yaw:
+          Value: true
+        right_platform_z_link:
           Value: true
         world:
           Value: true
@@ -185,31 +233,46 @@ Visualization Manager:
       Show Names: false
       Tree:
         world:
-          chair_base_link:
-            left/hip_base_link:
-              left/hip_adduction_link:
-                left/hip_extension_link:
-                  left/hip_roll_link:
-                    left/knee_extension_link:
-                      left/ankle_pitch_link:
-                        left/ankle_roll_link:
-                          left/ankle_yaw_link:
-                            left/foot_base:
-                              left/foot_tip:
-                                left/virtual_pedal_tip:
-                                  {}
-          left/platform_base_link:
-            left/y:
-              left/x:
-                left/z_link:
-                  left/pitch:
-                    left/roll:
-                      left/yaw:
-                        left/fSensor:
-                          left/foot_rest:
-                            left/pedal_tip:
+          chair_intermediate_link1:
+            chair_intermediate_link2:
+              chair_base_link:
+                left_leg_hip_base_link:
+                  left_leg_hip_adduction_link:
+                    left_leg_hip_extension_link:
+                      left_leg_hip_roll_link:
+                        left_leg_knee_extension_link:
+                          left_leg_ankle_pitch_link:
+                            left_leg_ankle_roll_link:
+                              left_leg_ankle_yaw_link:
+                                left_leg_foot_base:
+                                  left_leg_foot_tip:
+                                    left_leg_virtual_pedal_tip:
+                                      {}
+          left_platform_base_link:
+            left_platform_y:
+              left_platform_x:
+                left_platform_z_link:
+                  left_platform_pitch:
+                    left_platform_roll:
+                      left_platform_yaw:
+                        left_platform_fSensor:
+                          left_platform_foot_rest:
+                            left_platform_pedal_tip:
                               {}
-                            left/virtual_ankle:
+                            left_platform_virtual_ankle:
+                              {}
+          right_platform_base_link:
+            right_platform_y:
+              right_platform_x:
+                right_platform_z_link:
+                  right_platform_pitch:
+                    right_platform_roll:
+                      right_platform_yaw:
+                        right_platform_fSensor:
+                          right_platform_foot_rest:
+                            right_platform_pedal_tip:
+                              {}
+                            right_platform_virtual_ankle:
                               {}
       Update Interval: 0
       Value: true
@@ -223,56 +286,56 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        ankle_pitch_link:
+        left_leg_ankle_pitch_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        ankle_roll_link:
+        left_leg_ankle_roll_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        ankle_yaw_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        foot_base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        foot_tip:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        hip_adduction_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        hip_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        hip_extension_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        hip_roll_link:
+        left_leg_ankle_yaw_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        knee_extension_link:
+        left_leg_foot_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_leg_foot_tip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_leg_hip_adduction_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_leg_hip_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_leg_hip_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_leg_hip_roll_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        virtual_pedal_tip:
+        left_leg_knee_extension_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_leg_virtual_pedal_tip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
       Name: RobotModel
-      Robot Description: /left/leg_description
-      TF Prefix: left
+      Robot Description: /left_leg/robot_description
+      TF Prefix: ""
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -291,10 +354,6 @@ Visualization Manager:
       Collision Enabled: false
       Enabled: true
       Links:
-        /world:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
@@ -305,8 +364,16 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        chair_intermediate_link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        chair_intermediate_link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Name: RobotModel
-      Robot Description: chair_description
+      Robot Description: /chair/robot_description
       TF Prefix: ""
       Update Interval: 0
       Value: true
@@ -335,7 +402,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 3.04832959
+      Distance: 3.25109148
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -398,10 +465,10 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1056
+  Height: 1023
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000002ef00000386fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000002e00000386000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000011100000386fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000002e00000386000000b700fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073f00000044fc0100000002fb0000000800540069006d006501000000000000073f0000038300fffffffb0000000800540069006d00650100000000000004500000000000000000000003310000038600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000002ef00000365fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000002e00000365000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000011100000365fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000002e00000365000000b700fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000064700000044fc0100000002fb0000000800540069006d00650100000000000006470000038300fffffffb0000000800540069006d00650100000000000004500000000000000000000002390000036500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -410,6 +477,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1855
-  X: 65
-  Y: 24
+  Width: 1607
+  X: 73
+  Y: 27
