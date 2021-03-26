@@ -128,6 +128,7 @@ void SurgicalTask::run()
     {
       _ikJoints[r][m] = _currentJoints[r](m);
     }
+    _FdFoot[r].setConstant(0.0f);
   }
 
   _msgGripperInput.ros_desAngle = 0.0f;
