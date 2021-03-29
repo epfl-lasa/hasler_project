@@ -357,11 +357,11 @@ class SurgicalTask
     QpSolverRCM3 _qpSolverRCM3[NB_ROBOTS];
     CvxgenSolverRCM _cvxgenSolverRCM;
     QpSolverRCMCollision* _qpSolverRCMCollision[NB_ROBOTS];   
-    // QpSolverRCMCollision::Result _qpResult[NB_ROBOTS];
+    QpSolverRCMCollision::Result _qpResult[NB_ROBOTS];
     QpSolverRCMCollision2* _qpSolverRCMCollision2[NB_ROBOTS];    
     // QpSolverRCMCollision2::Result _qpResult[NB_ROBOTS];
     QpSolverRCMCollision3* _qpSolverRCMCollision3[NB_ROBOTS];    
-    QpSolverRCMCollision3::Result _qpResult[NB_ROBOTS];
+    // QpSolverRCMCollision3::Result _qpResult[NB_ROBOTS];
 
     Eigen::VectorXi _pillarsId;
     Eigen::MatrixXf _pillarsPosition;
@@ -516,6 +516,8 @@ class SurgicalTask
     void computeDesiredFootWrench(int r, int h);
 
     void registerTrocars();
+
+    void getExpectedDesiredEETwist(int r, Eigen::Vector3f &vdEE, Eigen::Vector3f &omegadEE, Eigen::Vector3f vdk, Eigen::Vector3f rk);
 
 
 

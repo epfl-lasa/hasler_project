@@ -473,6 +473,6 @@ Eigen::Matrix<T,4,4> Utils_math<T>::getForwardKinematics(Eigen::Matrix<T,7,1> jo
 }
 
 
-//template class Utils_math<int>;
+
 template class Utils_math<float>;
 template class Utils_math<double>;

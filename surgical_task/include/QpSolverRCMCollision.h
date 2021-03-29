@@ -61,7 +61,7 @@ class QpSolverRCMCollision
     float _toolGain;
     Eigen::VectorXf _slackGains, _slackLimits;
 
-    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits, _eeVelocityLimits;
+    Eigen::VectorXf _jointMax, _jointMin, _jointVelocitiesLimits, _eeVelocityLimits, _jointVelocities;
 
     SQProblem* _sqp;
 

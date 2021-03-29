@@ -356,17 +356,26 @@ void SurgicalTask::computeDesiredFootWrench(int r, int h)
   Eigen::Matrix<float,5,3> GammaF;
   Eigen::Matrix3f G;
   G.setIdentity();
-  G(2,2) = 0.2;
-  Eigen::Matrix<float,5,3> P;
-  P <<   0.0f, -1.0f, 0.0f,
-         1.0f, 0.0f, 0.0f,
-         0.0f, 0.0f, 1.0f,
-         0.0f, 0.0f, 0.0f,
-         0.0f, 0.0f, 0.0f;
+  G(2,2) = 0.2f;
 
-  GammaF = P*G;
 
-  _desiredFootWrench[h] = GammaF*_FdFoot[r];        
+  switch(_tool[r])
+  {
+    case CAMERA:
+    {
+      _desiredFootWrench[h] = _footPVMapping.block(0,0,3,NB_DOF_FOOT_INTERFACE).transpose()*G*(_wRb[r]*_eeCameraMapping).transpose()*_FdFoot[r];
+      break;
+    }
+    case RETRACTOR:
+    {
+      _desiredFootWrench[h] = _footPPMapping.block(0,0,3,NB_DOF_FOOT_INTERFACE).transpose()*G*_FdFoot[r];
+      break;
+    }
+    default:
+    {
+      break;
+    }
+  }
 
   for(int k = 0; k < 2; k++)
   {
