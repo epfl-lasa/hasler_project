@@ -20,8 +20,8 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-#ifndef KDL_CHAIN_FDSOLVERTORQUE_WDLS_HPP
-#define KDL_CHAIN_FDSOLVERTORQUE_WDLS_HPP
+#ifndef KDL_CHAIN_Torque2TaskSpace_wdls_HPP
+#define KDL_CHAIN_Torque2TaskSpace_wdls_HPP
 
 #include "kdl/solveri.hpp"
 #include "kdl/chainiksolver.hpp"
@@ -62,7 +62,7 @@ namespace KDL {
  *
  * @ingroup KinematicFamily
  */
-class ChainFdSolverTorque_wdls{
+class Torque2TaskSpace_wdls{
   protected:
 	/// Latest error, initialized to E_NOERROR in constructor
 	int		error;
@@ -113,10 +113,10 @@ public:
    *
    */
 
-  explicit ChainFdSolverTorque_wdls(const Chain &chain, double eps = 0.00001,
+  explicit Torque2TaskSpace_wdls(const Chain &chain, double eps = 0.00001,
                                  int maxiter = 150);
   //=ublas::identity_matrix<double>
-  ~ChainFdSolverTorque_wdls();
+  ~Torque2TaskSpace_wdls();
 
   /**
    * Find an output joint velocity \a qdot_out, given a starting joint pose

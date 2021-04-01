@@ -8,6 +8,9 @@ class Utils_math
 {
 	public:
 
+	enum ROBOT_ID {KUKA_LWR, FRANKA_PANDA};
+
+	enum DH_CONVENTION {NORMAL, MODIFIED};
 	// Class constructor
 	Utils_math();
 
@@ -55,11 +58,15 @@ class Utils_math
 
 	static T map(T x, T a, T b, T c, T d);
 
-	static Eigen::Matrix<T,Eigen::Dynamic,1> bound(Eigen::Matrix<T,Eigen::Dynamic,1> x, T limit);
+	static Eigen::Matrix<T,Eigen::Dynamic,1> boundNorm(Eigen::Matrix<T,Eigen::Dynamic,1> x, T limit);
 
-	static Eigen::Matrix<T,4,4> getDHMatrix(T a, T alpha, T d, T theta);
+	static Eigen::Matrix<T,4,4> getDHMatrix(T a, T alpha, T d, T theta, DH_CONVENTION dhConvention = NORMAL);
 
-	static Eigen::Matrix<T,4,4> getForwardKinematics(Eigen::Matrix<T,7,1> joints);
+	static Eigen::Matrix<T,4,4> getForwardKinematics(Eigen::Matrix<T,7,1> joints, ROBOT_ID robotID = KUKA_LWR);
+
+	static Eigen::Matrix<T,6,7> getGeometricJacobian7DoF(Eigen::Matrix<T,7,1> joints, Eigen::Matrix<T,3,1> rEEx = Eigen::Matrix<T,3,1>::Zero(), ROBOT_ID roobtID = KUKA_LWR);
+
+	static Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> pseudoInverseMat(const Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> &a, T epsilon = FLT_EPSILON);
 
 };
 

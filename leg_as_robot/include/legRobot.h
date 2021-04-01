@@ -21,7 +21,7 @@
 #include <eigen_conversions/eigen_kdl.h>
 #include <tf2_kdl/tf2_kdl.h>
 #include <tf2_ros/transform_listener.h>
-#include <chainfdsolvertorque_wdls.h>
+#include <torque2TaskSpace_wdls.h>
 
 
 #include "Eigen/Eigen"
@@ -105,7 +105,7 @@ private:
   KDL::ChainFkSolverPos_recursive* _myFKSolver;
   //KDL::ChainIkSolverVel_pinv* _myVelIKSolver;
   KDL::ChainIkSolverVel_wdls* _myVelIKSolver;
-  KDL::ChainFdSolverTorque_wdls* _myTorqueFDSolver;
+  KDL::Torque2TaskSpace_wdls* _myTorqueFDSolver;
   KDL::ChainIkSolverPos_NR_JL* _myPosIkSolver;
   std::vector<KDL::ArticulatedBodyInertia> _myArticulatedBodyInertias;
   KDL::ArticulatedBodyInertia _myTotalArticulatedBodyInertia;

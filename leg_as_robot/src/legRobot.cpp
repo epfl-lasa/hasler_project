@@ -45,7 +45,7 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
   _gravityTorques.data.setZero();
   _coriolisTorques.resize(NB_LEG_AXIS); _coriolisTorques.data.setZero();
   _inertialTorques.resize(NB_LEG_AXIS);_inertialTorques.data.setZero();
-  _maxWrench<<15.0,15.0,100.0,2.5,2.5,2.5;
+  _maxWrench<<15.0,15.0,100.0,4.0,4.0,4.0;
   
   _totalTorques.resize(NB_LEG_AXIS);
   _totalTorques.data.setZero();
@@ -98,7 +98,7 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
   }
   _myVelIKSolver = new KDL::ChainIkSolverVel_wdls(_myFootBaseChain);
 
-  _myTorqueFDSolver = new KDL::ChainFdSolverTorque_wdls(_myFootBaseChain);
+  _myTorqueFDSolver = new KDL::Torque2TaskSpace_wdls(_myFootBaseChain);
 
   _myPosIkSolver = new KDL::ChainIkSolverPos_NR_JL(_myFootBaseChain,me->_legJointLims[L_MIN], me->_legJointLims[L_MAX], *_myFKSolver,*_myVelIKSolver);
 
