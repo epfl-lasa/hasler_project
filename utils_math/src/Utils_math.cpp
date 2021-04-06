@@ -312,7 +312,7 @@ T Utils_math<T>::linearRise(T x, T a, T b)
   }
   else
   {
-    y = x / (b - a);  
+    y = (x - a) / (b - a);  
   }
 
   return y;
