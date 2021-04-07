@@ -8,7 +8,9 @@ add_definitions(-std=c++11 -O3)
 # Find required packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  rospy)
+  rospy
+  kdl_parser
+  kdl_conversions)
 
   
   
@@ -19,7 +21,7 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES utils_math kdl_custom
-  CATKIN_DEPENDS roscpp rospy 
+  CATKIN_DEPENDS roscpp rospy kdl_parser kdl_conversions
  )
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
