@@ -19,6 +19,8 @@
 #include <tf/tf.h>
 #include <dynamic_reconfigure/server.h>
 #include "surgical_simulator/publishTrocarFrame_paramsConfig.h"
+#include "custom_msgs/FootInputMsg.h"
+#include "custom_msgs/FootOutputMsg.h"
 
 
 using namespace std;

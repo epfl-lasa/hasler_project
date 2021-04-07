@@ -34,6 +34,6 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 add_executable(footVarSynchronizer src/footVarSynchronizer.cpp src/footVarSynchronizer_node.cpp)
 target_link_libraries(footVarSynchronizer ${catkin_LIBRARIES})
 
-add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencpp)
-add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencfg)
+# add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencpp)
+# add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencfg)
 

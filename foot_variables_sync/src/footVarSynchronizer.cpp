@@ -6,6 +6,7 @@ char const *Axis_names[]{
 	AXES};
 #undef ListofAxes
 
+const float effortLims[] {15.0f, 15.0f, 5.0f, 5.0f, 5.0f};
 char const *Platform_Names[]{"none", "right", "left"};
 
 footVarSynchronizer *footVarSynchronizer::me = NULL;
@@ -172,7 +173,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 		for (size_t i  = 0; i<_nbDesiredFootInputPublishers; i++)
 		{	
 			_flagDesiredFootInputsRead[i]=false;
-			ROS_INFO("[%s footVarSync]: Topic %i: %s",Platform_Names[_platform_name],i,_fiPublishers[i].c_str());
+			ROS_INFO("[%s footVarSync]: Topic %i: %s",Platform_Names[_platform_name], (int) i,_fiPublishers[i].c_str());
 			_subDesiredFootInput[i] = _n.subscribe<custom_msgs::FootInputMsg>("/"+std::string(Platform_Names[_platform_name])+"/"+_fiPublishers[i], 1, boost::bind(&footVarSynchronizer::readDesiredFootInputs, this, _1,i), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 		}
 	}
@@ -870,8 +871,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 		_flagEffortOnlyPublished = false;
 		requestSetController();
 		publishFootInput(&_flagEffortOnlyPublished);
-		ROS_INFO("[%s footVarSync]: Zero torque send (no,Platform_Names[_platform_name] "
-				"acknowledgement)!");
+		ROS_INFO("[%s footVarSync]: Zero torque send (no, acknowledgement)!",Platform_Names[_platform_name]);
 		_flagParamsActionsTaken = true;
 	} 
 }
@@ -969,7 +969,7 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 	if (_flagControlZeroEffort) {
 		_msgFootInput.ros_effort[rosAxis[k]] =  0.0f;
 	}else{
-		_msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + ( _flagHumanOnPlatform ?  _msgTotalDesiredFootInput.ros_effort[rosAxis[k]] : 0.0f);
+		_msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + ( _flagHumanOnPlatform ?  Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_effort[rosAxis[k]],-effortLims[rosAxis[k]], effortLims[rosAxis[k]]) : 0.0f);
 	}
     
 	

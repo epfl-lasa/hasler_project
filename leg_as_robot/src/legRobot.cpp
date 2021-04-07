@@ -45,7 +45,7 @@ legRobot::legRobot(ros::NodeHandle &n_1, double frequency,
   _gravityTorques.data.setZero();
   _coriolisTorques.resize(NB_LEG_AXIS); _coriolisTorques.data.setZero();
   _inertialTorques.resize(NB_LEG_AXIS);_inertialTorques.data.setZero();
-  _maxWrench<<15.0,15.0,100.0,4.0,4.0,4.0;
+  _maxWrench<<15.0,15.0,100.0,5.0,5.0,5.0;
   
   _totalTorques.resize(NB_LEG_AXIS);
   _totalTorques.data.setZero();

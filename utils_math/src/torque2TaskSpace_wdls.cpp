@@ -17,6 +17,10 @@
  // You should have received a copy of the GNU Lesser General Public
  // License along with this library; if not, write to the Free Software
  // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ #include "kdl/kdl.hpp"
+ #include "kdl/jacobian.hpp"
+ #include "kdl/jntarray.hpp"
+ #include "kdl/chainjnttojacsolver.hpp"
  #include "torque2TaskSpace_wdls.h"
  #include "eigen_conversions/eigen_kdl.h"
  #include "kdl/utilities/svd_eigen_HH.hpp"
