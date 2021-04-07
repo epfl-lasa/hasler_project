@@ -764,9 +764,7 @@ void SurgicalTask::updateMarkersPosition(const std_msgs::Float64MultiArray::Cons
       _colorMarkersStatus[k] = msg->data[3*k+2];
       if(_colorMarkersStatus[k])
       {
-        Eigen::Vector3f temp;
-        temp << msg->data[3*k], msg->data[3*k+1], 0.0f;
-        _colorMarkersPosition.row(k) = (_eeCameraMapping*temp).transpose();
+        _colorMarkersPosition.row(k) << msg->data[3*k], msg->data[3*k+1], 0.0f;
         _colorMarkersFilteredPosition2.row(k) = _markerFilterGain*_colorMarkersFilteredPosition2.row(k)+(1.0f-_markerFilterGain)*_colorMarkersPosition.row(k);
         _colorMarkersFilteredPosition.row(k) = _colorMarkersFilteredPosition2.row(k);
         // _colorMarkersFilteredPosition(k,0) = Utils<float>::deadZone(_colorMarkersFilteredPosition2(k,0),-0.3f,0.3f); 
