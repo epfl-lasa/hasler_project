@@ -85,7 +85,11 @@
         "callback": "cpp",
         "graphicscontext": "cpp",
         "graphicsthread": "cpp",
-        "operationthread": "cpp"
+        "operationthread": "cpp",
+        "block": "cpp",
+        "nodevisitor": "cpp",
+        "timer": "cpp",
+        "uniform": "cpp"
     },
     "python.pythonPath": "/usr/bin/python3"
 }

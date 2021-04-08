@@ -93,8 +93,7 @@ void smoothSignals<T>::update(ros::Time myCurrentTime)
                     case SINUSOID:
                     {   
                       
-                        *_signalOutput = std::sin(2.0f*M_PI*_myTimeFreq*_myElapsedTime.toSec());
-                        Utils_math<T>::smoothRiseFall(_myElapsedTime.toSec(),0,_myTimeFreq/2.0, _myTimeFreq/2.0,_myTimeFreq);
+                        *_signalOutput = std::sin(2.0f*M_PI*_myTimeFreq*_myElapsedTime.toSec() + M_PI_2);
                         if (_myTimeFreq<1.0f)
                         {
                             _myStatus = FINISHED;
