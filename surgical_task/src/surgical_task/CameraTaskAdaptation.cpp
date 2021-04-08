@@ -88,8 +88,15 @@ void SurgicalTask::taskAdaptation(int r, int h)
   // Compute human desired velocity //
   ////////////////////////////////////
   Eigen::Vector3f vH;
-
-  vH = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_wRb[r]*_eeCameraMapping*_trocarInput[h].segment(0,3);
+  vH.setConstant(0.0f);
+  if(!_useSim && _toolsTracking == CAMERA_BASED)
+  {
+    vH.segment(0,2) = _trocarInput[h].segment(0,2);
+  }
+  else
+  {
+    vH = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_wRb[r]*_eeCameraMapping*_trocarInput[h].segment(0,3);
+  }
   // vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
   
   if(_debug)
@@ -191,7 +198,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
 	  {
 	    float alpha = 0.05f; 
 
-	    errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition2.row(k).transpose()).transpose();
+	    errork.row(k) = _colorMarkersFilteredPosition2.row(k).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
       
       if(_debug)
@@ -225,7 +232,8 @@ void SurgicalTask::taskAdaptation(int r, int h)
 		}
 		else
 		{
-	    a = _taskAdaptationAlignmentGain*(1-std::exp(-errork.row(k).squaredNorm()/(2.0f*std::pow(_taskAdaptationGaussianWidth,2.0f))))*vH.dot(errork.row(k));
+      // a = _taskAdaptationAlignmentGain*(1-std::exp(-errork.row(k).squaredNorm()/(2.0f*std::pow(_taskAdaptationGaussianWidth,2.0f))))*vH.dot(errork.row(k).normalized());
+      a = _taskAdaptationAlignmentGain*Utils<float>::smoothRise(errork.row(k).norm(),0.05f,0.2f)*vH.dot(errork.row(k).normalized());
   	  b = _taskAdaptationConvergenceGain*(_beliefsC(k)-0.5f);
     	c = _taskAdaptationProximityGain*std::exp(-_taskAdaptationExponentialGain*(errork.row(k)).norm()*vH.norm());
 		}
@@ -318,7 +326,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
     float alpha = 0.05f; 
     if(!_useSim && _toolsTracking == CAMERA_BASED)
     {
-      errork.row(k) = (_wRb[r]*_colorMarkersFilteredPosition.row(k).transpose()).transpose();
+      errork.row(k) = _colorMarkersFilteredPosition.row(k).transpose();
       vdk.row(k) = alpha*errork.row(k);
     }
     _vda += _beliefsC(k)*vdk.row(k);

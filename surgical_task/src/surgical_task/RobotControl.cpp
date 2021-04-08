@@ -51,6 +51,14 @@ void SurgicalTask::updateRobotTaskState(int r)
   // Compute distance RCM tool
   _dRCMTool[r] = (_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2))-_toolOffsetFromEE[r];
 
+  // Compute IK EE/tip position and orientation
+  Eigen::Matrix4f Hik;
+  Hik = Utils<float>::getForwardKinematics(_ikJoints[r],_robotID);
+ 
+  _xEEIK[r] =  _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1);
+  _xIK[r] = _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1)+_toolOffsetFromEE[r]*_wRRobotBasis[r]*Hik.block(0,2,3,1);
+  _wRbIK[r] = _wRRobotBasis[r]*Hik.block(0,0,3,3);
+
 
   if(_debug)
   {
@@ -61,15 +69,34 @@ void SurgicalTask::updateRobotTaskState(int r)
   Eigen::Vector3f r21, e1, e2;
   if(r == LEFT)
   {
-    r21 = _xEE[r]-_xEE[RIGHT];
-    e1 = _wRb[r].col(2);
-    e2 = _wRb[RIGHT].col(2);
+    if(_controlStrategy[r] == PASSIVE_DS)
+    {
+      r21 = _xEE[r]-_xEE[RIGHT];
+      e1 = _wRb[r].col(2);
+      e2 = _wRb[RIGHT].col(2);      
+    }
+    else
+    {
+      r21 = _xEEIK[r]-_xEEIK[RIGHT];
+      e1 = _wRbIK[r].col(2);
+      e2 = _wRbIK[RIGHT].col(2);      
+    }
   }
   else if (r == RIGHT)
   {
-    r21 = _xEE[r]-_xEE[LEFT];
-    e1 = _wRb[r].col(2);
-    e2 = _wRb[LEFT].col(2);
+    if(_controlStrategy[r] == PASSIVE_DS)
+    {
+
+      r21 = _xEE[r]-_xEE[LEFT];
+      e1 = _wRb[r].col(2);
+      e2 = _wRb[LEFT].col(2);
+    }
+    else
+    {
+      r21 = _xEEIK[r]-_xEEIK[LEFT];
+      e1 = _wRbIK[r].col(2);
+      e2 = _wRbIK[LEFT].col(2);      
+    }
   }
 
   _rEECollision[r] = (r21.norm()-2.0f*_eeSafetyCollisionRadius)*r21.normalized();
@@ -121,10 +148,6 @@ void SurgicalTask::updateRobotTaskState(int r)
     std::cerr << "[SurgicalTask]: " << r << ": Distance Tool-Tool: " << _rToolCollision[r].transpose() << _rToolCollision[r].norm() << " " << l1 << " " << l2 <<std::endl;    
   }
 
-  // Compute IK tip position
-  Eigen::Matrix4f Hik;
-  Hik = Utils<float>::getForwardKinematics(_ikJoints[r],_robotID);
-  _xIK[r] = _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1)+_toolOffsetFromEE[r]*_wRRobotBasis[r]*Hik.block(0,2,3,1);
 
   if(_debug)
   {
@@ -149,7 +172,14 @@ void SurgicalTask::updateControlPhase(int r)
     {
       _controlPhase[r] = OPERATION;
       _wRb0[r] = _wRb[r];
-      _xd0[r] = _x[r];
+      if(_controlStrategy[r] == PASSIVE_DS)
+      {
+        _xd0[r] = _x[r];
+      }
+      else
+      {
+        _xd0[r] = _xIK[r];
+      }
       if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
       	_clutching = true;
@@ -169,14 +199,22 @@ void SurgicalTask::insertionStep(int r, int h)
     std::cerr << "[SurgicalTask]: " << r << ": AUTOMATIC INSERTION" << std::endl;
   }
 
-
-  if(_linearMapping[r] == POSITION_VELOCITY)
-  {
-    _vd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r])-_x[r]; 
+  Eigen::Vector3f x;
+  if(_controlStrategy[r] == PASSIVE_DS)
+  {  
+    x = _x[r];
   }
   else
   {
-    _vd[r] = _xd0[r]+_insertionOffsetPPM[r]-_x[r];
+    x = _xIK[r];
+  }
+  if(_linearMapping[r] == POSITION_VELOCITY)
+  {
+    _vd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r])-x; 
+  }
+  else
+  {
+    _vd[r] = _xd0[r]+_insertionOffsetPPM[r]-x;
   }
 
   if(_vd[r].norm()<0.005)
@@ -570,7 +608,18 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
         // _vdTool[r] += (1-alpha[0])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(0).transpose()
         //               +(1-alpha[1])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(1).transpose();
         taskAdaptation(r, h);
-        _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION)+_vda;
+
+        _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION);
+        
+        if(!_useSim && _toolsTracking == CAMERA_BASED)
+        {
+          _vdTool[r] += _wRb[r]*_eeCameraMapping*_vda;
+
+        }
+        else
+        {
+          _vdTool[r] += _vda;
+        }
       }   
     }
 
@@ -692,8 +741,16 @@ void SurgicalTask::computeHapticFeedback(int r)
   
   if(_controlPhase[r] == OPERATION)
   {
+
     Eigen::Vector3f vdEE, omegadEE;
-    getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r], _toolOffsetFromEE[r]*_wRb[r].col(2));
+    if(_controlStrategy[r] == PASSIVE_DS)
+    {
+      getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r], _toolOffsetFromEE[r]*_wRb[r].col(2));
+    }
+    else
+    {
+      getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r], _toolOffsetFromEE[r]*_wRbIK[r].col(2));
+    }
     
     float toolCollisionVel = _nToolCollision[r].transpose()*(vdEE+omegadEE.cross(_toolCollisionOffset[r]));
     float eeCollisionVel = _nEECollision[r].transpose()*(vdEE+omegadEE.cross(-_eeSafetyCollisionRadius*_nEECollision[r]));
@@ -702,7 +759,7 @@ void SurgicalTask::computeHapticFeedback(int r)
     // float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(toolCollisionVel,0.0f, 0.03f); 
     float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
     getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
-    _FdFoot[r] += 10.0f*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    _FdFoot[r] += 5.0f*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
 
     std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
 
@@ -710,7 +767,7 @@ void SurgicalTask::computeHapticFeedback(int r)
     // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
     float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
     getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
-    _FdFoot[r] += 10.0f*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    _FdFoot[r] += 5.0f*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
     
     std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
     // _FdFoot[r].setConstant(0.0f);
@@ -731,8 +788,16 @@ void SurgicalTask::getExpectedDesiredEETwist(int r, Eigen::Vector3f &vdEE, Eigen
 
   Eigen::Matrix<float,6,6> A;
 
-  A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
-  A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
+  if(_controlStrategy[r] == PASSIVE_DS)
+  {
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);    
+  }
+  else
+  {
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRbIK[r].col(2))*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRbIK[r].col(2))*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))*_wRbIK[r].col(2));    
+  }
   A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
   A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rk);
   Eigen::Matrix<float,6,1> x, b;

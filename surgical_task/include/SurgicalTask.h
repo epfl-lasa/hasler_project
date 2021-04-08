@@ -321,6 +321,8 @@ class SurgicalTask
     Eigen::Vector3f _xdTool[NB_ROBOTS];
     Eigen::VectorXf _ikJoints[NB_ROBOTS];
     Eigen::Vector3f _xIK[NB_ROBOTS];                         // Position [m] (3x1)
+    Eigen::Vector3f _xEEIK[NB_ROBOTS];                         // Position [m] (3x1)
+    Eigen::Matrix3f _wRbIK[NB_ROBOTS];                         // Position [m] (3x1)
 
     float _filteredForceGain;   // Filtering gain for force/torque sensor
 
