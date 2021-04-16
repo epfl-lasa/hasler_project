@@ -174,11 +174,11 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 }
 
 
-QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::Vector3f xTrocar, float toolOffset, 
-																Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis,
-																float depthGain, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
-																Eigen::Vector3f rToolObstacle, float dToolObstacle, Eigen::Vector3f toolCollisionOffset,
-																bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset)
+QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, float toolOffset, 
+														Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis,
+														float depthGain, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
+														Eigen::Vector3f rToolObstacle, float dToolObstacle, Eigen::Vector3f toolCollisionOffset,
+														bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset)
 {
 
 
@@ -273,7 +273,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 			std::cerr << "[QpSolverRCMCollision]: tool gain: " << safetyEECollisionGain << " " << eeCollisionVel << std::endl;
 		}      
 
-		_toolGain = safetyEECollisionGain*safetyToolCollisionGain;
+		// _toolGain = safetyEECollisionGain*safetyToolCollisionGain;
 
 	  error << _rcmGain*wRRobotBasis.transpose()*(xTrocar-xRCM), _toolGain*wRRobotBasis.transpose()*vdTool, omegad;
 

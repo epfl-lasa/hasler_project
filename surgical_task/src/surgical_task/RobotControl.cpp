@@ -20,7 +20,10 @@ void SurgicalTask::robotControlStep(int r, int h)
     {
       if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT || (_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && !_clutching && ! _wait))
       {
-        operationStep(r, h);
+        if((_humanInputDevice[r] == FOOT && _footState[h] == 2 &&  _subFootOutput[h].getNumPublishers() > 0) || _humanInputDevice[r] == JOYSTICK)
+        {
+          operationStep(r, h);
+        }
       }
       break;
     }
@@ -272,7 +275,7 @@ void SurgicalTask::insertionStep(int r, int h)
   
     _selfRotationCommand[r] = 0.0f;
 
-    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
@@ -412,7 +415,7 @@ void SurgicalTask::operationStep(int r, int h)
     _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
                                               _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
                                               _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
                                               _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
@@ -487,6 +490,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
       Eigen::Vector3f currentOffset;
       currentOffset = _xIK[r]-_xd0[r];
+      // currentOffset = _x[r]-_xd0[r];
 
       // if(currentOffset(Z)>pyramidHeight(Z))
       // {
@@ -554,7 +558,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     if(_debug)
     {
-      std::cerr << "[SurgicalTask]: " << r << " Current offset: " << (_xIK[r]-_xd0[r]).transpose() << std::endl;
+      std::cerr << "[SurgicalTask]: " << r << " Current offset: " << (_x[r]-_xd0[r]).transpose() << std::endl;
     }
 
     _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
@@ -568,18 +572,22 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       _selfRotationCommand[r] = 0.0f;
     }
 
+    if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r != _currentRobot && _tool[r]==CAMERA)
+    {
+      _selfRotationCommand[r] = 0.0f;
+    }
 
     if(_tool[r]==CAMERA && _allowTaskAdaptation)
     {
       if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationDeactivationThreshold) &&
          std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationDeactivationThreshold) &&
-         _trocarInput[h](EXTRA_DOF)*_taskAdaptationDeactivationThreshold>0 && _useTaskAdaptation)
+         _trocarInput[h](EXTRA_DOF)*_taskAdaptationDeactivationThreshold>0 && _useTaskAdaptation && r == _currentRobot)
       {
         _useTaskAdaptation = false;
       }
       else if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationActivationThreshold) &&
               std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationActivationThreshold) &&
-              _trocarInput[h](EXTRA_DOF)*_taskAdaptationActivationThreshold>0 && !_useTaskAdaptation)
+              _trocarInput[h](EXTRA_DOF)*_taskAdaptationActivationThreshold>0 && !_useTaskAdaptation && r == _currentRobot)
       {
         initializeBeliefs(r);
         _useTaskAdaptation = true;
@@ -609,7 +617,14 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
         //               +(1-alpha[1])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(1).transpose();
         taskAdaptation(r, h);
 
-        _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION);
+        if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT || (_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r == _currentRobot))
+        {
+          _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION);
+        }
+        else
+        {
+          _vdTool[r].setConstant(0.0f);
+        }
         
         if(!_useSim && _toolsTracking == CAMERA_BASED)
         {
@@ -690,6 +705,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     if(_controlStrategy[r] == JOINT_IMPEDANCE)
     {
       _vdTool[r] = alpha*(_xd[r]-_xIK[r]);        
+      // _vdTool[r] = alpha*(_xd[r]-_x[r]);        
       // if(_colorMarkersStatus[2] == 0 && _toolsTracking == CAMERA_BASED && !_useSim)
       // {
       //   _vdTool[r].setConstant(0.0f);
@@ -759,7 +775,11 @@ void SurgicalTask::computeHapticFeedback(int r)
     // float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(toolCollisionVel,0.0f, 0.03f); 
     float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
     getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
-    _FdFoot[r] += 5.0f*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    _FdFoot[r] += 7.0f*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    // if(_dToolCollision[r]<_toolSafetyCollisionDistance+0.005)
+    // {
+    //   _FdFoot[r] += 7.0f*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    // }
 
     std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
 
@@ -767,16 +787,78 @@ void SurgicalTask::computeHapticFeedback(int r)
     // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
     float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
     getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
-    _FdFoot[r] += 5.0f*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    _FdFoot[r] += 7.0f*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
     
+    // if(_dEECollision[r]<_eeSafetyCollisionDistance+0.005)
+    // {
+    //   _FdFoot[r] += 7.0f*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+    // }
     std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
     // _FdFoot[r].setConstant(0.0f);
 
-    if(_tool[r] == RETRACTOR && (_inputAlignedWithOrigin[r]==false /*|| (_colorMarkersStatus[2] == 0 && _toolsTracking == CAMERA_BASED)*/))
+
+
+    if(_tool[r] == CAMERA)
     {
-      _FdFoot[r] += Utils<float>::bound(200.0f*(_xIK[r]-(_xd0[r]+_desiredOffsetPPM[r])),15.0f);   
+      Eigen::Vector3f dir;
+      Eigen::Vector3f currentOffset = _xIK[r]-_xd0[r];
+      dir << 0.0f,0.0f,1.0f;
+      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(currentOffset(2)-_operationMinOffsetPVM[r](2),0, 0.01f)*dir; 
+      // if(currentOffset(2)-_operationMinOffsetPVM[r](2)< 0.005f)
+      // {
+      //   _FdFoot[r]+= 7.0f*dir; 
+      // }
+
+      dir << 0.0f,0.0f,-1.0f;
+      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(_operationMaxOffsetPVM[r](2)-currentOffset(2),0, 0.01f)*dir; 
+      // if(_operationMaxOffsetPVM[r](2)-currentOffset(2)< 0.005f)
+      // {
+      //   _FdFoot[r]+= 7.0f*dir; 
+      // }
+
+      dir << 1.0f,0.0f,0.0f;
+      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(currentOffset(0)-_operationMinOffsetPVM[r](0),0, 0.01f)*dir; 
+      // if(currentOffset(0)-_operationMinOffsetPVM[r](0)< 0.005f)
+      // {
+      //   _FdFoot[r]+= 7.0f*dir; 
+      // }
+      
+      dir << -1.0f,0.0f,0.0f;
+      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(_operationMaxOffsetPVM[r](0)-currentOffset(0),0, 0.01f)*dir; 
+      // if(_operationMaxOffsetPVM[r](0)-currentOffset(0)< 0.005f)
+      // {
+      //   _FdFoot[r]+= 7.0f*dir; 
+      // }
+      
+      dir << 0.0f,1.0f,0.0f;
+      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(currentOffset(1)-_operationMinOffsetPVM[r](1),0, 0.01f)*dir; 
+      // if(currentOffset(1)-_operationMinOffsetPVM[r](1)< 0.005f)
+      // {
+      //   _FdFoot[r]+= 7.0f*dir; 
+      // }
+
+      dir << 0.0f,-1.0f,0.0f;
+      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(_operationMaxOffsetPVM[r](1)-currentOffset(1),0, 0.01f)*dir;  
+      // if(_operationMaxOffsetPVM[r](1)-currentOffset(1)< 0.005f)
+      // {
+      //   _FdFoot[r]+= 7.0f*dir; 
+      // }
+
+      std::cerr << r << " 3: "<<_FdFoot[r].transpose() << std::endl;
+    }
+
+
+    if(_tool[r] == RETRACTOR && _inputAlignedWithOrigin[r]==false)
+    {
+      _FdFoot[r] += Utils<float>::bound(200.0f*(-_desiredOffsetPPM[r]),15.0f);   
       // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
     }
+
+    // if(_tool[r] == RETRACTOR && _colorMarkersStatus[2] == 0 && _toolsTracking == CAMERA_BASED)
+    // {
+    //   _FdFoot[r] += Utils<float>::bound(200.0f*(_xIK[r]-(_xd0[r]+_desiredOffsetPPM[r])),15.0f);   
+    //   // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
+    // }
 
 
   }

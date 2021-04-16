@@ -170,7 +170,15 @@ void SurgicalTask::step()
       else if(_useRobot[r] && r != _currentRobot)
       {
         // Update trocar information
-        updateRobotTaskState(r);
+        // updateRobotTaskState(r);
+        if(_tool[r] == CAMERA && _useTaskAdaptation)
+        {
+          robotControlStep(r,_nonDominantInputID);
+        }
+        else
+        {
+          updateRobotTaskState(r);
+        }
       }
     }
   }

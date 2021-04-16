@@ -48,6 +48,7 @@ void SurgicalTask::dominantFootTwoRobots()
     {
       _wait = true;
       _currentRobot = LEFT;
+      // _useTaskAdaptation = false;
     }
     else if(_currentRobot == LEFT && _linearMapping[RIGHT] == POSITION_POSITION)
     {
@@ -59,6 +60,7 @@ void SurgicalTask::dominantFootTwoRobots()
     {
       _wait = true;
       _currentRobot = RIGHT;
+      // _useTaskAdaptation = false;
     }
   }
 
@@ -226,7 +228,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       else
       {
         _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), _footInterfaceMinDeadZone[h][FOOT_YAW], _footInterfaceMaxDeadZone[h][FOOT_YAW]);
-        _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-(_footInterfaceMaxDeadZone[h][FOOT_YAW]-_footInterfaceMinDeadZone[h][FOOT_YAW])), -1.0f, 1.0f);
+        _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-_footInterfaceMaxDeadZone[h][FOOT_YAW]+_footInterfaceMinDeadZone[h][FOOT_YAW]), -1.0f, 1.0f);
       }
       _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_ROLL], -1.0f, 1.0f);
     }
@@ -253,10 +255,10 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), _footInterfaceMinDeadZone[h][FOOT_YAW], _footInterfaceMaxDeadZone[h][FOOT_YAW]);
 
       // Scale human input between -1 and 1
-      _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_Y]-(_footInterfaceMaxDeadZone[h][FOOT_Y])-_footInterfaceMinDeadZone[h][FOOT_Y]), -1.0f, 1.0f);
-      _trocarInput[h](V_RIGHT) = Utils<float>::bound(2*_trocarInput[h](V_RIGHT)/(_footInterfaceRange[h][FOOT_X]-(_footInterfaceMaxDeadZone[h][FOOT_X])-_footInterfaceMinDeadZone[h][FOOT_X]), -1.0f, 1.0f);
-      _trocarInput[h](V_INSERTION) = Utils<float>::bound(2*_trocarInput[h](V_INSERTION)/(_footInterfaceRange[h][FOOT_PITCH]-(_footInterfaceMaxDeadZone[h][FOOT_PITCH])-_footInterfaceMinDeadZone[h][FOOT_PITCH]), -1.0f, 1.0f);
-      _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-(_footInterfaceMaxDeadZone[h][FOOT_YAW])-_footInterfaceMinDeadZone[h][FOOT_YAW]), -1.0f, 1.0f);
+      _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_Y]-_footInterfaceMaxDeadZone[h][FOOT_Y]+_footInterfaceMinDeadZone[h][FOOT_Y]), -1.0f, 1.0f);
+      _trocarInput[h](V_RIGHT) = Utils<float>::bound(2*_trocarInput[h](V_RIGHT)/(_footInterfaceRange[h][FOOT_X]-_footInterfaceMaxDeadZone[h][FOOT_X]+_footInterfaceMinDeadZone[h][FOOT_X]), -1.0f, 1.0f);
+      _trocarInput[h](V_INSERTION) = Utils<float>::bound(2*_trocarInput[h](V_INSERTION)/(_footInterfaceRange[h][FOOT_PITCH]-_footInterfaceMaxDeadZone[h][FOOT_PITCH]+_footInterfaceMinDeadZone[h][FOOT_PITCH]), -1.0f, 1.0f);
+      _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-_footInterfaceMaxDeadZone[h][FOOT_YAW]+_footInterfaceMinDeadZone[h][FOOT_YAW]), -1.0f, 1.0f);
       _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_ROLL], -1.0f, 1.0f);      
 
       // // Apply deadzone on foot position
@@ -278,7 +280,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         {
           std::cerr <<  "[SurgicalTask]: Wait dominant foot to come back to zero !!!" << std::endl;
         }
-        if(_trocarInput[h].segment(0,4).norm()<0.3f)
+        if(_trocarInput[h].segment(0,4).norm()<0.2f)
         {
           _wait = false;
         }

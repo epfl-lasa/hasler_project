@@ -97,6 +97,11 @@ void SurgicalTask::taskAdaptation(int r, int h)
   {
     vH = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_wRb[r]*_eeCameraMapping*_trocarInput[h].segment(0,3);
   }
+
+  if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r != _currentRobot)
+  {
+    vH.setConstant(0.0f);
+  }
   // vH = _wRb[r].col(V_UP)*_trocarInput[h](V_UP)+_wRb[r].col(V_RIGHT)*_trocarInput[h](V_RIGHT);
   
   if(_debug)
