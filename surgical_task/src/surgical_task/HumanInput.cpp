@@ -194,7 +194,15 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       //      0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
       //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
       //      0.0f, 0.0f, 0.0f, 1.0f, 0.0f;
-      _trocarInput[h] = R*_footPose[h];
+
+      _trocarInput[h] = _footPose[h];
+
+      if(_selfRotationMapping[h]==POSITION_VELOCITY)
+      {
+        _trocarInput[h](FOOT_YAW) = Utils<float>::deadZone(_trocarInput[h](FOOT_YAW), _footInterfaceMinDeadZone[h][FOOT_YAW], _footInterfaceMaxDeadZone[h][FOOT_YAW]);
+      }
+
+      _trocarInput[h] = R*_trocarInput[h];
 
       if(_clutching && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
@@ -227,7 +235,6 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       }
       else
       {
-        _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), _footInterfaceMinDeadZone[h][FOOT_YAW], _footInterfaceMaxDeadZone[h][FOOT_YAW]);
         _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-_footInterfaceMaxDeadZone[h][FOOT_YAW]+_footInterfaceMinDeadZone[h][FOOT_YAW]), -1.0f, 1.0f);
       }
       _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_ROLL], -1.0f, 1.0f);
@@ -246,13 +253,22 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       //      0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
       //      0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
       //      1.0f, 0.0f, 0.0f, 0.0f, 0.0f;
-      _trocarInput[h] = R*_footPose[h];
 
       // Apply deadzone on foot position
-      _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), _footInterfaceMinDeadZone[h][FOOT_Y], _footInterfaceMaxDeadZone[h][FOOT_Y]);
-      _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), _footInterfaceMinDeadZone[h][FOOT_X], _footInterfaceMaxDeadZone[h][FOOT_X]);
-      _trocarInput[h](V_INSERTION) = Utils<float>::deadZone(_trocarInput[h](V_INSERTION), _footInterfaceMinDeadZone[h][FOOT_PITCH], _footInterfaceMaxDeadZone[h][FOOT_PITCH]);
-      _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), _footInterfaceMinDeadZone[h][FOOT_YAW], _footInterfaceMaxDeadZone[h][FOOT_YAW]);
+      // _trocarInput[h] = R*_footPose[h];
+      // _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), _footInterfaceMinDeadZone[h][FOOT_Y], _footInterfaceMaxDeadZone[h][FOOT_Y]);
+      // _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), _footInterfaceMinDeadZone[h][FOOT_X], _footInterfaceMaxDeadZone[h][FOOT_X]);
+      // _trocarInput[h](V_INSERTION) = Utils<float>::deadZone(_trocarInput[h](V_INSERTION), _footInterfaceMinDeadZone[h][FOOT_PITCH], _footInterfaceMaxDeadZone[h][FOOT_PITCH]);
+      // _trocarInput[h](W_SELF_ROTATION) = Utils<float>::deadZone(_trocarInput[h](W_SELF_ROTATION), _footInterfaceMinDeadZone[h][FOOT_YAW], _footInterfaceMaxDeadZone[h][FOOT_YAW]);
+
+
+      _trocarInput[h] = _footPose[h];
+      for(int k = 0; k < NB_DOF_FOOT_INTERFACE; k++)
+      {
+        _trocarInput[h](k) = Utils<float>::deadZone(_trocarInput[h](k), _footInterfaceMinDeadZone[h][k], _footInterfaceMaxDeadZone[h][k]);
+      }
+      _trocarInput[h] = R*_trocarInput[h];
+
 
       // Scale human input between -1 and 1
       _trocarInput[h](V_UP) = Utils<float>::bound(2*_trocarInput[h](V_UP)/(_footInterfaceRange[h][FOOT_Y]-_footInterfaceMaxDeadZone[h][FOOT_Y]+_footInterfaceMinDeadZone[h][FOOT_Y]), -1.0f, 1.0f);
@@ -294,7 +310,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       R <<  0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
             1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.4, 0.0f, 0.0f, 1.0f,
+            0.0f, 0.0, 0.0f, 0.0f, 1.0f,
             0.0f, 0.0f, 0.0f, 1.0f, 0.0f;          
     
       _trocarInput[h] = R*_footPose[h];
@@ -355,22 +371,28 @@ void SurgicalTask::computeDesiredFootWrench(int r, int h)
 {
   _desiredFootWrench[h].setConstant(0.0f);
 
-  Eigen::Matrix<float,5,3> GammaF;
-  Eigen::Matrix3f G;
+  Eigen::Matrix4f G;
   G.setIdentity();
   G(2,2) = 0.2f;
+
+
+  Eigen::Vector4f temp;
+
+  temp(3) = _taud[r];
 
 
   switch(_tool[r])
   {
     case CAMERA:
     {
-      _desiredFootWrench[h] = _footPVMapping.block(0,0,3,NB_DOF_FOOT_INTERFACE).transpose()*G*(_wRb[r]*_eeCameraMapping).transpose()*_FdFoot[r];
+      temp.segment(0,3) = (_wRb[r]*_eeCameraMapping).transpose()*_FdFoot[r];
+      _desiredFootWrench[h] = _footPVMapping.block(0,0,4,NB_DOF_FOOT_INTERFACE).transpose()*G*temp;
       break;
     }
     case RETRACTOR:
     {
-      _desiredFootWrench[h] = _footPPMapping.block(0,0,3,NB_DOF_FOOT_INTERFACE).transpose()*G*_FdFoot[r];
+      temp.segment(0,3) = _FdFoot[r];
+      _desiredFootWrench[h] = _footPPMapping.block(0,0,4,NB_DOF_FOOT_INTERFACE).transpose()*G*temp;
       break;
     }
     default:

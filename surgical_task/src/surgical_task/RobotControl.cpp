@@ -220,10 +220,26 @@ void SurgicalTask::insertionStep(int r, int h)
     _vd[r] = _xd0[r]+_insertionOffsetPPM[r]-x;
   }
 
+
   if(_vd[r].norm()<0.005)
   {
     _insertionFinished[r] = true;
   }
+
+
+  // Scale the desired velocity components normal to the tool depending on the penetration depth
+  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  depthGain << std::endl;
+  }
+  
+  Eigen::Matrix3f L;
+  L.setIdentity();
+  L(0,0) = depthGain;
+  L(1,1) = depthGain;
+  _vd[r] = _wRb[r]*L*_wRb[r].transpose()*_vd[r];
 
   _vd[r] = Utils<float>::bound(_vd[r],0.05f);
 
@@ -563,11 +579,11 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
     _selfRotationCommand[r] = Utils<float>::bound(_selfRotationCommand[r],-_toolTipSelfAngularVelocityLimit,_toolTipSelfAngularVelocityLimit);
-    if(_currentJoints[r](6)>_trocarSpaceSelfRotationRange && _selfRotationCommand[r]>0.0f)
+    if(_ikJoints[r](6)>_trocarSpaceSelfRotationRange*M_PI/180.0f && _selfRotationCommand[r]>0.0f)
     {
       _selfRotationCommand[r] = 0.0f;
     }
-    else if(_currentJoints[r](6)<-_trocarSpaceSelfRotationRange && _selfRotationCommand[r]<0.0f)
+    else if(_ikJoints[r](6)<-_trocarSpaceSelfRotationRange*M_PI/180.0f && _selfRotationCommand[r]<0.0f)
     {
       _selfRotationCommand[r] = 0.0f;
     }
@@ -727,17 +743,17 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       	_desiredAnglePPM[r] = Utils<float>::bound(_trocarInput[h](SELF_ROTATION)*_trocarSpaceSelfRotationRange+_toolClutchingOffset(SELF_ROTATION),
       		                                       -_trocarSpaceSelfRotationRange,_trocarSpaceSelfRotationRange);
 
-        _selfRotationCommand[r] = _trocarSpaceSelfRotationGain*(_desiredAnglePPM[r]*M_PI/180.0f-_currentJoints[r](6));
+        _selfRotationCommand[r] = _trocarSpaceSelfRotationGain*(_desiredAnglePPM[r]*M_PI/180.0f-_ikJoints[r](6));
         _selfRotationCommand[r]  = Utils<float>::bound(_selfRotationCommand[r] ,-_toolTipSelfAngularVelocityLimit, _toolTipSelfAngularVelocityLimit);        
       }
       else
       {
         _selfRotationCommand[r] =_trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
-        if(_currentJoints[r](6)>_trocarSpaceSelfRotationRange && _selfRotationCommand[r]>0.0f)
+        if(_ikJoints[r](6)>_trocarSpaceSelfRotationRange*M_PI/180.0f && _selfRotationCommand[r]>0.0f)
         {
           _selfRotationCommand[r] = 0.0f;
         }
-        else if(_currentJoints[r](6)<-_trocarSpaceSelfRotationRange && _selfRotationCommand[r]<0.0f)
+        else if(_ikJoints[r](6)<-_trocarSpaceSelfRotationRange*M_PI/180.0f && _selfRotationCommand[r]<0.0f)
         {
           _selfRotationCommand[r] = 0.0f;
         }
@@ -772,29 +788,32 @@ void SurgicalTask::computeHapticFeedback(int r)
     float eeCollisionVel = _nEECollision[r].transpose()*(vdEE+omegadEE.cross(-_eeSafetyCollisionRadius*_nEECollision[r]));
 
 
-    // float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(toolCollisionVel,0.0f, 0.03f); 
-    float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
-    getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
-    _FdFoot[r] += 7.0f*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
-    // if(_dToolCollision[r]<_toolSafetyCollisionDistance+0.005)
-    // {
-    //   _FdFoot[r] += 7.0f*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
-    // }
+    if(_useRobot[LEFT] && _useRobot[RIGHT])
+    {
+      // float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(toolCollisionVel,0.0f, 0.03f); 
+      float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
+      getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
+      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+      // if(_dToolCollision[r]<_toolSafetyCollisionDistance+0.005)
+      // {
+      //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+      // }
 
-    std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
+      std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
 
 
-    // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
-    float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
-    getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
-    _FdFoot[r] += 7.0f*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
-    
-    // if(_dEECollision[r]<_eeSafetyCollisionDistance+0.005)
-    // {
-    //   _FdFoot[r] += 7.0f*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
-    // }
-    std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
-    // _FdFoot[r].setConstant(0.0f);
+      // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
+      float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
+      getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
+      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+      
+      // if(_dEECollision[r]<_eeSafetyCollisionDistance+0.005)
+      // {
+      //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+      // }
+      std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
+      // _FdFoot[r].setConstant(0.0f);
+    }
 
 
 
@@ -803,42 +822,42 @@ void SurgicalTask::computeHapticFeedback(int r)
       Eigen::Vector3f dir;
       Eigen::Vector3f currentOffset = _xIK[r]-_xd0[r];
       dir << 0.0f,0.0f,1.0f;
-      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(currentOffset(2)-_operationMinOffsetPVM[r](2),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(2)-_operationMinOffsetPVM[r](2),0, 0.01f)*dir; 
       // if(currentOffset(2)-_operationMinOffsetPVM[r](2)< 0.005f)
       // {
-      //   _FdFoot[r]+= 7.0f*dir; 
+      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
       // }
 
       dir << 0.0f,0.0f,-1.0f;
-      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(_operationMaxOffsetPVM[r](2)-currentOffset(2),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](2)-currentOffset(2),0, 0.01f)*dir; 
       // if(_operationMaxOffsetPVM[r](2)-currentOffset(2)< 0.005f)
       // {
-      //   _FdFoot[r]+= 7.0f*dir; 
+      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
       // }
 
       dir << 1.0f,0.0f,0.0f;
-      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(currentOffset(0)-_operationMinOffsetPVM[r](0),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(0)-_operationMinOffsetPVM[r](0),0, 0.01f)*dir; 
       // if(currentOffset(0)-_operationMinOffsetPVM[r](0)< 0.005f)
       // {
-      //   _FdFoot[r]+= 7.0f*dir; 
+      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
       // }
       
       dir << -1.0f,0.0f,0.0f;
-      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(_operationMaxOffsetPVM[r](0)-currentOffset(0),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](0)-currentOffset(0),0, 0.01f)*dir; 
       // if(_operationMaxOffsetPVM[r](0)-currentOffset(0)< 0.005f)
       // {
-      //   _FdFoot[r]+= 7.0f*dir; 
+      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
       // }
       
       dir << 0.0f,1.0f,0.0f;
-      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(currentOffset(1)-_operationMinOffsetPVM[r](1),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(1)-_operationMinOffsetPVM[r](1),0, 0.01f)*dir; 
       // if(currentOffset(1)-_operationMinOffsetPVM[r](1)< 0.005f)
       // {
-      //   _FdFoot[r]+= 7.0f*dir; 
+      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
       // }
 
       dir << 0.0f,-1.0f,0.0f;
-      _FdFoot[r]+= 7.0f* Utils<float>::smoothFall(_operationMaxOffsetPVM[r](1)-currentOffset(1),0, 0.01f)*dir;  
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](1)-currentOffset(1),0, 0.01f)*dir;  
       // if(_operationMaxOffsetPVM[r](1)-currentOffset(1)< 0.005f)
       // {
       //   _FdFoot[r]+= 7.0f*dir; 
@@ -853,6 +872,11 @@ void SurgicalTask::computeHapticFeedback(int r)
       _FdFoot[r] += Utils<float>::bound(200.0f*(-_desiredOffsetPPM[r]),15.0f);   
       // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
     }
+
+
+    _taud[r] = _selfRotationTorqueFeedbackMagnitude*(Utils<float>::smoothFall(_currentJoints[r](6)+_trocarSpaceSelfRotationRange*M_PI/180.0f,0, 0.2f)
+                    -Utils<float>::smoothFall(_trocarSpaceSelfRotationRange*M_PI/180.0f-_currentJoints[r](6),0, 0.2f));
+    // _currentJoints[r](6)<-_trocarSpaceSelfRotationRange
 
     // if(_tool[r] == RETRACTOR && _colorMarkersStatus[2] == 0 && _toolsTracking == CAMERA_BASED)
     // {

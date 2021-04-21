@@ -215,3 +215,10 @@ SurgicalTask/footPVMapping: [0.0, 1.0, 0.0, 0.0, 0.0,
 SurgicalTask/eeCameraMapping: [0.0, -1.0, 0.0,
                                1.0, 0.0, 0.0,
                                0.0, 0.0, 1.0]
+SurgicalTask/linearForceFeedbackMagnitude: 7.0
+
+SurgicalTask/selfRotationTorqueFeedbackMagnitude: 0.7
+
+# SurgicalTask/eeCameraMapping: [1.0, 0.0, 0.0,
+#                                0.0, 1.0, 0.0,
+#                                0.0, 0.0, 1.0]

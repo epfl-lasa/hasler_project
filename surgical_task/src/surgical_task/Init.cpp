@@ -767,6 +767,30 @@ bool SurgicalTask::readConfigurationParameters()
     std::cout << "EE-camera mapping matrix: " << std::endl;
     std::cout << _eeCameraMapping << std::endl;
   }
+
+
+  if (!_nh.getParam("SurgicalTask/linearForceFeedbackMagnitude", _linearForceFeedbackMagnitude))
+  {
+    ROS_ERROR("Couldn't retrieve the linear force feedback magnitude");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Linear force feedback magnitude: %f\n", _linearForceFeedbackMagnitude);
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/selfRotationTorqueFeedbackMagnitude", _selfRotationTorqueFeedbackMagnitude))
+  {
+    ROS_ERROR("Couldn't retrieve the self rotation torque feedback magnitude");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Self rotation torque feedback magnitude: %f\n", _selfRotationTorqueFeedbackMagnitude);
+  }
+
+
   return true;
 }
 
@@ -843,6 +867,7 @@ void SurgicalTask::initializeTaskParameters()
     _insertionFinished[r] = false;
     _wRRobotBasis[r].setIdentity();
     _humanToolStatus[r] = 0;
+    _taud[r] = 0.0f;
   }
   _stop = false;
   _firstGripper = false;

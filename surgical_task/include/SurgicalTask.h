@@ -244,6 +244,8 @@ class SurgicalTask
     float _markerFilterGain;
     float _eeLinearVelocityLimit;
     float _eeAngularVelocityLimit;
+    float _linearForceFeedbackMagnitude;
+    float _selfRotationTorqueFeedbackMagnitude;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -397,6 +399,7 @@ class SurgicalTask
     Eigen::Vector3f _nEECollision[NB_ROBOTS];
     float _dEECollision[NB_ROBOTS];
     Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
+    float _taud[NB_ROBOTS];
 
   public:
 
