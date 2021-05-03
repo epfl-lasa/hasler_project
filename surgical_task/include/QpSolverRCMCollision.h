@@ -19,6 +19,10 @@ class QpSolverRCMCollision
 			bool eeCollisionConstraintActive;
 			bool toolCollisionConstraintActive;
 			bool workspaceCollisionConstraintActive;
+			// Eigen::Vector3f vEEd;
+			// Eigen::Vector3f xEEd;
+			// Eigen::Vector4f qEEd;
+			// Eigen::Vector3f omegaEEd;
 		};
 
 	private:

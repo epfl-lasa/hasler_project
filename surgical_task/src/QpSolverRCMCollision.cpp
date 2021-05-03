@@ -483,6 +483,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 		}
 		else
 		{
+			_jointVelocities.setConstant(0.0f);
 			if(_debug)
 			{
 				std::cerr << "[QpSolverRCMCollision]: Error: " <<(int) ret << std::endl;
@@ -516,6 +517,12 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  std::cerr << "[QpSolverRCMCollision]: Error: " << error.transpose() << std::endl;
 	  std::cerr << "[QpSolverRCMCollision]: Error: " << error.segment(0,3).norm()/_rcmGain << " " << error.segment(3,3).norm()/_toolGain << std::endl;  	
   }
+
+  // result.vEEd = Jee.block(0,0,3,7);
+  // result.vEEd = Jee.block(0,0,3,7);
+  // xEEd;
+  // qEEd;
+  // omegaEEd;
 
   // if(!checkConvergence(error))
   // {

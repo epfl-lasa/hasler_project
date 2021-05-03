@@ -11,9 +11,9 @@ void SurgicalTask::robotControlStep(int r, int h)
 
   switch(_controlPhase[r])
   {
-    case INSERTION:
+    case AUTOMATIC_INSERTION:
     {
-      insertionStep(r, h);
+      automaticInsertionStep(r, h);
       break;
     }
     case OPERATION:
@@ -25,6 +25,11 @@ void SurgicalTask::robotControlStep(int r, int h)
           operationStep(r, h);
         }
       }
+      break;
+    }
+    case INSERTION:
+    {
+      insertionStep(r, h);
       break;
     }
     default:
@@ -169,7 +174,7 @@ void SurgicalTask::updateControlPhase(int r)
     std::cerr << "[SurgicalTask]: " << r << ": x " << _x[r].transpose() << std::endl;    
   }
 
-  if(_controlPhase[r] == INSERTION)
+  if(_controlPhase[r] == AUTOMATIC_INSERTION)
   {
     if(_insertionFinished[r])
     {
@@ -191,10 +196,24 @@ void SurgicalTask::updateControlPhase(int r)
       }
     }
   }
+  // else if(_controlPhase[r] == OPERATION)
+  // {
+  //   if((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))-_toolOffsetFromEE[r] > _insertionDistancePVM[r])
+  //   {
+  //     _controlPhase[r] = INSERTION;
+  //   }
+  // }
+  // else if(_controlPhase[r] == INSERTION)
+  // {
+  //   if((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))-_toolOffsetFromEE[r] <= _insertionDistancePVM[r])
+  //   {
+  //     _controlPhase[r] = OPERATION;
+  //   }
+  // }
 }
 
 
-void SurgicalTask::insertionStep(int r, int h)
+void SurgicalTask::automaticInsertionStep(int r, int h)
 {
 
   if(_debug)
@@ -203,45 +222,55 @@ void SurgicalTask::insertionStep(int r, int h)
   }
 
   Eigen::Vector3f x;
+  Eigen::Matrix3f wRb;
+  float gain = 1.0f;
   if(_controlStrategy[r] == PASSIVE_DS)
   {  
     x = _x[r];
+    wRb = _wRb[r];
+    gain = 5.0f;
   }
   else
   {
     x = _xIK[r];
+    wRb = _wRbIK[r];
   }
+
+
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
-    _vd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r])-x; 
+    _vd[r] = gain*(_xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r])-x); 
   }
   else
   {
-    _vd[r] = _xd0[r]+_insertionOffsetPPM[r]-x;
+    _vd[r] = gain*(_xd0[r]+_insertionOffsetPPM[r]-x);
   }
 
-
-  if(_vd[r].norm()<0.005)
+  if(_vd[r].norm()/gain<0.005)
   {
     _insertionFinished[r] = true;
   }
 
 
   // Scale the desired velocity components normal to the tool depending on the penetration depth
-  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+  float depthGain = std::min(std::max((x-_trocarPosition[r]).dot(wRb.col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
 
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  depthGain << std::endl;
   }
   
-  Eigen::Matrix3f L;
-  L.setIdentity();
-  L(0,0) = depthGain;
-  L(1,1) = depthGain;
-  _vd[r] = _wRb[r]*L*_wRb[r].transpose()*_vd[r];
+  if(_linearMapping[r] == POSITION_POSITION || _controlStrategy[r] == JOINT_IMPEDANCE)
+  {
+    Eigen::Matrix3f L;
+    L.setIdentity();
+    L(0,0) = depthGain;
+    L(1,1) = depthGain;
+    _vd[r] = _wRb[r]*L*_wRb[r].transpose()*_vd[r];
+  }
+  _vd[r] = Utils<float>::bound(_vd[r],_toolTipLinearVelocityLimit);
+  _vdTool[r] = _vd[r];
 
-  _vd[r] = Utils<float>::bound(_vd[r],0.05f);
 
 //   if(_linearMapping[r]==POSITION_VELOCITY || _useSim)
 //   {
@@ -261,12 +290,36 @@ void SurgicalTask::insertionStep(int r, int h)
   if(_controlStrategy[r] == PASSIVE_DS)
   {
     _stiffness[r].setConstant(0.0f);
+
+    Eigen::Matrix<float,6,6> A;
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
+    A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_toolOffsetFromEE[r]*_wRb[r].col(2));
+    Eigen::Matrix<float,6,1> x, b;
+    b.setConstant(0.0f);
+    b.segment(3,3) = _vdTool[r];
+
+    x = A.fullPivHouseholderQr().solve(b);
+    _vd[r] = x.segment(0,3);
+    _omegad[r] = x.segment(3,3);
+
+    
+    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+
+    _vd[r] = Utils<float>::bound(_vd[r],0.4f);
+
+
+    _omegad[r] = Utils<float>::bound(_omegad[r],3.0f);
+
+    _nullspaceWrench[r].setConstant(0.0f);
+
     Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_wRb0[r].col(2)));
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r]));
 
     Eigen::Vector3f axis;  
     float angleErrorToTrocarPosition;
-    Utils<float>::quaternionToAxisAngle(qe, axis, angleErrorToTrocarPosition);
+    Utils<float>::quaternionToAxisAngle(qe,axis,angleErrorToTrocarPosition);
 
     if(_debug)
     {
@@ -280,10 +333,34 @@ void SurgicalTask::insertionStep(int r, int h)
                                                                        MAX_ORIENTATION_ERROR));
     }
 
-    // Compute final quaternion on plane
+    // Compute final quaternion
     _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
+    // Eigen::Vector4f qe;
+    // qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_wRb0[r].col(2)));
+    // // qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),(_trocarPosition[r]-_xEE[r]).normalized()));
 
-    _omegad[r] = Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r]);
+    // Eigen::Vector3f axis;  
+    // float angleErrorToTrocarPosition;
+    // Utils<float>::quaternionToAxisAngle(qe, axis, angleErrorToTrocarPosition);
+
+    // if(_debug)
+    // {
+    //   std::cerr << "[SurgicalTask]: " << r << ": angleErrorToTrocarPosition: " << angleErrorToTrocarPosition << std::endl;
+    // }
+
+    // if(std::fabs(angleErrorToTrocarPosition)>MAX_ORIENTATION_ERROR)
+    // {
+    //   qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angleErrorToTrocarPosition,
+    //                                                                    -MAX_ORIENTATION_ERROR,
+    //                                                                    MAX_ORIENTATION_ERROR));
+    // }
+
+    // // Compute final quaternion on plane
+    // _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
+
+    // _omegad[r] = Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r]);
+
+    _selfRotationCommand[r] = 0.0f;
   }
   else if (_controlStrategy[r] == JOINT_IMPEDANCE && _firstPublish[r])
   {
@@ -332,6 +409,10 @@ void SurgicalTask::insertionStep(int r, int h)
 
 void SurgicalTask::operationStep(int r, int h)
 {
+
+  // Scale the desired velocity components normal to the tool depending on the penetration depth
+  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: " << r << ": OPERATION" << std::endl;
@@ -340,13 +421,62 @@ void SurgicalTask::operationStep(int r, int h)
   // Compute desired tool velocity
   computeDesiredToolVelocity(r, h);
 
+
+  float alphaH = 0.0f;
+  if(_enablePhysicalHumanInteraction)
+  {
+    Eigen::Matrix3f S, P;
+    P = Utils<float>::orthogonalProjector(_wRbIK[r].col(2));
+    S = P*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))*_wRbIK[r].col(2));    
+    Eigen::Vector3f omegaEEd, vEEdir, vTooldir;
+    vEEdir = (-_wRbIK[r]*_Fext[r]).normalized();
+    Eigen::Vector3f b;
+    b = P*vEEdir;
+    omegaEEd = S.fullPivHouseholderQr().solve(b);
+    vTooldir = (vEEdir+omegaEEd.cross(_toolOffsetFromEE[r]*_wRbIK[r].col(2))).normalized();
+
+
+    Eigen::Vector3f Fh;
+    Fh.setConstant(0.0f);
+    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,5.0f)*vTooldir; 
+
+    Eigen::Vector3f bou;
+    bou << 200, 200, 200;
+
+
+    float mass = 1.0f;
+    _vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+Fh)/mass;
+    // _vH[r] = Utils<float>::bound(_vH[r],0.1f);
+
+
+
+
+    Eigen::Vector3f temp;
+    temp = _wRbIK[r].transpose()*_vH[r];
+    temp(0) = Utils<float>::bound(depthGain*temp(0),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
+    temp(1) = Utils<float>::bound(depthGain*temp(1),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
+    temp(2) = Utils<float>::bound(temp(2),-0.2f,0.2f);
+
+    _vH[r] = _wRbIK[r]*temp;
+
+
+    alphaH = Utils<float>::smoothRise(_vH[r].norm(), 0.0f, 0.005f);
+
+    // _vdTool[r] = (1-alpha)*_vdTool[r]+_vH[r];
+    // _vdTool[r] = (1-alpha)*_vdTool[r]+alpha*0.1f*vTooldir;
+
+    std::cerr << "Dir: " << vTooldir.transpose() << " alpha:" << alphaH <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh << std::endl;
+
+  }
+
+
+
+
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: " << r << ": vd tool before: " << _vdTool[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
   }
 
-  // Scale the desired velocity components normal to the tool depending on the penetration depth
-  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
 
   if(_debug)
   {
@@ -357,10 +487,17 @@ void SurgicalTask::operationStep(int r, int h)
   L.setIdentity();
   L(0,0) = depthGain;
   L(1,1) = depthGain;
-  _vdTool[r] = _wRb[r]*L*_wRb[r].transpose()*_vdTool[r];
+  _vdTool[r] = _wRbIK[r]*L*_wRbIK[r].transpose()*_vdTool[r];
   
   // Bound vd tool
   _vdTool[r] = Utils<float>::bound(_vdTool[r], _toolTipLinearVelocityLimit);
+
+
+  if(_enablePhysicalHumanInteraction)
+  {
+    _vdTool[r] = (1-alphaH)*_vdTool[r]+alphaH*_vH[r];
+  }
+
 
   if(_debug)
   {
@@ -390,7 +527,7 @@ void SurgicalTask::operationStep(int r, int h)
     _omegad[r] = x.segment(3,3);
 
     
-    _vd[r]+=2.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
 
     _vd[r] = Utils<float>::bound(_vd[r],0.4f);
 
@@ -914,4 +1051,120 @@ void SurgicalTask::getExpectedDesiredEETwist(int r, Eigen::Vector3f &vdEE, Eigen
   vdEE = x.segment(0,3);
   omegadEE = x.segment(3,3);
 
+}
+
+
+
+void SurgicalTask::insertionStep(int r, int h)
+{
+
+  if(_debug)
+  {
+    std::cerr << "[SurgicalTask]: " << r << ": INSERTION" << std::endl;
+  }
+
+
+  Eigen::Vector3f vTooldir;
+  vTooldir = (-_wRbIK[r].col(2)*_wRbIK[r].col(2).transpose()*_wRbIK[r]*_Fext[r]).normalized();
+
+
+  Eigen::Vector3f Fh;
+  Fh.setConstant(0.0f);
+  Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,5.0f)*vTooldir; 
+
+
+  float mass = 1.0f;
+  _vH[r] += _dt*(-200*_vH[r]+Fh)/mass;
+  _vH[r] = Utils<float>::bound(_vH[r],0.2f);
+
+
+  std::cerr << "Dir: " << vTooldir.transpose() << " vH: " << _vH[r].norm() << " Fh: "<<  Fh << std::endl;
+
+  _vdTool[r] = _vH[r];
+  // _vdTool[r].setConstant(0.0f);
+
+
+  if(_controlStrategy[r] == PASSIVE_DS)
+  {
+    _stiffness[r].setConstant(0.0f);
+
+    Eigen::Matrix<float,6,6> A;
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
+    A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_toolOffsetFromEE[r]*_wRb[r].col(2));
+    Eigen::Matrix<float,6,1> x, b;
+    b.setConstant(0.0f);
+    b.segment(3,3) = _vdTool[r];
+
+    x = A.fullPivHouseholderQr().solve(b);
+    _vd[r] = x.segment(0,3);
+    _omegad[r] = x.segment(3,3);
+
+    
+    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+
+    _vd[r] = Utils<float>::bound(_vd[r],0.4f);
+
+
+    _omegad[r] = Utils<float>::bound(_omegad[r],3.0f);
+
+    _nullspaceWrench[r].setConstant(0.0f);
+
+    Eigen::Vector4f qe;
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r]));
+
+    Eigen::Vector3f axis;  
+    float angleErrorToTrocarPosition;
+    Utils<float>::quaternionToAxisAngle(qe,axis,angleErrorToTrocarPosition);
+
+    if(_debug)
+    {
+      std::cerr << "[SurgicalTask]: " << r << ": angleErrorToTrocarPosition: " << angleErrorToTrocarPosition << std::endl;
+    }
+
+    if(std::fabs(angleErrorToTrocarPosition)>MAX_ORIENTATION_ERROR)
+    {
+      qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angleErrorToTrocarPosition,
+                                                                       -MAX_ORIENTATION_ERROR,
+                                                                       MAX_ORIENTATION_ERROR));
+    }
+
+    // Compute final quaternion
+    _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
+
+    _selfRotationCommand[r] = 0.0f;
+  }
+  else if (_controlStrategy[r] == JOINT_IMPEDANCE && _firstPublish[r])
+  {
+    _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
+  
+    _selfRotationCommand[r] = 0.0f;
+
+    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
+                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
+                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
+                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
+    
+    if(_debug)
+    {
+      std::cerr << "[SurgicalTask]: " << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
+      std::cerr << "[SurgicalTask]: " << r << ": Desired joints: " << _ikJoints[r].transpose() << std::endl;      
+    }
+
+  }
+  else
+  {
+    _vd[r].setConstant(0.0f);
+    _omegad[r].setConstant(0.0f);
+    _qd[r] = _q[r];  
+    _ikJoints[r] = _currentJoints[r];
+  }
+
+  _nullspaceWrench[r].setConstant(0.0f);
+  _nullspaceCommand[r].setConstant(0.0f);
+
+  _inputAlignedWithOrigin[r] = false;
+
+  _desiredGripperPosition[r] = _gripperRange;
 }

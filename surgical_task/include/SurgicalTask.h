@@ -67,7 +67,7 @@ class SurgicalTask
 
     enum Tool {CAMERA = 0, RETRACTOR = 1};
 
-    enum ControlPhase {INSERTION = 0, OPERATION = 1};
+    enum ControlPhase {AUTOMATIC_INSERTION = 0, OPERATION = 1, INSERTION = 2};
 
     enum ControlStrategy {PASSIVE_DS = 0, JOINT_IMPEDANCE = 1};
 
@@ -107,9 +107,11 @@ class SurgicalTask
     ros::Subscriber _subGripper;
     ros::Subscriber _subFootSharedGrasping[NB_ROBOTS];
     ros::Subscriber _subMarkersPosition;
+    ros::Subscriber _subRobotExternalWrench[NB_ROBOTS];
 
     // Publisher declaration
     ros::Publisher _pubDesiredTwist[NB_ROBOTS];           // Desired twist to DS-impdedance controller
+    ros::Publisher _pubDesiredTask[NB_ROBOTS];           // Desired twist to DS-impdedance controller
     ros::Publisher _pubDesiredOrientation[NB_ROBOTS];     // Desired orientation to DS-impedance controller
     ros::Publisher _pubFilteredWrench[NB_ROBOTS];         // Filtered measured wrench
     ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];
@@ -137,6 +139,7 @@ class SurgicalTask
     custom_msgs_gripper::GripperInputMsg _msgGripperInput;  
     custom_msgs_gripper::GripperOutputMsg _msgGripperOutput;  
     std_msgs::Float64MultiArray _msgStiffness;  
+    std_msgs::Float64MultiArray _msgDesiredTask;  
     surgical_task::SurgicalTaskStateMsg _msgSurgicalTaskState;
     surgical_task::RobotStateMsg _msgRobotState;
     custom_msgs::TwoFeetOneToolMsg _msgTwoFeetOneTool;
@@ -246,6 +249,7 @@ class SurgicalTask
     float _eeAngularVelocityLimit;
     float _linearForceFeedbackMagnitude;
     float _selfRotationTorqueFeedbackMagnitude;
+    bool _enablePhysicalHumanInteraction;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -259,6 +263,7 @@ class SurgicalTask
     Eigen::VectorXf _dbeliefs[NB_ROBOTS];
     Eigen::VectorXf _beliefsC;
     Eigen::VectorXf _dbeliefsC;
+    Eigen::Vector3f _Fext[NB_ROBOTS];
 
     float _humanToolLength[2];
     Eigen::Vector3f _humanToolPosition[2];
@@ -400,6 +405,7 @@ class SurgicalTask
     float _dEECollision[NB_ROBOTS];
     Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
     float _taud[NB_ROBOTS];
+    Eigen::Vector3f _vH[NB_ROBOTS];
 
   public:
 
@@ -461,11 +467,14 @@ class SurgicalTask
     // Update control phase of robot r
     void updateControlPhase(int r);
 
-    // Perform an insertion phase step for robot r and human input h
-    void insertionStep(int r, int h);
+
+    // Perform an automatic insertion phase step for robot r and human input h
+    void automaticInsertionStep(int r, int h);
 
     // Perform an operation phase step for robot r and human input h
     void operationStep(int r, int h);
+
+    void insertionStep(int r, int h);
 
     void computeDesiredToolVelocity(int r, int h);
 
@@ -494,6 +503,8 @@ class SurgicalTask
 
     // Callback to update the robot wrench (force/torque sensor data)
     void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
+
+    void updateRobotExternalWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
 
     // Callback to update damping matrix form the DS-impedance controller
     void updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg, int k); 

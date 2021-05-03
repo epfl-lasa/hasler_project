@@ -790,6 +790,15 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Self rotation torque feedback magnitude: %f\n", _selfRotationTorqueFeedbackMagnitude);
   }
 
+  if (!_nh.getParam("SurgicalTask/enablePhysicalHumanInteraction", _enablePhysicalHumanInteraction))
+  {
+    ROS_ERROR("Couldn't retrieve the enable physical human interaction boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Enable physical human interaction: %d\n", (int) _enablePhysicalHumanInteraction);
+  }
 
   return true;
 }
@@ -838,7 +847,7 @@ void SurgicalTask::initializeTaskParameters()
     _qRobotBaseOrigin[r] << 1.0f, 0.0f, 0.0f, 0.0f;
     _D[r].setConstant(0.0f);
 
-    _controlPhase[r] = INSERTION;
+    _controlPhase[r] = AUTOMATIC_INSERTION;
     _ikJoints[r].resize(7);
     _currentJoints[r].resize(7);
 
@@ -868,6 +877,8 @@ void SurgicalTask::initializeTaskParameters()
     _wRRobotBasis[r].setIdentity();
     _humanToolStatus[r] = 0;
     _taud[r] = 0.0f;
+    _Fext[r].setConstant(0.0f);
+    _vH[r].setConstant(0.0f);
   }
   _stop = false;
   _firstGripper = false;

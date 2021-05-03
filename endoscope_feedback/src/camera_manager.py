@@ -158,17 +158,21 @@ class CameraManager:
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPositionTransformed.publish(msg)
 
+
+        self.displayTaskCues()
+
         # print("Pub data:", time.time()-t3)
 
         t4 = time.time()
-
-        cv2.imshow('output', self.outputImage) 
-        cv2.imshow('maskRed', self.toolsTracker.maskRed) 
-        cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
-        cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
-        cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
+        # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
+        # cv2.setWindowProperty('output', cv2.WND_PROP_FULLSCREEN, 8)
+        cv2.imshow('output', self.outputImage)
+        # cv2.imshow('maskRed', self.toolsTracker.maskRed) 
+        # cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
+        # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
+        # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
         cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
-        cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
+        # cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
         # cv2.imshow('result', result) 
         
         # print("Show images:", time.time()-t4)
@@ -247,7 +251,8 @@ class CameraManager:
                   self.cameraModeTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
     else:
-      cv2.putText(image, "Clutching: " + (self.clutchingStateText[1] if self.clutching else self.clutchingStateText[0]), 
+      if self.humanInputMode == 1:
+        cv2.putText(image, "Clutching: " + (self.clutchingStateText[1] if self.clutching else self.clutchingStateText[0]), 
                   self.clutchingStateTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
 
@@ -309,6 +314,24 @@ class CameraManager:
 
 
 
+  def displayTaskCues(self):
+    # Initialize black image of same dimensions for drawing the rectangles
+    rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)
+
+    # Draw rectangles
+    # print(self.imageSize)
+    # print((int(self.imageSize[0]/2-50), int(self.imageSize[1]/2-30)))
+    scale = 0.4
+    rectangleSize = (scale*self.imageSize[0], scale*self.imageSize[1])
+    topLeftCorner = (int(self.imageSize[0]/2-rectangleSize[0]/2), int(self.imageSize[1]/2-rectangleSize[1]/2))
+    bottomRightCorner = (int(self.imageSize[0]/2+rectangleSize[0]/2), int(self.imageSize[1]/2+rectangleSize[1]/2))
+    cv2.rectangle(rectangleFilter, topLeftCorner, bottomRightCorner, (255, 255, 255), cv2.FILLED)
+
+    # Generate result by blending both images (opacity of rectangle image is 0.25 = 25 %)
+    self.outputImage = cv2.addWeighted(self.outputImage, 1.0, rectangleFilter, 0.25, 1)
+
+
+
   def overlay_image_alpha(self, img, img_overlay, pos, alpha_mask):
       """Overlay img_overlay on top of img at the position specified by
       pos and blend using alpha_mask.
@@ -343,11 +366,11 @@ class CameraManager:
 
 class ToolsTracker:
   def __init__(self):
-    self.lowerHsvBlue = np.array([97,20,20])     
+    self.lowerHsvBlue = np.array([95,20,20])     
     self.upperHsvBlue = np.array([120,255,255])
 
     self.lowerHsvCyan = np.array([40,0,0])     
-    self.upperHsvCyan = np.array([97,255,255])
+    self.upperHsvCyan = np.array([95,255,255])
 
     # self.lowerHsvRed = np.array([150,60,0]) 
     # self.upperHsvRed = np.array([255,255,255]) 
@@ -390,13 +413,13 @@ class ToolsTracker:
     # self.upperHsvYellow = np.array([25,255,255])
     # self.lowerHsvYellow = np.array([13,170,120])
     # self.upperHsvYellow = np.array([25,255,255])
-    self.lowerHsvYellow = np.array([15,160,120])
+    self.lowerHsvYellow = np.array([15,170,120])
     self.upperHsvYellow = np.array([24,255,255])
     # self.lowerHsvYellow = np.array([10,120,0])
     # self.upperHsvYellow = np.array([179,255,255])
 
     self.lowerHsvOrange = np.array([8,190,100])
-    self.upperHsvOrange = np.array([15,255,255])
+    self.upperHsvOrange = np.array([14,255,255])
 
     self.lowerHsvPink = np.array([0,0,0])
     self.upperHsvPink = np.array([8,217,255])
@@ -572,6 +595,15 @@ class ToolsTracker:
 
     if len(contours)!=0:
       c = max(contours, key = cv2.contourArea)
+      # idMax = np.argmax(contours,key = cv2.contourArea)
+    # Find the index of the largest contour
+      # areas = [cv2.contourArea(c) for c in contours]
+      # max_index = np.argmax(areas)
+      # c=contours[max_index]
+      # # # print(idMAx)
+      # # print(len(contours), max_index)
+      # if id == 2:
+      #   print(hierarchy.shape, hierarchy[0][max_index][-2])
       M = cv2.moments(c)
 
       # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
