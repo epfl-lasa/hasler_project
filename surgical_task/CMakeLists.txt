@@ -34,7 +34,8 @@ add_message_files(
   DIRECTORY msg
   FILES 
   SurgicalTaskStateMsg.msg
-  RobotStateMsg.msg)
+  RobotStateMsg.msg
+  TaskManagerStateMsg.msg)
 
 
 ## Generate added messages and services

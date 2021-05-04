@@ -6,7 +6,7 @@ import rospy
 from std_msgs.msg import Float64MultiArray, Int16MultiArray, MultiArrayDimension
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from surgical_task.msg import SurgicalTaskStateMsg, RobotStateMsg
+from surgical_task.msg import SurgicalTaskStateMsg, RobotStateMsg, TaskManagerStateMsg
 import time
 import rospkg
 
@@ -94,16 +94,21 @@ class CameraManager:
     self.beliefsC = [1,0,0]
 
 
+    self.taskId = -1
+    self.toolToReach = -1
+    self.toolReached = False
+
     self.imageSize = (0,0)
 
     self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
                                                          queue_size=1)
-    self.pubMarkersPosition = rospy.Publisher('endoscope_modifier/markers_position', Int16MultiArray, queue_size=1)
+    self.pubMarkersPosition = rospy.Publisher('camera_manager/markers_pose', Float64MultiArray, queue_size=1)
     self.subSurgicalTaskState = rospy.Subscriber('surgical_task/state', SurgicalTaskStateMsg, self.updateSurgicalTaskState)
 
     self.subRobotState = []
     self.subRobotState.append(rospy.Subscriber('/surgical_task/left_robot_state', RobotStateMsg, self.updateRobotState, 0))
     self.subRobotState.append(rospy.Subscriber('/surgical_task/right_robot_state', RobotStateMsg, self.updateRobotState, 1))
+    self.subTaskManagerState = rospy.Subscriber('/task_manager/state', TaskManagerStateMsg, self.updateTaskManagerState)
 
     self.run()
 
@@ -119,7 +124,6 @@ class CameraManager:
 
         # print("Read camera:", time.time()-t0)
         self.imageSize = (self.inputImage.shape[1], self.inputImage.shape[0])
-
 
 
         self.outputImage = self.inputImage
@@ -144,9 +148,12 @@ class CameraManager:
 
         t3 = time.time()
 
-        msg = Int16MultiArray()
-        msg.data = np.concatenate((self.toolsTracker.tipPosition[0], self.toolsTracker.tipPosition[1], 
-                                   self.toolsTracker.tipPosition[2]), axis=None)
+        msg = Float64MultiArray()
+        # markerPose = np.concatenate((self.toolsTracker.tipPosition, self.toolsTracker.dir), axis=1)
+        markerPose = np.concatenate((self.toolsTracker.markerPosition, self.toolsTracker.dir), axis=1)
+        msg.data = np.concatenate((markerPose[0], markerPose[1], markerPose[2]), axis=None)
+
+
         msg.layout.dim.append(MultiArrayDimension())
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPosition.publish(msg)
@@ -210,9 +217,11 @@ class CameraManager:
       color = (255, 255, 255)
       if self.toolsTracker.tipPosition[k][2]:
         color = self.markerColor
+        if self.taskId == 2 and k == self.toolToReach and self.toolReached:
+          color = (255,0,255)
         if self.useTaskAdaptation:
-          trackedColor = (255,0,255)
-          color = (1-self.beliefsC[k])*np.array(color).astype(np.float32)+self.beliefsC[k]*np.array(trackedColor).astype(np.float32)
+          followedColor = (255,0,255)
+          color = (1-self.beliefsC[k])*np.array(color).astype(np.float32)+self.beliefsC[k]*np.array(followedColor).astype(np.float32)
           color = color.astype(int).tolist()
 
       position = self.toolsTracker.markerPosition[k][0:2]
@@ -307,6 +316,11 @@ class CameraManager:
     self.workspaceCollision[r] = msg.workspaceCollisionConstraintActive
 
 
+  def updateTaskManagerState(self,msg):
+    self.taskId = msg.taskId
+    self.toolToReach = msg.toolToReach
+    self.toolReached = msg.toolReached
+
   def updateImage(self, msg):
     self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
     if not self.firstImage:
@@ -315,20 +329,25 @@ class CameraManager:
 
 
   def displayTaskCues(self):
-    # Initialize black image of same dimensions for drawing the rectangles
-    rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)
 
-    # Draw rectangles
-    # print(self.imageSize)
-    # print((int(self.imageSize[0]/2-50), int(self.imageSize[1]/2-30)))
-    scale = 0.4
-    rectangleSize = (scale*self.imageSize[0], scale*self.imageSize[1])
-    topLeftCorner = (int(self.imageSize[0]/2-rectangleSize[0]/2), int(self.imageSize[1]/2-rectangleSize[1]/2))
-    bottomRightCorner = (int(self.imageSize[0]/2+rectangleSize[0]/2), int(self.imageSize[1]/2+rectangleSize[1]/2))
-    cv2.rectangle(rectangleFilter, topLeftCorner, bottomRightCorner, (255, 255, 255), cv2.FILLED)
+    if self.taskId == 2:
+      pass
+    elif self.taskId == 3:
+      # Initialize black image of same dimensions for drawing the rectangles
+      rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)
 
-    # Generate result by blending both images (opacity of rectangle image is 0.25 = 25 %)
-    self.outputImage = cv2.addWeighted(self.outputImage, 1.0, rectangleFilter, 0.25, 1)
+      # Draw rectangles
+      # print(self.imageSize)
+      # print((int(self.imageSize[0]/2-50), int(self.imageSize[1]/2-30)))
+      scale = 0.4
+      rectangleSize = (scale*self.imageSize[0], scale*self.imageSize[1])
+      topLeftCorner = (int(self.imageSize[0]/2-rectangleSize[0]/2), int(self.imageSize[1]/2-rectangleSize[1]/2))
+      bottomRightCorner = (int(self.imageSize[0]/2+rectangleSize[0]/2), int(self.imageSize[1]/2+rectangleSize[1]/2))
+      cv2.rectangle(rectangleFilter, topLeftCorner, bottomRightCorner, (255, 255, 255), cv2.FILLED)
+
+      # Generate result by blending both images (opacity of rectangle image is 0.25 = 25 %)
+      self.outputImage = cv2.addWeighted(self.outputImage, 1.0, rectangleFilter, 0.25, 1)
+
 
 
 
