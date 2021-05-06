@@ -160,6 +160,7 @@ class SurgicalTask
     Eigen::Vector3f _v[NB_ROBOTS];                         // Velocity [m/s] (3x1)
     Eigen::Vector3f _w[NB_ROBOTS];                         // Angular velocity [rad/s] (3x1)
     Eigen::VectorXf _currentJoints[NB_ROBOTS];
+    Eigen::VectorXf _currentJointVelocities[NB_ROBOTS];
     Eigen::Matrix<float,6,1> _wrench[NB_ROBOTS];            // Wrench [N and Nm] (6x1)
     Eigen::Matrix<float,6,1> _wrenchBias[NB_ROBOTS];        // Wrench bias [N and Nm] (6x1)
     Eigen::Matrix<float,6,1> _filteredWrench[NB_ROBOTS];    // Filtered wrench [N and Nm] (6x1)
@@ -302,6 +303,8 @@ class SurgicalTask
     Utils<float>::ROBOT_ID _robotID;
     bool _clutching;
     bool _trackingOK;
+    float _tankH[NB_ROBOTS];
+    float _alphaH[NB_ROBOTS];
 
 
 

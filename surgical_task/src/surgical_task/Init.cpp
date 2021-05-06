@@ -850,6 +850,7 @@ void SurgicalTask::initializeTaskParameters()
     _controlPhase[r] = AUTOMATIC_INSERTION;
     _ikJoints[r].resize(7);
     _currentJoints[r].resize(7);
+    _currentJointVelocities[r].resize(7);
 
     _trocarPosition[r].setConstant(0.0f);
     _wrenchCount[r] = 0;
@@ -879,6 +880,8 @@ void SurgicalTask::initializeTaskParameters()
     _taud[r] = 0.0f;
     _Fext[r].setConstant(0.0f);
     _vH[r].setConstant(0.0f);
+    _tankH[r] = 0.0f;
+    _alphaH[r] = 0.0f;
   }
   _stop = false;
   _firstGripper = false;

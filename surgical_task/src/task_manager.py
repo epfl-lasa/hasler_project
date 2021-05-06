@@ -46,6 +46,8 @@ class TaskManager:
 
     self.toolErrorthreshold = 30
 
+    self.finished = False
+
     self.run()
 
 
@@ -97,21 +99,26 @@ class TaskManager:
       self.toolToReach = self.toolOrder[self.cameraCount]
       print("Tool to track: ", self.toolName[self.toolToReach])
 
-    if (self.markerPose[self.toolToReach][2]):
+    if (self.markerPose[self.toolToReach][2]) and not self.finished:
       error = np.linalg.norm(self.markerPose[self.toolToReach][0:2]-np.array([640/2,480/2]))
       if not self.toolReached:
         if error < 30:
           self.toolReached = True
           self.timeReached = time.time()
-        print(self.markerPose[self.toolToReach][0:2], error)
+        # print(self.markerPose[self.toolToReach][0:2], error)
       else:
         print(time.time()-self.timeReached)
         if (time.time()-self.timeReached)>3:
           print(error)
           self.toolReached = False
           self.cameraCount = self.cameraCount+1
-          self.toolToReach = self.toolOrder[self.cameraCount]
-          print("Tool to track: ", self.toolName[self.toolToReach])
+          if self.cameraCount > 2:
+            self.finished = True
+            print("Finished")
+          else:
+            self.toolToReach = self.toolOrder[self.cameraCount]
+            print("Tool to track: ", self.toolName[self.toolToReach])
+
 
 
       

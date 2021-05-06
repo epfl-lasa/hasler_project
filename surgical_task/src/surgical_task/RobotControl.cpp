@@ -438,34 +438,67 @@ void SurgicalTask::operationStep(int r, int h)
 
     Eigen::Vector3f Fh;
     Fh.setConstant(0.0f);
-    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,5.0f)*vTooldir; 
-
+    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,7.0f)*vTooldir; 
+    // Fh = _alphaH[r]*_Fext[r].norm()*vTooldir; 
+    // Fh = _Fext[r].norm()*vTooldir;
     Eigen::Vector3f bou;
     bou << 200, 200, 200;
 
 
-    float mass = 1.0f;
-    _vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+Fh)/mass;
+    float mass = 5.0f;
+    //_vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+Fh)/mass;
+    _vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+ Fh)/mass;
     // _vH[r] = Utils<float>::bound(_vH[r],0.1f);
 
+    float pin, pout, pd;
+    pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vH[r]);
+    pd = 1.0f;
+
+    _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
+
+    _tankH[r] = Utils<float>::bound(_tankH[r],0,1.0f);
+
+    // if(_tankH[r]<9)
+    // {
+    //   _alphaH[r] = 0.0f;
+    // }
+    // else
+    {
+      // _alphaH[r] = _tankH[r];
+      _alphaH[r] = Utils<float>::smoothRise(_tankH[r],0.0,0.8f);
+    }
+
+    // _alphaH[r] =  Utils<float>::bound(_alphaH[r],0,1.0f);
 
 
+    Eigen::Matrix3f B;
+    B.setIdentity();
+    B(0,0) = depthGain;
+    B(1,1) = depthGain;
+    _vH[r] = _wRbIK[r]*B*_wRbIK[r].transpose()*_vH[r];
+  
 
-    Eigen::Vector3f temp;
-    temp = _wRbIK[r].transpose()*_vH[r];
-    temp(0) = Utils<float>::bound(depthGain*temp(0),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
-    temp(1) = Utils<float>::bound(depthGain*temp(1),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
-    temp(2) = Utils<float>::bound(temp(2),-0.2f,0.2f);
+    // Eigen::Vector3f temp;
+    // temp = _wRbIK[r].transpose()*_vH[r];
+    // temp(0) = Utils<float>::bound(depthGain*temp(0),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
+    // temp(1) = Utils<float>::bound(depthGain*temp(1),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
+    // temp(2) = Utils<float>::bound(temp(2),-0.2f,0.2f);
 
-    _vH[r] = _wRbIK[r]*temp;
+    // _vH[r] = _wRbIK[r]*temp;
+
+    _vH[r] = Utils<float>::bound(_vH[r], 0.2f);
 
 
-    alphaH = Utils<float>::smoothRise(_vH[r].norm(), 0.0f, 0.005f);
+    
+    // alphaH = Utils<float>::smoothRise(_vH[r].norm(), 0.0f, 0.01f);
+
+    // alphaH = Utils<float>::smoothRise(Fh.norm(), 0.0f, 5.0f);
 
     // _vdTool[r] = (1-alpha)*_vdTool[r]+_vH[r];
     // _vdTool[r] = (1-alpha)*_vdTool[r]+alpha*0.1f*vTooldir;
 
-    std::cerr << "Dir: " << vTooldir.transpose() << " alpha:" << alphaH <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh << std::endl;
+    // std::cerr << "Dir: " << vTooldir.transpose() << " alpha:" << alphaH <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
+    std::cerr << "Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
 
   }
 
@@ -495,7 +528,8 @@ void SurgicalTask::operationStep(int r, int h)
 
   if(_enablePhysicalHumanInteraction)
   {
-    _vdTool[r] = (1-alphaH)*_vdTool[r]+alphaH*_vH[r];
+    // _vdTool[r] = (1-alphaH)*_vdTool[r]+ _vH[r];
+    _vdTool[r] = (1-_alphaH[r])*_vdTool[r]+ _vH[r];
   }
 
 
@@ -1000,7 +1034,7 @@ void SurgicalTask::computeHapticFeedback(int r)
       //   _FdFoot[r]+= 7.0f*dir; 
       // }
 
-      std::cerr << r << " 3: "<<_FdFoot[r].transpose() << std::endl;
+      // std::cerr << r << " 3: "<<_FdFoot[r].transpose() << std::endl;
     }
 
 

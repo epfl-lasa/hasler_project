@@ -745,7 +745,7 @@ void SurgicalTask::updateRobotExternalWrench(const geometry_msgs::WrenchStamped:
   raw(1) = msg->wrench.force.y;
   raw(2) = msg->wrench.force.z;
 
-  float alpha = 0.0f;
+  float alpha = 0.9f;
   _Fext[r] = alpha*_Fext[r]+(1-alpha)*raw;
 }
 
@@ -769,6 +769,7 @@ void SurgicalTask::updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& 
   for(int m = 0; m < 7; m++)
   {
     _currentJoints[r](m) = msg->position[m];
+    _currentJointVelocities[r](m) = msg->velocity[m];
   }
 
   if(_useFranka)
