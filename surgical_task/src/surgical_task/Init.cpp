@@ -790,6 +790,7 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Self rotation torque feedback magnitude: %f\n", _selfRotationTorqueFeedbackMagnitude);
   }
 
+  
   if (!_nh.getParam("SurgicalTask/enablePhysicalHumanInteraction", _enablePhysicalHumanInteraction))
   {
     ROS_ERROR("Couldn't retrieve the enable physical human interaction boolean");
@@ -797,7 +798,8 @@ bool SurgicalTask::readConfigurationParameters()
   }
   else
   {
-    ROS_INFO("Enable physical human interaction: %d\n", (int) _enablePhysicalHumanInteraction);
+    ROS_INFO("Enable physical human interaction left: %d\n", (int) _enablePhysicalHumanInteraction[LEFT]);
+    ROS_INFO("Enable physical human interaction right: %d\n", (int) _enablePhysicalHumanInteraction[RIGHT]);
   }
 
   return true;
@@ -836,7 +838,9 @@ void SurgicalTask::initializeTaskParameters()
 
     _footPose[r].setConstant(0.0f);
     _footPoseFiltered[r].setConstant(0.0f);
-    _footWrench[r].setConstant(0.0f);
+    _footWrenchM[r].setConstant(0.0f);
+    _footWrenchD[r].setConstant(0.0f);
+    _footWrenchRef[r].setConstant(0.0f);
     _footTwist[r].setConstant(0.0f);
     _trocarInput[r].setConstant(0.0f);
     _vdOffset[r].setConstant(0.0f);
@@ -851,6 +855,7 @@ void SurgicalTask::initializeTaskParameters()
     _ikJoints[r].resize(7);
     _currentJoints[r].resize(7);
     _currentJointVelocities[r].resize(7);
+    _currentJointTorques[r].resize(7);
 
     _trocarPosition[r].setConstant(0.0f);
     _wrenchCount[r] = 0;
@@ -882,6 +887,7 @@ void SurgicalTask::initializeTaskParameters()
     _vH[r].setConstant(0.0f);
     _tankH[r] = 0.0f;
     _alphaH[r] = 0.0f;
+    _depthGain[r] = 0.0f;
   }
   _stop = false;
   _firstGripper = false;
@@ -969,6 +975,7 @@ void SurgicalTask::initializeTaskParameters()
   _dbeliefsC.resize(_nbTasks);
   _dbeliefsC.setConstant(0.0f);
 
+  _vda.setConstant(0.0f);
   // Eigen::Vector3f p0;
   // p0 <<-0.413005,  0.443508, 0.0539682;
 

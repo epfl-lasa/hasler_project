@@ -161,6 +161,7 @@ class SurgicalTask
     Eigen::Vector3f _w[NB_ROBOTS];                         // Angular velocity [rad/s] (3x1)
     Eigen::VectorXf _currentJoints[NB_ROBOTS];
     Eigen::VectorXf _currentJointVelocities[NB_ROBOTS];
+    Eigen::VectorXf _currentJointTorques[NB_ROBOTS];
     Eigen::Matrix<float,6,1> _wrench[NB_ROBOTS];            // Wrench [N and Nm] (6x1)
     Eigen::Matrix<float,6,1> _wrenchBias[NB_ROBOTS];        // Wrench bias [N and Nm] (6x1)
     Eigen::Matrix<float,6,1> _filteredWrench[NB_ROBOTS];    // Filtered wrench [N and Nm] (6x1)
@@ -250,7 +251,7 @@ class SurgicalTask
     float _eeAngularVelocityLimit;
     float _linearForceFeedbackMagnitude;
     float _selfRotationTorqueFeedbackMagnitude;
-    bool _enablePhysicalHumanInteraction;
+    std::vector<bool> _enablePhysicalHumanInteraction;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -313,7 +314,9 @@ class SurgicalTask
     Eigen::Matrix<float,5,1> _footPoseFiltered[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _trocarInput[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _oldTrocarInput[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footWrench[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrenchD[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrenchRef[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrenchM[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
     uint32_t _footInterfaceSequenceID[NB_ROBOTS];
@@ -409,6 +412,7 @@ class SurgicalTask
     Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
     float _taud[NB_ROBOTS];
     Eigen::Vector3f _vH[NB_ROBOTS];
+    float _depthGain[NB_ROBOTS];
 
   public:
 

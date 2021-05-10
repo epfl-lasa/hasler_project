@@ -67,6 +67,14 @@ void SurgicalTask::updateRobotTaskState(int r)
   _xIK[r] = _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1)+_toolOffsetFromEE[r]*_wRRobotBasis[r]*Hik.block(0,2,3,1);
   _wRbIK[r] = _wRRobotBasis[r]*Hik.block(0,0,3,3);
 
+  if(_controlStrategy[r] == PASSIVE_DS)
+  {
+    _depthGain[r] = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+  }
+  else
+  {
+    _depthGain[r] = std::min(std::max((_xIK[r]-_trocarPosition[r]).dot(_wRbIK[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);    
+  }
 
   if(_debug)
   {
@@ -239,12 +247,14 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
 
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
-    _vd[r] = gain*(_xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r])-x); 
+    _xd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r]);
   }
   else
   {
-    _vd[r] = gain*(_xd0[r]+_insertionOffsetPPM[r]-x);
+    _xd[r] = _xd0[r]+_insertionOffsetPPM[r];
   }
+
+  _vd[r] = gain*(_xd[r]-x); 
 
   if(_vd[r].norm()/gain<0.005)
   {
@@ -252,20 +262,17 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
   }
 
 
-  // Scale the desired velocity components normal to the tool depending on the penetration depth
-  float depthGain = std::min(std::max((x-_trocarPosition[r]).dot(wRb.col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
-
   if(_debug)
   {
-    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  depthGain << std::endl;
+    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;
   }
   
   if(_linearMapping[r] == POSITION_POSITION || _controlStrategy[r] == JOINT_IMPEDANCE)
   {
     Eigen::Matrix3f L;
     L.setIdentity();
-    L(0,0) = depthGain;
-    L(1,1) = depthGain;
+    L(0,0) = _depthGain[r];
+    L(1,1) = _depthGain[r];
     _vd[r] = _wRb[r]*L*_wRb[r].transpose()*_vd[r];
   }
   _vd[r] = Utils<float>::bound(_vd[r],_toolTipLinearVelocityLimit);
@@ -368,7 +375,7 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
   
     _selfRotationCommand[r] = 0.0f;
 
-    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
+    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
@@ -410,9 +417,6 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
 void SurgicalTask::operationStep(int r, int h)
 {
 
-  // Scale the desired velocity components normal to the tool depending on the penetration depth
-  float depthGain = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
-
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: " << r << ": OPERATION" << std::endl;
@@ -423,7 +427,7 @@ void SurgicalTask::operationStep(int r, int h)
 
 
   float alphaH = 0.0f;
-  if(_enablePhysicalHumanInteraction)
+  if(_enablePhysicalHumanInteraction[r])
   {
     Eigen::Matrix3f S, P;
     P = Utils<float>::orthogonalProjector(_wRbIK[r].col(2));
@@ -438,7 +442,7 @@ void SurgicalTask::operationStep(int r, int h)
 
     Eigen::Vector3f Fh;
     Fh.setConstant(0.0f);
-    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,7.0f)*vTooldir; 
+    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,5.0f)*vTooldir; 
     // Fh = _alphaH[r]*_Fext[r].norm()*vTooldir; 
     // Fh = _Fext[r].norm()*vTooldir;
     Eigen::Vector3f bou;
@@ -473,20 +477,20 @@ void SurgicalTask::operationStep(int r, int h)
 
     Eigen::Matrix3f B;
     B.setIdentity();
-    B(0,0) = depthGain;
-    B(1,1) = depthGain;
+    B(0,0) = _depthGain[r];
+    B(1,1) = _depthGain[r];
     _vH[r] = _wRbIK[r]*B*_wRbIK[r].transpose()*_vH[r];
   
 
     // Eigen::Vector3f temp;
     // temp = _wRbIK[r].transpose()*_vH[r];
-    // temp(0) = Utils<float>::bound(depthGain*temp(0),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
-    // temp(1) = Utils<float>::bound(depthGain*temp(1),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
+    // temp(0) = Utils<float>::bound(_depthGain[r]*temp(0),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
+    // temp(1) = Utils<float>::bound(_depthGain[r]*temp(1),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
     // temp(2) = Utils<float>::bound(temp(2),-0.2f,0.2f);
 
     // _vH[r] = _wRbIK[r]*temp;
 
-    _vH[r] = Utils<float>::bound(_vH[r], 0.2f);
+    _vH[r] = Utils<float>::bound(_vH[r], 0.1f);
 
 
     
@@ -513,20 +517,20 @@ void SurgicalTask::operationStep(int r, int h)
 
   if(_debug)
   {
-    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  depthGain << std::endl;
+    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;
   }
   
   Eigen::Matrix3f L;
   L.setIdentity();
-  L(0,0) = depthGain;
-  L(1,1) = depthGain;
+  L(0,0) = _depthGain[r];
+  L(1,1) = _depthGain[r];
   _vdTool[r] = _wRbIK[r]*L*_wRbIK[r].transpose()*_vdTool[r];
   
   // Bound vd tool
   _vdTool[r] = Utils<float>::bound(_vdTool[r], _toolTipLinearVelocityLimit);
 
 
-  if(_enablePhysicalHumanInteraction)
+  if(_enablePhysicalHumanInteraction[r])
   {
     // _vdTool[r] = (1-alphaH)*_vdTool[r]+ _vH[r];
     _vdTool[r] = (1-_alphaH[r])*_vdTool[r]+ _vH[r];
@@ -642,13 +646,22 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     std::cerr << "[SurgicalTask]: trocar input:  " << _trocarInput[h].transpose() << std::endl;    
   }
 
+  Eigen::Matrix3f wRb;
+  if(_controlStrategy[r] == PASSIVE_DS)
+  {
+    wRb = _wRb[r];
+  }
+  else
+  {
+    wRb = _wRbIK[r];
+  }
 
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
     Eigen::Vector3f gains;
     gains << _trocarSpaceVelocityGains[V_UP], _trocarSpaceVelocityGains[V_RIGHT], _trocarSpaceVelocityGains[V_INSERTION];
 
-    _vdTool[r] = _wRb[r]*_eeCameraMapping*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
+    _vdTool[r] = wRb*_eeCameraMapping*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
 
     if(_useSafetyLimits)
     {
@@ -697,7 +710,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       // }
 
       Eigen::Vector3f vplane, vortho;
-      vplane = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_vdTool[r];
+      vplane = Utils<float>::orthogonalProjector(wRb.col(2))*_vdTool[r];
       vortho = _vdTool[r]-vplane;
 
       bool safetyCollison = false;
@@ -724,7 +737,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
       if(safetyCollison)
       {
-        if(vortho.dot(_wRb[r].col(2))<0.0f)
+        if(vortho.dot(wRb.col(2))<0.0f)
         {
           _vdTool[r] = vortho;
         }
@@ -800,13 +813,13 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
         //   }
         // }
         // _vdTool[r] *= alpha[0]*alpha[1];
-        // _vdTool[r] += (1-alpha[0])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(0).transpose()
-        //               +(1-alpha[1])*0.01*_wRb[r]*_colorMarkersFilteredPosition.row(1).transpose();
+        // _vdTool[r] += (1-alpha[0])*0.01*wRb*_colorMarkersFilteredPosition.row(0).transpose()
+        //               +(1-alpha[1])*0.01*wRb*_colorMarkersFilteredPosition.row(1).transpose();
         taskAdaptation(r, h);
 
         if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT || (_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r == _currentRobot))
         {
-          _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*_wRb[r].col(V_INSERTION);
+          _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*wRb.col(V_INSERTION);
         }
         else
         {
@@ -815,7 +828,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
         
         if(!_useSim && _toolsTracking == CAMERA_BASED)
         {
-          _vdTool[r] += _wRb[r]*_eeCameraMapping*_vda;
+          _vdTool[r] += wRb*_eeCameraMapping*_vda;
 
         }
         else
@@ -825,9 +838,9 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       }   
     }
 
-    if(_dRCMTool[r]> _insertionDistancePVM[r] && (_wRb[r].col(2)).dot(_vdTool[r])<0.0f)
+    if(_dRCMTool[r]> _insertionDistancePVM[r] && (wRb.col(2)).dot(_vdTool[r])<0.0f)
     {
-      _vdTool[r] = Utils<float>::orthogonalProjector(_wRb[r].col(2))*_vdTool[r];
+      _vdTool[r] = Utils<float>::orthogonalProjector(wRb.col(2))*_vdTool[r];
     }
 
   }
@@ -964,7 +977,7 @@ void SurgicalTask::computeHapticFeedback(int r)
       // float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(toolCollisionVel,0.0f, 0.03f); 
       float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
       getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
-      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRbIK[r].col(2))).normalized();
       // if(_dToolCollision[r]<_toolSafetyCollisionDistance+0.005)
       // {
       //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
@@ -976,7 +989,7 @@ void SurgicalTask::computeHapticFeedback(int r)
       // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
       float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
       getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
-      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
+      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRbIK[r].col(2))).normalized();
       
       // if(_dEECollision[r]<_eeSafetyCollisionDistance+0.005)
       // {

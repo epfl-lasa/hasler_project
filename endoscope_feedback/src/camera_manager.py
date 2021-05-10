@@ -331,7 +331,7 @@ class CameraManager:
   def displayTaskCues(self):
 
     if self.taskId == 2:
-      pass
+      cv2.drawMarker(self.outputImage, (int(self.imageSize[0]/2), int(self.imageSize[1]/2)), (0, 255, 0),cv2.MARKER_CROSS, 20, 2)
     elif self.taskId == 3:
       # Initialize black image of same dimensions for drawing the rectangles
       rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)

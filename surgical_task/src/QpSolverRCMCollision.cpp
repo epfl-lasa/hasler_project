@@ -209,6 +209,15 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	_rcmGain = depthGain;
 
 	_rcmGain = 20.0f;
+
+
+		_H.setConstant(0.0f);
+	_A.setConstant(0.0);
+	_g.setConstant(0.0f);
+	_lb.setConstant(0.0f);
+	_ub.setConstant(0.0f);
+	_lbA.setConstant(0.0f);
+	_ubA.setConstant(0.0f);
 	// _rcmGain = 100.0f;
 	// std::cerr << "rcmGain: " << _rcmGain << std::endl;
 
@@ -229,6 +238,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  xRCM = xEE+(xTrocar-xEE).dot(wRb.col(2))*wRb.col(2);
 	  xTool = xEE+toolOffset*wRb.col(2);
 
+	  float dRCMTool = (xTrocar-xEE).dot(wRb.col(2))-toolOffset;
 
 	  Eigen::MatrixXf Jee(6,_nbJoints), JeeCollision(3, _nbJoints), Jrcm(3,_nbJoints), Jtool(3,_nbJoints), JtoolCollision(3,_nbJoints);
 	  Jee = Utils<float>::getGeometricJacobian(joints, Eigen::Vector3f::Zero(), _robotID);
@@ -299,6 +309,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  	_A.block(_idToolCollisionConstraint,0,1,_nbJoints) = (wRRobotBasis.transpose()*rToolObstacle.normalized()).transpose()*JtoolCollision;
 	  }
 
+
 	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
 		{
 			Eigen::Vector3f dir;
@@ -320,6 +331,10 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 			dir << 0.0f,-1.0f,0.0f;
 			_A.block(_idWorkspaceCollisionConstraint+5,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
+		}
+		else
+		{
+			// std::cerr << "bou" << std::endl;
 		}
 	  
 	  _ubA.segment(0,_nbTasks) = error;
@@ -375,27 +390,27 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
 	  {  
 	  	float ds = 0.0f, di = 0.01f;
-	  	_lbA(_idWorkspaceCollisionConstraint) = -1.0f*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint) = 1000.0f;
+	  	_lbA(_idWorkspaceCollisionConstraint) = -0.05f*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
+  		_ubA(_idWorkspaceCollisionConstraint) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+1) = -1.0f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint+1) = 1000.0f;
+	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.01f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
+  		_ubA(_idWorkspaceCollisionConstraint+1) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+2) = -1.0f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint+2) = 1000.0f;
+	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.05f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
+  		_ubA(_idWorkspaceCollisionConstraint+2) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+3) = -1.0f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint+3) = 1000.0f;
+	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.05f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
+  		_ubA(_idWorkspaceCollisionConstraint+3) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+4) = -1.0f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint+4) = 1000.0f;
+	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.05f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
+  		_ubA(_idWorkspaceCollisionConstraint+4) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+5) = -1.0f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint+5) = 1000.0f;
+	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.05f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
+  		_ubA(_idWorkspaceCollisionConstraint+5) = 1.0f;
 
-		  if(-1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint)<1e-3f || -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+1)< 1e-3f ||
-		  	 -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+2)< 1e-3f || -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+3)< 1e-3f ||
-		  	 -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-3f || -1.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+5)< 1e-3f)
+		  if(-20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint)<1e-3f || -100.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+1)< 1e-3f ||
+		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+2)< 1e-3f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+3)< 1e-3f ||
+		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-3f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+5)< 1e-3f)
 		  {
 		  	result.workspaceCollisionConstraintActive = true;
 		  }

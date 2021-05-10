@@ -649,7 +649,9 @@ void SurgicalTask::updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& 
   {
     _footPose[r](m) = msg->platform_position[m];
     _footTwist[r](m) = msg->platform_speed[m];
-    _footWrench[r](m) = msg->platform_effortD[m];
+    _footWrenchD[r](m) = msg->platform_effortD[m];
+    _footWrenchRef[r](m) = msg->platform_effortRef[m];
+    _footWrenchM[r](m) = msg->platform_effortM[m];
   }
   _footPose[r] -= _footOffset[r];
   _footState[r] = msg->platform_machineState;
@@ -770,6 +772,7 @@ void SurgicalTask::updateCurrentJoints(const sensor_msgs::JointState::ConstPtr& 
   {
     _currentJoints[r](m) = msg->position[m];
     _currentJointVelocities[r](m) = msg->velocity[m];
+    _currentJointTorques[r](m) = msg->effort[m];
   }
 
   if(_useFranka)
