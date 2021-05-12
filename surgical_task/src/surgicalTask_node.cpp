@@ -7,8 +7,19 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   float frequency = 200.0f;
   
-  
-  SurgicalTask surgicalTask(n,frequency);
+ 
+  std::string filename = "test";
+
+  // if(argc==2)
+  // {
+  //   filename = std::string(argv[1]);
+  // }
+  // else
+  // {
+  //   return -1;
+  // }
+
+  SurgicalTask surgicalTask(n,frequency, filename);
 
   if (!surgicalTask.init()) 
   {

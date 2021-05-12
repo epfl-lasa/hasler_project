@@ -9,6 +9,7 @@ from cv_bridge import CvBridge
 from surgical_task.msg import SurgicalTaskStateMsg, RobotStateMsg, TaskManagerStateMsg
 import time
 import rospkg
+import math
 
 class CameraManager:
   def __init__(self):
@@ -92,6 +93,10 @@ class CameraManager:
     self.toolCollision = [False, False]
     self.workspaceCollision = [False, False]
     self.beliefsC = [1,0,0]
+    self.useRobot = [False, False]
+    self.retractorPositionC = [0.0, 0.0, 0.0]
+    self.retractorDir = [0.0,0.0]
+    self.tool = [0,1]
 
 
     self.taskId = -1
@@ -99,6 +104,7 @@ class CameraManager:
     self.toolReached = False
 
     self.imageSize = (0,0)
+
 
     self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
                                                          queue_size=1)
@@ -142,7 +148,7 @@ class CameraManager:
 
         t2 = time.time()
         # self.toolsTracker.tipPosition[0] = np.array([630,470,1])
-        self.displayMarkersPosition(self.outputImage, False) 
+        self.displayMarkersPosition(self.outputImage, True) 
         self.displaySurgicalTaskState(self.outputImage)
         # print("Fill images:", time.time()-t2)
 
@@ -179,10 +185,10 @@ class CameraManager:
         # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
         # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
         cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
-        # cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
+        cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
         # cv2.imshow('result', result) 
         
-        # print("Show images:", time.time()-t4)
+        print("Show images:", time.time()-t0)
 
         if(time.time()-t0>0.1):
           print("Warning: camera delay !!!")
@@ -235,6 +241,51 @@ class CameraManager:
         pY = int(position[1]) + 25
 
       cv2.putText(image, self.markerText[k], (int(position[0]), pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
+
+    if not self.toolsTracker.tipPosition[k][2]:
+      temp = self.retractorPositionC[0:2]/np.linalg.norm(self.retractorPositionC[0:2])
+      self.retractorDir[0] = temp[1]
+      self.retractorDir[1] = -temp[0]
+      # print(self.retractorDir)
+      slope = self.retractorDir[1]/self.retractorDir[0]
+      angle = math.atan2(self.retractorDir[1],self.retractorDir[0])
+      alpha = math.atan2(self.imageSize[1]/2,self.imageSize[0]/2)
+      # print(slope, alpha, angle)
+
+      x = 0
+      y = 0
+      if angle > -alpha and angle < alpha:
+        x = self.imageSize[0]/2
+        y = int(x*slope)
+      elif angle == alpha:
+        x = self.imageSize[0]/2
+        y = self.imageSize[1]/2
+      elif angle> alpha and angle < math.pi-alpha:
+        y = self.imageSize[1]/2
+        x = int(y/slope)
+      elif angle == math.pi-alpha:
+        x = -self.imageSize[0]/2
+        y = self.imageSize[1]/2
+      elif angle > math.pi-alpha or angle < -math.pi+alpha:
+        x = -self.imageSize[0]/2
+        y = int(x*slope)
+      elif angle == -math.pi+alpha:
+        x = -self.imageSize[0]/2
+        y = -self.imageSize[1]/2
+      elif angle > -math.pi+alpha and angle < -alpha:
+        y = -self.imageSize[1]/2
+        x = int(y/slope)
+      elif angle == -alpha:
+        x = self.imageSize[0]/2
+        y = -self.imageSize[1]/2
+
+      x = x+self.imageSize[0]/2
+      y = y+self.imageSize[1]/2
+
+      x = int(max(0,min(x,self.imageSize[0])))
+      y = int(max(0,min(y,self.imageSize[1])))
+
+      cv2.drawMarker(image, (x,y), self.markerColor,cv2.MARKER_SQUARE, 20, 20)
 
   def displaySurgicalTaskState(self,image):
     for k in range(0,2):
@@ -307,6 +358,9 @@ class CameraManager:
     self.clutching = msg.clutching
     self.wait = msg.wait
     self.beliefsC = msg.beliefsC
+    self.useRobot = msg.useRobot
+    self.retractorPositionC = msg.retractorPositionC
+    self.tool = msg.tool
 
 
   def updateRobotState(self,msg, r):

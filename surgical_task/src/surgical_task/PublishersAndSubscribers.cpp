@@ -486,6 +486,27 @@ void SurgicalTask::publishData()
   }
   _msgSurgicalTaskState.clutching = _clutching;
   _msgSurgicalTaskState.wait = _wait;
+  
+  for(int m = 0; m < NB_ROBOTS; m++)
+  {
+    _msgSurgicalTaskState.useRobot[m] = _useRobot[m];
+    _msgSurgicalTaskState.tool[m] = _tool[m];
+  }
+
+  Eigen::Vector3f retractorPositionC;
+  if (_tool[LEFT] == CAMERA)
+  {
+    retractorPositionC = (_wRb[LEFT]*_eeCameraMapping).transpose()*(_x[RIGHT]-_x[LEFT]);
+  }
+  else if (_tool[RIGHT] == CAMERA)
+  {
+    retractorPositionC = (_wRb[RIGHT]*_eeCameraMapping).transpose()*(_x[LEFT]-_x[RIGHT]);
+  }
+
+  for(int m = 0 ; m < 3; m++)
+  {
+    _msgSurgicalTaskState.retractorPositionC[m] = retractorPositionC(m);
+  }
 
   _pubSurgicalTaskState.publish(_msgSurgicalTaskState);
 

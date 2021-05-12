@@ -5,4 +5,7 @@ int8 currentRobot # LEFT = 0, RIGHT = 1
 bool useTaskAdaptation
 float32[] beliefsC
 bool clutching
-bool wait  
+bool wait
+bool[2] useRobot  
+int8[2] tool
+float32[3] retractorPositionC

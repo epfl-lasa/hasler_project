@@ -417,7 +417,7 @@ class SurgicalTask
   public:
 
     // Class constructor
-    SurgicalTask(ros::NodeHandle &n, double frequency);
+    SurgicalTask(ros::NodeHandle &n, double frequency, std::string fileName);
 
     // Initialize node
     bool init();

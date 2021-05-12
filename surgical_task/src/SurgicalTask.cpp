@@ -7,10 +7,11 @@
 SurgicalTask* SurgicalTask::me = NULL;
 
 
-SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency):
+SurgicalTask::SurgicalTask(ros::NodeHandle &n, double frequency, std::string fileName):
   _nh(n),
   _loopRate(frequency),
-  _dt(1.0f/frequency)
+  _dt(1.0f/frequency),
+  _fileName(fileName)
 {
   
 }
@@ -32,7 +33,7 @@ bool SurgicalTask::init()
 
 
   // Create log file
-  _outputFile.open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task.txt");
+  _outputFile.open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+".txt");
 
   // Create callback to kill node via CTRL+C
   signal(SIGINT,SurgicalTask::stopNode);
@@ -84,7 +85,7 @@ void SurgicalTask::run()
       publishData();
 
       // Log data
-      logData();
+      // logData();
     }
     else
     {
@@ -221,16 +222,6 @@ void SurgicalTask::logData()
              << _vH[LEFT].transpose() << " "
              << _tankH[LEFT] << " "
              << _alphaH[LEFT] << " "
-
-             << (int) _allowTaskAdaptation << " "
-             << (int) _useTaskAdaptation << " "
-             << _vda.transpose() << " "
-             << _beliefsC.transpose() << " "
-             << _colorMarkersFilteredPosition.row(0) << " "
-             << _colorMarkersFilteredPosition.row(1) << " "
-             << _colorMarkersFilteredPosition.row(2) << " "
-             << _colorMarkersStatus.transpose() << " "
-
              << (int) _controlPhase[LEFT] << " " 
              << (int) _qpResult[LEFT].eeCollisionConstraintActive << " "
              << (int) _qpResult[LEFT].toolCollisionConstraintActive << " "
@@ -259,7 +250,19 @@ void SurgicalTask::logData()
              << _vH[RIGHT].transpose() << " "
              << _tankH[RIGHT] << " "
              << _alphaH[RIGHT] << " "
+             << (int) _controlPhase[RIGHT] << " " 
+             << (int) _qpResult[RIGHT].eeCollisionConstraintActive << " "
+             << (int) _qpResult[RIGHT].toolCollisionConstraintActive << " "
+             << (int) _qpResult[RIGHT].workspaceCollisionConstraintActive << " "
 
+             << (int) _allowTaskAdaptation << " "
+             << (int) _useTaskAdaptation << " "
+             << _vda.transpose() << " "
+             << _beliefsC.transpose() << " "
+             << _colorMarkersFilteredPosition.row(0) << " "
+             << _colorMarkersFilteredPosition.row(1) << " "
+             << _colorMarkersFilteredPosition.row(2) << " "
+             << _colorMarkersStatus.transpose() << " "
         
              << _msgGripperOutput.gripper_position << " "
              << _msgGripperOutput.gripper_speed << " "
@@ -267,11 +270,6 @@ void SurgicalTask::logData()
              << _msgGripperOutput.gripper_torqueCmd << " "
              << _msgGripperOutput.gripper_torqueMeas << " "
              << (int) _msgGripperOutput.gripper_machineState << " "
-
-             << (int) _controlPhase[RIGHT] << " " 
-             << (int) _qpResult[RIGHT].eeCollisionConstraintActive << " "
-             << (int) _qpResult[RIGHT].toolCollisionConstraintActive << " "
-             << (int) _qpResult[RIGHT].workspaceCollisionConstraintActive << " "
 
              << (int) _humanInputMode << " "
              << (int) _currentRobot << " "
