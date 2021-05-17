@@ -1,6 +1,21 @@
 #include "SurgicalTask.h"
 
 
+// inline void pseudoInverse(const Eigen::MatrixXf& M_, Eigen::MatrixXf& M_pinv_, bool damped = true) {
+//   double lambda_ = damped ? 0.2 : 0.0;
+
+//   Eigen::JacobiSVD<Eigen::MatrixXf> svd(M_, Eigen::ComputeFullU | Eigen::ComputeFullV);
+//   Eigen::JacobiSVD<Eigen::MatrixXf>::SingularValuesType sing_vals_ = svd.singularValues();
+//   Eigen::MatrixXf S_ = M_;  // copying the dimensions of M_, its content is not needed.
+//   S_.setZero();
+
+//   for (int i = 0; i < sing_vals_.size(); i++)
+//     S_(i, i) = (sing_vals_(i)) / (sing_vals_(i) * sing_vals_(i) + lambda_ * lambda_);
+
+//   M_pinv_ = Eigen::MatrixXf(svd.matrixV() * S_.transpose() * svd.matrixU().transpose());
+// }
+
+
 void SurgicalTask::robotControlStep(int r, int h)
 {
   // Update trocar information
@@ -267,7 +282,7 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;
   }
   
-  if(_linearMapping[r] == POSITION_POSITION || _controlStrategy[r] == JOINT_IMPEDANCE)
+  // if(_linearMapping[r] == POSITION_POSITION || _controlStrategy[r] == JOINT_IMPEDANCE)
   {
     Eigen::Matrix3f L;
     L.setIdentity();
@@ -276,7 +291,8 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     _vd[r] = _wRb[r]*L*_wRb[r].transpose()*_vd[r];
   }
   _vd[r] = Utils<float>::bound(_vd[r],_toolTipLinearVelocityLimit);
-  _vdTool[r] = _vd[r];
+  _vtd[r] = _vd[r];
+  _vdTool[r] = _vtd[r];
 
 
 //   if(_linearMapping[r]==POSITION_VELOCITY || _useSim)
@@ -296,33 +312,40 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
 
   if(_controlStrategy[r] == PASSIVE_DS)
   {
-    _stiffness[r].setConstant(0.0f);
+    _omegad[r].setConstant(0.0f);
+    // _stiffness[r].setConstant(0.0f);
 
-    Eigen::Matrix<float,6,6> A;
-    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
-    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
-    A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
-    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_toolOffsetFromEE[r]*_wRb[r].col(2));
-    Eigen::Matrix<float,6,1> x, b;
-    b.setConstant(0.0f);
-    b.segment(3,3) = _vdTool[r];
+    // Eigen::Matrix<float,6,6> A;
+    // A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
+    // A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
+    // A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
+    // A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_toolOffsetFromEE[r]*_wRb[r].col(2));
+    // Eigen::Matrix<float,6,1> x, b;
+    // b.setConstant(0.0f);
+    // b.segment(3,3) = _vdTool[r];
 
-    x = A.fullPivHouseholderQr().solve(b);
-    _vd[r] = x.segment(0,3);
-    _omegad[r] = x.segment(3,3);
+    // x = A.fullPivHouseholderQr().solve(b);
+    // _vd[r] = x.segment(0,3);
+    // _omegad[r] = x.segment(3,3);
 
     
-    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+    // _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
 
-    _vd[r] = Utils<float>::bound(_vd[r],0.4f);
+    // _vd[r] = Utils<float>::bound(_vd[r],0.4f);
 
+    // _omegad[r] = Utils<float>::bound(_omegad[r],3.0f);
 
-    _omegad[r] = Utils<float>::bound(_omegad[r],3.0f);
+    // std::cerr << _toolOffsetFromEE[r] << std::endl;
+    // std::cerr << _omegad[r].transpose() << std::endl;
+    // _omegad[r] = Utils<float>::bound(_omegad[r],1.0f);
+    // std::cerr << _rEERCM[r].transpose() << std::endl;
+    // std::cerr << _vdTool[r].transpose() << std::endl;
+    // std::cerr << A << std::endl;
 
-    _nullspaceWrench[r].setConstant(0.0f);
+    // _nullspaceWrench[r].setConstant(0.0f);
 
     Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r]));
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r].normalized()));
 
     Eigen::Vector3f axis;  
     float angleErrorToTrocarPosition;
@@ -442,7 +465,7 @@ void SurgicalTask::operationStep(int r, int h)
 
     Eigen::Vector3f Fh;
     Fh.setConstant(0.0f);
-    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,5.0f)*vTooldir; 
+    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,_externalForcesDeadZones[r])*vTooldir; 
     // Fh = _alphaH[r]*_Fext[r].norm()*vTooldir; 
     // Fh = _Fext[r].norm()*vTooldir;
     Eigen::Vector3f bou;
@@ -451,11 +474,11 @@ void SurgicalTask::operationStep(int r, int h)
 
     float mass = 5.0f;
     //_vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+Fh)/mass;
-    _vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+ Fh)/mass;
-    // _vH[r] = Utils<float>::bound(_vH[r],0.1f);
+    _vHRef[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vHRef[r]+ Fh)/mass;
+    // _vHRef[r] = Utils<float>::bound(_vHRef[r],0.1f);
 
     float pin, pout, pd;
-    pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vH[r]);
+    pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vHRef[r]);
     pd = 1.0f;
 
     _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
@@ -479,7 +502,7 @@ void SurgicalTask::operationStep(int r, int h)
     B.setIdentity();
     B(0,0) = _depthGain[r];
     B(1,1) = _depthGain[r];
-    _vH[r] = _wRbIK[r]*B*_wRbIK[r].transpose()*_vH[r];
+    _vHd[r] = _wRbIK[r]*B*_wRbIK[r].transpose()*_vHRef[r];
   
 
     // Eigen::Vector3f temp;
@@ -490,7 +513,7 @@ void SurgicalTask::operationStep(int r, int h)
 
     // _vH[r] = _wRbIK[r]*temp;
 
-    _vH[r] = Utils<float>::bound(_vH[r], 0.1f);
+    _vHd[r] = Utils<float>::bound(_vHd[r], 0.1f);
 
 
     
@@ -502,7 +525,7 @@ void SurgicalTask::operationStep(int r, int h)
     // _vdTool[r] = (1-alpha)*_vdTool[r]+alpha*0.1f*vTooldir;
 
     // std::cerr << "Dir: " << vTooldir.transpose() << " alpha:" << alphaH <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
-    std::cerr << "Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
+    std::cerr << "Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
 
   }
 
@@ -520,20 +543,26 @@ void SurgicalTask::operationStep(int r, int h)
     std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;
   }
   
+  _vtRef[r] = _vdTool[r];
+
   Eigen::Matrix3f L;
   L.setIdentity();
   L(0,0) = _depthGain[r];
   L(1,1) = _depthGain[r];
-  _vdTool[r] = _wRbIK[r]*L*_wRbIK[r].transpose()*_vdTool[r];
+  _vtd[r] = _wRbIK[r]*L*_wRbIK[r].transpose()*_vtRef[r];
   
   // Bound vd tool
-  _vdTool[r] = Utils<float>::bound(_vdTool[r], _toolTipLinearVelocityLimit);
+  _vtd[r] = Utils<float>::bound(_vtd[r], _toolTipLinearVelocityLimit);
 
 
   if(_enablePhysicalHumanInteraction[r])
   {
     // _vdTool[r] = (1-alphaH)*_vdTool[r]+ _vH[r];
-    _vdTool[r] = (1-_alphaH[r])*_vdTool[r]+ _vH[r];
+    _vdTool[r] = (1-_alphaH[r])*_vtd[r]+ _vHd[r];
+  }
+  else
+  {
+    _vdTool[r] = _vtd[r];
   }
 
 
@@ -560,7 +589,14 @@ void SurgicalTask::operationStep(int r, int h)
     b.setConstant(0.0f);
     b.segment(3,3) = _vdTool[r];
 
+    // Eigen::MatrixXf Ainv;
+    // pseudoInverse(A,Ainv,false);
+    // std::cerr << "normal: " << std::endl;
     x = A.fullPivHouseholderQr().solve(b);
+    // std::cerr << x.transpose() << std::endl;
+    // std::cerr << "pseudoInverse: " << std::endl;
+    // std::cerr << (Ainv*b).transpose() << std::endl;
+
     _vd[r] = x.segment(0,3);
     _omegad[r] = x.segment(3,3);
 
@@ -575,7 +611,7 @@ void SurgicalTask::operationStep(int r, int h)
     _nullspaceWrench[r].setConstant(0.0f);
 
     Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r]));
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r].normalized()));
 
     Eigen::Vector3f axis;  
     float angleErrorToTrocarPosition;
@@ -604,6 +640,12 @@ void SurgicalTask::operationStep(int r, int h)
   {
 
     _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
+    if(_enablePhysicalHumanInteraction[r])
+    {
+      Eigen::Matrix<float,7,1> stiffnessReduction;
+      stiffnessReduction << 300, 300, 300, 300, 200, 200, 0;
+      // _stiffness[r] -= _alphaH[r]*stiffnessReduction;
+    }
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
@@ -1121,13 +1163,13 @@ void SurgicalTask::insertionStep(int r, int h)
 
 
   float mass = 1.0f;
-  _vH[r] += _dt*(-200*_vH[r]+Fh)/mass;
-  _vH[r] = Utils<float>::bound(_vH[r],0.2f);
+  _vHRef[r] += _dt*(-200*_vHRef[r]+Fh)/mass;
+  _vHd[r] = Utils<float>::bound(_vHRef[r],0.2f);
 
 
-  std::cerr << "Dir: " << vTooldir.transpose() << " vH: " << _vH[r].norm() << " Fh: "<<  Fh << std::endl;
+  std::cerr << "Dir: " << vTooldir.transpose() << " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh << std::endl;
 
-  _vdTool[r] = _vH[r];
+  _vdTool[r] = _vHd[r];
   // _vdTool[r].setConstant(0.0f);
 
 
@@ -1149,17 +1191,17 @@ void SurgicalTask::insertionStep(int r, int h)
     _omegad[r] = x.segment(3,3);
 
     
-    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+    _vd[r]+=2.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
 
     _vd[r] = Utils<float>::bound(_vd[r],0.4f);
 
 
-    _omegad[r] = Utils<float>::bound(_omegad[r],3.0f);
+    _omegad[r] = Utils<float>::bound(_omegad[r],1.0f);
 
     _nullspaceWrench[r].setConstant(0.0f);
 
     Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r]));
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r].normalized()));
 
     Eigen::Vector3f axis;  
     float angleErrorToTrocarPosition;

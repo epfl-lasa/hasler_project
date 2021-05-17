@@ -8,16 +8,16 @@ int main(int argc, char **argv)
   float frequency = 200.0f;
   
  
-  std::string filename = "test";
+  std::string filename;
 
-  // if(argc==2)
-  // {
-  //   filename = std::string(argv[1]);
-  // }
-  // else
-  // {
-  //   return -1;
-  // }
+  if(argc==2)
+  {
+    filename = std::string(argv[1]);
+  }
+  else
+  {
+    return -1;
+  }
 
   SurgicalTask surgicalTask(n,frequency, filename);
 

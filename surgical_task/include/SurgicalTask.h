@@ -252,6 +252,8 @@ class SurgicalTask
     float _linearForceFeedbackMagnitude;
     float _selfRotationTorqueFeedbackMagnitude;
     std::vector<bool> _enablePhysicalHumanInteraction;
+    std::vector<float> _externalForcesDeadZones;
+    bool _logData;
 
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -411,7 +413,10 @@ class SurgicalTask
     float _dEECollision[NB_ROBOTS];
     Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
     float _taud[NB_ROBOTS];
-    Eigen::Vector3f _vH[NB_ROBOTS];
+    Eigen::Vector3f _vHd[NB_ROBOTS];
+    Eigen::Vector3f _vHRef[NB_ROBOTS];
+    Eigen::Vector3f _vtRef[NB_ROBOTS];
+    Eigen::Vector3f _vtd[NB_ROBOTS];
     float _depthGain[NB_ROBOTS];
 
   public:

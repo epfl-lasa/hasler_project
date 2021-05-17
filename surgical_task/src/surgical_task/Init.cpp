@@ -15,6 +15,18 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
+
+  if (!_nh.getParam("SurgicalTask/logData", _logData))
+  {
+    ROS_ERROR("Couldn't retrieve the log data boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Log data: %d\n", (int) _debug);
+  }
+
+
  	_useRobot.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/useRobot", _useRobot))
   {
@@ -790,7 +802,7 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Self rotation torque feedback magnitude: %f\n", _selfRotationTorqueFeedbackMagnitude);
   }
 
-  
+  _enablePhysicalHumanInteraction.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/enablePhysicalHumanInteraction", _enablePhysicalHumanInteraction))
   {
     ROS_ERROR("Couldn't retrieve the enable physical human interaction boolean");
@@ -798,10 +810,20 @@ bool SurgicalTask::readConfigurationParameters()
   }
   else
   {
-    ROS_INFO("Enable physical human interaction left: %d\n", (int) _enablePhysicalHumanInteraction[LEFT]);
-    ROS_INFO("Enable physical human interaction right: %d\n", (int) _enablePhysicalHumanInteraction[RIGHT]);
+    ROS_INFO("Enable physical human interaction: %d %d\n", (int) _enablePhysicalHumanInteraction[LEFT], (int) _enablePhysicalHumanInteraction[RIGHT]);
   }
 
+
+  _externalForcesDeadZones.resize(NB_ROBOTS);
+  if (!_nh.getParam("SurgicalTask/externalForcesDeadZones", _externalForcesDeadZones))
+  {
+    ROS_ERROR("Couldn't retrieve the external forces dead zones");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("External forces dead zones: %f %f\n", _externalForcesDeadZones[LEFT], _externalForcesDeadZones[RIGHT]);
+  }
   return true;
 }
 
@@ -884,7 +906,10 @@ void SurgicalTask::initializeTaskParameters()
     _humanToolStatus[r] = 0;
     _taud[r] = 0.0f;
     _Fext[r].setConstant(0.0f);
-    _vH[r].setConstant(0.0f);
+    _vHRef[r].setConstant(0.0f);
+    _vHd[r].setConstant(0.0f);
+    _vtRef[r].setConstant(0.0f);
+    _vtd[r].setConstant(0.0f);
     _tankH[r] = 0.0f;
     _alphaH[r] = 0.0f;
     _depthGain[r] = 0.0f;

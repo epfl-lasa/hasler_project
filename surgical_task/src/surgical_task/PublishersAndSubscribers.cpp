@@ -57,8 +57,8 @@ void SurgicalTask::initializeSubscribersAndPublishers()
     }
     else
     {
-      _pubDesiredTask[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("/left_panda/passive_ds_controller/taskd", 1);
-      // _pubDesiredTask[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("/left_panda/surgical_controller/taskd", 1);
+      // _pubDesiredTask[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("/left_panda/passive_ds_controller/taskd", 1);
+      _pubDesiredTask[LEFT] = _nh.advertise<std_msgs::Float64MultiArray>("/left_panda/surgical_controller/taskd", 1);
     }
     _pubDesiredWrench[LEFT] = _nh.advertise<geometry_msgs::Wrench>("/left_lwr/joint_controllers/passive_ds_command_force", 1);
     _pubFilteredWrench[LEFT] = _nh.advertise<geometry_msgs::Wrench>("SurgicalTask/filteredWrenchLeft", 1);
@@ -336,40 +336,40 @@ void SurgicalTask::publishData()
         }
         else
         {
-          _msgDesiredTask.data.resize(10);
-          for (int i = 0; i < 3; i++)
-          {
-            _msgDesiredTask.data[i] = _vd[r](i);
-          }
-
-          _msgDesiredTask.data[3] = _qd[r](0);
-
-          for (int i = 0; i < 3; i++)
-          {
-            _msgDesiredTask.data[4+i] = _qd[r](1+i);
-          }
-
-          for (int i = 0; i < 3; i++)
-          {
-            _msgDesiredTask.data[7+i] = _omegad[r](i);
-          }
-
-
-          // _msgDesiredTask.data.resize(13);
+          // _msgDesiredTask.data.resize(10);
           // for (int i = 0; i < 3; i++)
           // {
-          //   Eigen::Vector3f temp;
-          //   temp = _wRRobotBasis[r].transpose()*_rEERCM[r];
-          //   _msgDesiredTask.data[i] = temp(i);
-          //   temp = _wRRobotBasis[r].transpose()*(_toolOffsetFromEE[r]*_wRb[r].col(2));
-          //   _msgDesiredTask.data[i+3] = temp(i);
-          //   temp = _wRRobotBasis[r].transpose()*(5*(_trocarPosition[r]-_xRCM[r]));
-          //   _msgDesiredTask.data[i+6] = temp(i);
-          //   temp = _wRRobotBasis[r].transpose()*_vdTool[r];
-          //   _msgDesiredTask.data[i+9] = temp(i);
+          //   _msgDesiredTask.data[i] = _vd[r](i);
           // }
 
-          // _msgDesiredTask.data[12] = _selfRotationCommand[r];
+          // _msgDesiredTask.data[3] = _qd[r](0);
+
+          // for (int i = 0; i < 3; i++)
+          // {
+          //   _msgDesiredTask.data[4+i] = _qd[r](1+i);
+          // }
+
+          // for (int i = 0; i < 3; i++)
+          // {
+          //   _msgDesiredTask.data[7+i] = _omegad[r](i);
+          // }
+
+
+          _msgDesiredTask.data.resize(13);
+          for (int i = 0; i < 3; i++)
+          {
+            Eigen::Vector3f temp;
+            temp = _wRRobotBasis[r].transpose()*_rEERCM[r];
+            _msgDesiredTask.data[i] = temp(i);
+            temp = _wRRobotBasis[r].transpose()*(_toolOffsetFromEE[r]*_wRb[r].col(2));
+            _msgDesiredTask.data[i+3] = temp(i);
+            temp = _wRRobotBasis[r].transpose()*(5*(_trocarPosition[r]-_xRCM[r]));
+            _msgDesiredTask.data[i+6] = temp(i);
+            temp = _wRRobotBasis[r].transpose()*_vdTool[r];
+            _msgDesiredTask.data[i+9] = temp(i);
+          }
+
+          _msgDesiredTask.data[12] = _selfRotationCommand[r];
 
 
           _pubDesiredTask[r].publish(_msgDesiredTask);

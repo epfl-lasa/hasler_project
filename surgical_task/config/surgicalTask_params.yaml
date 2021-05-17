@@ -1,6 +1,8 @@
 # Print all debug comments to command line
 SurgicalTask/debug: true
 
+SurgicalTask/logData: true
+
 # Use robot [LEFT, RIGHT]
 SurgicalTask/useRobot: [true, false]
 
@@ -232,8 +234,11 @@ SurgicalTask/linearForceFeedbackMagnitude: 7.0
 
 SurgicalTask/selfRotationTorqueFeedbackMagnitude: 0.7
 
+# Physical Interaction with the Robot [LEFT, RIGHT] 
+SurgicalTask/enablePhysicalHumanInteraction: [true, true]
 
-SurgicalTask/enablePhysicalHumanInteraction: true
+# External forces dead zones [LEFT, RIGHT] 
+SurgicalTask/externalForcesDeadZones: [5.0, 8.0]
 
 # SurgicalTask/eeCameraMapping: [1.0, 0.0, 0.0,
 #                                0.0, 1.0, 0.0,

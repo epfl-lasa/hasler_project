@@ -85,7 +85,7 @@ void SurgicalTask::run()
       publishData();
 
       // Log data
-      // logData();
+      logData();
     }
     else
     {
@@ -207,6 +207,8 @@ void SurgicalTask::logData()
              << _trocarPosition[LEFT].transpose() << " "
              << _depthGain[LEFT] << " " 
              << _vdTool[LEFT].transpose() << " "
+             << _vtRef[LEFT].transpose() << " "
+             << _vtd[LEFT].transpose() << " "
              << _xd[LEFT].transpose() << " "
              << _selfRotationCommand[LEFT] << " "
              << _trocarInput[LEFT].transpose() << " " 
@@ -219,7 +221,8 @@ void SurgicalTask::logData()
              << _FdFoot[LEFT].transpose() << " "
              << _taud[LEFT] << " "
              << _desiredFootWrench[LEFT].transpose() << " "
-             << _vH[LEFT].transpose() << " "
+             << _vHRef[LEFT].transpose() << " "
+             << _vHd[LEFT].transpose() << " "
              << _tankH[LEFT] << " "
              << _alphaH[LEFT] << " "
              << (int) _controlPhase[LEFT] << " " 
@@ -235,6 +238,8 @@ void SurgicalTask::logData()
              << _trocarPosition[RIGHT].transpose() << " "
              << _depthGain[RIGHT] << " " 
              << _vdTool[RIGHT].transpose() << " "
+             << _vtRef[RIGHT].transpose() << " "
+             << _vtd[RIGHT].transpose() << " "
              << _xd[RIGHT].transpose() << " "
              << _selfRotationCommand[RIGHT] << " "
              << _trocarInput[RIGHT].transpose() << " " 
@@ -247,7 +252,8 @@ void SurgicalTask::logData()
              << _FdFoot[RIGHT].transpose() << " "
              << _taud[RIGHT] << " "
              << _desiredFootWrench[RIGHT].transpose() << " "
-             << _vH[RIGHT].transpose() << " "
+             << _vHRef[RIGHT].transpose() << " "
+             << _vHd[RIGHT].transpose() << " "
              << _tankH[RIGHT] << " "
              << _alphaH[RIGHT] << " "
              << (int) _controlPhase[RIGHT] << " " 
