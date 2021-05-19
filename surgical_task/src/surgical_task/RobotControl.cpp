@@ -477,23 +477,6 @@ void SurgicalTask::operationStep(int r, int h)
     _vHRef[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vHRef[r]+ Fh)/mass;
     // _vHRef[r] = Utils<float>::bound(_vHRef[r],0.1f);
 
-    float pin, pout, pd;
-    pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vHRef[r]);
-    pd = 1.0f;
-
-    _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
-
-    _tankH[r] = Utils<float>::bound(_tankH[r],0,1.0f);
-
-    // if(_tankH[r]<9)
-    // {
-    //   _alphaH[r] = 0.0f;
-    // }
-    // else
-    {
-      // _alphaH[r] = _tankH[r];
-      _alphaH[r] = Utils<float>::smoothRise(_tankH[r],0.0,0.8f);
-    }
 
     // _alphaH[r] =  Utils<float>::bound(_alphaH[r],0,1.0f);
 
@@ -516,6 +499,23 @@ void SurgicalTask::operationStep(int r, int h)
     _vHd[r] = Utils<float>::bound(_vHd[r], 0.1f);
 
 
+    float pin, pout, pd;
+    pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vHd[r]);
+    pd = 2.0f;
+
+    _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
+
+    _tankH[r] = Utils<float>::bound(_tankH[r],0,1.0f);
+
+    // if(_tankH[r]<9)
+    // {
+    //   _alphaH[r] = 0.0f;
+    // }
+    // else
+    {
+      // _alphaH[r] = _tankH[r];
+      _alphaH[r] = Utils<float>::smoothRise(_tankH[r],0.0,0.8f);
+    }
     
     // alphaH = Utils<float>::smoothRise(_vH[r].norm(), 0.0f, 0.01f);
 
@@ -525,7 +525,7 @@ void SurgicalTask::operationStep(int r, int h)
     // _vdTool[r] = (1-alpha)*_vdTool[r]+alpha*0.1f*vTooldir;
 
     // std::cerr << "Dir: " << vTooldir.transpose() << " alpha:" << alphaH <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
-    std::cerr << "Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
+    std::cerr << r << " Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
 
   }
 
@@ -1025,7 +1025,7 @@ void SurgicalTask::computeHapticFeedback(int r)
       //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
       // }
 
-      std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
+      // std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
 
 
       // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
@@ -1037,7 +1037,7 @@ void SurgicalTask::computeHapticFeedback(int r)
       // {
       //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
       // }
-      std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
+      // std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
       // _FdFoot[r].setConstant(0.0f);
     }
 

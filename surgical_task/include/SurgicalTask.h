@@ -360,7 +360,7 @@ class SurgicalTask
     uint32_t _sequenceID[NB_ROBOTS];
     std::string _fileName;
     std::ifstream _inputFile;
-    std::ofstream _outputFile;
+    std::ofstream _outputFile[3];
 
     tf::TransformListener _lr;
     tf::StampedTransform _transform;

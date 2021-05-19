@@ -33,7 +33,9 @@ bool SurgicalTask::init()
 
 
   // Create log file
-  _outputFile.open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+".txt");
+  _outputFile[LEFT].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_left.txt");
+  _outputFile[RIGHT].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_right.txt");
+  _outputFile[2].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_state.txt");
 
   // Create callback to kill node via CTRL+C
   signal(SIGINT,SurgicalTask::stopNode);
@@ -138,7 +140,12 @@ void SurgicalTask::run()
   ros::spinOnce();
   _loopRate.sleep();
 
-  _outputFile.close();
+
+  for(int k = 0; k < 3; k++)
+  {
+    _outputFile[k].close();
+  }
+
   ros::shutdown();
 }
 
@@ -198,91 +205,65 @@ void SurgicalTask::step()
 
 void SurgicalTask::logData()
 {
- _outputFile << ros::Time::now() << " "
-             << _currentJoints[LEFT].transpose() << " "
-             << _currentJointVelocities[LEFT].transpose() << " "
-             << _currentJointTorques[LEFT].transpose() << " "
-             << _Fext[LEFT].transpose() << " "
-             << _ikJoints[LEFT].transpose() << " "
-             << _trocarPosition[LEFT].transpose() << " "
-             << _depthGain[LEFT] << " " 
-             << _vdTool[LEFT].transpose() << " "
-             << _vtRef[LEFT].transpose() << " "
-             << _vtd[LEFT].transpose() << " "
-             << _xd[LEFT].transpose() << " "
-             << _selfRotationCommand[LEFT] << " "
-             << _trocarInput[LEFT].transpose() << " " 
-             << _footPose[LEFT].transpose() << " "
-             << _footTwist[LEFT].transpose() << " "
-             << _footWrenchM[LEFT].transpose() << " "
-             << _footWrenchRef[LEFT].transpose() << " "
-             << _footWrenchD[LEFT].transpose() << " "
-             << (int) _footState[LEFT] << " "
-             << _FdFoot[LEFT].transpose() << " "
-             << _taud[LEFT] << " "
-             << _desiredFootWrench[LEFT].transpose() << " "
-             << _vHRef[LEFT].transpose() << " "
-             << _vHd[LEFT].transpose() << " "
-             << _tankH[LEFT] << " "
-             << _alphaH[LEFT] << " "
-             << (int) _controlPhase[LEFT] << " " 
-             << (int) _qpResult[LEFT].eeCollisionConstraintActive << " "
-             << (int) _qpResult[LEFT].toolCollisionConstraintActive << " "
-             << (int) _qpResult[LEFT].workspaceCollisionConstraintActive << " "
+  for(int r = 0; r < NB_ROBOTS; r++)
+  {
+    if(_useRobot[r])
+    {
+     _outputFile[r] << ros::Time::now() << " "
+                    << _currentJoints[r].transpose() << " "
+                    << _currentJointVelocities[r].transpose() << " "
+                    << _currentJointTorques[r].transpose() << " "
+                    << _Fext[r].transpose() << " "
+                    << _ikJoints[r].transpose() << " "
+                    << _trocarPosition[r].transpose() << " "
+                    << _depthGain[r] << " " 
+                    << _vdTool[r].transpose() << " "
+                    << _vtRef[r].transpose() << " "
+                    << _vtd[r].transpose() << " "
+                    << _xd[r].transpose() << " "
+                    << _selfRotationCommand[r] << " "
+                    << _trocarInput[r].transpose() << " " 
+                    << _footPose[r].transpose() << " "
+                    << _footTwist[r].transpose() << " "
+                    << _footWrenchM[r].transpose() << " "
+                    << _footWrenchRef[r].transpose() << " "
+                    << _footWrenchD[r].transpose() << " "
+                    << (int) _footState[r] << " "
+                    << _FdFoot[r].transpose() << " "
+                    << _taud[r] << " "
+                    << _desiredFootWrench[r].transpose() << " "
+                    << _vHRef[r].transpose() << " "
+                    << _vHd[r].transpose() << " "
+                    << _tankH[r] << " "
+                    << _alphaH[r] << " "
+                    << (int) _controlPhase[r] << " " 
+                    << (int) _tool[r] << " "
+                    << (int) _qpResult[r].eeCollisionConstraintActive << " "
+                    << (int) _qpResult[r].toolCollisionConstraintActive << " "
+                    << (int) _qpResult[r].workspaceCollisionConstraintActive << " " << std::endl;
+    }
+  }
+  _outputFile[2] << ros::Time::now() << " "
+   << (int) _allowTaskAdaptation << " "
+   << (int) _useTaskAdaptation << " "
+   << _vda.transpose() << " "
+   << _beliefsC.transpose() << " "
+   << _colorMarkersFilteredPosition.row(0) << " "
+   << _colorMarkersFilteredPosition.row(1) << " "
+   << _colorMarkersFilteredPosition.row(2) << " "
+   << _colorMarkersStatus.transpose() << " "
 
-             << _currentJoints[RIGHT].transpose() << " "
-             << _currentJointVelocities[RIGHT].transpose() << " "
-             << _currentJointTorques[RIGHT].transpose() << " "
-             << _Fext[RIGHT].transpose() << " "
-             << _ikJoints[RIGHT].transpose() << " "
-             << _trocarPosition[RIGHT].transpose() << " "
-             << _depthGain[RIGHT] << " " 
-             << _vdTool[RIGHT].transpose() << " "
-             << _vtRef[RIGHT].transpose() << " "
-             << _vtd[RIGHT].transpose() << " "
-             << _xd[RIGHT].transpose() << " "
-             << _selfRotationCommand[RIGHT] << " "
-             << _trocarInput[RIGHT].transpose() << " " 
-             << _footPose[RIGHT].transpose() << " "
-             << _footTwist[RIGHT].transpose() << " "
-             << _footWrenchM[RIGHT].transpose() << " "
-             << _footWrenchRef[RIGHT].transpose() << " "
-             << _footWrenchD[RIGHT].transpose() << " "
-             << (int) _footState[RIGHT] << " "
-             << _FdFoot[RIGHT].transpose() << " "
-             << _taud[RIGHT] << " "
-             << _desiredFootWrench[RIGHT].transpose() << " "
-             << _vHRef[RIGHT].transpose() << " "
-             << _vHd[RIGHT].transpose() << " "
-             << _tankH[RIGHT] << " "
-             << _alphaH[RIGHT] << " "
-             << (int) _controlPhase[RIGHT] << " " 
-             << (int) _qpResult[RIGHT].eeCollisionConstraintActive << " "
-             << (int) _qpResult[RIGHT].toolCollisionConstraintActive << " "
-             << (int) _qpResult[RIGHT].workspaceCollisionConstraintActive << " "
+   << _msgGripperOutput.gripper_position << " "
+   << _msgGripperOutput.gripper_speed << " "
+   << _msgGripperOutput.gripper_desPosition << " "
+   << _msgGripperOutput.gripper_torqueCmd << " "
+   << _msgGripperOutput.gripper_torqueMeas << " "
+   << (int) _msgGripperOutput.gripper_machineState << " "
 
-             << (int) _allowTaskAdaptation << " "
-             << (int) _useTaskAdaptation << " "
-             << _vda.transpose() << " "
-             << _beliefsC.transpose() << " "
-             << _colorMarkersFilteredPosition.row(0) << " "
-             << _colorMarkersFilteredPosition.row(1) << " "
-             << _colorMarkersFilteredPosition.row(2) << " "
-             << _colorMarkersStatus.transpose() << " "
-        
-             << _msgGripperOutput.gripper_position << " "
-             << _msgGripperOutput.gripper_speed << " "
-             << _msgGripperOutput.gripper_desPosition << " "
-             << _msgGripperOutput.gripper_torqueCmd << " "
-             << _msgGripperOutput.gripper_torqueMeas << " "
-             << (int) _msgGripperOutput.gripper_machineState << " "
-
-             << (int) _humanInputMode << " "
-             << (int) _currentRobot << " "
-             << (int) _clutching << " "
-             << (int) _wait << " "
-
-             << std::endl;
+   << (int) _humanInputMode << " "
+   << (int) _currentRobot << " "
+   << (int) _clutching <<  " "
+   << (int) _wait << " " << std::endl;
 }
 
 

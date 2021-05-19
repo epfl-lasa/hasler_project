@@ -259,7 +259,12 @@ void SurgicalTask::checkAllSubscribers()
   }
   else if (!_useSim && _toolsTracking == CAMERA_BASED)
   {
-    _trackingOK = _firstColorMarkersPosition || !_allowTaskAdaptation;
+    _trackingOK = _firstColorMarkersPosition;
+
+    if(!_trackingOK)
+    {
+      std::cerr << "First color markers: " << (int) _firstColorMarkersPosition << std::endl;
+    }
   }
 
   _allSubscribersOK = robotStatusOK[LEFT] && robotStatusOK[RIGHT] && _trackingOK;// && (_useSim ||_firstGripper);
