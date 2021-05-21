@@ -10,6 +10,73 @@ from surgical_task.msg import SurgicalTaskStateMsg, RobotStateMsg, TaskManagerSt
 import time
 import rospkg
 import math
+from threading import Thread, Lock
+
+
+# class VideoGet:
+#   """
+#   Class that continuously gets frames from a VideoCapture object
+#   with a dedicated thread.
+#   """
+#   def __init__(self, src=0):
+#     self.stream = cv2.VideoCapture(rospy.get_param("cameraPort"))
+#     (self.grabbed, self.frame) = self.stream.read()
+#     self.stopped = False
+
+
+#   def start(self):    
+#     Thread(target=self.get, args=()).start()
+#     return self
+
+#   def get(self):
+#     while not self.stopped:
+#       if not self.grabbed:
+#         self.stop()
+#       else:
+#         (self.grabbed, self.frame) = self.stream.read()
+
+#   def stop(self):
+#     self.stopped = True
+
+
+class VideoGetter:
+  def __init__(self, src = 0):
+    self.stream = cv2.VideoCapture(src)
+    (self.grabbed, self.frame) = self.stream.read()
+    self.started = False
+    self.read_lock = Lock()
+
+  def start(self):
+    if self.started:
+      print("[VideoGetter]: Already started !")
+      return None
+    self.started = True
+    self.thread = Thread(target=self.update, args=())
+    self.thread.start()
+    print("[VideoGetter]: Start !")
+    return self
+
+  def update(self):
+    while self.started:
+      (grabbed, frame) = self.stream.read()
+      self.read_lock.acquire()
+      self.grabbed, self.frame = grabbed, frame
+      self.read_lock.release()
+
+  def read(self):
+    self.read_lock.acquire()
+    frame = self.frame.copy()
+    self.read_lock.release()
+    return frame
+
+  def stop(self):
+    self.started = False
+    print("[VideoGetter]: Stop !")
+    self.thread.join()
+
+  def __exit__(self, exc_type, exc_value, traceback) :
+    self.stream.release()
+
 
 class CameraManager:
   def __init__(self):
@@ -17,7 +84,7 @@ class CameraManager:
     self. image = []
     self.inputImage = []
     self.outputImage = []
-    self.rate = rospy.Rate(30) 
+    self.rate = rospy.Rate(50) 
 
     self.useRosCvCamera = rospy.get_param("useRosCvCamera")
     if self.useRosCvCamera:
@@ -25,7 +92,8 @@ class CameraManager:
       self.bridge = CvBridge()
       self.subCamera = rospy.Subscriber(rospy.get_param("cameraTopic"), Image, self.updateImage)
     else:
-      self.cap = cv2.VideoCapture(rospy.get_param("cameraPort"))
+      self.videoGetter = VideoGetter(rospy.get_param("cameraPort")).start()
+      # self.cap = cv2.VideoCapture(rospy.get_param("cameraPort"))
 
 
     cv2.namedWindow("output", cv2.WINDOW_NORMAL)  
@@ -105,7 +173,6 @@ class CameraManager:
 
     self.imageSize = (0,0)
 
-
     self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
                                                          queue_size=1)
     self.pubMarkersPosition = rospy.Publisher('camera_manager/markers_pose', Float64MultiArray, queue_size=1)
@@ -126,9 +193,9 @@ class CameraManager:
         if self.useRosCvCamera:
           self.inputImage = self.image.copy()
         else:
-          ret, self.inputImage = self.cap.read()
+          # ret, self.inputImage = self.cap.read()
+          self.inputImage = self.videoGetter.read()
 
-        # print("Read camera:", time.time()-t0)
         self.imageSize = (self.inputImage.shape[1], self.inputImage.shape[0])
 
 
@@ -148,7 +215,7 @@ class CameraManager:
 
         t2 = time.time()
         # self.toolsTracker.tipPosition[0] = np.array([630,470,1])
-        self.displayMarkersPosition(self.outputImage, True) 
+        self.displayMarkersPosition(self.outputImage, False) 
         self.displaySurgicalTaskState(self.outputImage)
         # print("Fill images:", time.time()-t2)
 
@@ -184,8 +251,8 @@ class CameraManager:
         # cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
         # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
         # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
-        cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
-        cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
+        # cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
+        # cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
         # cv2.imshow('result', result) 
         
         print("Show images:", time.time()-t0)
@@ -198,6 +265,8 @@ class CameraManager:
 
       self.rate.sleep()
 
+    if not self.useRosCvCamera:
+      self.videoGetter.stop()
 
   # def displayMarkersPosition(self, image):
   #   for k in range(0,len(self.toolsTracker.tipPosition)):
@@ -728,23 +797,23 @@ class ToolsTracker:
         if not self.firstMarkerDetection[id]:
           self.firstMarkerDetection[id] = True 
       else:
-        # if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
-        #   self.timeMarkerDisappear[id] = time.time()
-        # if time.time()-self.timeMarkerDisappear[id]>1:
+        if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
+          self.timeMarkerDisappear[id] = time.time()
+        if time.time()-self.timeMarkerDisappear[id]>0.5:
+          self.tipPosition[id][2] = 0
+          self.tipPositionTransformed[id][2] = 0
+          self.markerPosition[id][2] = 0
+          self.markerPositionTransformed[id][2] = 0
+
+
+    else:
+      if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
+        self.timeMarkerDisappear[id] = time.time()
+      if time.time()-self.timeMarkerDisappear[id]>0.5:
         self.tipPosition[id][2] = 0
         self.tipPositionTransformed[id][2] = 0
         self.markerPosition[id][2] = 0
         self.markerPositionTransformed[id][2] = 0
-
-
-    else:
-      # if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
-      #   self.timeMarkerDisappear[id] = time.time()
-      # if time.time()-self.timeMarkerDisappear[id]>0.5:
-      self.tipPosition[id][2] = 0
-      self.tipPositionTransformed[id][2] = 0
-      self.markerPosition[id][2] = 0
-      self.markerPositionTransformed[id][2] = 0
 
 
     return maskTip, maskBase
