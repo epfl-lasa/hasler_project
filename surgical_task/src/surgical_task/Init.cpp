@@ -470,6 +470,19 @@ bool SurgicalTask::readConfigurationParameters()
                                                                                                          _operationMaxOffsetPVM[RIGHT](0), _operationMaxOffsetPVM[RIGHT](1), _operationMaxOffsetPVM[RIGHT](2));
   }
 
+
+  _operationMinInsertion.resize(NB_ROBOTS);
+  if (!_nh.getParam("SurgicalTask/operationMinInsertion", _operationMinInsertion))
+  {
+    ROS_ERROR("Couldn't retrieve the operation phase min insertion");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Operation phase min insertion: LEFT: %f RIGHT: %f", _operationMinInsertion[LEFT], _operationMinInsertion[RIGHT]);
+  }
+
+
   if (!_nh.getParam("SurgicalTask/trocarSpaceLinearDSFixedGain", _trocarSpaceLinearDSFixedGain))
   {
     ROS_ERROR("Couldn't retrieve the trocar space linear ds fixed gain");
@@ -913,6 +926,7 @@ void SurgicalTask::initializeTaskParameters()
     _tankH[r] = 0.0f;
     _alphaH[r] = 0.0f;
     _depthGain[r] = 0.0f;
+    _Fm[r].setConstant(0.0f);
   }
   _stop = false;
   _firstGripper = false;
@@ -1066,7 +1080,7 @@ void SurgicalTask::initializeTaskParameters()
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
                                                           _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
-                                                          _operationMaxOffsetPVM[r]);        
+                                                          _operationMaxOffsetPVM[r], _operationMinInsertion[r]);        
       _qpSolverRCMCollision2[r] = new QpSolverRCMCollision2(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,

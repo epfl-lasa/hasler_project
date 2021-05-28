@@ -453,6 +453,8 @@ void SurgicalTask::publishData()
       _msgRobotState.dToolTool = _dToolCollision[r];
       _msgRobotState.workspaceCollisionConstraintActive = _qpResult[r].workspaceCollisionConstraintActive;
       _msgRobotState.desiredGripperPosition = _desiredGripperPosition[r];
+      _msgRobotState.tankH = _tankH[r];
+      _msgRobotState.alphaH = _alphaH[r];
 
       for(int m = 0; m < 3; m++)
       {

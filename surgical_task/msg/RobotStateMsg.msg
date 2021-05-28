@@ -23,4 +23,6 @@ bool toolCollisionConstraintActive
 float32 dToolTool
 bool workspaceCollisionConstraintActive
 float32 desiredGripperPosition
+float32 tankH
+float32 alphaH
 

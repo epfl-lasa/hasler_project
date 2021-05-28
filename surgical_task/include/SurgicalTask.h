@@ -226,6 +226,7 @@ class SurgicalTask
     Eigen::Vector3f _operationOffsetRangePPM[NB_ROBOTS];
     Eigen::Vector3f _operationMinOffsetPVM[NB_ROBOTS];
     Eigen::Vector3f _operationMaxOffsetPVM[NB_ROBOTS];
+    std::vector<float> _operationMinInsertion;
     bool _enableEECollisionAvoidance;
     bool _enableToolCollisionAvoidance;
     float _eeSafetyCollisionDistance;
@@ -418,6 +419,7 @@ class SurgicalTask
     Eigen::Vector3f _vtRef[NB_ROBOTS];
     Eigen::Vector3f _vtd[NB_ROBOTS];
     float _depthGain[NB_ROBOTS];
+    Eigen::Vector3f _Fm[NB_ROBOTS];
 
   public:
 

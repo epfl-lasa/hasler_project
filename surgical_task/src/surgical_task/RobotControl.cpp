@@ -465,7 +465,29 @@ void SurgicalTask::operationStep(int r, int h)
 
     Eigen::Vector3f Fh;
     Fh.setConstant(0.0f);
-    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,_externalForcesDeadZones[r])*vTooldir; 
+
+    float forceDeadZone;
+
+
+    if(_tool[r] == RETRACTOR && _msgGripperOutput.gripper_position >  15.0f)
+    {
+      forceDeadZone = 12.0f;
+      std::cerr << "INCREASE DEADZONE" << std::endl;
+    }
+    else
+    {
+      forceDeadZone = _externalForcesDeadZones[r];
+    }
+    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,forceDeadZone)*vTooldir; 
+      
+    // if(_Fext[r].norm() < forceDeadZone &&  _Fext[r].norm() > 8 )
+    // {
+    //   _Fm[r] = (_Fext[r].norm()-8)*vTooldir;
+    // }
+    // else
+    {
+      _Fm[r].setConstant(0.0f);
+    }
     // Fh = _alphaH[r]*_Fext[r].norm()*vTooldir; 
     // Fh = _Fext[r].norm()*vTooldir;
     Eigen::Vector3f bou;
@@ -880,10 +902,10 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       }   
     }
 
-    if(_dRCMTool[r]> _insertionDistancePVM[r] && (wRb.col(2)).dot(_vdTool[r])<0.0f)
-    {
-      _vdTool[r] = Utils<float>::orthogonalProjector(wRb.col(2))*_vdTool[r];
-    }
+    // if(_dRCMTool[r]> _insertionDistancePVM[r] && (wRb.col(2)).dot(_vdTool[r])<0.0f)
+    // {
+    //   _vdTool[r] = Utils<float>::orthogonalProjector(wRb.col(2))*_vdTool[r];
+    // }
 
   }
   else if(_linearMapping[r]==POSITION_POSITION)
@@ -924,13 +946,15 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     if((_desiredOffsetPPM[r]-currentOffset).norm()<0.02f)
     {
       _inputAlignedWithOrigin[r]=true;
+      _wait = false;
     }
 
     if(_inputAlignedWithOrigin[r]==false)
     {
       // _desiredOffsetPPM[r].setConstant(0.0f);
       _xd[r] = _xd0[r];
-  
+      _wait = true;
+        
       if(_debug)
       {
         std::cerr << "[SurgicalTask]: " << r << "Input should be align with origin" << std::endl;
@@ -1098,6 +1122,8 @@ void SurgicalTask::computeHapticFeedback(int r)
       _FdFoot[r] += Utils<float>::bound(200.0f*(-_desiredOffsetPPM[r]),15.0f);   
       // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
     }
+
+    _FdFoot[r] += _Fm[r];
 
 
     _taud[r] = _selfRotationTorqueFeedbackMagnitude*(Utils<float>::smoothFall(_currentJoints[r](6)+_trocarSpaceSelfRotationRange*M_PI/180.0f,0, 0.2f)

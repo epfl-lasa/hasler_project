@@ -86,6 +86,7 @@ class QpSolverRCMCollision
 
 		Eigen::Vector3f _workspaceMinOffset;
 		Eigen::Vector3f _workspaceMaxOffset;
+		float _minInsertion;
 
     static QpSolverRCMCollision* me;
 
@@ -93,7 +94,7 @@ class QpSolverRCMCollision
 		QpSolverRCMCollision(float eeLinearVelocityLimit = 0.25f, float eeAngularVelocityLimit = 1.5f, bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
 			                   bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f,
 			                   bool enableWorkspaceCollisionAvoidance = false, Eigen::Vector3f workspaceMinOffset = Eigen::Vector3f::Zero(), 
-			                   Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero());
+			                   Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero(), float minInsertion = 0.0f);
 
 		~QpSolverRCMCollision();
 

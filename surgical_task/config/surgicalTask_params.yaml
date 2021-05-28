@@ -1,7 +1,7 @@
 # Print all debug comments to command line
-SurgicalTask/debug: true
+SurgicalTask/debug: false
 
-SurgicalTask/logData: true
+SurgicalTask/logData: false
 
 # Use robot [LEFT, RIGHT]
 SurgicalTask/useRobot: [true, false]
@@ -12,7 +12,7 @@ SurgicalTask/tool: [0, 1]
 SurgicalTask/useFranka: true
 
 # Human input device [LEFT, RIGHT] (0: JOYSTICK / 1: FOOT)
-SurgicalTask/humanInputDevice: [1, 1]
+SurgicalTask/humanInputDevice: [0, 1]
 
 # Human input mode (0: SINGLE_FOOT_SINGLE_ROBOT 1: DOMINANT_FOOT_TWO_ROBOTS)
 SurgicalTask/humanInputMode: 0
@@ -73,7 +73,7 @@ SurgicalTask/insertionDistancePVM: [-0.02, -0.02]
 SurgicalTask/leftFootInterfaceRange: [0.195, 0.18, 20, 30, 35]
 
 # Left foot interface range
-SurgicalTask/rightFootInterfaceRange: [0.195, 0.18, 34, 30, 35]
+SurgicalTask/rightFootInterfaceRange: [0.195, 0.18, 20, 30, 35]
 
 # Foot interfaces deadzone in position velocity mapping
 # SurgicalTask/leftFootInterfaceMinDeadZone: [-0.03, -0.03, -5, -5, -10]
@@ -102,7 +102,7 @@ SurgicalTask/safetyLimitsStiffnessGain: 100
 SurgicalTask/allowTaskAdaptation: true
 
 # Tool tip linear velocity limit
-SurgicalTask/toolTipLinearVelocityLimit: 0.06
+SurgicalTask/toolTipLinearVelocityLimit: 0.1
 
 # Tool tip angular velocity limit
 SurgicalTask/toolTipSelfAngularVelocityLimit: 1.5
@@ -119,8 +119,8 @@ SurgicalTask/insertionOffsetPPM: [0.0, 0.08, -0.1,
                                   0.0, -0.08, -0.12]
 
 # Offset range in operation phase for position position mapping
-SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.08,
-                                       0.18, 0.22, 0.08]
+SurgicalTask/operationOffsetRangePPM: [0.12, 0.12, 0.095,
+                                       0.18, 0.22, 0.10]
 
 # Min offset limits in operation phase for position velocity mapping 
 SurgicalTask/operationMinOffsetPVM: [-0.04, -0.01, -0.1,
@@ -131,14 +131,17 @@ SurgicalTask/operationMinOffsetPVM: [-0.04, -0.01, -0.1,
 # Max offset limits in operation phase for position velocity mapping 
 SurgicalTask/operationMaxOffsetPVM: [0.04, 0.08, 0,
                                      0.06, 0.01, 0]
+
+SurgicalTask/operationMinInsertion: [0.02, 0.01]
+
 # SurgicalTask/operationMaxOffsetPVM: [0.06, 0.01, 0,
 #                                      0.06, 0.08, 0]
 
 # Trocar space linear ds gain in position position mapping
-SurgicalTask/trocarSpaceLinearDSFixedGain: 3.0
+SurgicalTask/trocarSpaceLinearDSFixedGain: 4.0
 
 # Trocar space linear ds gaussian gain
-SurgicalTask/trocarSpaceLinearDSGaussianGain: 3.0
+SurgicalTask/trocarSpaceLinearDSGaussianGain: 4.0
 
 # Trocar space linear ds gaussian width
 SurgicalTask/trocarSpaceLinearDSGaussianWidth: 0.07
@@ -192,7 +195,7 @@ SurgicalTask/eeLinearVelocityLimit: 10
 SurgicalTask/eeAngularVelocityLimit: 10
 
 # Enable EE collision avoidance in QP RCM solver
-SurgicalTask/enableEECollisionAvoidance: false
+SurgicalTask/enableEECollisionAvoidance: true
 
 # Safety collision distance between the end-effector sphere and the obstacle
 SurgicalTask/eeSafetyCollisionDistance: 0.03
@@ -201,7 +204,7 @@ SurgicalTask/eeSafetyCollisionDistance: 0.03
 SurgicalTask/eeSafetyCollisionRadius: 0.1
 
 # Enable Tool collision avoidance in QP RCM solver
-SurgicalTask/enableToolCollisionAvoidance: false
+SurgicalTask/enableToolCollisionAvoidance: true
 
 # Safety collision distance between the tool and the obstacle
 SurgicalTask/toolSafetyCollisionDistance: 0.03
@@ -232,13 +235,13 @@ SurgicalTask/eeCameraMapping: [0.0, -1.0, 0.0,
 
 SurgicalTask/linearForceFeedbackMagnitude: 7.0
 
-SurgicalTask/selfRotationTorqueFeedbackMagnitude: 0.7
+SurgicalTask/selfRotationTorqueFeedbackMagnitude: 0.4
 
 # Physical Interaction with the Robot [LEFT, RIGHT] 
-SurgicalTask/enablePhysicalHumanInteraction: [true, true]
+SurgicalTask/enablePhysicalHumanInteraction: [true, false]
 
 # External forces dead zones [LEFT, RIGHT] 
-SurgicalTask/externalForcesDeadZones: [5.0, 8.0]
+SurgicalTask/externalForcesDeadZones: [5.0, 12.0]
 
 # SurgicalTask/eeCameraMapping: [1.0, 0.0, 0.0,
 #                                0.0, 1.0, 0.0,

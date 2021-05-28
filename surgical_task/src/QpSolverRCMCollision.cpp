@@ -4,8 +4,8 @@
 QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float eeAngularVelocityLimit,
 	                                         bool enableEECollisionAvoidance, float eeSafetyCollisionDistance, 
 			                 										 bool enableToolCollisionAvoidance, float toolSafetyCollisionDistance,
-			                 										 bool enableWorkspaceCollisionAvoidance,
-			                 										 Eigen::Vector3f workspaceMinOffset, Eigen::Vector3f workspaceMaxOffset):
+			                 										 bool enableWorkspaceCollisionAvoidance, Eigen::Vector3f workspaceMinOffset, 
+			                 										 Eigen::Vector3f workspaceMaxOffset, float minInsertion):
 																					 _eeLinearVelocityLimit(eeLinearVelocityLimit),
 																					 _eeAngularVelocityLimit(eeAngularVelocityLimit),
 																					 _enableEECollisionAvoidance(enableEECollisionAvoidance), 
@@ -13,7 +13,7 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
 																					 _enableToolCollisionAvoidance(enableToolCollisionAvoidance),
 																					 _toolSafetyCollisionDistance(toolSafetyCollisionDistance),
 																					 _enableWorkspaceCollisionAvoidance(enableWorkspaceCollisionAvoidance),
-																					 _workspaceMinOffset(workspaceMinOffset), _workspaceMaxOffset(workspaceMaxOffset),
+																					 _workspaceMinOffset(workspaceMinOffset), _workspaceMaxOffset(workspaceMaxOffset), _minInsertion(minInsertion),
                                            _nbTasks(7), _nbJoints(7), _nbSlacks(7), _nbVariables(14), _nbConstraints(20),
                                            _rcmTolerance(1e-3), _toolTolerance(1e-3), _phiTolerance(1e-2)
 {
@@ -238,7 +238,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  xRCM = xEE+(xTrocar-xEE).dot(wRb.col(2))*wRb.col(2);
 	  xTool = xEE+toolOffset*wRb.col(2);
 
-	  float dRCMTool = (xTrocar-xEE).dot(wRb.col(2))-toolOffset;
+	  float dRCMTool = toolOffset-(xTrocar-xEE).dot(wRb.col(2));
 
 	  Eigen::MatrixXf Jee(6,_nbJoints), JeeCollision(3, _nbJoints), Jrcm(3,_nbJoints), Jtool(3,_nbJoints), JtoolCollision(3,_nbJoints);
 	  Jee = Utils<float>::getGeometricJacobian(joints, Eigen::Vector3f::Zero(), _robotID);
@@ -316,7 +316,8 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 			dir << 0.0f,0.0f,1.0f;
 			_A.block(_idWorkspaceCollisionConstraint,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
-			dir << 0.0f,0.0f,-1.0f;
+			// dir << 0.0f,0.0f,-1.0f;
+			dir = wRb.col(2);
 			_A.block(_idWorkspaceCollisionConstraint+1,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			dir << 1.0f,0.0f,0.0f;
@@ -358,7 +359,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 		  }
 		  _lbA(_idEECollisionConstraint) = -0.05f*(dEEObstacle-ds)/(di-ds);
 
-		  if(-20.0f*(di-ds)*_lbA(_idEECollisionConstraint)<1e-3f)
+		  if(-20.0f*(di-ds)*_lbA(_idEECollisionConstraint)<1e-2f)
 		  {
 		  	result.eeCollisionConstraintActive = true;
 		  }
@@ -379,7 +380,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 			}
 
 	  	_lbA(_idToolCollisionConstraint) = -0.05f*(std::max(0.0f,dToolObstacle-ds))/(di-ds);
-		  if(-20.0f*(di-ds)*_lbA(_idToolCollisionConstraint)<1e-3f)
+		  if(-20.0f*(di-ds)*_lbA(_idToolCollisionConstraint)<1e-2f)
 		  {
 		  	result.toolCollisionConstraintActive = true;
 		  }
@@ -393,7 +394,8 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  	_lbA(_idWorkspaceCollisionConstraint) = -0.05f*(currentOffset(2)-_workspaceMinOffset(2)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.01f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
+	  	// _lbA(_idWorkspaceCollisionConstraint+1) = -0.05f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.05f*(dRCMTool-_minInsertion-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+1) = 1.0f;
 
 	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.05f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
@@ -408,9 +410,9 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.05f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+5) = 1.0f;
 
-		  if(-20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint)<1e-3f || -100.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+1)< 1e-3f ||
-		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+2)< 1e-3f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+3)< 1e-3f ||
-		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-3f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+5)< 1e-3f)
+		  if(-20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint)<1e-2f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+1)< 1e-2f ||
+		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+2)< 1e-2f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+3)< 1e-2f ||
+		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-2f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+5)< 1e-2f)
 		  {
 		  	result.workspaceCollisionConstraintActive = true;
 		  }
