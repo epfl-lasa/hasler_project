@@ -3,7 +3,7 @@
 import numpy as np
 import cv2
 import rospy
-from std_msgs.msg import Float64MultiArray, Int16MultiArray, MultiArrayDimension
+from std_msgs.msg import Float64MultiArray, Int16MultiArray, MultiArrayDimension, Bool, Float64
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from surgical_task.msg import SurgicalTaskStateMsg, RobotStateMsg, TaskManagerStateMsg
@@ -84,7 +84,7 @@ class CameraManager:
     self. image = []
     self.inputImage = []
     self.outputImage = []
-    self.rate = rospy.Rate(50) 
+    self.rate = rospy.Rate(40) 
 
     self.useRosCvCamera = rospy.get_param("useRosCvCamera")
     if self.useRosCvCamera:
@@ -118,15 +118,24 @@ class CameraManager:
     self.showCameraWorkspaceCollisionText = False
     self.timeCameraWorkspaceCollisionText = time.time()
 
+    
+    self.gripperAssistanceText = ["Off", "On"]
+    self.gripperAssistanceTextPosition = (440,60)
+
     self.clutchingStateText = ["Off", "On"]
-    self.clutchingStateTextPosition = (440,60)
+    self.clutchingStateTextPosition = (440,90)
+
 
     self.markerText = ["R", "G", "Y"]
     self.markerColor = (0, 255, 255)
 
 
-    self.waitText = ["Center your dominant foot to" ,"start moving the camera !"]
-    self.waitTextPosition = [(160,240),(180,270)]
+    self.waitText1 = ["Center your dominant foot to" ,"start moving the camera !"]
+    self.waitText2 = ["Center your left foot to" ,"start moving the retractor !"]
+    self.waitText3 = ["Center your right foot to" ,"start moving the retractor !"]
+    self.waitTextPosition1 = [(160,240),(180,270)]
+    self.waitTextPosition2 = [(200,240),(180,270)]
+    self.waitTextPosition3 = [(190,240),(180,270)]
     self.waitTextColor = (0,100,255)
 
 
@@ -153,6 +162,8 @@ class CameraManager:
     self.warningImage = cv2.imread(rospack.get_path('endoscope_feedback')+"/src/img/warning.png", cv2.IMREAD_UNCHANGED)
     self.warningImage = cv2.resize(self.warningImage, (40,40), interpolation = cv2.INTER_AREA)
 
+
+
     self.currentRobot = 0
     self.useTaskAdaptation = False
     self.clutching = False
@@ -165,6 +176,17 @@ class CameraManager:
     self.retractorPositionC = [0.0, 0.0, 0.0]
     self.retractorDir = [0.0,0.0]
     self.tool = [0,1]
+    self.gripperAssistance = False
+
+    self.dRCMTip = 0
+    self.cameraLength = 0.407
+
+    s = 20.0
+    S = 200.0
+    d = -0.05
+    self.aScale = (S-s)/(-self.cameraLength-d)
+    self.bScale = S+self.aScale*self.cameraLength  
+    self.cameraCueSize = self.aScale*self.dRCMTip+self.bScale
 
 
     self.taskId = -1
@@ -176,12 +198,16 @@ class CameraManager:
     self.pubMarkersPositionTransformed = rospy.Publisher('surgical_task/markers_position_transformed', Float64MultiArray, 
                                                          queue_size=1)
     self.pubMarkersPosition = rospy.Publisher('camera_manager/markers_pose', Float64MultiArray, queue_size=1)
+
+    self.pubCameraCueSize = rospy.Publisher('camera_manager/camera_cue_size', Float64, queue_size=1)
+
     self.subSurgicalTaskState = rospy.Subscriber('surgical_task/state', SurgicalTaskStateMsg, self.updateSurgicalTaskState)
 
     self.subRobotState = []
     self.subRobotState.append(rospy.Subscriber('/surgical_task/left_robot_state', RobotStateMsg, self.updateRobotState, 0))
     self.subRobotState.append(rospy.Subscriber('/surgical_task/right_robot_state', RobotStateMsg, self.updateRobotState, 1))
     self.subTaskManagerState = rospy.Subscriber('/task_manager/state', TaskManagerStateMsg, self.updateTaskManagerState)
+    self.subGripperAssistance = rospy.Subscriber('/right/graspAssistanceOn', Bool, self.updateGripperAssistance)
 
     self.run()
 
@@ -217,9 +243,28 @@ class CameraManager:
         # self.toolsTracker.tipPosition[0] = np.array([630,470,1])
         self.displayMarkersPosition(self.outputImage, False) 
         self.displaySurgicalTaskState(self.outputImage)
+        self.displayTaskCues()
+
         # print("Fill images:", time.time()-t2)
 
+
+
+
+        # print("Pub data:", time.time()-t3)
+
+        # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
+        # cv2.setWindowProperty('output', cv2.WND_PROP_FULLSCREEN, 8)
         t3 = time.time()
+        cv2.imshow('output', self.outputImage)
+        # cv2.imshow('maskRed', self.toolsTracker.maskRed) 
+        # cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
+        # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
+        # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
+        # cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
+        # cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
+        # cv2.imshow('result', result) 
+        
+        t4 = time.time()
 
         msg = Float64MultiArray()
         # markerPose = np.concatenate((self.toolsTracker.tipPosition, self.toolsTracker.dir), axis=1)
@@ -238,24 +283,10 @@ class CameraManager:
         msg.layout.dim[0].size = len(msg.data)
         self.pubMarkersPositionTransformed.publish(msg)
 
-
-        self.displayTaskCues()
-
-        # print("Pub data:", time.time()-t3)
-
-        t4 = time.time()
-        # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
-        # cv2.setWindowProperty('output', cv2.WND_PROP_FULLSCREEN, 8)
-        cv2.imshow('output', self.outputImage)
-        # cv2.imshow('maskRed', self.toolsTracker.maskRed) 
-        # cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
-        # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
-        # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
-        # cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
-        # cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
-        # cv2.imshow('result', result) 
-        
-        print("Show images:", time.time()-t0)
+        if self.taskId == 2:
+          msg = Float64()
+          msg.data = self.cameraCueSize
+          self.pubCameraCueSize.publish(msg)
 
         if(time.time()-t0>0.1):
           print("Warning: camera delay !!!")
@@ -311,7 +342,7 @@ class CameraManager:
 
       cv2.putText(image, self.markerText[k], (int(position[0]), pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
 
-    if not self.toolsTracker.tipPosition[k][2]:
+    if not self.toolsTracker.tipPosition[k][2] and self.useRobot[0] and self.useRobot[1]:
       temp = self.retractorPositionC[0:2]/np.linalg.norm(self.retractorPositionC[0:2])
       self.retractorDir[0] = temp[1]
       self.retractorDir[1] = -temp[0]
@@ -380,6 +411,9 @@ class CameraManager:
                   self.cameraModeTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
     else:
+      cv2.putText(image, "Assistance: "+ (self.gripperAssistanceText[1] if self.gripperAssistance else self.gripperAssistanceText[0]), 
+                  self.gripperAssistanceTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
+
       if self.humanInputMode == 1:
         cv2.putText(image, "Clutching: " + (self.clutchingStateText[1] if self.clutching else self.clutchingStateText[0]), 
                   self.clutchingStateTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
@@ -387,10 +421,22 @@ class CameraManager:
 
   def displayWarnings(self, image):
     if self.wait:
-      self.overlay_image_alpha(image, self.warningImage, (self.waitTextPosition[0][0]-45,self.waitTextPosition[0][1]-25), self.warningImage[:,:,3]/255)
+      waitText = None
+      waitTextPosition = None
+      if self.humanInputMode == 1:
+        waitText = self.waitText1
+        waitTextPosition = self.waitTextPosition1
+      elif self.humanInputMode == 0 and self.tool[0] == 1:
+        waitText = self.waitText2
+        waitTextPosition = self.waitTextPosition2
+      elif self.humanInputMode == 0 and self.tool[1] == 1:
+        waitText = self.waitText3
+        waitTextPosition = self.waitTextPosition3
 
-      for k in range(0,len(self.waitTextPosition)):
-        cv2.putText(image, self.waitText[k], self.waitTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.waitTextColor, 1)
+      self.overlay_image_alpha(image, self.warningImage, (waitTextPosition[0][0]-45,waitTextPosition[0][1]-25), self.warningImage[:,:,3]/255)
+
+      for k in range(0,len(waitTextPosition)):
+          cv2.putText(image, waitText[k], waitTextPosition[k], cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.waitTextColor, 1)
 
     if self.eeCollision[0]:
       if time.time()-self.timeEECollisionText> 1:
@@ -437,6 +483,8 @@ class CameraManager:
     self.eeCollision[r] = msg.eeCollisionConstraintActive
     self.toolCollision[r] = msg.toolCollisionConstraintActive
     self.workspaceCollision[r] = msg.workspaceCollisionConstraintActive
+    if self.tool[r] == 0:
+      self.dRCMTip = msg.dRcmTip
 
 
   def updateTaskManagerState(self,msg):
@@ -449,12 +497,15 @@ class CameraManager:
     if not self.firstImage:
       self.firstImage = True
 
+  def updateGripperAssistance(self,msg):
+    self.gripperAssistance = msg.data
 
 
   def displayTaskCues(self):
 
     if self.taskId == 2:
-      cv2.drawMarker(self.outputImage, (int(self.imageSize[0]/2), int(self.imageSize[1]/2)), (0, 255, 0),cv2.MARKER_CROSS, 20, 2)
+      self.cameraCueSize = self.aScale*self.dRCMTip+self.bScale
+      cv2.drawMarker(self.outputImage, (int(self.imageSize[0]/2), int(self.imageSize[1]/2)), (0, 255, 0),cv2.MARKER_CROSS, int(self.cameraCueSize), 2)
     elif self.taskId == 3:
       # Initialize black image of same dimensions for drawing the rectangles
       rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)
