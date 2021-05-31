@@ -63,6 +63,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
     _pubDesiredWrench[LEFT] = _nh.advertise<geometry_msgs::Wrench>("/left_lwr/joint_controllers/passive_ds_command_force", 1);
     _pubFilteredWrench[LEFT] = _nh.advertise<geometry_msgs::Wrench>("SurgicalTask/filteredWrenchLeft", 1);
     _pubFootInput[LEFT] = _nh.advertise<custom_msgs::FootInputMsg>("/left/surgical_task/foot_input", 1);
+    _pubToolToFootTorques[LEFT] = _nh.advertise<custom_msgs::FootInputMsg>("/left/surgical_task/tool_to_foot_torques", 1);
     _pubNullspaceCommand[LEFT] = _nh.advertise<std_msgs::Float32MultiArray>("/left_lwr/joint_controllers/passive_ds_command_nullspace", 1);
     
     if(!_useFranka)
@@ -159,6 +160,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
     _pubDesiredWrench[RIGHT] = _nh.advertise<geometry_msgs::Wrench>("/right_lwr/joint_controllers/passive_ds_command_force", 1);
     _pubFilteredWrench[RIGHT] = _nh.advertise<geometry_msgs::Wrench>("SurgicalTask/filteredWrenchRight", 1);
     _pubFootInput[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg>("/right/surgical_task/foot_input", 1);
+    _pubToolToFootTorques[RIGHT] = _nh.advertise<custom_msgs::FootInputMsg>("/right/surgical_task/tool_to_foot_torques", 1);
     _pubNullspaceCommand[RIGHT] = _nh.advertise<std_msgs::Float32MultiArray>("/right_lwr/joint_controllers/passive_ds_command_nullspace", 1);
 
     if(!_useFranka)
@@ -221,8 +223,8 @@ void SurgicalTask::checkAllSubscribers()
     robotStatusOK[k] = !_useRobot[k] || (_firstRobotPose[k] &&  _firstRobotTwist[k]
                       // && _firstDampingMatrix[k] 
                       && _firstJointsUpdate[k] 
-                      && _firstHumanInput[_humanInputID[k]]);
-                      // && (_useSim || _wrenchBiasOK[k]);
+                      && _firstHumanInput[_humanInputID[k]])
+                      && (_useSim || (!_useFTSensor[k] || _wrenchBiasOK[k]));
 
     if(!robotStatusOK[k])
     {
@@ -381,14 +383,22 @@ void SurgicalTask::publishData()
         }
       }
 
-      if(_humanInputDevice[r] == FOOT)
+      if(_humanInputDevice[_humanInputID[r]] == FOOT)
       {
         for(int m = 0; m < 5; m++)
         {
-          _msgFootInput.ros_effort[m] = _desiredFootWrench[r](m);
+          _msgFootInput.ros_effort[m] = _desiredFootWrench[_humanInputID[r]](m);
           _msgFootInput.ros_filterAxisForce[m] = 1.0f;
         }
-        _pubFootInput[r].publish(_msgFootInput);      
+        _pubFootInput[r].publish(_msgFootInput);    
+
+        // for(int m = 0; m < 5; m++)
+        // {
+        //   _msgToolToFootTorques.ros_effort[m] = _toolToFootTorques[_humanInputID[r]](m);
+        //   _msgToolToFootTorques.ros_filterAxisForce[m] = 1.0f;
+        // } 
+        // _pubToolToFootTorques[r].publish(_msgToolToFootTorques);  
+
       }
 
 
@@ -778,7 +788,6 @@ void SurgicalTask::updateRobotExternalWrench(const geometry_msgs::WrenchStamped:
   float alpha = 0.9f;
   _Fext[r] = alpha*_Fext[r]+(1-alpha)*raw;
 }
-
 
 
 void SurgicalTask::updateDampingMatrix(const std_msgs::Float32MultiArray::ConstPtr& msg, int r) 

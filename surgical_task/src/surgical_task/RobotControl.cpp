@@ -450,13 +450,29 @@ void SurgicalTask::operationStep(int r, int h)
 
 
   float alphaH = 0.0f;
+
+
+  Eigen::Vector3f Ft;
+  if(_useFTSensor[r])
+  {
+    Ft = _wRb[r]*_wrench[r].segment(0,3);
+    std::cerr << "FT:  " << Ft.transpose() << std::endl;
+    std::cerr << "Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
+    std::cerr << "Fext-FT:  " << (-_wRb[r]*_Fext[r]-Ft).transpose() << std::endl;
+  }
+  else
+  {
+    Ft.setConstant(0.0f);
+  }
+
+
   if(_enablePhysicalHumanInteraction[r])
   {
     Eigen::Matrix3f S, P;
     P = Utils<float>::orthogonalProjector(_wRbIK[r].col(2));
     S = P*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))*_wRbIK[r].col(2));    
     Eigen::Vector3f omegaEEd, vEEdir, vTooldir;
-    vEEdir = (-_wRbIK[r]*_Fext[r]).normalized();
+    vEEdir = (-_wRbIK[r]*_Fext[r]-Ft).normalized();
     Eigen::Vector3f b;
     b = P*vEEdir;
     omegaEEd = S.fullPivHouseholderQr().solve(b);
@@ -478,13 +494,19 @@ void SurgicalTask::operationStep(int r, int h)
     {
       forceDeadZone = _externalForcesDeadZones[r];
     }
-    Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,forceDeadZone)*vTooldir; 
+    Fh = Utils<float>::deadZone((-_wRbIK[r]*_Fext[r]-Ft).norm(),0.0f,forceDeadZone)*vTooldir; 
       
     // if(_Fext[r].norm() < forceDeadZone &&  _Fext[r].norm() > 8 )
     // {
     //   _Fm[r] = (_Fext[r].norm()-8)*vTooldir;
     // }
     // else
+    if(_useFTSensor[r])
+    {
+      _Fm[r] = Utils<float>::deadZone(Ft.norm(),0.0f,5.0f)*Ft.normalized(); 
+      _Fm[r](2)/=2.0f;
+    }
+    else
     {
       _Fm[r].setConstant(0.0f);
     }
@@ -522,7 +544,8 @@ void SurgicalTask::operationStep(int r, int h)
 
 
     float pin, pout, pd;
-    pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vHd[r]);
+    // pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vHd[r]);
+    pin = 1000*Fh.dot(_vHd[r]);
     pd = 2.0f;
 
     _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);

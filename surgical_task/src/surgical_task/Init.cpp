@@ -826,6 +826,16 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Enable physical human interaction: %d %d\n", (int) _enablePhysicalHumanInteraction[LEFT], (int) _enablePhysicalHumanInteraction[RIGHT]);
   }
 
+  _useFTSensor.resize(NB_ROBOTS);
+  if (!_nh.getParam("SurgicalTask/useFTSensor", _useFTSensor))
+  {
+    ROS_ERROR("Couldn't retrieve the use force torque sensor boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Use force torque sensor boolean: %d %d\n", (int) _useFTSensor[LEFT], (int) _useFTSensor[RIGHT]);
+  }
 
   _externalForcesDeadZones.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/externalForcesDeadZones", _externalForcesDeadZones))
@@ -849,10 +859,10 @@ void SurgicalTask::initializeTaskParameters()
   _sphericalTrocarId[RIGHT] = 23;
 
   _gravity << 0.0f, 0.0f, -9.80665f;
-  _toolMass[LEFT] = 0.95f;
-  _toolComPositionFromSensor[LEFT] << 0.0f,0.0f,0.1f;
-  _toolMass[RIGHT] = 0.95f;
-  _toolComPositionFromSensor[RIGHT] << 0.0f,0.0f,0.1f;
+  _toolMass[LEFT] = 0.275f;
+  _toolComPositionFromSensor[LEFT] << 0.0f,0.0f,0.07f;
+  _toolMass[RIGHT] = 1.2f;
+  _toolComPositionFromSensor[RIGHT] << 0.0f,0.0f,0.105f;
 
 
   for(int r = 0; r < NB_ROBOTS; r++)
@@ -882,6 +892,7 @@ void SurgicalTask::initializeTaskParameters()
     _sequenceID[r] = 0;
     _joystickSequenceID[r] = 100;
     _desiredFootWrench[r].setConstant(0.0f);
+    _toolToFootTorques[r].setConstant(0.0f);
     _xRobotBaseOrigin[r].setConstant(0.0f);
     _qRobotBaseOrigin[r] << 1.0f, 0.0f, 0.0f, 0.0f;
     _D[r].setConstant(0.0f);

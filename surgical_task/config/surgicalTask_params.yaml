@@ -240,6 +240,9 @@ SurgicalTask/selfRotationTorqueFeedbackMagnitude: 0.4
 # Physical Interaction with the Robot [LEFT, RIGHT] 
 SurgicalTask/enablePhysicalHumanInteraction: [true, false]
 
+# Physical Interaction with the Robot [LEFT, RIGHT] 
+SurgicalTask/useFTSensor: [false, true]
+
 # External forces dead zones [LEFT, RIGHT] 
 SurgicalTask/externalForcesDeadZones: [5.0, 12.0]
 

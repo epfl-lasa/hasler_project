@@ -116,6 +116,7 @@ class SurgicalTask
     ros::Publisher _pubFilteredWrench[NB_ROBOTS];         // Filtered measured wrench
     ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];
     ros::Publisher _pubFootInput[NB_ROBOTS];
+    ros::Publisher _pubToolToFootTorques[NB_ROBOTS];
     ros::Publisher _pubDesiredWrench[NB_ROBOTS];
     ros::Publisher _pubNullspaceCommand[NB_ROBOTS];
     ros::Publisher _pubDesiredJoints[NB_ROBOTS];
@@ -135,6 +136,7 @@ class SurgicalTask
     geometry_msgs::WrenchStamped _msgFilteredWrench;
     geometry_msgs::Wrench _msgDesiredFootWrench;
     custom_msgs::FootInputMsg _msgFootInput;
+    custom_msgs::FootInputMsg _msgToolToFootTorques;
     std_msgs::Float32MultiArray _msgNullspaceCommand; 
     custom_msgs_gripper::GripperInputMsg _msgGripperInput;  
     custom_msgs_gripper::GripperOutputMsg _msgGripperOutput;  
@@ -253,6 +255,7 @@ class SurgicalTask
     float _linearForceFeedbackMagnitude;
     float _selfRotationTorqueFeedbackMagnitude;
     std::vector<bool> _enablePhysicalHumanInteraction;
+    std::vector<bool> _useFTSensor;
     std::vector<float> _externalForcesDeadZones;
     bool _logData;
 
@@ -322,6 +325,7 @@ class SurgicalTask
     Eigen::Matrix<float,5,1> _footWrenchM[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
+    Eigen::Matrix<float,5,1> _toolToFootTorques[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
     uint32_t _footInterfaceSequenceID[NB_ROBOTS];
     int _footState[NB_ROBOTS];
     float _xyPositionMapping;
