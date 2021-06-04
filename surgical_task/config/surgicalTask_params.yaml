@@ -63,7 +63,11 @@ SurgicalTask/useSim: false
 # SurgicalTask/toolOffsetFromEE: [0.513, 0.54]
 # SurgicalTask/toolOffsetFromEE: [0.54, 0.582]
 # SurgicalTask/toolOffsetFromEE: [0.51, 0.54]
-SurgicalTask/toolOffsetFromEE: [0.407, 0.552]
+# SurgicalTask/toolOffsetFromEE: [0.407, 0.552]
+# SurgicalTask/toolOffsetFromEE: [0.0, 0.0, 0.407, 
+#                                 0.0, 0.0, 0.599]
+SurgicalTask/toolOffsetFromEE: [0.0, 0.0, 0.407, 
+                                0.0, 0.0, 0.552]
 # SurgicalTask/toolOffsetFromEE: [0.4, 0.4]
 
 # Insertion distance in position velocity mapping [LEFT, RIGHT]

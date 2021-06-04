@@ -100,7 +100,7 @@ class QpSolverRCMCollision
 
 		void setRobot(Utils<float>::ROBOT_ID robotID);
 
-		Result step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, float toolOffset, Eigen::Vector3f vdTool, float phid,
+		Result step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, Eigen::Vector3f toolOffset, Eigen::Vector3f vdTool, float phid,
 		            float dt, Eigen::Vector3f xRobotBasis = Eigen::Vector3f::Zero(), Eigen::Matrix3f wRRobotBasis = Eigen::Matrix3f::Identity(), 
 	                float depthGain = 1.0f, Eigen::Vector3f rEEObstacle = Eigen::Vector3f::Zero(), float dEEObstacle = 0.0f, Eigen::Vector3f eeCollisionOffset = Eigen::Vector3f::Zero(),
 	                Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(), float dToolObstacle = 0.0f, Eigen::Vector3f toolCollisionOffset = Eigen::Vector3f::Zero(), 

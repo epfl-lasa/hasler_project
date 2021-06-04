@@ -254,15 +254,20 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
-  _toolOffsetFromEE.resize(NB_ROBOTS);
-  if (!_nh.getParam("SurgicalTask/toolOffsetFromEE", _toolOffsetFromEE))
+  std::vector<float> temp;
+  temp.resize(6);
+  
+  if (!_nh.getParam("SurgicalTask/toolOffsetFromEE", temp))
   {
     ROS_ERROR("Couldn't retrieve the tool offsets from end effector");
     return false;
   }
   else
   {
-    ROS_INFO("Tool offset from EE: %f %f\n", _toolOffsetFromEE[LEFT], _toolOffsetFromEE[RIGHT]);
+    _toolOffsetFromEE[LEFT] << temp[0], temp[1], temp[2];
+    _toolOffsetFromEE[RIGHT] << temp[3], temp[4], temp[5];
+    ROS_INFO("Tool offset from EE: LEFT: %f %f %f RIGHT: %f %f %f", _toolOffsetFromEE[LEFT](0), _toolOffsetFromEE[LEFT](1), _toolOffsetFromEE[LEFT](2),
+                                                                    _toolOffsetFromEE[RIGHT](0), _toolOffsetFromEE[RIGHT](1), _toolOffsetFromEE[RIGHT](2));
   }
 
 
@@ -412,7 +417,6 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Tool tip self angular velocity limit: %f\n", _toolTipSelfAngularVelocityLimit);
   }
 
-  std::vector<float> temp;
   temp.resize(6);
 
   if (!_nh.getParam("SurgicalTask/insertionOffsetPPM", temp))
@@ -861,7 +865,10 @@ void SurgicalTask::initializeTaskParameters()
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolMass[LEFT] = 0.275f;
   _toolComPositionFromSensor[LEFT] << 0.0f,0.0f,0.07f;
+  // _toolMass[RIGHT] = 1.7f;
   _toolMass[RIGHT] = 1.2f;
+  // _toolComPositionFromSensor[RIGHT] << -0.00281195f,0.00866844f,0.09194155f;
+  // _toolComPositionFromSensor[RIGHT] << 0.0f,0.0f,0.09194155f;
   _toolComPositionFromSensor[RIGHT] << 0.0f,0.0f,0.105f;
 
 
@@ -875,10 +882,7 @@ void SurgicalTask::initializeTaskParameters()
     _vdTool[r].setConstant(0.0f);
     _omegad[r].setConstant(0.0f);
     _qd[r].setConstant(0.0f);
-    _qdPrev[r].setConstant(0.0f);
     
-    _xdOffset[r].setConstant(0.0f);
-    _joyAxes[r].setConstant(0.0f);
     _selfRotationCommand[r] = 0.0f;
 
     _footPose[r].setConstant(0.0f);
@@ -888,9 +892,6 @@ void SurgicalTask::initializeTaskParameters()
     _footWrenchRef[r].setConstant(0.0f);
     _footTwist[r].setConstant(0.0f);
     _trocarInput[r].setConstant(0.0f);
-    _vdOffset[r].setConstant(0.0f);
-    _sequenceID[r] = 0;
-    _joystickSequenceID[r] = 100;
     _desiredFootWrench[r].setConstant(0.0f);
     _toolToFootTorques[r].setConstant(0.0f);
     _xRobotBaseOrigin[r].setConstant(0.0f);
@@ -905,6 +906,7 @@ void SurgicalTask::initializeTaskParameters()
 
     _trocarPosition[r].setConstant(0.0f);
     _wrenchCount[r] = 0;
+    _wrenchExtCount[r] = 0;
     _filterGainFootAxis[r].setConstant(1.0f);
     _footOffset[r].setConstant(0.0f);
     _desiredOffsetPPM[r].setConstant(0.0f);
@@ -926,6 +928,10 @@ void SurgicalTask::initializeTaskParameters()
     _firstDampingMatrix[r] = false;
     _firstPublish[r] = false;
     _insertionFinished[r] = false;
+    _firstFootInput[r] = false;
+    _wrenchBiasOK[r] = false;
+    _wrenchExtBiasOK[r] = false;
+
     _wRRobotBasis[r].setIdentity();
     _humanToolStatus[r] = 0;
     _taud[r] = 0.0f;
@@ -938,6 +944,11 @@ void SurgicalTask::initializeTaskParameters()
     _alphaH[r] = 0.0f;
     _depthGain[r] = 0.0f;
     _Fm[r].setConstant(0.0f);
+    _toolTipCorrectionOffset[r].setConstant(0.0f);
+    _toolDir[r] << 0.0f, 0.0f, -1.0f;
+    _toolDirIK[r] << 0.0f, 0.0f, -1.0f;
+    _wrenchBias[r].setConstant(0.0f);
+    _wrenchExtBias[r].setConstant(0.0f);
   }
   _stop = false;
   _firstGripper = false;
@@ -966,7 +977,7 @@ void SurgicalTask::initializeTaskParameters()
   _toolClutchingOffset.setConstant(0.0f);
   _gripperClutchingOffset = 0.0f;
   _humanGripperClutchingOffset = 0.0f;
-  _attractorOffset.setConstant(0.0f);
+
 
   if(!_useSim)
   {
@@ -982,12 +993,12 @@ void SurgicalTask::initializeTaskParameters()
   if(_usePredefinedTrocars)
   {
     Eigen::Vector3f temp;
-    _trocarPosition[LEFT] << -0.304, -0.432f, 0.696f-_toolOffsetFromEE[LEFT];
+    _trocarPosition[LEFT] << -0.304, -0.432f, 0.696f-_toolOffsetFromEE[LEFT](2);
     temp << 0.265f,-0.490f,-0.830f;
     temp.normalize();
     _trocarOrientation[LEFT] << temp;
 
-    _trocarPosition[RIGHT] << -0.308f, 0.471f, 0.741f-_toolOffsetFromEE[RIGHT];
+    _trocarPosition[RIGHT] << -0.308f, 0.471f, 0.741f-_toolOffsetFromEE[RIGHT](2);
     temp << 0.116f,0.220f,-0.968f;
     temp.normalize();
     _trocarOrientation[RIGHT] << temp; 
@@ -1026,15 +1037,7 @@ void SurgicalTask::initializeTaskParameters()
   _dbeliefsC.setConstant(0.0f);
 
   _vda.setConstant(0.0f);
-  // Eigen::Vector3f p0;
-  // p0 <<-0.413005,  0.443508, 0.0539682;
 
-  // if(!_useSim)
-  // {
-  //   _pillarsPosition.row(0) = p0;
-  //   _pillarsPosition.row(1) << p0(0), p0(1)-0.064, p0(2);
-  //   _pillarsPosition.row(2) << p0(0)+0.064, p0(1)-0.064, p0(2);    
-  // }
 
   if(_toolsTracking == OPTITRACK_BASED)
   {
@@ -1154,11 +1157,22 @@ void SurgicalTask::registerTrocars()
     { 
       if(_useRobot[r])
       {        
-        if(c==add[r] && ((!_useFranka && _firstRobotPose[r])|| (_useFranka && _firstJointsUpdate[r])))
+        if(c==add[r] && ((!_useFranka && _firstRobotPose[r])|| (_useFranka && _firstJointsUpdate[r])) && !_trocarsRegistered[r])
         {
           _trocarPosition[r] = _x[r];
           _trocarOrientation[r] = _wRb[r].col(2);
-          std::cerr << r << ": Adding trocar: " << _x[r].transpose() << std::endl;         
+          if(r == RIGHT && _useRobot[LEFT] && _tool[LEFT] == CAMERA && _trocarsRegistered[LEFT])
+          {
+            Eigen::Vector3f offset, x, delta;
+            offset << 0.0f, 0.2f, 0.0f;
+            x = _trocarPosition[LEFT]+offset-_x[RIGHT];
+            _toolTipCorrectionOffset[r] = _wRb[RIGHT].transpose()*x;
+            std::cerr << "Delta:" << _toolTipCorrectionOffset[r].transpose() << std::endl;
+            // _trocarPosition[r] = _trocarPosition[LEFT]+offset;
+            _trocarPosition[r] = _x[r]+_wRb[r]*_toolTipCorrectionOffset[r];
+            // _toolTipCorrectionOffset[r] = _x[LEFT]+offset;
+          }
+          std::cerr << r << ": Adding trocar: " << _trocarPosition[r].transpose() << std::endl;         
         }
         else if(c==finish[r])
         {
@@ -1166,6 +1180,7 @@ void SurgicalTask::registerTrocars()
           if(_trocarPosition[r].norm()>FLT_EPSILON)
           {
             _trocarsRegistered[r] = true;
+            _toolOffsetFromEE[r] += _toolTipCorrectionOffset[r];
             std::cerr << r << ": Finished registering" << std::endl;
           }
         }

@@ -204,7 +204,8 @@ void SurgicalTask::computeTrocarInput(int r, int h)
 
       _trocarInput[h] = R*_trocarInput[h];
 
-      if(_clutching && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_clutching && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      if(_clutching)
       {
         _humanClutchingOffset = _trocarInput[h];
       }
@@ -218,7 +219,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
       }
 
-      if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
       	_trocarInput[h] -= _humanClutchingOffset;
       }
@@ -315,7 +316,8 @@ void SurgicalTask::computeTrocarInput(int r, int h)
     
       _trocarInput[h] = R*_footPose[h];
 
-      if(_clutching  && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_clutching  && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      if(_clutching)
       {
         _humanClutchingOffset = _trocarInput[h];
       }
@@ -329,7 +331,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
       }
 
-      if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
       	_trocarInput[h] -= _humanClutchingOffset;
       }
@@ -367,7 +369,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
 }
 
 
-void SurgicalTask::computeDesiredFootWrench(int r, int h)
+void SurgicalTask::computeDesiredFootTorques(int r, int h)
 {
   _desiredFootWrench[h].setConstant(0.0f);
 
@@ -375,11 +377,9 @@ void SurgicalTask::computeDesiredFootWrench(int r, int h)
   G.setIdentity();
   G(2,2) = 0.2f;
 
-
   Eigen::Vector4f temp;
 
   temp(3) = _taud[r];
-
 
   switch(_tool[r])
   {

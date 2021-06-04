@@ -87,13 +87,18 @@ class SurgicalTask
 
     enum ToolsTracking {CAMERA_BASED = 0, OPTITRACK_BASED = 1};
 
+    enum TaskJoystickButtons {X_BUTTON = 0, A_BUTTON = 1, IOS_BUTTON = 2, TRIANGLE_BUTTON = 3};
+
   private:
     // ROS variables
     ros::NodeHandle _nh;
     ros::Rate _loopRate;
     float _dt;
 
-    // Subscribers declarations
+    //////////////////////////////
+    // Subscribers declarations //
+    //////////////////////////////
+
     ros::Subscriber _subRobotPose[NB_ROBOTS];             // robot pose
     ros::Subscriber _subRobotTwist[NB_ROBOTS];            // robot twist
     ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];     // force torque sensor
@@ -101,19 +106,22 @@ class SurgicalTask
     ros::Subscriber _subFootInterfacePose[NB_ROBOTS];
     ros::Subscriber _subFootInterfaceWrench[NB_ROBOTS];
     ros::Subscriber _subFootOutput[NB_ROBOTS];
+    ros::Subscriber _subFootInput[NB_ROBOTS];
     ros::Subscriber _subJoystick[NB_ROBOTS];
     ros::Subscriber _subCurrentJoints[NB_ROBOTS];
     ros::Subscriber _subOptitrackPose[NB_TRACKED_OBJECTS];  // Subscribe to optitrack markers' pose
     ros::Subscriber _subGripper;
-    ros::Subscriber _subFootSharedGrasping[NB_ROBOTS];
     ros::Subscriber _subMarkersPosition;
     ros::Subscriber _subRobotExternalWrench[NB_ROBOTS];
+    ros::Subscriber _subTaskJoystick;
 
-    // Publisher declaration
+    ///////////////////////////
+    // Publisher declaration //
+    ///////////////////////////
+
     ros::Publisher _pubDesiredTwist[NB_ROBOTS];           // Desired twist to DS-impdedance controller
     ros::Publisher _pubDesiredTask[NB_ROBOTS];           // Desired twist to DS-impdedance controller
     ros::Publisher _pubDesiredOrientation[NB_ROBOTS];     // Desired orientation to DS-impedance controller
-    ros::Publisher _pubFilteredWrench[NB_ROBOTS];         // Filtered measured wrench
     ros::Publisher _pubDesiredFootWrench[NB_ROBOTS];
     ros::Publisher _pubFootInput[NB_ROBOTS];
     ros::Publisher _pubToolToFootTorques[NB_ROBOTS];
@@ -128,12 +136,14 @@ class SurgicalTask
     ros::Publisher _pubTwoFeetOneTool;
     ros::Publisher _pubCollisionSpheres;
     
-    // Messages declaration
+    //////////////////////////
+    // Messages declaration //
+    //////////////////////////
+
     geometry_msgs::Pose _msgRealPose;
     geometry_msgs::Pose _msgDesiredPose;
     geometry_msgs::Quaternion _msgDesiredOrientation;
     geometry_msgs::Twist _msgDesiredTwist;
-    geometry_msgs::WrenchStamped _msgFilteredWrench;
     geometry_msgs::Wrench _msgDesiredFootWrench;
     custom_msgs::FootInputMsg _msgFootInput;
     custom_msgs::FootInputMsg _msgToolToFootTorques;
@@ -146,47 +156,129 @@ class SurgicalTask
     surgical_task::RobotStateMsg _msgRobotState;
     custom_msgs::TwoFeetOneToolMsg _msgTwoFeetOneTool;
 
-    // Tool characteristics
-    float _toolMass[NB_ROBOTS];                            // Tool mass [kg]
-    std::vector<float> _toolOffsetFromEE;                   // Tool offset along z axis of end effector [m]             
-    Eigen::Vector3f _toolComPositionFromSensor[NB_ROBOTS];   // Offset of the tool [m] (3x1)
-    Eigen::Vector3f _gravity;                   // Gravity vector [m/s^2] (3x1)            
+    //////////////////////////
+    // Tool characteristics //
+    //////////////////////////
 
-    // Tool state variables
-    Eigen::Vector3f _x[NB_ROBOTS];                         // Position [m] (3x1)
-    Eigen::Vector3f _xEE[NB_ROBOTS];                        // Position [m] (3x1)
+    float _toolMass[NB_ROBOTS];                             // Tool mass [kg]
+    Eigen::Vector3f _toolOffsetFromEE[NB_ROBOTS];           // Tool offset along z axis of end effector [m]             
+    Eigen::Vector3f _toolComPositionFromSensor[NB_ROBOTS];  // Offset of the tool [m] (3x1)
+    Eigen::Vector3f _gravity;                               // Gravity vector [m/s^2] (3x1)  
+
+    ////////////////////////////////
+    // Tool/Robot state variables //
+    ////////////////////////////////
+
+    Eigen::Vector3f _x[NB_ROBOTS];                         // Tool tip position [m] (3x1)
+    Eigen::Vector3f _xEE[NB_ROBOTS];                       // End-effector position [m] (3x1)
     Eigen::Vector4f _q[NB_ROBOTS];                         // Current quaternion (4x1)
     Eigen::Vector4f _qinit[NB_ROBOTS];                     // Initial quaternion (4x1)
     Eigen::Matrix3f _wRb[NB_ROBOTS];                       // Orientation matrix (3x1)
     Eigen::Matrix3f _wRb0[NB_ROBOTS];                       // Orientation matrix (3x1)
     Eigen::Vector3f _v[NB_ROBOTS];                         // Velocity [m/s] (3x1)
     Eigen::Vector3f _w[NB_ROBOTS];                         // Angular velocity [rad/s] (3x1)
-    Eigen::VectorXf _currentJoints[NB_ROBOTS];
-    Eigen::VectorXf _currentJointVelocities[NB_ROBOTS];
-    Eigen::VectorXf _currentJointTorques[NB_ROBOTS];
-    Eigen::Matrix<float,6,1> _wrench[NB_ROBOTS];            // Wrench [N and Nm] (6x1)
-    Eigen::Matrix<float,6,1> _wrenchBias[NB_ROBOTS];        // Wrench bias [N and Nm] (6x1)
-    Eigen::Matrix<float,6,1> _filteredWrench[NB_ROBOTS];    // Filtered wrench [N and Nm] (6x1)
+    Eigen::VectorXf _currentJoints[NB_ROBOTS];             // Current joint positions [rad] (7x1)           
+    Eigen::VectorXf _currentJointVelocities[NB_ROBOTS];    // Current joint velocities [rad/s] (7x1) 
+    Eigen::VectorXf _currentJointTorques[NB_ROBOTS];       // Current joint torques [Nm] (7x1) 
+    Eigen::Matrix<float,6,1> _wrench[NB_ROBOTS];           // Wrench [N and Nm] (6x1)
+    Eigen::Matrix<float,6,1> _wrenchBias[NB_ROBOTS];       // Wrench bias [N and Nm] (6x1)
+    Eigen::Matrix<float,6,1> _wrenchExtBias[NB_ROBOTS];    // Wrench bias [N and Nm] (6x1)
+    Eigen::Matrix<float,6,1> _filteredWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
     Eigen::Matrix3f _D[NB_ROBOTS];
     float _d1[NB_ROBOTS];
+    Eigen::Vector3f _toolDir[NB_ROBOTS];
+    Eigen::Vector3f _xdTool[NB_ROBOTS];
+    Eigen::VectorXf _ikJoints[NB_ROBOTS];
+    Eigen::Vector3f _xIK[NB_ROBOTS];                         // Position [m] (3x1)
+    Eigen::Vector3f _xEEIK[NB_ROBOTS];                         // Position [m] (3x1)
+    Eigen::Matrix3f _wRbIK[NB_ROBOTS];    
+    Eigen::Vector3f _toolDirIK[NB_ROBOTS];
+    float _dRCMTool[NB_ROBOTS];
+    Eigen::Vector3f _trocarPosition[NB_ROBOTS];
+    Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
+    Eigen::Vector3f _rEETrocar[NB_ROBOTS];
+    Eigen::Vector3f _rEERCM[NB_ROBOTS];
+    Eigen::Vector3f _xRCM[NB_ROBOTS];
+    Eigen::Vector3f _Fext[NB_ROBOTS];
+    Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];
+    Eigen::Vector3f _rEECollision[NB_ROBOTS];
+    Eigen::Vector3f _rToolCollision[NB_ROBOTS];
+    Eigen::Vector3f _nToolCollision[NB_ROBOTS];
+    float _dToolCollision[NB_ROBOTS];
+    Eigen::Vector3f _nEECollision[NB_ROBOTS];
+    float _dEECollision[NB_ROBOTS];
+    Eigen::Vector3f _Fm[NB_ROBOTS];
+    Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];        // Tool correction [m] (3x1)
+    float _depthGain[NB_ROBOTS];
+    Eigen::Vector3f _toolTipCorrectionOffset[NB_ROBOTS];
+    Eigen::Matrix3f _Roptitrack, _Rcamera;
+    int _currentRobot;
 
-    // Task variables
+    /////////////////////////////////
+    // RobotTask/Command variables //
+    /////////////////////////////////
+
     Eigen::Vector3f _xd[NB_ROBOTS];        // Desired position [m] (3x1)
+    Eigen::Vector3f _xdEE[NB_ROBOTS];
     Eigen::Vector3f _xd0[NB_ROBOTS];        // Desired position [m] (3x1)
     Eigen::Vector4f _qd[NB_ROBOTS];        // Desired quaternion (4x1)
-    Eigen::Vector4f _qdPrev[NB_ROBOTS];        // Desired quaternion (4x1)
     Eigen::Vector3f _omegad[NB_ROBOTS];    // Desired angular velocity [rad/s] (3x1)
     Eigen::Vector3f _vd[NB_ROBOTS];        // Desired modulated DS [m/s] (3x1)
     Eigen::Vector3f _vdTool[NB_ROBOTS];        // Desired modulated DS [m/s] (3x1)
     Eigen::Vector3f _xRobotBaseOrigin[NB_ROBOTS];
     Eigen::Vector4f _qRobotBaseOrigin[NB_ROBOTS];
     float _selfRotationCommand[NB_ROBOTS];
-    Eigen::Matrix<float,NB_AXES_JOYSTICK,1> _joyAxes[NB_ROBOTS];
-    uint32_t _joystickSequenceID[NB_ROBOTS];
-    int _wrenchCount[NB_ROBOTS];
     Eigen::Matrix<float,6,1> _nullspaceWrench[NB_ROBOTS];
     Eigen::Matrix<float,7,1> _nullspaceCommand[NB_ROBOTS];
-    int _sphericalTrocarId[NB_ROBOTS];
+    Eigen::Vector3f _desiredOffsetPPM[NB_ROBOTS];
+    float _desiredAnglePPM[NB_ROBOTS];
+    float _desiredGripperPosition[NB_ROBOTS];
+    std::vector<float> _insertionDistancePVM;
+    Eigen::VectorXf _beliefs[NB_ROBOTS];
+    Eigen::VectorXf _dbeliefs[NB_ROBOTS];
+    Eigen::VectorXf _beliefsC;
+    Eigen::VectorXf _dbeliefsC;
+    Eigen::Vector3f _FdFoot[NB_ROBOTS];
+    float _taud[NB_ROBOTS];
+    Eigen::Vector3f _vHd[NB_ROBOTS];
+    Eigen::Vector3f _vHRef[NB_ROBOTS];
+    Eigen::Vector3f _vtRef[NB_ROBOTS];
+    Eigen::Vector3f _vtd[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _humanClutchingOffset;
+    Eigen::Vector4f _toolClutchingOffset;
+    float _gripperClutchingOffset;
+    float _humanGripperClutchingOffset;
+    Eigen::Vector3f _vda;
+    float _d = 0.07f;
+
+    //////////////////////////////
+    // Foot interface variables //
+    //////////////////////////////
+    
+    Eigen::Matrix<float,5,1> _footPose[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footPoseFiltered[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _trocarInput[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _oldTrocarInput[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrenchD[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrenchRef[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footWrenchM[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
+    int _footState[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footInputPosition[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footInputFilterAxisForce[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footInputKp[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footInputKd[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
+    Eigen::Matrix<float,5,1> _toolToFootTorques[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
+    Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
+    Eigen::Matrix<float, 5, 1> _filterGainFootAxis[NB_ROBOTS];
+
+    //////////////////////////////////
+    // Configuration/Gain variables //
+    ////////////////////////////////// 
+
+    int _wrenchCount[NB_ROBOTS];
+    int _wrenchExtCount[NB_ROBOTS];
     Eigen::Matrix<float,7,1> _stiffness[NB_ROBOTS];
     std::vector<int> _linearMapping;
     std::vector<int> _selfRotationMapping;
@@ -205,37 +297,26 @@ class SurgicalTask
     float _trocarSpaceSelfRotationGain;
     float _trocarSpaceSelfRotationRange;
     std::vector<float> _jointImpedanceStiffnessGain;
-    bool _useSafetyLimits;
     float _safetyLimitsStiffnessGain;
-    bool _allowTaskAdaptation;
-    bool _useTaskAdaptation;
     float _taskAdaptationAlignmentGain;
     float _taskAdaptationGaussianWidth;
     float _taskAdaptationConvergenceGain;
     float _taskAdaptationProximityGain;
     float _taskAdaptationExponentialGain;
     float _taskAdaptationOverallGain;
-    Eigen::Vector3f _desiredOffsetPPM[NB_ROBOTS];
-    float _desiredAnglePPM[NB_ROBOTS];
-    float _desiredGripperPosition[NB_ROBOTS];
     float _gripperRange;
-    float _dRCMTool[NB_ROBOTS];
     int _dominantInputID, _nonDominantInputID;
     int _humanInputMode;
-    std::vector<float> _insertionDistancePVM;
     int _toolsTracking;
     Eigen::Vector3f _insertionOffsetPPM[NB_ROBOTS];
     Eigen::Vector3f _operationOffsetRangePPM[NB_ROBOTS];
     Eigen::Vector3f _operationMinOffsetPVM[NB_ROBOTS];
     Eigen::Vector3f _operationMaxOffsetPVM[NB_ROBOTS];
     std::vector<float> _operationMinInsertion;
-    bool _enableEECollisionAvoidance;
-    bool _enableToolCollisionAvoidance;
     float _eeSafetyCollisionDistance;
     float _eeSafetyCollisionRadius;
     float _toolSafetyCollisionDistance;
     float _toolSafetyCollisionRadius;
-    bool _enableWorkspaceCollisionAvoidance;
     int _switchingAxis;
     std::vector<float> _switchingThreshold;
     int _clutchingAxis;
@@ -254,36 +335,36 @@ class SurgicalTask
     float _eeAngularVelocityLimit;
     float _linearForceFeedbackMagnitude;
     float _selfRotationTorqueFeedbackMagnitude;
-    std::vector<bool> _enablePhysicalHumanInteraction;
-    std::vector<bool> _useFTSensor;
     std::vector<float> _externalForcesDeadZones;
-    bool _logData;
+    float _filteredForceGain;   // Filtering gain for force/torque sensor
+    int _sphericalTrocarId[NB_ROBOTS];
+    Eigen::VectorXi _pillarsId;
+    Eigen::MatrixXf _pillarsPosition;
+    int _nbTasks;
+    Eigen::MatrixXf _p[4];
 
-    Eigen::Vector3f _trocarPosition[NB_ROBOTS];
-    Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
-    Eigen::Vector3f _rEETrocar[NB_ROBOTS];
-    Eigen::Vector3f _rEERCM[NB_ROBOTS];
-    Eigen::Vector3f _xRCM[NB_ROBOTS];
-    Eigen::Vector3f _xdEE[NB_ROBOTS];
-    Eigen::Vector3f _fxk[NB_ROBOTS];
-    Eigen::Vector3f _fx[NB_ROBOTS];
-    Eigen::VectorXf _beliefs[NB_ROBOTS];
-    Eigen::VectorXf _dbeliefs[NB_ROBOTS];
-    Eigen::VectorXf _beliefsC;
-    Eigen::VectorXf _dbeliefsC;
-    Eigen::Vector3f _Fext[NB_ROBOTS];
+    //////////////////////////////////////////////
+    // Optitrack/Camera tool tracking variables //
+    //////////////////////////////////////////////
 
-    float _humanToolLength[2];
-    Eigen::Vector3f _humanToolPosition[2];
     Eigen::MatrixXf _colorMarkersPosition;
     Eigen::MatrixXf _colorMarkersFilteredPosition;
     Eigen::MatrixXf _colorMarkersFilteredPosition2;
     Eigen::VectorXi _colorMarkersStatus;
+    Eigen::Vector3f _humanToolPosition[2];
     int _humanToolStatus[2];
-    Eigen::Matrix3f _wRRobotBasis[NB_ROBOTS];
+    Eigen::Matrix<float,3,NB_TRACKED_OBJECTS> _markersPosition;       // Markers position in optitrack frame
+    Eigen::Matrix<float,4,NB_TRACKED_OBJECTS> _markersQuaternion;       // Markers position in optitrack frame
+    Eigen::Matrix<float,3,NB_TRACKED_OBJECTS> _markersPosition0;      // Initial markers position in opittrack frame
+    Eigen::Matrix<uint32_t,NB_TRACKED_OBJECTS,1> _markersSequenceID;  // Markers sequence ID
+    Eigen::Matrix<uint16_t,NB_TRACKED_OBJECTS,1> _markersTracked;     // Markers tracked state
+    uint32_t _optitrackCount;                                         // Counter used to pre-process the optitrack data
+    Eigen::Vector3f _offsetTool;
 
+    //////////////
+    // Booleans //
+    //////////////
 
-    // Booleans
     bool _debug;
     std::vector<bool> _useRobot;
     bool _useSim;
@@ -295,6 +376,7 @@ class SurgicalTask
     bool _trocarsRegistered[NB_ROBOTS];
     bool _firstWrenchReceived[NB_ROBOTS];       // Monitor first force/torque data update
     bool _wrenchBiasOK[NB_ROBOTS];              // Check if computation of force/torque sensor bias is OK
+    bool _wrenchExtBiasOK[NB_ROBOTS];              // Check if computation of force/torque sensor bias is OK
     bool _firstDampingMatrix[NB_ROBOTS];        // Monitor first damping matrix update
     bool _firstHumanInput[NB_ROBOTS];
     bool _firstJointsUpdate[NB_ROBOTS];   
@@ -310,71 +392,36 @@ class SurgicalTask
     Utils<float>::ROBOT_ID _robotID;
     bool _clutching;
     bool _trackingOK;
+    bool _firstFootInput[NB_ROBOTS];
     float _tankH[NB_ROBOTS];
     float _alphaH[NB_ROBOTS];
-
-
-
-    // Foot interface variables
-    Eigen::Matrix<float,5,1> _footPose[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footPoseFiltered[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _trocarInput[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _oldTrocarInput[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footWrenchD[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footWrenchRef[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footWrenchM[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footTwist[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
-    Eigen::Matrix<float,5,1> _toolToFootTorques[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
-    uint32_t _footInterfaceSequenceID[NB_ROBOTS];
-    int _footState[NB_ROBOTS];
-    float _xyPositionMapping;
-    float _zPositionMapping;
-    Eigen::Vector3f _vdFoot[NB_ROBOTS];
-    Eigen::Vector3f _xdFoot[NB_ROBOTS];
-    Eigen::Vector3f _FdFoot[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
-    Eigen::Matrix<float,5,1> _humanClutchingOffset;
-    Eigen::Vector4f _toolClutchingOffset;
-    float _gripperClutchingOffset;
-    float _humanGripperClutchingOffset;
-    Eigen::Vector3f _xdTool[NB_ROBOTS];
-    Eigen::VectorXf _ikJoints[NB_ROBOTS];
-    Eigen::Vector3f _xIK[NB_ROBOTS];                         // Position [m] (3x1)
-    Eigen::Vector3f _xEEIK[NB_ROBOTS];                         // Position [m] (3x1)
-    Eigen::Matrix3f _wRbIK[NB_ROBOTS];                         // Position [m] (3x1)
-
-    float _filteredForceGain;   // Filtering gain for force/torque sensor
-
+    bool _useSafetyLimits;
+    bool _allowTaskAdaptation;
+    bool _useTaskAdaptation;
+    bool _enableEECollisionAvoidance;
+    bool _enableToolCollisionAvoidance;
+    bool _enableWorkspaceCollisionAvoidance;
+    std::vector<bool> _enablePhysicalHumanInteraction;
+    std::vector<bool> _useFTSensor;
+    bool _logData;
     bool _optitrackOK;
     bool _optitrackInitialized;
     bool _firstOptitrackPose[NB_TRACKED_OBJECTS];  // Monitor first optitrack markers update
-    Eigen::Matrix<float,3,NB_TRACKED_OBJECTS> _markersPosition;       // Markers position in optitrack frame
-    Eigen::Matrix<float,4,NB_TRACKED_OBJECTS> _markersQuaternion;       // Markers position in optitrack frame
-    Eigen::Matrix<float,3,NB_TRACKED_OBJECTS> _markersPosition0;      // Initial markers position in opittrack frame
-    Eigen::Matrix<uint32_t,NB_TRACKED_OBJECTS,1> _markersSequenceID;  // Markers sequence ID
-    Eigen::Matrix<uint16_t,NB_TRACKED_OBJECTS,1> _markersTracked;     // Markers tracked state
-    uint32_t _optitrackCount;                                         // Counter used to pre-process the optitrack data
+    bool _switching = false;
+    bool _wait = false;
+    bool _insertionFinished[NB_ROBOTS];
+    bool _allSubscribersOK = false;
+    bool _allFramesOK = false;
+    bool _taskAdaptation;
 
-    float _velocityLimit;       // Velocity limit [m/s]
-    Eigen::Vector3f _xdOffset[NB_ROBOTS];
-    Eigen::Vector3f _vdOffset[NB_ROBOTS];
-
-    
-    // Other variables
-    uint32_t _sequenceID[NB_ROBOTS];
+    /////////////////////
+    // Other variables //
+    /////////////////////
     std::string _fileName;
     std::ifstream _inputFile;
-    std::ofstream _outputFile[3];
-
+    std::ofstream _outputFile[5];
     tf::TransformListener _lr;
     tf::StampedTransform _transform;
-
-    float _kxy;     
-    float _dxy;     
-    float _kphi;        
-    float _dphi; 
-
     QpSolverRCM _qpSolverRCM[NB_ROBOTS];    
     QpSolverRCM3 _qpSolverRCM3[NB_ROBOTS];
     CvxgenSolverRCM _cvxgenSolverRCM;
@@ -385,45 +432,9 @@ class SurgicalTask
     QpSolverRCMCollision3* _qpSolverRCMCollision3[NB_ROBOTS];    
     // QpSolverRCMCollision3::Result _qpResult[NB_ROBOTS];
 
-    Eigen::VectorXi _pillarsId;
-    Eigen::MatrixXf _pillarsPosition;
 
-    std::mutex _mutex;
     static SurgicalTask* me;
 
-    pthread_t _thread;
-    bool _startThread;
-
-    Eigen::Vector3f _vda;
-    Eigen::Matrix3f _Roptitrack, _Rcamera;
-    bool _taskAdaptation;
-
-    float _d = 0.07f;
-    Eigen::Vector3f _offsetTool;
-    Eigen::MatrixXf _p[4];
-    int _nbTasks;
-    Eigen::Matrix<float, 5, 1> _filterGainFootAxis[NB_ROBOTS];
-    int _currentRobot;
-    Eigen::Vector4f _attractorOffset;
-    bool _switching = false;
-    bool _wait = false;
-    bool _insertionFinished[NB_ROBOTS];
-    bool _allSubscribersOK = false;
-    bool _allFramesOK = false;
-    Eigen::Vector3f _rEECollision[NB_ROBOTS];
-    Eigen::Vector3f _rToolCollision[NB_ROBOTS];
-    Eigen::Vector3f _nToolCollision[NB_ROBOTS];
-    float _dToolCollision[NB_ROBOTS];
-    Eigen::Vector3f _nEECollision[NB_ROBOTS];
-    float _dEECollision[NB_ROBOTS];
-    Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];
-    float _taud[NB_ROBOTS];
-    Eigen::Vector3f _vHd[NB_ROBOTS];
-    Eigen::Vector3f _vHRef[NB_ROBOTS];
-    Eigen::Vector3f _vtRef[NB_ROBOTS];
-    Eigen::Vector3f _vtd[NB_ROBOTS];
-    float _depthGain[NB_ROBOTS];
-    Eigen::Vector3f _Fm[NB_ROBOTS];
 
   public:
 
@@ -481,10 +492,12 @@ class SurgicalTask
 
     // Update robot r task state
     void updateRobotTaskState(int r);
+    
+    // Compute tool-tool collision point and distance
+    void computeToolCollision(int r);
 
     // Update control phase of robot r
     void updateControlPhase(int r);
-
 
     // Perform an automatic insertion phase step for robot r and human input h
     void automaticInsertionStep(int r, int h);
@@ -492,14 +505,14 @@ class SurgicalTask
     // Perform an operation phase step for robot r and human input h
     void operationStep(int r, int h);
 
-    void insertionStep(int r, int h);
-
+    // Compute desired task specific tool tip velocity for robot r and human input h
     void computeDesiredToolVelocity(int r, int h);
 
-    void computeDesiredFootWrench();
+    // Compute admittance velocity for robot r
+    void computeAdmittanceVelocity(int r);
 
-    // Compute desired orientation
-    void computeDesiredOrientation();
+    // Scale input velocty to take into account fulcrum effect
+    Eigen::Vector3f fulcrumEffectScaling(int r, Eigen::Vector3f vIn);
 
     void initializeBeliefs(int r);
 
@@ -529,7 +542,11 @@ class SurgicalTask
 
     void updateJoystick(const sensor_msgs::Joy::ConstPtr& msg, int k);
 
+    void updateTaskJoystick(const sensor_msgs::Joy::ConstPtr& msg);
+
     void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k);
+
+    void updateFootInput(const custom_msgs::FootInputMsg::ConstPtr& msg, int k);
     
     void updateFootSharedGrasping(const custom_msgs_gripper::SharedGraspingMsg::ConstPtr& msg, int k);
 
@@ -547,19 +564,11 @@ class SurgicalTask
 
     void computeHapticFeedback(int r);
 
-    void computeDesiredFootWrench(int r, int h);
+    void computeDesiredFootTorques(int r, int h);
 
     void registerTrocars();
 
     void getExpectedDesiredEETwist(int r, Eigen::Vector3f &vdEE, Eigen::Vector3f &omegadEE, Eigen::Vector3f vdk, Eigen::Vector3f rk);
-
-
-
-
-    // void footDataTransformation();
-    // void positionPositionMapping();
-    // void positionVelocityMapping();
-    // void updateFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg, int k);
 };
 
 

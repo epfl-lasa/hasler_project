@@ -1,21 +1,6 @@
 #include "SurgicalTask.h"
 
 
-// inline void pseudoInverse(const Eigen::MatrixXf& M_, Eigen::MatrixXf& M_pinv_, bool damped = true) {
-//   double lambda_ = damped ? 0.2 : 0.0;
-
-//   Eigen::JacobiSVD<Eigen::MatrixXf> svd(M_, Eigen::ComputeFullU | Eigen::ComputeFullV);
-//   Eigen::JacobiSVD<Eigen::MatrixXf>::SingularValuesType sing_vals_ = svd.singularValues();
-//   Eigen::MatrixXf S_ = M_;  // copying the dimensions of M_, its content is not needed.
-//   S_.setZero();
-
-//   for (int i = 0; i < sing_vals_.size(); i++)
-//     S_(i, i) = (sing_vals_(i)) / (sing_vals_(i) * sing_vals_(i) + lambda_ * lambda_);
-
-//   M_pinv_ = Eigen::MatrixXf(svd.matrixV() * S_.transpose() * svd.matrixU().transpose());
-// }
-
-
 void SurgicalTask::robotControlStep(int r, int h)
 {
   // Update trocar information
@@ -42,11 +27,6 @@ void SurgicalTask::robotControlStep(int r, int h)
       }
       break;
     }
-    case INSERTION:
-    {
-      insertionStep(r, h);
-      break;
-    }
     default:
     {
       break;
@@ -55,8 +35,11 @@ void SurgicalTask::robotControlStep(int r, int h)
 
   if(_humanInputDevice[r] == FOOT && !_useSim)
   {
+    // Compute haptic feedback in robot world frame
     computeHapticFeedback(r);
-    computeDesiredFootWrench(r, h);
+
+    // Compute haptic foot torques
+    computeDesiredFootTorques(r, h);
   }
 }
 
@@ -65,52 +48,68 @@ void SurgicalTask::updateRobotTaskState(int r)
 {
   // Compute vector EE to trocar
   _rEETrocar[r] = _trocarPosition[r]-_xEE[r];
+
+  // Compute tool direction
+  _toolDir[r] = (_wRb[r]*_toolOffsetFromEE[r]).normalized();
+
   // Compute RCM position
-  _xRCM[r] = _xEE[r]+(_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2))*_wRb[r].col(2);
+  _xRCM[r] = _xEE[r]+(_trocarPosition[r]-_xEE[r]).dot(_toolDir[r])*_toolDir[r];
   
   // Compute vector EE to RCM
   _rEERCM[r] = _xRCM[r]-_xEE[r];
 
   // Compute distance RCM tool
-  _dRCMTool[r] = (_trocarPosition[r]-_xEE[r]).dot(_wRb[r].col(2))-_toolOffsetFromEE[r];
+  _dRCMTool[r] = (_xRCM[r]-_x[r]).dot(_toolDir[r]);
 
   // Compute IK EE/tip position and orientation
   Eigen::Matrix4f Hik;
-  Hik = Utils<float>::getForwardKinematics(_ikJoints[r],_robotID);
- 
+  Hik = Utils<float>::getForwardKinematics(_ikJoints[r],_robotID); 
   _xEEIK[r] =  _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1);
-  _xIK[r] = _xRobotBaseOrigin[r]+_wRRobotBasis[r]*Hik.block(0,3,3,1)+_toolOffsetFromEE[r]*_wRRobotBasis[r]*Hik.block(0,2,3,1);
   _wRbIK[r] = _wRRobotBasis[r]*Hik.block(0,0,3,3);
+  _xIK[r] = _xEEIK[r]+_wRbIK[r]*_toolOffsetFromEE[r];
+  _toolDirIK[r] = (_wRbIK[r]*_toolOffsetFromEE[r]).normalized();
 
+  // Compute depth gain
   if(_controlStrategy[r] == PASSIVE_DS)
   {
-    _depthGain[r] = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);
+    _depthGain[r] = std::min(std::max((_x[r]-_trocarPosition[r]).dot(_wRb[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r].norm(),1.0f);
   }
   else
   {
-    _depthGain[r] = std::min(std::max((_xIK[r]-_trocarPosition[r]).dot(_wRbIK[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r],1.0f);    
+    _depthGain[r] = std::min(std::max((_xIK[r]-_trocarPosition[r]).dot(_wRbIK[r].col(2)),0.0f)*4.0f/_toolOffsetFromEE[r].norm(),1.0f);    
   }
 
   if(_debug)
   {
   	std::cerr << "[SurgicalTask]: " << r << ": Distance RCM-tool: " << _dRCMTool[r] << std::endl;
   	std::cerr << "[SurgicalTask]: " << r << ": Distance RCM-trocar: " << (_trocarPosition[r]-_xRCM[r]).norm() <<std::endl;    
+    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;  
+    std::cerr << "[SurgicalTask]: " << r << " xIK: " << _xIK[r].transpose() << std::endl;
   }
 
+  if(_useRobot[LEFT] && _useRobot[RIGHT])
+  {
+    computeToolCollision(r);
+  }
+}
+
+
+void SurgicalTask::computeToolCollision(int r)
+{
   Eigen::Vector3f r21, e1, e2;
   if(r == LEFT)
   {
     if(_controlStrategy[r] == PASSIVE_DS)
     {
       r21 = _xEE[r]-_xEE[RIGHT];
-      e1 = _wRb[r].col(2);
-      e2 = _wRb[RIGHT].col(2);      
+      e1 = _toolDir[r];
+      e2 = _toolDir[RIGHT];
     }
     else
     {
       r21 = _xEEIK[r]-_xEEIK[RIGHT];
-      e1 = _wRbIK[r].col(2);
-      e2 = _wRbIK[RIGHT].col(2);      
+      e1 = _toolDirIK[r];
+      e2 = _toolDirIK[RIGHT];
     }
   }
   else if (r == RIGHT)
@@ -119,14 +118,14 @@ void SurgicalTask::updateRobotTaskState(int r)
     {
 
       r21 = _xEE[r]-_xEE[LEFT];
-      e1 = _wRb[r].col(2);
-      e2 = _wRb[LEFT].col(2);
+      e1 = _toolDir[r];
+      e2 = _toolDir[LEFT];
     }
     else
     {
       r21 = _xEEIK[r]-_xEEIK[LEFT];
-      e1 = _wRbIK[r].col(2);
-      e2 = _wRbIK[LEFT].col(2);      
+      e1 = _toolDirIK[r];
+      e2 = _toolDirIK[LEFT];
     }
   }
 
@@ -142,11 +141,11 @@ void SurgicalTask::updateRobotTaskState(int r)
     l1 = -(r21.dot(e1)-e1.dot(e2)*r21.dot(e2))/den;
     l2 = (r21.dot(e2)-e1.dot(e2)*r21.dot(e1))/den;
 
-    float l2Max = (r == LEFT) ? _toolOffsetFromEE[RIGHT] : _toolOffsetFromEE[LEFT];
+    float l2Max = (r == LEFT) ? _toolOffsetFromEE[RIGHT].norm() : _toolOffsetFromEE[LEFT].norm();
 
-    if (l1 > _toolOffsetFromEE[r])
+    if (l1 > _toolOffsetFromEE[r].norm())
     {
-      l1 = _toolOffsetFromEE[r];
+      l1 = _toolOffsetFromEE[r].norm();
       l2 = r21.dot(e2)+l1*e1.dot(e2);
     }
 
@@ -156,7 +155,7 @@ void SurgicalTask::updateRobotTaskState(int r)
       l1 = l2*e1.dot(e2)-r21.dot(e1);
     }
 
-    l1 = std::max(0.0f, std::min(l1, _toolOffsetFromEE[r]));
+    l1 = std::max(0.0f, std::min(l1, _toolOffsetFromEE[r].norm()));
     l2 = std::max(0.0f, std::min(l2, l2Max));
 
     _rToolCollision[r] = r21+l1*e1-l2*e2;
@@ -165,32 +164,22 @@ void SurgicalTask::updateRobotTaskState(int r)
   else
   {
     _rToolCollision[r] = r21;
-    _toolCollisionOffset[r] = _toolOffsetFromEE[r]*e1-_rToolCollision[r].normalized()*_toolSafetyCollisionRadius;
+    _toolCollisionOffset[r] = _toolOffsetFromEE[r].norm()*e1-_rToolCollision[r].normalized()*_toolSafetyCollisionRadius;
   }
-
-  // _rToolCollision[r] = (_rToolCollision[r].norm()-2*_toolSafetyCollisionRadius)*_rToolCollision[r].normalized();
 
   _nToolCollision[r] = _rToolCollision[r].normalized();
   _dToolCollision[r] = _rToolCollision[r].norm()-2*_toolSafetyCollisionRadius;
 
   if(_debug)
   {
-  	std::cerr << "[SurgicalTask]: " << r << ": Distance EE-Robot: " << _rEECollision[r].norm() << " " << _rEECollision[r].norm() <<std::endl;
+    std::cerr << "[SurgicalTask]: " << r << ": Distance EE-Robot: " << _rEECollision[r].norm() << " " << _rEECollision[r].norm() <<std::endl;
     std::cerr << "[SurgicalTask]: " << r << ": Distance Tool-Tool: " << _rToolCollision[r].transpose() << _rToolCollision[r].norm() << " " << l1 << " " << l2 <<std::endl;    
   }
-
-
-  if(_debug)
-  {
-    std::cerr << "[SurgicalTask]: " << r << " xIK: " << _xIK[r].transpose() << std::endl;
-  }
-
 }
 
 
 void SurgicalTask::updateControlPhase(int r)
 {
-
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: " << r << ": trocar " << _trocarPosition[r].transpose() << std::endl;
@@ -219,20 +208,6 @@ void SurgicalTask::updateControlPhase(int r)
       }
     }
   }
-  // else if(_controlPhase[r] == OPERATION)
-  // {
-  //   if((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))-_toolOffsetFromEE[r] > _insertionDistancePVM[r])
-  //   {
-  //     _controlPhase[r] = INSERTION;
-  //   }
-  // }
-  // else if(_controlPhase[r] == INSERTION)
-  // {
-  //   if((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))-_toolOffsetFromEE[r] <= _insertionDistancePVM[r])
-  //   {
-  //     _controlPhase[r] = OPERATION;
-  //   }
-  // }
 }
 
 
@@ -246,12 +221,12 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
 
   Eigen::Vector3f x;
   Eigen::Matrix3f wRb;
-  float gain = 1.0f;
+  float alpha = 1.0f;
   if(_controlStrategy[r] == PASSIVE_DS)
   {  
     x = _x[r];
     wRb = _wRb[r];
-    gain = 5.0f;
+    alpha = 5.0f;
   }
   else
   {
@@ -259,7 +234,7 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     wRb = _wRbIK[r];
   }
 
-
+  // Compute attractor position
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
     _xd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r]);
@@ -269,49 +244,27 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     _xd[r] = _xd0[r]+_insertionOffsetPPM[r];
   }
 
-  _vd[r] = gain*(_xd[r]-x); 
+  // Compute reference task velocity
+  _vtRef[r] = alpha*(_xd[r]-x); 
 
-  if(_vd[r].norm()/gain<0.005)
+  if(_vtRef[r].norm()/alpha<0.005)
   {
     _insertionFinished[r] = true;
   }
 
-
-  if(_debug)
-  {
-    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;
-  }
+  // Scale reference task velocity to take into account fulcrum effect
+  _vtd[r] = fulcrumEffectScaling(r, _vtRef[r]);
+ 
+  // Bound task velocity
+  _vtd[r] = Utils<float>::bound(_vtd[r],_toolTipLinearVelocityLimit);
   
-  // if(_linearMapping[r] == POSITION_POSITION || _controlStrategy[r] == JOINT_IMPEDANCE)
-  {
-    Eigen::Matrix3f L;
-    L.setIdentity();
-    L(0,0) = _depthGain[r];
-    L(1,1) = _depthGain[r];
-    _vd[r] = _wRb[r]*L*_wRb[r].transpose()*_vd[r];
-  }
-  _vd[r] = Utils<float>::bound(_vd[r],_toolTipLinearVelocityLimit);
-  _vtd[r] = _vd[r];
+  // Compute final desired tool tip velocity
   _vdTool[r] = _vtd[r];
-
-
-//   if(_linearMapping[r]==POSITION_VELOCITY || _useSim)
-//   {
-//     _vd[r] = 0.1f*_trocarInput[h](2)*_rEETrocar[r].normalized(); 
-//     if(_dRCMTool[r]> -0.005f && (_wRb[r].col(2)).dot(_vd[r])<0.0f)
-//     {
-//       _vd[r].setConstant(0.0f);
-//     }
-//   }
-//   else
-//   {
-//     _vd[r].setConstant(0.0f);
-//   }
-
-//   _vd[r] = Utils<float>::bound(_vd[r],0.3f);
 
   if(_controlStrategy[r] == PASSIVE_DS)
   {
+
+    _vd[r].setConstant(0.0f);
     _omegad[r].setConstant(0.0f);
     // _stiffness[r].setConstant(0.0f);
 
@@ -345,7 +298,7 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     // _nullspaceWrench[r].setConstant(0.0f);
 
     Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r].normalized()));
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(wRb.col(2),_rEETrocar[r].normalized()));
 
     Eigen::Vector3f axis;  
     float angleErrorToTrocarPosition;
@@ -365,30 +318,6 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
 
     // Compute final quaternion
     _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
-    // Eigen::Vector4f qe;
-    // qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_wRb0[r].col(2)));
-    // // qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),(_trocarPosition[r]-_xEE[r]).normalized()));
-
-    // Eigen::Vector3f axis;  
-    // float angleErrorToTrocarPosition;
-    // Utils<float>::quaternionToAxisAngle(qe, axis, angleErrorToTrocarPosition);
-
-    // if(_debug)
-    // {
-    //   std::cerr << "[SurgicalTask]: " << r << ": angleErrorToTrocarPosition: " << angleErrorToTrocarPosition << std::endl;
-    // }
-
-    // if(std::fabs(angleErrorToTrocarPosition)>MAX_ORIENTATION_ERROR)
-    // {
-    //   qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angleErrorToTrocarPosition,
-    //                                                                    -MAX_ORIENTATION_ERROR,
-    //                                                                    MAX_ORIENTATION_ERROR));
-    // }
-
-    // // Compute final quaternion on plane
-    // _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
-
-    // _omegad[r] = Utils<float>::quaternionToAngularVelocity(_q[r],_qd[r]);
 
     _selfRotationCommand[r] = 0.0f;
   }
@@ -399,26 +328,15 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     _selfRotationCommand[r] = 0.0f;
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
-    
-    // _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
-    //                                          _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-    //                                          _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-    //                                          _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
-
-    // _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vd[r],
-    //                                          _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-    //                                          _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-    //                                          _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
+                                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f, _nEECollision[r], 
+                                                  _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(), _nToolCollision[r],
+                                                  _dToolCollision[r], _toolCollisionOffset[r]);
 
     if(_debug)
     {
       std::cerr << "[SurgicalTask]: " << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
       std::cerr << "[SurgicalTask]: " << r << ": Desired joints: " << _ikJoints[r].transpose() << std::endl;      
     }
-
   }
   else
   {
@@ -439,170 +357,23 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
 
 void SurgicalTask::operationStep(int r, int h)
 {
-
   if(_debug)
   {
     std::cerr << "[SurgicalTask]: " << r << ": OPERATION" << std::endl;
   }
 
-  // Compute desired tool velocity
+  // Compute desired tool tip task velocity
   computeDesiredToolVelocity(r, h);
 
-
-  float alphaH = 0.0f;
-
-
-  Eigen::Vector3f Ft;
-  if(_useFTSensor[r])
-  {
-    Ft = _wRb[r]*_wrench[r].segment(0,3);
-    std::cerr << "FT:  " << Ft.transpose() << std::endl;
-    std::cerr << "Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
-    std::cerr << "Fext-FT:  " << (-_wRb[r]*_Fext[r]-Ft).transpose() << std::endl;
-  }
-  else
-  {
-    Ft.setConstant(0.0f);
-  }
-
-
+  // Compute admittance velocity if enable human physical interaction
   if(_enablePhysicalHumanInteraction[r])
   {
-    Eigen::Matrix3f S, P;
-    P = Utils<float>::orthogonalProjector(_wRbIK[r].col(2));
-    S = P*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))*_wRbIK[r].col(2));    
-    Eigen::Vector3f omegaEEd, vEEdir, vTooldir;
-    vEEdir = (-_wRbIK[r]*_Fext[r]-Ft).normalized();
-    Eigen::Vector3f b;
-    b = P*vEEdir;
-    omegaEEd = S.fullPivHouseholderQr().solve(b);
-    vTooldir = (vEEdir+omegaEEd.cross(_toolOffsetFromEE[r]*_wRbIK[r].col(2))).normalized();
-
-
-    Eigen::Vector3f Fh;
-    Fh.setConstant(0.0f);
-
-    float forceDeadZone;
-
-
-    if(_tool[r] == RETRACTOR && _msgGripperOutput.gripper_position >  15.0f)
-    {
-      forceDeadZone = 12.0f;
-      std::cerr << "INCREASE DEADZONE" << std::endl;
-    }
-    else
-    {
-      forceDeadZone = _externalForcesDeadZones[r];
-    }
-    Fh = Utils<float>::deadZone((-_wRbIK[r]*_Fext[r]-Ft).norm(),0.0f,forceDeadZone)*vTooldir; 
-      
-    // if(_Fext[r].norm() < forceDeadZone &&  _Fext[r].norm() > 8 )
-    // {
-    //   _Fm[r] = (_Fext[r].norm()-8)*vTooldir;
-    // }
-    // else
-    if(_useFTSensor[r])
-    {
-      _Fm[r] = Utils<float>::deadZone(Ft.norm(),0.0f,5.0f)*Ft.normalized(); 
-      _Fm[r](2)/=2.0f;
-    }
-    else
-    {
-      _Fm[r].setConstant(0.0f);
-    }
-    // Fh = _alphaH[r]*_Fext[r].norm()*vTooldir; 
-    // Fh = _Fext[r].norm()*vTooldir;
-    Eigen::Vector3f bou;
-    bou << 200, 200, 200;
-
-
-    float mass = 5.0f;
-    //_vH[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vH[r]+Fh)/mass;
-    _vHRef[r] += _dt*(-_wRbIK[r]*bou.asDiagonal()*_wRbIK[r].transpose()*_vHRef[r]+ Fh)/mass;
-    // _vHRef[r] = Utils<float>::bound(_vHRef[r],0.1f);
-
-
-    // _alphaH[r] =  Utils<float>::bound(_alphaH[r],0,1.0f);
-
-
-    Eigen::Matrix3f B;
-    B.setIdentity();
-    B(0,0) = _depthGain[r];
-    B(1,1) = _depthGain[r];
-    _vHd[r] = _wRbIK[r]*B*_wRbIK[r].transpose()*_vHRef[r];
-  
-
-    // Eigen::Vector3f temp;
-    // temp = _wRbIK[r].transpose()*_vH[r];
-    // temp(0) = Utils<float>::bound(_depthGain[r]*temp(0),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
-    // temp(1) = Utils<float>::bound(_depthGain[r]*temp(1),-_toolTipLinearVelocityLimit,_toolTipLinearVelocityLimit);
-    // temp(2) = Utils<float>::bound(temp(2),-0.2f,0.2f);
-
-    // _vH[r] = _wRbIK[r]*temp;
-
-    _vHd[r] = Utils<float>::bound(_vHd[r], 0.1f);
-
-
-    float pin, pout, pd;
-    // pin = 1000*(_Fext[r].norm()*vTooldir).dot(_vHd[r]);
-    pin = 1000*Fh.dot(_vHd[r]);
-    pd = 2.0f;
-
-    _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
-
-    _tankH[r] = Utils<float>::bound(_tankH[r],0,1.0f);
-
-    // if(_tankH[r]<9)
-    // {
-    //   _alphaH[r] = 0.0f;
-    // }
-    // else
-    {
-      // _alphaH[r] = _tankH[r];
-      _alphaH[r] = Utils<float>::smoothRise(_tankH[r],0.0,0.8f);
-    }
-    
-    // alphaH = Utils<float>::smoothRise(_vH[r].norm(), 0.0f, 0.01f);
-
-    // alphaH = Utils<float>::smoothRise(Fh.norm(), 0.0f, 5.0f);
-
-    // _vdTool[r] = (1-alpha)*_vdTool[r]+_vH[r];
-    // _vdTool[r] = (1-alpha)*_vdTool[r]+alpha*0.1f*vTooldir;
-
-    // std::cerr << "Dir: " << vTooldir.transpose() << " alpha:" << alphaH <<  " vH: " << _vH[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
-    std::cerr << r << " Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
-
-  }
-
-
-
-
-  if(_debug)
-  {
-    std::cerr << "[SurgicalTask]: " << r << ": vd tool before: " << _vdTool[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
-  }
-
-
-  if(_debug)
-  {
-    std::cerr << "[SurgicalTask]: " << r << ": depth gain: " <<  _depthGain[r] << std::endl;
+    computeAdmittanceVelocity(r);
   }
   
-  _vtRef[r] = _vdTool[r];
-
-  Eigen::Matrix3f L;
-  L.setIdentity();
-  L(0,0) = _depthGain[r];
-  L(1,1) = _depthGain[r];
-  _vtd[r] = _wRbIK[r]*L*_wRbIK[r].transpose()*_vtRef[r];
-  
-  // Bound vd tool
-  _vtd[r] = Utils<float>::bound(_vtd[r], _toolTipLinearVelocityLimit);
-
-
+  // Compute final desired tool tip velocity
   if(_enablePhysicalHumanInteraction[r])
   {
-    // _vdTool[r] = (1-alphaH)*_vdTool[r]+ _vH[r];
     _vdTool[r] = (1-_alphaH[r])*_vtd[r]+ _vHd[r];
   }
   else
@@ -613,7 +384,8 @@ void SurgicalTask::operationStep(int r, int h)
 
   if(_debug)
   {
-    std::cerr << "[SurgicalTask]: " << r << ": vd tool after: " << _vdTool[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
+    std::cerr << "[SurgicalTask]: " << r << ": vtd: " << _vtd[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
+    std::cerr << "[SurgicalTask]: " << r << ": vd tool: " << _vdTool[r].transpose() << " Self rotation: " << _selfRotationCommand[r] << std::endl; 
   }
 
   // Compute desired gripper position
@@ -626,27 +398,21 @@ void SurgicalTask::operationStep(int r, int h)
   {
     _stiffness[r].setConstant(0.0f);
     Eigen::Matrix<float,6,6> A;
-    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
-    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_toolDir[r])*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_toolDir[r])*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
     A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
-    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_toolOffsetFromEE[r]*_wRb[r].col(2));
+    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_wRb[r]*_toolOffsetFromEE[r]);
     Eigen::Matrix<float,6,1> x, b;
     b.setConstant(0.0f);
     b.segment(3,3) = _vdTool[r];
 
-    // Eigen::MatrixXf Ainv;
-    // pseudoInverse(A,Ainv,false);
-    // std::cerr << "normal: " << std::endl;
     x = A.fullPivHouseholderQr().solve(b);
-    // std::cerr << x.transpose() << std::endl;
-    // std::cerr << "pseudoInverse: " << std::endl;
-    // std::cerr << (Ainv*b).transpose() << std::endl;
 
     _vd[r] = x.segment(0,3);
     _omegad[r] = x.segment(3,3);
 
     
-    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
+    _vd[r]+=10.0f*Utils<float>::orthogonalProjector(_toolDir[r])*(_trocarPosition[r]-_xRCM[r]);
 
     _vd[r] = Utils<float>::bound(_vd[r],0.4f);
 
@@ -656,7 +422,7 @@ void SurgicalTask::operationStep(int r, int h)
     _nullspaceWrench[r].setConstant(0.0f);
 
     Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r].normalized()));
+    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_toolDir[r],_rEETrocar[r].normalized()));
 
     Eigen::Vector3f axis;  
     float angleErrorToTrocarPosition;
@@ -685,28 +451,13 @@ void SurgicalTask::operationStep(int r, int h)
   {
 
     _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
-    if(_enablePhysicalHumanInteraction[r])
-    {
-      Eigen::Matrix<float,7,1> stiffnessReduction;
-      stiffnessReduction << 300, 300, 300, 300, 200, 200, 0;
-      // _stiffness[r] -= _alphaH[r]*stiffnessReduction;
-    }
+
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                              _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                              _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                              _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
-    
-    // _qpResult[r] = _qpSolverRCMCollision2[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-    //                                           _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-    //                                           _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-    //                                           _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
-
-    // _qpResult[r] = _qpSolverRCMCollision3[r]->step(_ikJoints[r], _ikJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-    //                                           _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-    //                                           _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-    //                                           _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
+                                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f, _nEECollision[r], 
+                                                  _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(), _nToolCollision[r],
+                                                  _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
@@ -748,100 +499,8 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     Eigen::Vector3f gains;
     gains << _trocarSpaceVelocityGains[V_UP], _trocarSpaceVelocityGains[V_RIGHT], _trocarSpaceVelocityGains[V_INSERTION];
 
-    _vdTool[r] = wRb*_eeCameraMapping*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
+    _vtRef[r] = wRb*_eeCameraMapping*(gains.cwiseProduct(_trocarInput[h].segment(0,3)));   
 
-    if(_useSafetyLimits)
-    {
-      // Eigen::Vector3f vs;
-      // vs.setConstant(0.0f);
-
-      // Eigen::Vector3f pyramidOffset, pyramidHeight, pyramidCenter;
-      // pyramidOffset << _trocarSpacePyramidBaseOffset[r](X), _trocarSpacePyramidBaseOffset[r](Y), 0.0f; 
-      // pyramidHeight << 0.0f, 0.0f, _trocarSpacePyramidBaseOffset[r](Z);
-      // pyramidCenter = pyramidHeight+pyramidOffset;
-
-      // float pyramidAngle = std::atan2(_trocarSpacePyramidBaseSize[r]/2,-pyramidHeight(Z));
-
-      // float dotProduct = (pyramidHeight.normalized()).dot((pyramidOffset+pyramidHeight).normalized());
-      // float theta = std::acos(std::max(std::min(dotProduct,1.0f),-1.0f));  
-
-      // float xMin,xMax,yMin,yMax;
-      // xMax = pyramidCenter(X)-pyramidHeight(Z)*tan(pyramidAngle);
-      // xMax = std::max(0.0f,xMax);
-      // xMin = pyramidCenter(X)-pyramidHeight(Z)*tan(-pyramidAngle);
-      // xMin = std::min(0.0f,xMin);
-      // yMax = pyramidCenter(Y)-pyramidHeight(Z)*tan(pyramidAngle);
-      // yMax = std::max(0.0f,yMax);
-      // yMin = pyramidCenter(Y)-pyramidHeight(Z)*tan(-pyramidAngle);
-      // yMin = std::min(0.0f,yMin);
-
-      Eigen::Vector3f currentOffset;
-      currentOffset = _xIK[r]-_xd0[r];
-      // currentOffset = _x[r]-_xd0[r];
-
-      // if(currentOffset(Z)>pyramidHeight(Z))
-      // {
-      //   Eigen::Vector3f off;
-      //   if(pyramidOffset.norm()< FLT_EPSILON)
-      //   {
-      //     off.setConstant(0.0f); 
-      //   }
-      //   else
-      //   {
-      //     off = std::tan(theta)*currentOffset(Z)*pyramidOffset.normalized();
-      //   }
-      //   xMax = -currentOffset(Z)*std::tan(pyramidAngle)-off(X);  
-      //   xMin = -currentOffset(Z)*std::tan(-pyramidAngle)-off(X);  
-      //   yMax = -currentOffset(Z)*std::tan(pyramidAngle)-off(Y);  
-      //   yMin = -currentOffset(Z)*std::tan(-pyramidAngle)-off(Y);  
-      // }
-
-      Eigen::Vector3f vplane, vortho;
-      vplane = Utils<float>::orthogonalProjector(wRb.col(2))*_vdTool[r];
-      vortho = _vdTool[r]-vplane;
-
-      bool safetyCollison = false;
-      if(currentOffset(0) > _operationMaxOffsetPVM[r](0) && _vdTool[r](0) > 0)
-      {
-        safetyCollison = true;
-      }
-      else if(currentOffset(0)< _operationMinOffsetPVM[r](0) && _vdTool[r](0) < 0)
-      {
-        safetyCollison = true;
-      }
-      if(currentOffset(1) > _operationMaxOffsetPVM[r](1) && _vdTool[r](1) > 0)
-      {
-        safetyCollison = true;
-      }
-      else if(currentOffset(1)< _operationMinOffsetPVM[r](1) && _vdTool[r](1) < 0)
-      {
-        safetyCollison = true;
-      }
-      if(currentOffset(2)< _operationMinOffsetPVM[r](2) && _vdTool[r](2) < 0.0f)
-      {
-        safetyCollison = true;
-      }
-
-      if(safetyCollison)
-      {
-        if(vortho.dot(wRb.col(2))<0.0f)
-        {
-          _vdTool[r] = vortho;
-        }
-        else
-        {
-          _vdTool[r].setConstant(0.0f);
-        }
-      }
-
-      if(_debug)
-      {
-        std::cerr << "[SurgicalTask]: " << r << " Safety collision: " << (int) safetyCollison << std::endl; 
-        std::cerr << "[SurgicalTask]: " << r << " Offset: " << currentOffset(0) << " " << _operationMinOffsetPVM[r](0) << " " << _operationMaxOffsetPVM[r](0) << std::endl;
-        std::cerr << "[SurgicalTask]: " << r << " Offset: " << currentOffset(1) << " " << _operationMinOffsetPVM[r](1) << " " << _operationMaxOffsetPVM[r](1) << std::endl;
-        std::cerr << "[SurgicalTask]: " << r << " Offset: " << currentOffset(2) << " " << _operationMinOffsetPVM[r](2) << " " << _operationMaxOffsetPVM[r](2) << std::endl;                
-      }
-    }
 
     if(_debug)
     {
@@ -879,55 +538,37 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
         initializeBeliefs(r);
         _useTaskAdaptation = true;
       }
-      // if(_useTaskAdaptation && _trocarInput[h](EXTRA_DOF)>0.6f)
-      // {
-      //   _useTaskAdaptation = false;
-      // }
-      // if(!_useTaskAdaptation && _trocarInput[h](EXTRA_DOF) <-0.6f)
-      // {
-      //   initializeBeliefs(r);
-      //   _useTaskAdaptation = true;
-      // }
+
+
       if(_useTaskAdaptation)
       {
 
-        // float alpha[2] = {1.0f, 1.0f};
-        // for (int k = 0; k < 2; k++)
-        // {
-        //   if(_colorMarkersStatus[k] == 1)
-        //   {
-        //     alpha[k] = Utils<float>::smoothFall(_colorMarkersFilteredPosition.row(k).norm(),0.3,0.7);
-        //   }
-        // }
-        // _vdTool[r] *= alpha[0]*alpha[1];
-        // _vdTool[r] += (1-alpha[0])*0.01*wRb*_colorMarkersFilteredPosition.row(0).transpose()
-        //               +(1-alpha[1])*0.01*wRb*_colorMarkersFilteredPosition.row(1).transpose();
         taskAdaptation(r, h);
 
         if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT || (_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r == _currentRobot))
         {
-          _vdTool[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*wRb.col(V_INSERTION);
+          _vtRef[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*wRb.col(V_INSERTION);
         }
         else
         {
-          _vdTool[r].setConstant(0.0f);
+          _vtRef[r].setConstant(0.0f);
         }
         
         if(!_useSim && _toolsTracking == CAMERA_BASED)
         {
-          _vdTool[r] += wRb*_eeCameraMapping*_vda;
+          _vtRef[r] += wRb*_eeCameraMapping*_vda;
 
         }
         else
         {
-          _vdTool[r] += _vda;
+          _vtRef[r] += _vda;
         }
       }   
     }
 
-    // if(_dRCMTool[r]> _insertionDistancePVM[r] && (wRb.col(2)).dot(_vdTool[r])<0.0f)
+    // if(_dRCMTool[r]> _insertionDistancePVM[r] && (wRb.col(2)).dot(_vtRef[r])<0.0f)
     // {
-    //   _vdTool[r] = Utils<float>::orthogonalProjector(wRb.col(2))*_vdTool[r];
+    //   _vtRef[r] = Utils<float>::orthogonalProjector(wRb.col(2))*_vtRef[r];
     // }
 
   }
@@ -966,7 +607,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     // To start accounting for the human input, the desired and real offset should be close
     // at the beginning
-    if((_desiredOffsetPPM[r]-currentOffset).norm()<0.02f)
+    if((_desiredOffsetPPM[r]-(_xIK[r]-_xd0[r])).norm()<0.005f)
     {
       _inputAlignedWithOrigin[r]=true;
       _wait = false;
@@ -974,7 +615,6 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     if(_inputAlignedWithOrigin[r]==false)
     {
-      // _desiredOffsetPPM[r].setConstant(0.0f);
       _xd[r] = _xd0[r];
       _wait = true;
         
@@ -984,7 +624,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       }
     }
     
-    float alpha = _trocarSpaceLinearDSFixedGain+_trocarSpaceLinearDSGaussianGain*std::exp(-(_desiredOffsetPPM[r]-currentOffset).squaredNorm()/(2.0f*std::pow(_trocarSpaceLinearDSGaussianWidth,2.0f)));  
+    float alpha = _trocarSpaceLinearDSFixedGain+_trocarSpaceLinearDSGaussianGain*std::exp(-(_xd[r]-_xIK[r]).squaredNorm()/(2.0f*std::pow(_trocarSpaceLinearDSGaussianWidth,2.0f)));  
     
     if(_debug)
     {
@@ -993,16 +633,16 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     if(_controlStrategy[r] == JOINT_IMPEDANCE)
     {
-      _vdTool[r] = alpha*(_xd[r]-_xIK[r]);        
-      // _vdTool[r] = alpha*(_xd[r]-_x[r]);        
+      _vtRef[r] = alpha*(_xd[r]-_xIK[r]);        
+      // _vtRef[r] = alpha*(_xd[r]-_x[r]);        
       // if(_colorMarkersStatus[2] == 0 && _toolsTracking == CAMERA_BASED && !_useSim)
       // {
-      //   _vdTool[r].setConstant(0.0f);
+      //   _vtRef[r].setConstant(0.0f);
       // }      
     }
     else
     {
-      _vdTool[r] = alpha*(_xd[r]-_x[r]); 
+      _vtRef[r] = alpha*(_xd[r]-_x[r]); 
     }
     
     if(_humanInputDevice[r] == JOYSTICK)
@@ -1035,8 +675,116 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
   }
   else
   {
-    _vdTool[r].setConstant(0.0f);
+    _vtRef[r].setConstant(0.0f);
   }
+
+  // Scale reference task velocity to take into account fulcrum effect
+  _vtd[r] = fulcrumEffectScaling(r, _vtRef[r]);
+
+  // Bound task velocity
+  _vtd[r] = Utils<float>::bound(_vtd[r], _toolTipLinearVelocityLimit);
+}
+
+
+void SurgicalTask::computeAdmittanceVelocity(int r)
+{
+  Eigen::Vector3f Ft;
+  if(_useFTSensor[r])
+  {
+    Ft = _wRb[r]*_wrench[r].segment(0,3);
+
+    if(_debug)
+    {
+      std::cerr << "FT:  " << Ft.transpose() << std::endl;
+      std::cerr << "Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
+      std::cerr << "Fext-FT:  " << (-_wRb[r]*_Fext[r]-Ft).transpose() << std::endl;      
+    }
+  }
+  else
+  {
+    Ft.setConstant(0.0f);
+  }
+
+  Eigen::Matrix3f S, P;
+  P = Utils<float>::orthogonalProjector(_toolDir[r]);
+  S = P*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEE[r]).dot(_toolDir[r])*_toolDir[r]);    
+  Eigen::Vector3f omegaEEd, vEEdir, vTooldir;
+  vEEdir = (-_wRb[r]*_Fext[r]-Ft).normalized();
+  Eigen::Vector3f b;
+  b = P*vEEdir;
+  omegaEEd = S.fullPivHouseholderQr().solve(b);
+  vTooldir = (vEEdir+omegaEEd.cross(_wRb[r]*_toolOffsetFromEE[r])).normalized();
+
+  Eigen::Vector3f Fh;
+  Fh.setConstant(0.0f);
+
+  float forceDeadZone;
+
+  if(_tool[r] == RETRACTOR && _msgGripperOutput.gripper_position >  15.0f)
+  {
+    forceDeadZone = 12.0f;
+    std::cerr << "INCREASE DEADZONE" << std::endl;
+  }
+  else
+  {
+    forceDeadZone = _externalForcesDeadZones[r];
+  }
+
+  Fh = Utils<float>::deadZone((-_wRb[r]*_Fext[r]-Ft).norm(),0.0f,forceDeadZone)*vTooldir; 
+    
+  if(_useFTSensor[r])
+  {
+    _Fm[r] = Utils<float>::deadZone(Ft.norm(),0.0f,5.0f)*Ft.normalized(); 
+    _Fm[r](0) *= 0.2f;
+    _Fm[r](1) *= 0.2f; 
+  }
+  else
+  {
+    _Fm[r].setConstant(0.0f);
+  }
+
+  Eigen::Vector3f D;
+  D << 200, 200, 200;
+
+  float mass = 5.0f;
+  _vHRef[r] += _dt*(-_wRbIK[r]*D.asDiagonal()*_wRbIK[r].transpose()*_vHRef[r]+ Fh)/mass;
+
+  _vHd[r] = fulcrumEffectScaling(r, _vHRef[r]);
+  _vHd[r] = Utils<float>::bound(_vHd[r], 0.1f);
+
+  float pin, pout, pd;
+  pin = 1000*Fh.dot(_vHd[r]);
+  pd = 2.0f;
+
+  _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
+  _tankH[r] = Utils<float>::bound(_tankH[r],0,1.0f);
+
+  _alphaH[r] = Utils<float>::smoothRise(_tankH[r],0.0,0.8f);
+
+  if(_debug)
+  {
+    std::cerr << r << " Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
+  }
+}
+
+
+Eigen::Vector3f SurgicalTask::fulcrumEffectScaling(int r, Eigen::Vector3f vIn)
+{
+  Eigen::Matrix3f B;
+  B.setIdentity();
+  B(0,0) = _depthGain[r];
+  B(1,1) = _depthGain[r];
+
+  Eigen::Vector3f vOut;
+  if(_controlStrategy[r] == PASSIVE_DS)
+  {
+    vOut = _wRb[r]*B*_wRb[r].transpose()*vIn; 
+  }
+  else
+  {
+    vOut = _wRbIK[r]*B*_wRbIK[r].transpose()*vIn;
+  }
+  return vOut;
 }
 
 
@@ -1050,11 +798,11 @@ void SurgicalTask::computeHapticFeedback(int r)
     Eigen::Vector3f vdEE, omegadEE;
     if(_controlStrategy[r] == PASSIVE_DS)
     {
-      getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r], _toolOffsetFromEE[r]*_wRb[r].col(2));
+      getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r], _wRb[r]*_toolOffsetFromEE[r]);
     }
     else
     {
-      getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r], _toolOffsetFromEE[r]*_wRbIK[r].col(2));
+      getExpectedDesiredEETwist(r, vdEE, omegadEE, _vdTool[r],_wRbIK[r]*_toolOffsetFromEE[r]);
     }
     
     float toolCollisionVel = _nToolCollision[r].transpose()*(vdEE+omegadEE.cross(_toolCollisionOffset[r]));
@@ -1063,32 +811,16 @@ void SurgicalTask::computeHapticFeedback(int r)
 
     if(_useRobot[LEFT] && _useRobot[RIGHT])
     {
-      // float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(toolCollisionVel,0.0f, 0.03f); 
       float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
       getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
-      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRbIK[r].col(2))).normalized();
-      // if(_dToolCollision[r]<_toolSafetyCollisionDistance+0.005)
-      // {
-      //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
-      // }
-
-      // std::cerr << r << " 1: "<<_FdFoot[r].transpose() << " " << safetyToolCollisionGain  << " " << _dToolCollision[r] << " " << toolCollisionVel <<std::endl;
+      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_wRbIK[r]*_toolOffsetFromEE[r])).normalized();
 
 
-      // float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f)*Utils<float>::smoothFall(eeCollisionVel,0.0f, 0.03f); 
       float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
       getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
-      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRbIK[r].col(2))).normalized();
-      
-      // if(_dEECollision[r]<_eeSafetyCollisionDistance+0.005)
-      // {
-      //   _FdFoot[r] += _linearForceFeedbackMagnitude*(vdEE+omegadEE.cross(_toolOffsetFromEE[r]*_wRb[r].col(2))).normalized();
-      // }
-      // std::cerr << r << " 2: "<<_FdFoot[r].transpose() << " " << safetyEECollisionGain << " " << _dEECollision[r] << " " << eeCollisionVel << std::endl;
-      // _FdFoot[r].setConstant(0.0f);
+      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_wRbIK[r]*_toolOffsetFromEE[r])).normalized();
+
     }
-
-
 
     if(_tool[r] == CAMERA)
     {
@@ -1096,55 +828,31 @@ void SurgicalTask::computeHapticFeedback(int r)
       Eigen::Vector3f currentOffset = _xIK[r]-_xd0[r];
       dir << 0.0f,0.0f,1.0f;
       _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(2)-_operationMinOffsetPVM[r](2),0, 0.01f)*dir; 
-      // if(currentOffset(2)-_operationMinOffsetPVM[r](2)< 0.005f)
-      // {
-      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
-      // }
 
       dir << 0.0f,0.0f,-1.0f;
       _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](2)-currentOffset(2),0, 0.01f)*dir; 
-      // if(_operationMaxOffsetPVM[r](2)-currentOffset(2)< 0.005f)
-      // {
-      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
-      // }
 
       dir << 1.0f,0.0f,0.0f;
       _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(0)-_operationMinOffsetPVM[r](0),0, 0.01f)*dir; 
-      // if(currentOffset(0)-_operationMinOffsetPVM[r](0)< 0.005f)
-      // {
-      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
-      // }
+
       
       dir << -1.0f,0.0f,0.0f;
       _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](0)-currentOffset(0),0, 0.01f)*dir; 
-      // if(_operationMaxOffsetPVM[r](0)-currentOffset(0)< 0.005f)
-      // {
-      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
-      // }
-      
+
       dir << 0.0f,1.0f,0.0f;
       _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(1)-_operationMinOffsetPVM[r](1),0, 0.01f)*dir; 
-      // if(currentOffset(1)-_operationMinOffsetPVM[r](1)< 0.005f)
-      // {
-      //   _FdFoot[r]+= _linearForceFeedbackMagnitude*dir; 
-      // }
+
 
       dir << 0.0f,-1.0f,0.0f;
       _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](1)-currentOffset(1),0, 0.01f)*dir;  
-      // if(_operationMaxOffsetPVM[r](1)-currentOffset(1)< 0.005f)
-      // {
-      //   _FdFoot[r]+= 7.0f*dir; 
-      // }
-
-      // std::cerr << r << " 3: "<<_FdFoot[r].transpose() << std::endl;
     }
 
 
     if(_tool[r] == RETRACTOR && _inputAlignedWithOrigin[r]==false)
     {
       _FdFoot[r] += Utils<float>::bound(200.0f*(-_desiredOffsetPPM[r]),15.0f);   
-      // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
     }
+
 
     _FdFoot[r] += _Fm[r];
 
@@ -1158,26 +866,23 @@ void SurgicalTask::computeHapticFeedback(int r)
     //   _FdFoot[r] += Utils<float>::bound(200.0f*(_xIK[r]-(_xd0[r]+_desiredOffsetPPM[r])),15.0f);   
     //   // _FdFoot[r] = _wRb[r]*_filteredWrench[r].segment(0,3);   
     // }
-
-
   }
 }
 
 
 void SurgicalTask::getExpectedDesiredEETwist(int r, Eigen::Vector3f &vdEE, Eigen::Vector3f &omegadEE, Eigen::Vector3f vdk, Eigen::Vector3f rk)
 {
-
   Eigen::Matrix<float,6,6> A;
 
   if(_controlStrategy[r] == PASSIVE_DS)
   {
-    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
-    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);    
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_toolDir[r])*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_toolDir[r])*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);    
   }
   else
   {
-    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRbIK[r].col(2))*Eigen::Matrix3f::Identity();
-    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRbIK[r].col(2))*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEEIK[r]).dot(_wRbIK[r].col(2))*_wRbIK[r].col(2));    
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_toolDirIK[r])*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_toolDirIK[r])*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEEIK[r]).dot(_toolDirIK[r])*_toolDirIK[r]);    
   }
   A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
   A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(rk);
@@ -1188,121 +893,4 @@ void SurgicalTask::getExpectedDesiredEETwist(int r, Eigen::Vector3f &vdEE, Eigen
   x = A.fullPivHouseholderQr().solve(b);
   vdEE = x.segment(0,3);
   omegadEE = x.segment(3,3);
-
-}
-
-
-
-void SurgicalTask::insertionStep(int r, int h)
-{
-
-  if(_debug)
-  {
-    std::cerr << "[SurgicalTask]: " << r << ": INSERTION" << std::endl;
-  }
-
-
-  Eigen::Vector3f vTooldir;
-  vTooldir = (-_wRbIK[r].col(2)*_wRbIK[r].col(2).transpose()*_wRbIK[r]*_Fext[r]).normalized();
-
-
-  Eigen::Vector3f Fh;
-  Fh.setConstant(0.0f);
-  Fh = Utils<float>::deadZone(_Fext[r].norm(),0.0f,5.0f)*vTooldir; 
-
-
-  float mass = 1.0f;
-  _vHRef[r] += _dt*(-200*_vHRef[r]+Fh)/mass;
-  _vHd[r] = Utils<float>::bound(_vHRef[r],0.2f);
-
-
-  std::cerr << "Dir: " << vTooldir.transpose() << " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh << std::endl;
-
-  _vdTool[r] = _vHd[r];
-  // _vdTool[r].setConstant(0.0f);
-
-
-  if(_controlStrategy[r] == PASSIVE_DS)
-  {
-    _stiffness[r].setConstant(0.0f);
-
-    Eigen::Matrix<float,6,6> A;
-    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(_wRb[r].col(2))*Eigen::Matrix3f::Identity();
-    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(_wRb[r].col(2))*Utils<float>::getSkewSymmetricMatrix(_rEERCM[r]);
-    A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
-    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(_toolOffsetFromEE[r]*_wRb[r].col(2));
-    Eigen::Matrix<float,6,1> x, b;
-    b.setConstant(0.0f);
-    b.segment(3,3) = _vdTool[r];
-
-    x = A.fullPivHouseholderQr().solve(b);
-    _vd[r] = x.segment(0,3);
-    _omegad[r] = x.segment(3,3);
-
-    
-    _vd[r]+=2.0f*Utils<float>::orthogonalProjector(_wRb[r].col(2))*(_trocarPosition[r]-_xRCM[r]);
-
-    _vd[r] = Utils<float>::bound(_vd[r],0.4f);
-
-
-    _omegad[r] = Utils<float>::bound(_omegad[r],1.0f);
-
-    _nullspaceWrench[r].setConstant(0.0f);
-
-    Eigen::Vector4f qe;
-    qe = Utils<float>::rotationMatrixToQuaternion(Utils<float>::rodriguesRotation(_wRb[r].col(2),_rEETrocar[r].normalized()));
-
-    Eigen::Vector3f axis;  
-    float angleErrorToTrocarPosition;
-    Utils<float>::quaternionToAxisAngle(qe,axis,angleErrorToTrocarPosition);
-
-    if(_debug)
-    {
-      std::cerr << "[SurgicalTask]: " << r << ": angleErrorToTrocarPosition: " << angleErrorToTrocarPosition << std::endl;
-    }
-
-    if(std::fabs(angleErrorToTrocarPosition)>MAX_ORIENTATION_ERROR)
-    {
-      qe = Utils<float>::axisAngleToQuaterion(axis,Utils<float>::bound(angleErrorToTrocarPosition,
-                                                                       -MAX_ORIENTATION_ERROR,
-                                                                       MAX_ORIENTATION_ERROR));
-    }
-
-    // Compute final quaternion
-    _qd[r] = Utils<float>::quaternionProduct(qe,_q[r]);
-
-    _selfRotationCommand[r] = 0.0f;
-  }
-  else if (_controlStrategy[r] == JOINT_IMPEDANCE && _firstPublish[r])
-  {
-    _stiffness[r] = Eigen::Map<Eigen::Matrix<float, 7, 1> >(_jointImpedanceStiffnessGain.data());
-  
-    _selfRotationCommand[r] = 0.0f;
-
-    _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                             _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f,
-                                             _nEECollision[r], _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(),
-                                             _nToolCollision[r], _dToolCollision[r], _toolCollisionOffset[r]);
-    
-    if(_debug)
-    {
-      std::cerr << "[SurgicalTask]: " << r << ": Current joints: " << _currentJoints[r].transpose() << std::endl;
-      std::cerr << "[SurgicalTask]: " << r << ": Desired joints: " << _ikJoints[r].transpose() << std::endl;      
-    }
-
-  }
-  else
-  {
-    _vd[r].setConstant(0.0f);
-    _omegad[r].setConstant(0.0f);
-    _qd[r] = _q[r];  
-    _ikJoints[r] = _currentJoints[r];
-  }
-
-  _nullspaceWrench[r].setConstant(0.0f);
-  _nullspaceCommand[r].setConstant(0.0f);
-
-  _inputAlignedWithOrigin[r] = false;
-
-  _desiredGripperPosition[r] = _gripperRange;
 }
