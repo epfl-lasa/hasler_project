@@ -238,6 +238,7 @@ void SurgicalTask::logData()
                     << _selfRotationCommand[r] << " "
                     << _trocarInput[r].transpose() << " " 
                     << _FdFoot[r].transpose() << " "
+                    << _FmFoot[r].transpose() << " "
                     << _taud[r] << " "
                     << _desiredFootWrench[r].transpose() << " "
                     << _vHRef[r].transpose() << " "

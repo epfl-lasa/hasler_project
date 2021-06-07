@@ -90,7 +90,11 @@ class SurgicalTask
     enum TaskJoystickButtons {X_BUTTON = 0, A_BUTTON = 1, IOS_BUTTON = 2, TRIANGLE_BUTTON = 3};
 
   private:
-    // ROS variables
+    
+    ///////////////////
+    // ROS variables //
+    ///////////////////
+
     ros::NodeHandle _nh;
     ros::Rate _loopRate;
     float _dt;
@@ -207,6 +211,7 @@ class SurgicalTask
     float _dToolCollision[NB_ROBOTS];
     Eigen::Vector3f _nEECollision[NB_ROBOTS];
     float _dEECollision[NB_ROBOTS];
+    Eigen::Vector3f _FmFoot[NB_ROBOTS];
     Eigen::Vector3f _Fm[NB_ROBOTS];
     Eigen::Vector3f _toolCollisionOffset[NB_ROBOTS];        // Tool correction [m] (3x1)
     float _depthGain[NB_ROBOTS];
@@ -250,6 +255,7 @@ class SurgicalTask
     float _humanGripperClutchingOffset;
     Eigen::Vector3f _vda;
     float _d = 0.07f;
+    Eigen::Vector3f _Fh[NB_ROBOTS];
 
     //////////////////////////////
     // Foot interface variables //
@@ -417,6 +423,7 @@ class SurgicalTask
     /////////////////////
     // Other variables //
     /////////////////////
+
     std::string _fileName;
     std::ifstream _inputFile;
     std::ofstream _outputFile[5];

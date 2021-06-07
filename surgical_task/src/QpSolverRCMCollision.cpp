@@ -15,7 +15,7 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
 																					 _enableWorkspaceCollisionAvoidance(enableWorkspaceCollisionAvoidance),
 																					 _workspaceMinOffset(workspaceMinOffset), _workspaceMaxOffset(workspaceMaxOffset), _minInsertion(minInsertion),
                                            _nbTasks(7), _nbJoints(7), _nbSlacks(7), _nbVariables(14), _nbConstraints(20),
-                                           _rcmTolerance(1e-3), _toolTolerance(1e-3), _phiTolerance(1e-2)
+                                           _rcmTolerance(1e-4), _toolTolerance(1e-4), _phiTolerance(1e-3)
 {
 
 	_debug = false;
@@ -175,8 +175,7 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 
 
 QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, Eigen::Vector3f toolOffset, 
-														Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis,
-														float depthGain, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
+														Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
 														Eigen::Vector3f rToolObstacle, float dToolObstacle, Eigen::Vector3f toolCollisionOffset,
 														bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset)
 {
@@ -206,12 +205,10 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	_slackGains.setConstant(100000.0f);
 	_slackGains.segment(3,4).setConstant(100000.0f);
 
-	_rcmGain = depthGain;
-
-	_rcmGain = 20.0f;
+	_rcmGain = 40.0f;
 
 
-		_H.setConstant(0.0f);
+	_H.setConstant(0.0f);
 	_A.setConstant(0.0);
 	_g.setConstant(0.0f);
 	_lb.setConstant(0.0f);

@@ -944,11 +944,13 @@ void SurgicalTask::initializeTaskParameters()
     _alphaH[r] = 0.0f;
     _depthGain[r] = 0.0f;
     _Fm[r].setConstant(0.0f);
+    _FmFoot[r].setConstant(0.0f);
     _toolTipCorrectionOffset[r].setConstant(0.0f);
     _toolDir[r] << 0.0f, 0.0f, -1.0f;
     _toolDirIK[r] << 0.0f, 0.0f, -1.0f;
     _wrenchBias[r].setConstant(0.0f);
     _wrenchExtBias[r].setConstant(0.0f);
+    _Fh[r].setConstant(0.0f);
   }
   _stop = false;
   _firstGripper = false;
@@ -1161,7 +1163,7 @@ void SurgicalTask::registerTrocars()
         {
           _trocarPosition[r] = _x[r];
           _trocarOrientation[r] = _wRb[r].col(2);
-          if(r == RIGHT && _useRobot[LEFT] && _tool[LEFT] == CAMERA && _trocarsRegistered[LEFT])
+          if(r == RIGHT && _useRobot[LEFT] && _tool[LEFT] == CAMERA && _trocarsRegistered[LEFT] && !_useSim)
           {
             Eigen::Vector3f offset, x, delta;
             offset << 0.0f, 0.2f, 0.0f;

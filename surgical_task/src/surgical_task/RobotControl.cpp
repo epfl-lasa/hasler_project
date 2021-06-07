@@ -328,7 +328,7 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
     _selfRotationCommand[r] = 0.0f;
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f, _nEECollision[r], 
+                                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], _nEECollision[r], 
                                                   _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(), _nToolCollision[r],
                                                   _dToolCollision[r], _toolCollisionOffset[r]);
 
@@ -365,22 +365,20 @@ void SurgicalTask::operationStep(int r, int h)
   // Compute desired tool tip task velocity
   computeDesiredToolVelocity(r, h);
 
+  // Compute measured contact forces
+  if(_useFTSensor[r] && !_useSim)
+  {
+    _Fm[r] = _wRb[r]*_wrench[r].segment(0,3);
+  }
+
   // Compute admittance velocity if enable human physical interaction
-  if(_enablePhysicalHumanInteraction[r])
+  if(_enablePhysicalHumanInteraction[r] && !_useSim)
   {
     computeAdmittanceVelocity(r);
   }
   
   // Compute final desired tool tip velocity
-  if(_enablePhysicalHumanInteraction[r])
-  {
-    _vdTool[r] = (1-_alphaH[r])*_vtd[r]+ _vHd[r];
-  }
-  else
-  {
-    _vdTool[r] = _vtd[r];
-  }
-
+  _vdTool[r] = (1-_alphaH[r])*_vtd[r]+ _vHd[r];
 
   if(_debug)
   {
@@ -455,7 +453,7 @@ void SurgicalTask::operationStep(int r, int h)
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
-                                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], 1.0f, _nEECollision[r], 
+                                                  _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], _nEECollision[r], 
                                                   _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(), _nToolCollision[r],
                                                   _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
 
@@ -485,17 +483,25 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
   }
 
   Eigen::Matrix3f wRb;
+  Eigen::Vector3f x;
+
+
   if(_controlStrategy[r] == PASSIVE_DS)
   {
     wRb = _wRb[r];
+    x = _x[r];
   }
   else
   {
     wRb = _wRbIK[r];
+    x = _xIK[r];
   }
 
   if(_linearMapping[r] == POSITION_VELOCITY)
   {
+
+
+    // Compute reference linear task velocity 
     Eigen::Vector3f gains;
     gains << _trocarSpaceVelocityGains[V_UP], _trocarSpaceVelocityGains[V_RIGHT], _trocarSpaceVelocityGains[V_INSERTION];
 
@@ -507,6 +513,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       std::cerr << "[SurgicalTask]: " << r << " Current offset: " << (_x[r]-_xd0[r]).transpose() << std::endl;
     }
 
+    // Compute desired self rotation command
     _selfRotationCommand[r] = _trocarSpaceVelocityGains[W_SELF_ROTATION]*_trocarInput[h](W_SELF_ROTATION);
     _selfRotationCommand[r] = Utils<float>::bound(_selfRotationCommand[r],-_toolTipSelfAngularVelocityLimit,_toolTipSelfAngularVelocityLimit);
     if(_ikJoints[r](6)>_trocarSpaceSelfRotationRange*M_PI/180.0f && _selfRotationCommand[r]>0.0f)
@@ -523,6 +530,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       _selfRotationCommand[r] = 0.0f;
     }
 
+    // Check for camera assistance activation/deactivation
     if(_tool[r]==CAMERA && _allowTaskAdaptation)
     {
       if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationDeactivationThreshold) &&
@@ -542,9 +550,10 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
       if(_useTaskAdaptation)
       {
-
+        // Perform task adaptation for camera
         taskAdaptation(r, h);
 
+        // Compute reference task velocity = camera assistance velocity + human insertion/retraction
         if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT || (_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r == _currentRobot))
         {
           _vtRef[r] = gains(V_INSERTION)*_trocarInput[h](V_INSERTION)*wRb.col(V_INSERTION);
@@ -575,6 +584,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
   else if(_linearMapping[r]==POSITION_POSITION)
   {
 
+    // Compute desired offset from human input
     float xMin,xMax,yMin,yMax;
 
     xMin = -_operationOffsetRangePPM[r](0)/2.0;
@@ -607,7 +617,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     // To start accounting for the human input, the desired and real offset should be close
     // at the beginning
-    if((_desiredOffsetPPM[r]-(_xIK[r]-_xd0[r])).norm()<0.005f)
+    if((_desiredOffsetPPM[r]-(x-_xd0[r])).norm()<0.005f)
     {
       _inputAlignedWithOrigin[r]=true;
       _wait = false;
@@ -624,26 +634,16 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
       }
     }
     
-    float alpha = _trocarSpaceLinearDSFixedGain+_trocarSpaceLinearDSGaussianGain*std::exp(-(_xd[r]-_xIK[r]).squaredNorm()/(2.0f*std::pow(_trocarSpaceLinearDSGaussianWidth,2.0f)));  
-    
+    // Compute reference velocity
+    float alpha = _trocarSpaceLinearDSFixedGain+_trocarSpaceLinearDSGaussianGain*std::exp(-(_xd[r]-x).squaredNorm()/(2.0f*std::pow(_trocarSpaceLinearDSGaussianWidth,2.0f)));  
+
+    _vtRef[r] = alpha*(_xd[r]-x);        
+  
     if(_debug)
     {
       std::cerr << "[SurgicalTask]: " << r << ": alpha: " << alpha << std::endl;
     }
 
-    if(_controlStrategy[r] == JOINT_IMPEDANCE)
-    {
-      _vtRef[r] = alpha*(_xd[r]-_xIK[r]);        
-      // _vtRef[r] = alpha*(_xd[r]-_x[r]);        
-      // if(_colorMarkersStatus[2] == 0 && _toolsTracking == CAMERA_BASED && !_useSim)
-      // {
-      //   _vtRef[r].setConstant(0.0f);
-      // }      
-    }
-    else
-    {
-      _vtRef[r] = alpha*(_xd[r]-_x[r]); 
-    }
     
     if(_humanInputDevice[r] == JOYSTICK)
     {
@@ -688,70 +688,63 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
 void SurgicalTask::computeAdmittanceVelocity(int r)
 {
-  Eigen::Vector3f Ft;
-  if(_useFTSensor[r])
-  {
-    Ft = _wRb[r]*_wrench[r].segment(0,3);
+  //Compute human force
+  float alpha = 0.9f;
+  _Fh[r] = alpha*_Fh[r]+(1-alpha)*(-_wRb[r]*_Fext[r]-_Fm[r]);
 
-    if(_debug)
-    {
-      std::cerr << "FT:  " << Ft.transpose() << std::endl;
-      std::cerr << "Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
-      std::cerr << "Fext-FT:  " << (-_wRb[r]*_Fext[r]-Ft).transpose() << std::endl;      
-    }
-  }
-  else
-  {
-    Ft.setConstant(0.0f);
-  }
 
+  // Compute tool tip force direction from end-effector one using external forces measured from robot torque sensors
   Eigen::Matrix3f S, P;
   P = Utils<float>::orthogonalProjector(_toolDir[r]);
   S = P*Utils<float>::getSkewSymmetricMatrix((_trocarPosition[r]-_xEE[r]).dot(_toolDir[r])*_toolDir[r]);    
-  Eigen::Vector3f omegaEEd, vEEdir, vTooldir;
-  vEEdir = (-_wRb[r]*_Fext[r]-Ft).normalized();
+  Eigen::Vector3f omegaEEd, vEEdir, vHDir;
+  vEEdir = _Fh[r].normalized();
   Eigen::Vector3f b;
   b = P*vEEdir;
   omegaEEd = S.fullPivHouseholderQr().solve(b);
-  vTooldir = (vEEdir+omegaEEd.cross(_wRb[r]*_toolOffsetFromEE[r])).normalized();
+  vHDir = (vEEdir+omegaEEd.cross(_wRb[r]*_toolOffsetFromEE[r])).normalized();
+  // vHDir = (0.9f*vHDir+0.1f*(vEEdir+omegaEEd.cross(_wRb[r]*_toolOffsetFromEE[r]))).normalized();
 
+  std::cerr << r << " " << vHDir.transpose() << std::endl;
+
+  if(_debug)
+  {
+    std::cerr << "FT:  " << _Fm[r].transpose() << std::endl;
+    std::cerr << "Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
+    std::cerr << "Fext-FT:  " << _Fh[r].transpose() << std::endl;      
+  }
+
+  // Compute dead-zone human force at the tip
   Eigen::Vector3f Fh;
   Fh.setConstant(0.0f);
 
   float forceDeadZone;
 
-  if(_tool[r] == RETRACTOR && _msgGripperOutput.gripper_position >  15.0f)
-  {
-    forceDeadZone = 12.0f;
-    std::cerr << "INCREASE DEADZONE" << std::endl;
-  }
-  else
+  // if(_tool[r] == RETRACTOR && _msgGripperOutput.gripper_position >  15.0f)
+  // {
+  //   forceDeadZone = 12.0f;
+  //   std::cerr << "INCREASE DEADZONE" << std::endl;
+  // }
+  // else
   {
     forceDeadZone = _externalForcesDeadZones[r];
   }
 
-  Fh = Utils<float>::deadZone((-_wRb[r]*_Fext[r]-Ft).norm(),0.0f,forceDeadZone)*vTooldir; 
+  Fh = Utils<float>::deadZone(_Fh[r].norm(),0.0f,forceDeadZone)*vHDir; 
     
-  if(_useFTSensor[r])
-  {
-    _Fm[r] = Utils<float>::deadZone(Ft.norm(),0.0f,5.0f)*Ft.normalized(); 
-    _Fm[r](0) *= 0.2f;
-    _Fm[r](1) *= 0.2f; 
-  }
-  else
-  {
-    _Fm[r].setConstant(0.0f);
-  }
 
+  // Compute admittance reference velocity
   Eigen::Vector3f D;
   D << 200, 200, 200;
 
-  float mass = 5.0f;
+  float mass = 4.0f;
   _vHRef[r] += _dt*(-_wRbIK[r]*D.asDiagonal()*_wRbIK[r].transpose()*_vHRef[r]+ Fh)/mass;
 
+  // Compute desired admittance velocity
   _vHd[r] = fulcrumEffectScaling(r, _vHRef[r]);
   _vHd[r] = Utils<float>::bound(_vHd[r], 0.1f);
 
+  // Update trank state
   float pin, pout, pd;
   pin = 1000*Fh.dot(_vHd[r]);
   pd = 2.0f;
@@ -759,11 +752,12 @@ void SurgicalTask::computeAdmittanceVelocity(int r)
   _tankH[r] += _dt*(pin-(1.2f-_alphaH[r])*pd);
   _tankH[r] = Utils<float>::bound(_tankH[r],0,1.0f);
 
+  // Compute admittance gain
   _alphaH[r] = Utils<float>::smoothRise(_tankH[r],0.0,0.8f);
 
   if(_debug)
   {
-    std::cerr << r << " Dir: " << vTooldir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
+    std::cerr << r << " Dir: " << vHDir.transpose() << " tank: " << _tankH[r] << " alpha: " << _alphaH[r] <<  " vH: " << _vHRef[r].norm() << " Fh: "<<  Fh.norm() << std::endl;
   }
 }
 
@@ -794,7 +788,6 @@ void SurgicalTask::computeHapticFeedback(int r)
   
   if(_controlPhase[r] == OPERATION)
   {
-
     Eigen::Vector3f vdEE, omegadEE;
     if(_controlStrategy[r] == PASSIVE_DS)
     {
@@ -854,7 +847,19 @@ void SurgicalTask::computeHapticFeedback(int r)
     }
 
 
-    _FdFoot[r] += _Fm[r];
+    // Compute scaled contact forces fed-back to human 
+    if(_useFTSensor[r])
+    {
+      _FmFoot[r] = Utils<float>::deadZone(_Fm[r].norm(),0.0f,5.0f)*_Fm[r].normalized(); 
+      _FmFoot[r](0) *= 0.2f;
+      _FmFoot[r](1) *= 0.2f; 
+    }
+    else
+    {
+      _FmFoot[r].setConstant(0.0f);
+    }
+
+    _FdFoot[r] += _FmFoot[r];
 
 
     _taud[r] = _selfRotationTorqueFeedbackMagnitude*(Utils<float>::smoothFall(_currentJoints[r](6)+_trocarSpaceSelfRotationRange*M_PI/180.0f,0, 0.2f)
