@@ -4,33 +4,24 @@ template<typename T>
 vibrator<T> *vibrator<T>::me = NULL;
 
 template<typename T>
-vibrator<T>::vibrator(T* input, T* output,T magnitude, T decayRate, T frequency, T filterGain) 
-: _vibInput(input), _vibOutput(output){
+vibrator<T>::vibrator(T* output,T magnitude, T decayRate, T frequency) 
+: _vibOutput(output){
     _vibMagnitude = magnitude; 
     _vibDecayRate = decayRate;
     _vibFrequency = frequency; 
      me = this;
-     _vibFilter = new LP_Filterd(filterGain);
+     //_vibFilter = new LP_Filterd(filterGain);
      _myStatus = FINISHED;
      _flagTrigger=false;
      _flagReset=false;
      *_vibOutput=0.0;
-     *_vibInput=0.0;
-     _vibInputInit = *_vibInput;
      _myDuration = ros::Duration(0.0);
-}
-
-template<typename T>
-vibrator<T>::vibrator(T* input, T* output, T magnitude) : vibrator<T>::vibrator(input, output,magnitude, defaultVibDecayRate, defaultVibFrequency, 0.5) 
-{
-
 }
 
 template<typename T>
 vibrator<T>::~vibrator()
 {
-  delete(_vibFilter);
-  delete(_vibInput);
+//  delete(_vibFilter);
   delete(_vibOutput);
 }
 
@@ -42,11 +33,10 @@ void vibrator<T>::update(ros::Time myCurrentTime)
             case VIBRATING:
                 {
                     _myDuration = (myCurrentTime - _myStartTime);
-                    //cout<<_myDuration<<endl;
-                    T vibration = 1.0f * _vibMagnitude * exp(-_vibDecayRate * (_myDuration.toSec())) *
-                                            sin(2 * M_PI * _vibFrequency * _myDuration.toSec());
+                    T vibration = _vibMagnitude * exp(-_vibDecayRate * (_myDuration.toSec())) *
+                                            std::cos(2 * M_PI * _vibFrequency * _myDuration.toSec());
 
-                    *_vibOutput = _vibFilter->update(vibration);
+                    *_vibOutput = vibration;
                     
                     if ( abs(*_vibOutput) < 0.001f)
                     {
@@ -59,7 +49,6 @@ void vibrator<T>::update(ros::Time myCurrentTime)
             case STANDBY:
                 {
                     _myStartTime = myCurrentTime;
-                    _vibInputInit = *_vibInput;
                     if (_flagTrigger)
                     {
                         _myStatus=VIBRATING;
@@ -69,7 +58,6 @@ void vibrator<T>::update(ros::Time myCurrentTime)
             case FINISHED:    
                 {
                     *_vibOutput = 0.0;
-                    _vibInputInit = 0.0;
                     break;
                 }
         }  

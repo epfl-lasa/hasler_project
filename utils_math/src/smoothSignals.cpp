@@ -6,14 +6,13 @@ template<typename T>
 smoothSignals<T> *smoothSignals<T>::me = NULL;
 
 template<typename T>
-smoothSignals<T>::smoothSignals(smoothSignals_Type type, T* output, T timeFreq) 
-: _myType(type),_signalOutput(output), _myTimeFreq(timeFreq){
+smoothSignals<T>::smoothSignals(smoothSignals_Type type, T* output, T timeFreq, T Bias) 
+: _myType(type),_signalOutput(output), _myTimeFreq(timeFreq), _timeFreqBias(Bias){
 
      me = this;
      _myStatus = STANDBY;
      _flagTrigger=false;
      _flagReset=false;
-     _durationBias=0.0;
      _myElapsedTime = ros::Duration(0.0);
 }
 
@@ -37,7 +36,7 @@ void smoothSignals<T>::update(ros::Time myCurrentTime)
                     case SMOOTH_FALL:
                     {   
                       
-                        *_signalOutput = Utils_math<T>::smoothFall(_myElapsedTime.toSec(),0,_myTimeFreq);
+                        *_signalOutput = Utils_math<T>::smoothFall(_myElapsedTime.toSec(),0+_timeFreqBias,_myTimeFreq+_timeFreqBias);
                         if (_myElapsedTime.toSec()>=_myTimeFreq)
                         {
                             _myStatus = FINISHED;
@@ -49,7 +48,7 @@ void smoothSignals<T>::update(ros::Time myCurrentTime)
                     case SMOOTH_RISE:
                     {
                       
-                        *_signalOutput = Utils_math<T>::smoothRise(_myElapsedTime.toSec(),0,_myTimeFreq);
+                        *_signalOutput = Utils_math<T>::smoothRise(_myElapsedTime.toSec(),0+_timeFreqBias,_myTimeFreq+_timeFreqBias);
                         if (_myElapsedTime.toSec()>=_myTimeFreq)
                         {
                             _myStatus = FINISHED;
@@ -61,7 +60,7 @@ void smoothSignals<T>::update(ros::Time myCurrentTime)
                       case SMOOTH_RISE_FALL:
                     {
                       
-                        *_signalOutput = Utils_math<T>::smoothRiseFall(_myElapsedTime.toSec(),0,_myTimeFreq/2.0, _myTimeFreq/2.0,_myTimeFreq);
+                        *_signalOutput = Utils_math<T>::smoothRiseFall(_myElapsedTime.toSec(),0 + _timeFreqBias,_myTimeFreq/2.0 + _timeFreqBias, _myTimeFreq/2.0 + _timeFreqBias,_myTimeFreq + _timeFreqBias);
                         if (_myElapsedTime.toSec()>=_myTimeFreq)
                         {
                             _myStatus = FINISHED;
@@ -70,31 +69,12 @@ void smoothSignals<T>::update(ros::Time myCurrentTime)
                         break;
                     }
 
-                    case SMOOTH_RISE_CUT:
-                    {
-                      
-                        if (*_signalOutput<=0.0001)
-                        {
-                            *_signalOutput = Utils_math<T>::smoothRise(_myElapsedTime.toSec(),0,500.0*_myTimeFreq);
-                            _durationBias = _myElapsedTime.toSec();
-                        }
-                        else
-                        {
-                            *_signalOutput = 0.001 + Utils_math<T>::smoothRise(_myElapsedTime.toSec(),_durationBias,_durationBias+_myTimeFreq);
-                            if (_myElapsedTime.toSec()>=_myTimeFreq + _durationBias)
-                            {
-                              _myStatus = FINISHED;
-                              _flagTrigger=false;
-                            }
-                        }
-                        
-                        break;
-                    }
+                  
                     case SINUSOID:
                     {   
                       
-                        *_signalOutput = std::sin(2.0f*M_PI*_myTimeFreq*_myElapsedTime.toSec() + M_PI_2);
-                        if (_myTimeFreq<1.0f)
+                        *_signalOutput = std::sin(2.0f*M_PI*_myTimeFreq*_myElapsedTime.toSec() + _timeFreqBias);
+                        if (_myTimeFreq<0.0f)
                         {
                             _myStatus = FINISHED;
                             _flagTrigger=false;

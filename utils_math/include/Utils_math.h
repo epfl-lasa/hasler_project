@@ -48,6 +48,8 @@ class Utils_math
 
 	static T smoothRiseFall(T x, T a, T b, T c, T d);
 
+	static T smoothFallRise(T x, T a, T b, T c, T d);
+
 	static T deadZone(T x, T a, T b);		
 
 	static T wrapToZero(T x, T a, T b);	

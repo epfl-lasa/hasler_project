@@ -12,11 +12,13 @@ class LP_Filterd
 		double update(double raw_input);
 		void setInit(double oldOutput);
 		void setAlpha(double alpha);		
+		void setParameters(double freq, double dt);
 		double getAlpha();		
 		void reset();
 		void setBias(double bias_);
 		double getOutput();
 	private:
+		bool _firstInputReceived;
 		double _bias;
 		double _alpha;
 		double _old_output;

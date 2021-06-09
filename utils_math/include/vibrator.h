@@ -27,13 +27,13 @@ private:
 
 
 
-  const T defaultVibMagnitude = -240.0; //![N / m/s]
-  const T defaultVibDecayRate = 60; //! [1/s]
-  const T defaultVibFrequency = 32.6; //! [Hz]
+  static constexpr T defaultVibMagnitude = -240.0; //![N / m/s]
+  static constexpr T defaultVibDecayRate = 60; //! [1/s]
+  static constexpr T defaultVibFrequency = 32.6; //! [Hz]
  
   static vibrator *me;
 
-  LP_Filterd* _vibFilter;
+  //LP_Filterd* _vibFilter;
 
   enum vibrator_Status {STANDBY, VIBRATING, FINISHED};
 
@@ -42,8 +42,6 @@ private:
   T _vibMagnitude, _vibDecayRate, _vibFrequency;
 
   
-  T* _vibInput;
-  T _vibInputInit; //!e.g. initial attack speed
   T* _vibOutput;
 
   vibrator_Status _myStatus;
@@ -57,8 +55,7 @@ private:
   
   // METHODS
 public:
-  vibrator(T* input, T* output,T magnitude, T decayRate, T frequency, T filterGain);
-  vibrator(T* input, T* output, T magnitude);
+  vibrator(T* output,T magnitude = defaultVibMagnitude, T decayRate = defaultVibDecayRate, T frequency = defaultVibFrequency);
   bool run(ros::Time myCurrentTime);
   bool finished();
 

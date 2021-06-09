@@ -31,8 +31,8 @@ const float Axis_Limits[] =  {0.090f,0.0975f,27.5f*DEG_TO_RAD,120.0f*DEG_TO_RAD}
 
 const float SAMPLING_TIME = 2.5; // in ms 
 
-const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 
+const int Axis_Mod[NB_PLATFORM_AXIS] = {p_y,p_x,p_pitch,p_yaw,p_roll};
 const float Scale_Foot[] = {0.15f/Axis_Limits[0],0.15f/Axis_Limits[1],(2.0f*0.15f)/(1.5f*Axis_Limits[2]),(1.5f* (float) M_PI)/50.0f*DEG_TO_RAD,30.0f*DEG_TO_RAD/20.5f*DEG_TO_RAD}; // Y=1.66[m/m], X=1.54[m/m], Z=0.42[m/rad], YAW=5.41[rad/rad], ROLL(Grasping)=1.46[rad/rad];
 
 
@@ -191,9 +191,10 @@ sharedControlGrasp::sharedControlGrasp(ros::NodeHandle &n_1, double frequency, s
   }
 
     // _myVibrator = new vibrator(&_toolJointSpeed(tool_wrist_open_angle), &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
-  _myVibrator = new vibrator<double>(&_vibInput, &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
-  _mySmoothSignalsPos = new smoothSignals<double>(smoothSignals<double>::SMOOTH_RISE, &_hapticAxisFilterPos,3.0); 
-  _mySmoothSignalsGrasp = new smoothSignals<double>(smoothSignals<double>::SMOOTH_RISE, &_hapticAxisFilterGrasp,3.0); 
+  //_myVibrator = new vibrator<double>(&_vibInput, &_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib,0.0);
+  _myVibrator = new vibrator<double>(&_vibrationGrasping,magnitude_vib,decayRate_vib,frequency_vib);
+  _mySmoothSignalsPos = new smoothSignals<double>(smoothSignals<double>::SMOOTH_RISE, &_hapticAxisFilterPos,3.0,0.0f); 
+  _mySmoothSignalsGrasp = new smoothSignals<double>(smoothSignals<double>::SMOOTH_RISE, &_hapticAxisFilterGrasp,3.0,0.0f); 
   _flagGraspingStarted=false;
   _flagHoldingGraspStarted=false;
   _flagPositioningStarted=false;

@@ -26,8 +26,8 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-FILE(GLOB SRCS src/Utils_math.cpp src/LP_Filterd.cpp src/MatLP_Filterd.cpp src/PIDd.cpp src/smoothSignals.cpp src/vibrator.cpp src/gaussianFilter.cpp) # src/torque2TaskSpace_wdls.cpp)
-FILE(GLOB INCS include/Utils_math.h include/LP_Filterd.h  include/ MatLP_Filterd.h include/PIDd.h include/smoothSignals.h include/vibrator.h include/gaussianFilter.h ) #include/torque2TaskSpace_wdls.h)
+FILE(GLOB SRCS src/Utils_math.cpp src/LP_Filterd.cpp src/HP_Filterd.cpp src/MatLP_Filterd.cpp src/PIDd.cpp src/smoothSignals.cpp src/vibrator.cpp src/gaussianFilter.cpp) # src/torque2TaskSpace_wdls.cpp)
+FILE(GLOB INCS include/Utils_math.h include/LP_Filterd.h include/HP_Filterd.h include/ MatLP_Filterd.h include/PIDd.h include/smoothSignals.h include/vibrator.h include/gaussianFilter.h ) #include/torque2TaskSpace_wdls.h)
 
 add_library(utils_math ${SRCS} ${INCS})
 add_library(kdl_custom src/torque2TaskSpace_wdls.cpp)

@@ -6,7 +6,7 @@ char const *Axis_names[]{
 	AXES};
 #undef ListofAxes
 
-const float effortLims[] {15.0f, 15.0f, 5.0f, 5.0f, 5.0f};
+const float effortLims[] {15.0f, 15.0f, 7.0f, 7.0f, 7.0f};
 char const *Platform_Names[]{"none", "right", "left"};
 
 footVarSynchronizer *footVarSynchronizer::me = NULL;
@@ -942,7 +942,7 @@ void footVarSynchronizer::processAllPublishers()
 							|| fabs(_msgDesiredFootInput[i].ros_ki[j])>FLT_EPSILON ||
 							fabs(_msgDesiredFootInput[i].ros_kd[j])>FLT_EPSILON)
 							{
-								_flagPIDGainsByInput=true;
+								//_flagPIDGainsByInput=true;
 								_msgTotalDesiredFootInput.ros_kp[j] += _msgDesiredFootInput[i].ros_kp[j];			
 								_msgTotalDesiredFootInput.ros_ki[j] += _msgDesiredFootInput[i].ros_ki[j];			
 								_msgTotalDesiredFootInput.ros_kd[j] += _msgDesiredFootInput[i].ros_kd[j];			
@@ -975,34 +975,47 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 	
 	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] * _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]];
 	
-	if (!_flagPIDGainsByInput)
-	{
-		if (_platform_controllerType==POSITION_CTRL)
-		{
-			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_posP[k],0.0,_ros_posP_Max[k]);
-			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_posI[k],0.0,_ros_posI_Max[k]);
-			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_posD[k],0.0,_ros_posD_Max[k]);
-		} else if (_platform_controllerType==SPEED_CTRL)
-		{
-			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_speedP[k],0.0,_ros_speedP_Max[k]);
-			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_speedI[k],0.0,_ros_speedI_Max[k]);
-			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_speedD[k],0.0,_ros_speedD_Max[k]);
-		}
-	}else
-	{
-		if (_platform_controllerType==POSITION_CTRL)
-		{
-			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_posP_Max[k]);
-			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_posI_Max[k]);
-			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_posD_Max[k]);
-		} else if (_platform_controllerType==SPEED_CTRL)
-		{
-			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_speedP_Max[k]);
-			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_speedI_Max[k]);
-			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_speedD_Max[k]);
-		}
-	}
+	// if (!_flagPIDGainsByInput)
+	// {
+	// 	if (_platform_controllerType==POSITION_CTRL)
+	// 	{
+	// 		_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_posP[k],0.0,_ros_posP_Max[k]);
+	// 		_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_posI[k],0.0,_ros_posI_Max[k]);
+	// 		_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_posD[k],0.0,_ros_posD_Max[k]);
+	// 	} else if (_platform_controllerType==SPEED_CTRL)
+	// 	{
+	// 		_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_speedP[k],0.0,_ros_speedP_Max[k]);
+	// 		_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_speedI[k],0.0,_ros_speedI_Max[k]);
+	// 		_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_speedD[k],0.0,_ros_speedD_Max[k]);
+	// 	}
+	// }else
+	// {
+	// 	if (_platform_controllerType==POSITION_CTRL)
+	// 	{
+	// 		_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_posP_Max[k]);
+	// 		_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_posI_Max[k]);
+	// 		_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_posD_Max[k]);
+	// 	} else if (_platform_controllerType==SPEED_CTRL)
+	// 	{
+	// 		_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_speedP_Max[k]);
+	// 		_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_speedI_Max[k]);
+	// 		_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_speedD_Max[k]);
+	// 	}
+	// }
 	
+
+		if (_platform_controllerType==POSITION_CTRL)
+		{
+			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_posP[k] + _msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_posP_Max[rosAxis[k]]);
+			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_posI[k] + _msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_posI_Max[rosAxis[k]]);
+			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_posD[k] + _msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_posD_Max[rosAxis[k]]);
+		} else if (_platform_controllerType==SPEED_CTRL)
+		{
+			_msgFootInput.ros_kp[rosAxis[k]] = Utils_math<float>::bound(_ros_speedP[k] + _msgTotalDesiredFootInput.ros_kp[rosAxis[k]],0.0,_ros_speedP_Max[rosAxis[k]]);
+			_msgFootInput.ros_ki[rosAxis[k]] = Utils_math<float>::bound(_ros_speedI[k] + _msgTotalDesiredFootInput.ros_ki[rosAxis[k]],0.0,_ros_speedI_Max[rosAxis[k]]);
+			_msgFootInput.ros_kd[rosAxis[k]] = Utils_math<float>::bound(_ros_speedD[k] + _msgTotalDesiredFootInput.ros_kd[rosAxis[k]],0.0,_ros_speedD_Max[rosAxis[k]]);
+		}
+
   }
   if(_subTorquesModified.getNumPublishers()>0)
   {
@@ -1161,24 +1174,24 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 					_config.kd_PITCH = _ros_paramD[_myPIDCategory][PITCH];
 					_ros_posP[PITCH] = Utils_math<double>::bound(_config.kp_PITCH,0,10000.0);
 					_ros_posI[PITCH] = Utils_math<double>::bound(_config.ki_PITCH,0,10000.0);
-					_ros_posD[PITCH] = Utils_math<double>::bound(_config.kd_PITCH,0,100.0);
+					_ros_posD[PITCH] = Utils_math<double>::bound(_config.kd_PITCH,0,200.0);
 					break;
 				}
 				case (ROLL):
 				{
 					if (_platform_name == RIGHT_PLATFORM_ID)
 					{
-						_config.kp_ROLL = Utils_math<double>::map(Utils_math<double>::smoothRise(_platform_position(ROLL),-ROLL_RANGE*0.1,ROLL_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][ROLL],_ros_paramP_B[_myPIDCategory][ROLL]);
+						_config.kp_ROLL = Utils_math<double>::map(Utils_math<double>::smoothFall(_platform_position(ROLL),-ROLL_RANGE*0.1,ROLL_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][ROLL],_ros_paramP_B[_myPIDCategory][ROLL]);
 					}
 					else
 					{
-						_config.kp_ROLL = Utils_math<double>::map(Utils_math<double>::smoothFall(_platform_position(ROLL),-ROLL_RANGE*0.1,ROLL_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][ROLL],_ros_paramP_B[_myPIDCategory][ROLL]);
+						_config.kp_ROLL = Utils_math<double>::map(Utils_math<double>::smoothRise(_platform_position(ROLL),-ROLL_RANGE*0.1,ROLL_RANGE*0.1),0.0,1.0,_ros_paramP_A[_myPIDCategory][ROLL],_ros_paramP_B[_myPIDCategory][ROLL]);
 					}
 					_config.ki_ROLL = _ros_paramI[_myPIDCategory][ROLL];
 					_config.kd_ROLL = _ros_paramD[_myPIDCategory][ROLL];
 					_ros_posP[ROLL] = Utils_math<double>::bound(_config.kp_ROLL,0.0,10000.0);
 					_ros_posI[ROLL] = Utils_math<double>::bound(_config.ki_ROLL,0.0,10000.0);
-					_ros_posD[ROLL] = Utils_math<double>::bound(_config.kd_ROLL,0.0,100.0);
+					_ros_posD[ROLL] = Utils_math<double>::bound(_config.kd_ROLL,0.0,200.0);
 					break;
 				}
 				case (YAW):
@@ -1196,7 +1209,7 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 					_config.kd_YAW = _ros_paramD[_myPIDCategory][YAW];
 					_ros_posP[YAW] = Utils_math<double>::bound(_config.kp_YAW,0.0,10000.0);
 					_ros_posI[YAW] = Utils_math<double>::bound(_config.ki_YAW,0.0,10000.0);
-					_ros_posD[YAW] = Utils_math<double>::bound(_config.kd_YAW,0.0,100.0);
+					_ros_posD[YAW] = Utils_math<double>::bound(_config.kd_YAW,0.0,200.0);
 					break;
 				}
 			}

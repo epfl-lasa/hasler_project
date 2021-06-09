@@ -282,6 +282,7 @@ template<typename T>
 T Utils_math<T>::smoothRise(T x, T a, T b)
 {
   T y; 
+  
   if(x<a)
   {
     y = 0.0f;
@@ -292,8 +293,16 @@ T Utils_math<T>::smoothRise(T x, T a, T b)
   }
   else
   {
-    y = (1.0f+sin(M_PI*(x-a)/(b-a)-M_PI/2.0f))/2.0f;
+    if (fabs(b-a) > FLT_EPSILON)
+    {
+      y = (1.0f+sin(M_PI*(x-a)/(b-a)-M_PI/2.0f))/2.0f;
+    }
+    else
+    {
+      y = 0.0f;
+    }
   }
+
 
   return y;
 }
@@ -337,6 +346,13 @@ T Utils_math<T>::smoothRiseFall(T x, T a, T b, T c, T d)
 {
   return smoothRise(x,a,b)*smoothFall(x,c,d);
 }
+
+template<typename T>
+T Utils_math<T>::smoothFallRise(T x, T a, T b, T c, T d)
+{
+  return 1.0 - smoothRiseFall(x,a,b,c,d);
+}
+
 
 
 template<typename T>

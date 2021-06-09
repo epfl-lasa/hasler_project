@@ -4,14 +4,9 @@
 
   <xacro:arg name="with_chair" default="true"/>
 
-  <!-- <xacro:property name="thigh_mass" value="${10.5 * 0.125 * body_weight / 100}"/>  -->
-  <!-- <xacro:property name="thigh_mass" value="${14.47 * 28/60 * body_weight / 100}"/> P01 -->
-  <!--xacro:property name="thigh_mass" value="${10.5 * (1.0-13/43) * (1.0-13/43) * body_weight / 100}"/--> <!--P02 -->
-  <!-- <xacro:property name="thigh_mass" value="${10.5 * (1.0-20/54) * (1.0-20/54) * body_weight / 100}"/> -->
-  <!-- <xacro:property name="thigh_mass" value="${10.5 * (1.0-26/59) * (1.0-26/59) * body_weight / 100}"/> -->
   <xacro:property name="thigh_mass" value="${10.5 * (1.0-32/56) * (1.0-32/56) * body_weight / 100}"/>
-  <xacro:property name="shin_mass" value="${4.75 * body_weight / 100}"/> <!-- [kg] -->
-  <xacro:property name="foot_mass" value="${1.43  * body_weight / 100}"/> <!--[kg] -->
+  <xacro:property name="shin_mass" value="${4.75 * body_weight / 100}"/> 
+  <xacro:property name="foot_mass" value="${1.43  * body_weight / 100}"/> 
   <xacro:property name="scale_mass" value="${body_weight / body_weight_baseline}"/>
   
   <xacro:property name="thigh_scale_x" value="${thigh_d/thighBaseline_d}"/> 

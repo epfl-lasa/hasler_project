@@ -4,6 +4,7 @@ LP_Filterd::LP_Filterd()
 {
   _output = 0.0f;
   _old_output = 0.0f;
+  _firstInputReceived=false;
   _alpha = 0.0f;
   _bias = 0.0f;
 }
@@ -12,6 +13,7 @@ LP_Filterd::LP_Filterd(double alpha)
 {
   _output=0.0f;
   _old_output=0.0f;
+  _firstInputReceived=false;
   _alpha=alpha;
   _bias=0.0f;
 }
@@ -19,8 +21,14 @@ LP_Filterd::LP_Filterd(double alpha)
 
 double LP_Filterd::update(double raw_input){
   if (!isnan(raw_input))
-  { 
-    _output=_alpha*_old_output + (1.0f-_alpha)*raw_input;  
+  { if (!_firstInputReceived)
+    {
+       _output=(1.0f-_alpha)*raw_input;
+      _firstInputReceived=true;
+    }else{
+    
+      _output=_alpha*_old_output + (1.0f-_alpha)*raw_input;  
+    }
   }
   _old_output=_output;
   return _output - _bias;
@@ -50,6 +58,11 @@ double LP_Filterd::getAlpha()
 void LP_Filterd::setAlpha(double alpha)
 {
   _alpha=alpha;
+}
+
+void LP_Filterd::setParameters(double freq, double dt)
+{
+  _alpha= 1.0-(2 * M_PI * dt * freq )/ (2 * M_PI * dt * freq + 1.0);
 }
 
 void LP_Filterd::setInit(double oldOutput)
