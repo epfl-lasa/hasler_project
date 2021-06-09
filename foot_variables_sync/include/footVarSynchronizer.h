@@ -32,10 +32,14 @@
 
 using namespace std;
 
+
+const float effortLims[] = {15.0f, 15.0f, 7.0f, 7.0f, 7.0f};
+
 class footVarSynchronizer
 {
 
     public:
+                
         enum Platform_Name {UNKNOWN=0,RIGHT=1, LEFT=2}; 
         
         enum PID_POS_Categories {S_TELEOP_PID,S_ROBOT_CTRL_PID,TOOL_POS_PID,TOOL_SPEED_PID,MP_TOOL_MIXED_PID,EXT_PID, NB_POS_PID_C};   
@@ -234,7 +238,7 @@ class footVarSynchronizer
 	
     void checkWhichPIDGainsToUse();
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg);
+    void readFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg);
     void sniffFootInput(const custom_msgs::FootInputMsg::ConstPtr& msg); 
     
     
@@ -256,7 +260,6 @@ class footVarSynchronizer
     void resetDesiredPositionToCurrent(int axis_);
 
     
-
     // void readForceSensor(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     // void readForceBias(const geometry_msgs::WrenchStamped::ConstPtr &msg);
     void readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg);

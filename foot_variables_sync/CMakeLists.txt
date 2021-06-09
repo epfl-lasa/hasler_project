@@ -31,7 +31,21 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-add_executable(footVarSynchronizer src/footVarSynchronizer.cpp src/footVarSynchronizer_node.cpp)
+add_executable(footVarSynchronizer 
+               src/footVarSynchronizer.cpp 
+               src/footVarSynchronizer_config.cpp
+               src/footVarSynchronizer_create.cpp
+               src/footVarSynchronizer_dynReconfig.cpp
+               src/footVarSynchronizer_gains.cpp
+               src/footVarSynchronizer_init.cpp
+               src/footVarSynchronizer_legComp.cpp
+               src/footVarSynchronizer_node.cpp
+               src/footVarSynchronizer_param.cpp
+               src/footVarSynchronizer_pub.cpp
+               src/footVarSynchronizer_srv.cpp 
+               src/footVarSynchronizer_sub.cpp 
+               src/footVarSynchronizer_synchronize.cpp 
+               )
 target_link_libraries(footVarSynchronizer ${catkin_LIBRARIES})
 
 # add_dependencies(footVarSynchronizer ${PROJECT_NAME}_gencpp)

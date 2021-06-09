@@ -101,11 +101,11 @@ bool multiAxisFrictionID::init() //! Initialization of the node. Its datatype (b
 {
 	if (_platform_name==LEFT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg>(PLATFORM_SUBSCRIBER_NAME_LEFT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_LEFT,1, boost::bind(&multiAxisFrictionID::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_LEFT,1, boost::bind(&multiAxisFrictionID::readFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
 	if (_platform_name==RIGHT){
 		_pubFootInput = _n.advertise<custom_msgs::FootInputMsg>(PLATFORM_SUBSCRIBER_NAME_RIGHT, 1);
-		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_RIGHT,1, boost::bind(&multiAxisFrictionID::fetchFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+		_subFootOutput = _n.subscribe<custom_msgs::FootOutputMsg>(PLATFORM_PUBLISHER_NAME_RIGHT,1, boost::bind(&multiAxisFrictionID::readFootOutput,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	}
   	
 
@@ -288,7 +288,7 @@ void multiAxisFrictionID::functionControl(int whichAxis_, Sequence whichSequence
 							{
 								ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[_currentAxis], Direction_names[_direction[_currentAxis]]);
 								int dir_ = (_direction[_currentAxis] == FORWARD_1 || _direction[_currentAxis] == FORWARD_2) ? 1 : -1;
-								_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis] - _platform_position[_currentAxis]));
+								_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis][L_MAX] - _platform_position(_currentAxis)));
 								_stepSize[_currentAxis] = _WS[_currentAxis] / NB_STEPS_DEFAULT;
 								ROS_INFO("Stepsize fixed at %f", _stepSize[_currentAxis]);
 								_flagWSDefined[_currentAxis] = true;
@@ -338,7 +338,7 @@ void multiAxisFrictionID::functionControl(int whichAxis_, Sequence whichSequence
 								{
 									ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[k], Direction_names[_direction[k]]);
 									int dir_ = (_direction[k] == FORWARD_1 || _direction[k] == FORWARD_2) ? 1 : -1;
-									_WS[k] = abs(dir_ * (WS_LIMITS[k] - _platform_position[k]));
+									_WS[k] = abs(dir_ * (WS_LIMITS[k][L_MAX] - _platform_position[k]));
 									_stepSize[k] = _WS[k] / NB_STEPS_DEFAULT;
 									ROS_INFO("Stepsize fixed at %f", _stepSize[k]);
 									_flagWSDefined[k] = true;
@@ -393,7 +393,7 @@ void multiAxisFrictionID::functionControl(int whichAxis_, Sequence whichSequence
 					{
 						ROS_INFO("Generating %s for %s in %s direction ", Strategy_names[_strategy], Axis_names[_currentAxis], Direction_names[_direction[_currentAxis]]);
 						int dir_ = (_direction[_currentAxis] == FORWARD_1 || _direction[_currentAxis] == FORWARD_2) ? 1 : -1;
-						_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis] - _platform_position[_currentAxis]));
+						_WS[_currentAxis] = abs(dir_ * (WS_LIMITS[_currentAxis][L_MAX] - _platform_position[_currentAxis]));
 						_stepSize[_currentAxis] = _WS[_currentAxis] / NB_STEPS_DEFAULT;
 						ROS_INFO("Stepsize fixed at %f", _stepSize[_currentAxis]);
 						_flagWSDefined[_currentAxis] = true;
@@ -505,7 +505,7 @@ void multiAxisFrictionID::funcJointGen(int axis_, float tau_)
 				}
 				int dir_ = (_direction[_currentAxis] == FORWARD_1 || _direction[_currentAxis] == FORWARD_2 ) ? 1 : -1;
 				_ros_position[axis_] = _stepSize[axis_] * (_currentOffset[axis_] + dir_*stepFunGen(axis_, tau_, _strategy));
-				_ros_position[axis_] = clampSymmetric(_ros_position[axis_], WS_LIMITS[axis_]);
+				_ros_position[axis_] = clampSymmetric(_ros_position[axis_], WS_LIMITS[axis_][L_MAX]);
 				_ros_position[axis_] = _ros_positionFilter[axis_]->update(_ros_position[axis_]);
 			}
 
@@ -536,7 +536,7 @@ void multiAxisFrictionID::publishPositionOnly()
 	_mutex.unlock();
 }
 
-void multiAxisFrictionID::fetchFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg)
+void multiAxisFrictionID::readFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg)
 {
 	_flagOutputMessageReceived=true;
 	_platform_id = msg->platform_id; 

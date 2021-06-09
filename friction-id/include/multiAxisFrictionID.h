@@ -134,7 +134,7 @@ public:
     //! ROS METHODS
 
     //bool allSubscribersOK();
-    void fetchFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg);     
+    void readFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg);     
     void publishPositionOnly();
     
     //! FUNCTION GENERATOR METHODS
