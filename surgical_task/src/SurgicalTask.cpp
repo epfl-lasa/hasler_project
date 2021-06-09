@@ -33,9 +33,11 @@ bool SurgicalTask::init()
 
 
   // Create log file
-  _outputFile[LEFT].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_left.txt");
-  _outputFile[RIGHT].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_right.txt");
-  _outputFile[2].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_state.txt");
+  _outputFile[0].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_left_robot.txt");
+  _outputFile[1].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_right_robot.txt");
+  _outputFile[2].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_left_foot.txt");
+  _outputFile[3].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_right_foot.txt");
+  _outputFile[4].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_state.txt");
 
   // Create callback to kill node via CTRL+C
   signal(SIGINT,SurgicalTask::stopNode);
@@ -67,6 +69,16 @@ void SurgicalTask::run()
       {
         everythingOK = true;
         std::cerr << "[SurgicalTask]: Starting the task !!!" << std::endl;
+        std::cerr << _x[RIGHT].transpose() << std::endl;
+        std::cerr << _trocarPosition[RIGHT].transpose() << std::endl;
+        Eigen::Matrix4f Hik;
+        Hik = Utils<float>::getForwardKinematics(_ikJoints[RIGHT],_robotID);
+       
+        _xEEIK[RIGHT] =  _xRobotBaseOrigin[RIGHT]+_wRRobotBasis[RIGHT]*Hik.block(0,3,3,1);
+        _wRbIK[RIGHT] = _wRRobotBasis[RIGHT]*Hik.block(0,0,3,3);
+        _xIK[RIGHT] = _xEEIK[RIGHT]+_wRbIK[RIGHT]*_toolOffsetFromEE[RIGHT];
+        std::cerr << _xIK[RIGHT].transpose() << std::endl;
+        // _stop = true;
 
       }
 
@@ -213,7 +225,9 @@ void SurgicalTask::logData()
                     << _currentJoints[r].transpose() << " "
                     << _currentJointVelocities[r].transpose() << " "
                     << _currentJointTorques[r].transpose() << " "
+                    << _toolOffsetFromEE[r].transpose() << " "
                     << _Fext[r].transpose() << " "
+                    << _wrench[r].transpose() << " "
                     << _ikJoints[r].transpose() << " "
                     << _trocarPosition[r].transpose() << " "
                     << _depthGain[r] << " " 
@@ -223,13 +237,8 @@ void SurgicalTask::logData()
                     << _xd[r].transpose() << " "
                     << _selfRotationCommand[r] << " "
                     << _trocarInput[r].transpose() << " " 
-                    << _footPose[r].transpose() << " "
-                    << _footTwist[r].transpose() << " "
-                    << _footWrenchM[r].transpose() << " "
-                    << _footWrenchRef[r].transpose() << " "
-                    << _footWrenchD[r].transpose() << " "
-                    << (int) _footState[r] << " "
                     << _FdFoot[r].transpose() << " "
+                    << _FmFoot[r].transpose() << " "
                     << _taud[r] << " "
                     << _desiredFootWrench[r].transpose() << " "
                     << _vHRef[r].transpose() << " "
@@ -238,12 +247,38 @@ void SurgicalTask::logData()
                     << _alphaH[r] << " "
                     << (int) _controlPhase[r] << " " 
                     << (int) _tool[r] << " "
+                    << (int) _humanInputID[r] << " "
                     << (int) _qpResult[r].eeCollisionConstraintActive << " "
                     << (int) _qpResult[r].toolCollisionConstraintActive << " "
-                    << (int) _qpResult[r].workspaceCollisionConstraintActive << " " << std::endl;
+                    << (int) _qpResult[r].workspaceCollisionConstraintActive << " "
+                    << _dEECollision[r] << " "
+                    << _dToolCollision[r] << " " << std::endl;
+        
+
+      int h;
+      if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT)
+      {
+        h = _humanInputID[r];
+      }
+      else
+      {
+        h = r;
+      }
+
+      _outputFile[2+h] << ros::Time::now() << " "
+                       << _footPose[h].transpose() << " "
+                       << _footTwist[h].transpose() << " "
+                       << _footWrenchM[h].transpose() << " "
+                       << _footWrenchRef[h].transpose() << " "
+                       << _footWrenchD[h].transpose() << " "
+                       << (int) _footState[h] << " "
+                       << _footInputPosition[h].transpose() << " "
+                       << _footInputFilterAxisForce[h].transpose() << " "
+                       << _footInputKp[h].transpose() << " "
+                       << _footInputKd[h].transpose() << std::endl;        
     }
   }
-  _outputFile[2] << ros::Time::now() << " "
+  _outputFile[4] << ros::Time::now() << " "
    << (int) _allowTaskAdaptation << " "
    << (int) _useTaskAdaptation << " "
    << _vda.transpose() << " "
@@ -262,6 +297,8 @@ void SurgicalTask::logData()
 
    << (int) _humanInputMode << " "
    << (int) _currentRobot << " "
+   << (int) _dominantInputID << " "
+   << (int) _nonDominantInputID << " "
    << (int) _clutching <<  " "
    << (int) _wait << " " << std::endl;
 }

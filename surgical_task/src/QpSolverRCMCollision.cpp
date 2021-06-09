@@ -15,7 +15,7 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
 																					 _enableWorkspaceCollisionAvoidance(enableWorkspaceCollisionAvoidance),
 																					 _workspaceMinOffset(workspaceMinOffset), _workspaceMaxOffset(workspaceMaxOffset), _minInsertion(minInsertion),
                                            _nbTasks(7), _nbJoints(7), _nbSlacks(7), _nbVariables(14), _nbConstraints(20),
-                                           _rcmTolerance(1e-3), _toolTolerance(1e-3), _phiTolerance(1e-2)
+                                           _rcmTolerance(1e-4), _toolTolerance(1e-4), _phiTolerance(1e-3)
 {
 
 	_debug = false;
@@ -174,9 +174,8 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 }
 
 
-QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, float toolOffset, 
-														Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis,
-														float depthGain, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
+QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, Eigen::Vector3f toolOffset, 
+														Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
 														Eigen::Vector3f rToolObstacle, float dToolObstacle, Eigen::Vector3f toolCollisionOffset,
 														bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset)
 {
@@ -206,12 +205,10 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	_slackGains.setConstant(100000.0f);
 	_slackGains.segment(3,4).setConstant(100000.0f);
 
-	_rcmGain = depthGain;
-
-	_rcmGain = 20.0f;
+	_rcmGain = 40.0f;
 
 
-		_H.setConstant(0.0f);
+	_H.setConstant(0.0f);
 	_A.setConstant(0.0);
 	_g.setConstant(0.0f);
 	_lb.setConstant(0.0f);
@@ -228,17 +225,27 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  Eigen::Matrix4f Hfk;
 	  Hfk = Utils<float>::getForwardKinematics(joints, _robotID);
 
-	  Eigen::Vector3f xEE, xRCM, xTool, zEE;
+	  Eigen::Vector3f xEE, xRCM, xTool, toolDir;
 	  Eigen::Matrix3f wRb;
 
 	  xEE = wRRobotBasis*Hfk.block(0,3,3,1) + xRobotBasis;
 	  wRb = wRRobotBasis*Hfk.block(0,0,3,3);
-	  zEE = wRb.col(2);
+	  xTool = xEE+wRb*toolOffset;
+	  toolDir = (wRb*toolOffset).normalized();
+	  xRCM = xEE+(xTrocar-xEE).dot(toolDir)*toolDir;
 
-	  xRCM = xEE+(xTrocar-xEE).dot(wRb.col(2))*wRb.col(2);
-	  xTool = xEE+toolOffset*wRb.col(2);
+	  // std::cerr << "a" << std::endl;
+	  // std::cerr << xEE.transpose() << std::endl;
+	  // std::cerr << xTool.transpose() << std::endl;
+	  // std::cerr << xRCM.transpose() << std::endl;
+	  // std::cerr << xTrocar.transpose() << std::endl;
+	  // std::cerr << toolOffset.norm() << std::endl;
+	  // std::cerr << "Before: " << (xRCM).transpose() << std::endl;
+	  // std::cerr << "Dir: " << (wRb.transpose()*toolDir).transpose() << std::endl;
+	  // std::cerr << "After: " << (xRCM).transpose() << std::endl;
 
-	  float dRCMTool = toolOffset-(xTrocar-xEE).dot(wRb.col(2));
+	  // float dRCMTool = toolOffset-(xTrocar-xEE).dot(wRb.col(2));
+	  float dRCMTool = (xTool-xRCM).dot(toolDir);
 
 	  Eigen::MatrixXf Jee(6,_nbJoints), JeeCollision(3, _nbJoints), Jrcm(3,_nbJoints), Jtool(3,_nbJoints), JtoolCollision(3,_nbJoints);
 	  Jee = Utils<float>::getGeometricJacobian(joints, Eigen::Vector3f::Zero(), _robotID);
@@ -255,10 +262,10 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 
   	Eigen::Vector3f vdEE, omegadEE;
     Eigen::Matrix<float,6,6> A;
-    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(wRb.col(2))*Eigen::Matrix3f::Identity();
-    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(wRb.col(2))*Utils<float>::getSkewSymmetricMatrix(xRCM-xEE);
+    A.block(0,0,3,3) = Utils<float>::orthogonalProjector(toolDir)*Eigen::Matrix3f::Identity();
+    A.block(0,3,3,3) = -Utils<float>::orthogonalProjector(toolDir)*Utils<float>::getSkewSymmetricMatrix(xRCM-xEE);
     A.block(3,0,3,3) = Eigen::Matrix3f::Identity();
-    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(toolOffset*wRb.col(2));
+    A.block(3,3,3,3) = -Utils<float>::getSkewSymmetricMatrix(wRb*toolOffset);
     Eigen::Matrix<float,6,1> x, b;
     b.setConstant(0.0f);
     b.segment(3,3) = vdTool;
@@ -317,7 +324,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 			_A.block(_idWorkspaceCollisionConstraint,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			// dir << 0.0f,0.0f,-1.0f;
-			dir = wRb.col(2);
+			dir = toolDir;
 			_A.block(_idWorkspaceCollisionConstraint+1,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			dir << 1.0f,0.0f,0.0f;

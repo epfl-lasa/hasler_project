@@ -204,7 +204,8 @@ void SurgicalTask::computeTrocarInput(int r, int h)
 
       _trocarInput[h] = R*_trocarInput[h];
 
-      if(_clutching && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_clutching && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      if(_clutching)
       {
         _humanClutchingOffset = _trocarInput[h];
       }
@@ -218,7 +219,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
       }
 
-      if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
       	_trocarInput[h] -= _humanClutchingOffset;
       }
@@ -315,7 +316,8 @@ void SurgicalTask::computeTrocarInput(int r, int h)
     
       _trocarInput[h] = R*_footPose[h];
 
-      if(_clutching  && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_clutching  && _humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      if(_clutching)
       {
         _humanClutchingOffset = _trocarInput[h];
       }
@@ -329,7 +331,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
         _gripperClutchingOffset = _desiredGripperPosition[_currentRobot];
       }
 
-      if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
+      // if(_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS)
       {
       	_trocarInput[h] -= _humanClutchingOffset;
       }
@@ -367,7 +369,7 @@ void SurgicalTask::computeTrocarInput(int r, int h)
 }
 
 
-void SurgicalTask::computeDesiredFootWrench(int r, int h)
+void SurgicalTask::computeDesiredFootTorques(int r, int h)
 {
   _desiredFootWrench[h].setConstant(0.0f);
 
@@ -375,11 +377,9 @@ void SurgicalTask::computeDesiredFootWrench(int r, int h)
   G.setIdentity();
   G(2,2) = 0.2f;
 
-
   Eigen::Vector4f temp;
 
   temp(3) = _taud[r];
-
 
   switch(_tool[r])
   {
@@ -387,12 +387,19 @@ void SurgicalTask::computeDesiredFootWrench(int r, int h)
     {
       temp.segment(0,3) = (_wRb[r]*_eeCameraMapping).transpose()*_FdFoot[r];
       _desiredFootWrench[h] = _footPVMapping.block(0,0,4,NB_DOF_FOOT_INTERFACE).transpose()*G*temp;
+      temp.setConstant(0.0f);
+      temp.segment(0,3) = (_wRb[r]*_eeCameraMapping).transpose()*_Fm[r];
+      _toolToFootTorques[h] = _footPVMapping.block(0,0,4,NB_DOF_FOOT_INTERFACE).transpose()*G*temp;
+
       break;
     }
     case RETRACTOR:
     {
       temp.segment(0,3) = _FdFoot[r];
       _desiredFootWrench[h] = _footPPMapping.block(0,0,4,NB_DOF_FOOT_INTERFACE).transpose()*G*temp;
+      temp.setConstant(0.0f);
+      temp.segment(0,3) = _Fm[r];
+      _toolToFootTorques[h] = _footPPMapping.block(0,0,4,NB_DOF_FOOT_INTERFACE).transpose()*G*temp;
       break;
     }
     default:
@@ -403,25 +410,13 @@ void SurgicalTask::computeDesiredFootWrench(int r, int h)
 
   for(int k = 0; k < 2; k++)
   {
-    if(_desiredFootWrench[h](k)>15.0f)
-    {
-      _desiredFootWrench[h](k) = 15.0f;
-    }
-    else if(_desiredFootWrench[h](k)<-15.0f)
-    {
-      _desiredFootWrench[h](k) = -15.0f;
-    }
+    _desiredFootWrench[h](k) = Utils<float>::bound(_desiredFootWrench[h](k), -15.0f, 15.0f);
+    _toolToFootTorques[h](k) = Utils<float>::bound(_toolToFootTorques[h](k), -15.0f, 15.0f);
   }
 
   for(int k = 0 ; k < 3; k++)
   {
-    if(_desiredFootWrench[h](k+2)>2.0f)
-    {
-      _desiredFootWrench[h](k+2) = 2.0f;
-    }
-    else if(_desiredFootWrench[h](k+2)<-2.0f)
-    {
-      _desiredFootWrench[h](k+2) = -2.0f;
-    }
+    _desiredFootWrench[h](k+2) = Utils<float>::bound(_desiredFootWrench[h](k+2), -2.0f, 2.0f);
+    _toolToFootTorques[h](k+2) = Utils<float>::bound(_toolToFootTorques[h](k+2), -2.0f, 2.0f);
   }
 }

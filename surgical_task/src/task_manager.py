@@ -27,7 +27,7 @@ class Task(Enum):
   FOUR_HANDS_SUTURING = 5
 
 class TaskManager:
-  def __init__(self, taskId):
+  def __init__(self, fileName, taskId):
 
     self.rate = rospy.Rate(40) 
     
@@ -61,16 +61,9 @@ class TaskManager:
     rospack = rospkg.RosPack()
     rospack.list() 
     
-    self.fileName = "test"
+    self.fileName = fileName
 
     self.file = open(rospack.get_path('surgical_task')+"/data/task_manager_"+str(self.taskId)+"_"+self.fileName+".txt", "w")
-
-# f.write("Now the file has more content!")
-# f.close()
-
-# #open and read the file after the appending:
-# f = open("demofile2.txt", "r")
-# print(f.read()) 
 
     self.imagesPath = [rospack.get_path('surgical_task')+"/images/gripper/pick_and_place/",
                        rospack.get_path('surgical_task')+"/images/gripper/gripper_shapes/",
@@ -328,7 +321,7 @@ class TaskManager:
       self.file.write("\n")
       for c in self.cameraCueSizeList:
         self.file.write(str("%f " % c))      
-    elif self.taskId == Task.FOUR_HANDS_LACE.value or self.taskId == Task.GRIPPER_RUBBER_BAND.value:
+    elif self.taskId == Task.FOUR_HANDS_LACE.value or self.taskId == Task.FOUR_HANDS_SUTURING.value:
       self.file.write(str(time.time()-self.t0))
 
 
@@ -343,10 +336,12 @@ if __name__ == '__main__':
   rospy.init_node('task_manager', anonymous=True)
 
   taskId = 0
+  fileName = "test"
 
-  if len(sys.argv) == 2:
-    if int(sys.argv[1]) >= 0 and int(sys.argv[1])<=5:
-      taskId = int(sys.argv[1])
+  if len(sys.argv) == 3:
+    fileName = sys.argv[1]
+    if int(sys.argv[2]) >= 0 and int(sys.argv[2])<=5:
+      taskId = int(sys.argv[2])
     else:
       print("Task ID shoud be between 0 and 5:")
       print("0: Gripper Pick and Place")
@@ -357,7 +352,16 @@ if __name__ == '__main__':
       print("5: Four Hands Suturing")
       sys.exit(0)
   else:
-    print("bou")
+    print("Wrong number of input arguments !")
+    print("Usage: rosrun surgical_task task_manager fileName taskID")
+    print("TaskID shoud be between 0 and 5:")
+    print("0: Gripper Pick and Place")
+    print("1: Gripper Rubber Band")
+    print("2: Camera")
+    print("3: Gripper Camera")
+    print("4: Four Hands Lace")
+    print("5: Four Hands Suturing")
+    sys.exit(0)
 
-  taskManager = TaskManager(taskId)
+  taskManager = TaskManager(fileName,taskId)
   cv2.destroyAllWindows()    

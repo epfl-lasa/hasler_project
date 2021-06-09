@@ -25,4 +25,6 @@ bool workspaceCollisionConstraintActive
 float32 desiredGripperPosition
 float32 tankH
 float32 alphaH
+float32[3] Fext
+float32[3] Fm
 

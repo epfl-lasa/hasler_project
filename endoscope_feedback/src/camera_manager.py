@@ -12,7 +12,6 @@ import rospkg
 import math
 from threading import Thread, Lock
 
-
 # class VideoGet:
 #   """
 #   Class that continuously gets frames from a VideoCapture object
@@ -62,6 +61,7 @@ class VideoGetter:
       self.read_lock.acquire()
       self.grabbed, self.frame = grabbed, frame
       self.read_lock.release()
+      # time.sleep(0.005)
 
   def read(self):
     self.read_lock.acquire()
@@ -87,6 +87,9 @@ class CameraManager:
     self.rate = rospy.Rate(40) 
 
     self.useRosCvCamera = rospy.get_param("useRosCvCamera")
+
+    self.fullScreen = rospy.get_param("fullScreen")
+
     if self.useRosCvCamera:
       self.firstImage = False
       self.bridge = CvBridge()
@@ -104,13 +107,13 @@ class CameraManager:
     self.controlPhase = [0, 0]
 
     self.robotTool = ["Camera: ", "Tool: "]
-    self.robotColor = [(0,0,255), (255,0,0)]
+    self.robotColor = [(0,0,255), (255,191,0)]
 
     self.controlPhaseText = ["INSERTION","OPERATION"]
     self.controlPhaseTextPosition = [(20,30),
-                                     (440,30)]
+                                     (460,30)]
 
-    self.cameraModeText = ["Joystick","Assistance"]
+    self.cameraModeText = ["Off","On"]
     self.cameraModeTextPosition = (20,60)
 
     self.cameraWorkspaceCollisionText = "Workspace limits !"
@@ -120,10 +123,10 @@ class CameraManager:
 
     
     self.gripperAssistanceText = ["Off", "On"]
-    self.gripperAssistanceTextPosition = (440,60)
+    self.gripperAssistanceTextPosition = (460,60)
 
     self.clutchingStateText = ["Off", "On"]
-    self.clutchingStateTextPosition = (440,90)
+    self.clutchingStateTextPosition = (460,90)
 
 
     self.markerText = ["R", "G", "Y"]
@@ -230,17 +233,8 @@ class CameraManager:
         t1 = time.time()
         self.toolsTracker.step(self.inputImage, self.imageSize)
 
-        # print("Track tool:", time.time()-t1)
-
-
-
-        # result = cv2.bitwise_and(self.inputImage, self.inputImage, mask = self.toolsTracker.maskRed | self.toolsTracker.maskGreen 
-        #                                                                   | self.toolsTracker.maskYellow)
-
-
 
         t2 = time.time()
-        # self.toolsTracker.tipPosition[0] = np.array([630,470,1])
         self.displayMarkersPosition(self.outputImage, False) 
         self.displaySurgicalTaskState(self.outputImage)
         self.displayTaskCues()
@@ -252,10 +246,16 @@ class CameraManager:
 
         # print("Pub data:", time.time()-t3)
 
-        # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
         # cv2.setWindowProperty('output', cv2.WND_PROP_FULLSCREEN, 8)
         t3 = time.time()
-        cv2.imshow('output', self.outputImage)
+        cv2.namedWindow('output', cv2.WINDOW_NORMAL)
+        if self.fullScreen:
+          imS = cv2.resize(self.outputImage, (1920, 1080))
+          cv2.setWindowProperty('output', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+          cv2.moveWindow('output',2000,0)
+          cv2.imshow('output', imS)
+        else:
+          cv2.imshow('output', self.outputImage)
         # cv2.imshow('maskRed', self.toolsTracker.maskRed) 
         # cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
         # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
@@ -298,24 +298,6 @@ class CameraManager:
 
     if not self.useRosCvCamera:
       self.videoGetter.stop()
-
-  # def displayMarkersPosition(self, image):
-  #   for k in range(0,len(self.toolsTracker.tipPosition)):
-  #     color = (255, 255, 255)
-  #     if self.toolsTracker.tipPosition[k][2]:
-  #       color = self.markerColor
-  #       if self.useTaskAdaptation and (1.0-self.beliefsC[k])<1e-3:
-  #         color = (255, 0, 255)
-
-
-  #     cv2.drawMarker(image, (self.toolsTracker.tipPosition[k][0], self.toolsTracker.tipPosition[k][1]), color,
-  #                              cv2.MARKER_CROSS, 20, 2)
-
-  #     pY = self.toolsTracker.tipPosition[k][1] - 25
-  #     if pY < 10:
-  #       pY = self.toolsTracker.tipPosition[k][1] + 25
-
-  #     cv2.putText(image, self.markerText[k], (self.toolsTracker.tipPosition[k][0], pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
 
 
   def displayMarkersPosition(self, image, showTip=False):
@@ -407,16 +389,16 @@ class CameraManager:
     
   def displayRobotSpecificState(self,image, id):
     if id == 0:
-      cv2.putText(image, "Mode: "+ (self.cameraModeText[1] if self.useTaskAdaptation else self.cameraModeText[0]), 
+      cv2.putText(image, "Assistance: "+ (self.cameraModeText[1] if self.useTaskAdaptation else self.cameraModeText[0]), 
                   self.cameraModeTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
     else:
       cv2.putText(image, "Assistance: "+ (self.gripperAssistanceText[1] if self.gripperAssistance else self.gripperAssistanceText[0]), 
                   self.gripperAssistanceTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
-      if self.humanInputMode == 1:
-        cv2.putText(image, "Clutching: " + (self.clutchingStateText[1] if self.clutching else self.clutchingStateText[0]), 
-                  self.clutchingStateTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
+      # if self.humanInputMode == 1:
+      cv2.putText(image, "Clutching: " + (self.clutchingStateText[1] if self.clutching else self.clutchingStateText[0]), 
+                self.clutchingStateTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
 
   def displayWarnings(self, image):
@@ -517,10 +499,11 @@ class CameraManager:
       rectangleSize = (scale*self.imageSize[0], scale*self.imageSize[1])
       topLeftCorner = (int(self.imageSize[0]/2-rectangleSize[0]/2), int(self.imageSize[1]/2-rectangleSize[1]/2))
       bottomRightCorner = (int(self.imageSize[0]/2+rectangleSize[0]/2), int(self.imageSize[1]/2+rectangleSize[1]/2))
-      cv2.rectangle(rectangleFilter, topLeftCorner, bottomRightCorner, (255, 255, 255), cv2.FILLED)
+      cv2.rectangle(self.outputImage, topLeftCorner, bottomRightCorner, (255, 255, 255), 2)
+      # cv2.rectangle(rectangleFilter, topLeftCorner, bottomRightCorner, (255, 255, 255), cv2.FILLED)
 
-      # Generate result by blending both images (opacity of rectangle image is 0.25 = 25 %)
-      self.outputImage = cv2.addWeighted(self.outputImage, 1.0, rectangleFilter, 0.25, 1)
+      # # Generate result by blending both images (opacity of rectangle image is 0.25 = 25 %)
+      # self.outputImage = cv2.addWeighted(self.outputImage, 1.0, rectangleFilter, 0.25, 1)
 
 
 
@@ -565,51 +548,14 @@ class ToolsTracker:
     self.lowerHsvCyan = np.array([40,0,0])     
     self.upperHsvCyan = np.array([95,255,255])
 
-    # self.lowerHsvRed = np.array([150,60,0]) 
-    # self.upperHsvRed = np.array([255,255,255]) 
-    # self.lowerHsvRed = np.array([0,10,100]) 
-    # self.upperHsvRed = np.array([10,255,255]) 
-    # self.lowerHsvRed = np.array([112,0,0]) 
-    # self.upperHsvRed = np.array([179,110,255]) 
     self.lowerHsvRed = np.array([0,0,20]) 
     self.upperHsvRed = np.array([8,255,255]) 
-    # self.lowerHsvRed = np.array([0,120,0]) 
-    # self.upperHsvRed = np.array([179,255,255]) 
 
-    # self.lowerHsvGreen = np.array([50,40, 0]) 
-    # self.upperHsvGreen = np.array([97, 255, 255]) 
-    # self.lowerHsvGreen = np.array([44, 0, 0]) 
-    # self.upperHsvGreen = np.array([69, 255, 100]) 
-
-    # self.lowerHsvGreen = np.array([44, 0, 0]) 
-    # self.upperHsvGreen = np.array([69, 255, 100]) 
-    # self.lowerHsvGreen = np.array([80, 0, 80]) 
-    # self.upperHsvGreen = np.array([100, 255, 170]) 
-    # self.lowerHsvGreen = np.array([80, 60, 80]) 
-    # self.upperHsvGreen = np.array([105, 255, 140]) 
-    # self.lowerHsvGreen = np.array([25, 117, 30]) 
-    # self.upperHsvGreen = np.array([44, 255, 255]) 
     self.lowerHsvGreen = np.array([20, 120, 23]) 
     self.upperHsvGreen = np.array([80, 255, 170]) 
-    # self.lowerHsvGreen = np.array([31, 0, 0]) 
-    # self.upperHsvGreen = np.array([70, 255, 255]) 
 
-
-    # self.lowerHsvRed = np.array([0,0,40]) 
-    # self.upperHsvRed = np.array([8,255,255]) 
-    # self.lowerHsvGreen = np.array([22, 0, 40]) 
-    # self.upperHsvGreen = np.array([45, 255, 230]) 
-
-    # self.lowerHsvYellow = np.array([0,0,0])
-    # self.upperHsvYellow = np.array([80,255,255])
-    # self.lowerHsvYellow = np.array([17,130,170])
-    # self.upperHsvYellow = np.array([25,255,255])
-    # self.lowerHsvYellow = np.array([13,170,120])
-    # self.upperHsvYellow = np.array([25,255,255])
     self.lowerHsvYellow = np.array([15,170,120])
     self.upperHsvYellow = np.array([24,255,255])
-    # self.lowerHsvYellow = np.array([10,120,0])
-    # self.upperHsvYellow = np.array([179,255,255])
 
     self.lowerHsvOrange = np.array([8,190,100])
     self.upperHsvOrange = np.array([14,255,255])
@@ -839,7 +785,7 @@ class ToolsTracker:
         self.tipPosition[id][1] = self.tipPosition[id][1]+int(self.dir[id][1]*self.scale*self.markerLength[id])
         self.tipPosition[id][0] = np.clip(self.tipPosition[id][0],0,imageSize[0]-1)
         self.tipPosition[id][1] = np.clip(self.tipPosition[id][1],0,imageSize[1]-1)
-        self.tipPositionTransformed[id][0] = -2.0*(float(self.tipPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
+        self.tipPositionTransformed[id][0] = -2.0*float(float(self.tipPosition[id][1]-imageSize[1]/2.0)/imageSize[1])
         self.tipPositionTransformed[id][1] = 2.0*float(float(self.tipPosition[id][0]-imageSize[0]/2.0)/imageSize[0])
         self.tipPosition[id][2] = 1
         self.tipPositionTransformed[id][2] = 1
