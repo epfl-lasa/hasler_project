@@ -238,6 +238,7 @@ class footVarSynchronizer
 	
     void checkWhichPIDGainsToUse();
     //bool allSubscribersOK();
+    void processFootOutput();
     void readFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg);
     void sniffFootInput(const custom_msgs::FootInputMsg::ConstPtr& msg); 
     

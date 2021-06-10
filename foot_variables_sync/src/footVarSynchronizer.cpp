@@ -18,7 +18,7 @@ void footVarSynchronizer::run()
 {
   while (!_stop) 
   {	
-	if (_flagPlatformOutCommStarted && _subFootOutput.getNumPublishers()!=0)
+	if (_flagPlatformOutCommStarted && _subFootOutput.getNumPublishers()>0)
 	{
 		if ((_platform_id!=(uint8_t) _platform_name)&&(_platform_id!=UNKNOWN))
 		{
@@ -41,15 +41,29 @@ void footVarSynchronizer::run()
 				_ros_position.setZero();
 				_config.controlled_axis=-1;
 				_dynRecServer.setConfigDefault(_config);
+				_mutex.lock();
 				_dynRecServer.updateConfig(_config);
+				_mutex.unlock();
 				_configPrev = _config;
 				_msgFootOutputPrev=_msgFootOutput;
 				_flagInitialConfig=true;
 				ROS_INFO("[%s footVarSync]: Updating default parameters from the platform in the rqt_reconfig...",Platform_Names[_platform_name]);
 				ros::spinOnce();
 				
-			} else if(_subFootOutput.getNumPublishers()!=0)
-			{
+			} else if(_subFootOutput.getNumPublishers()>0)
+			{	
+				if (_flagOutputMessageReceived)
+				{
+					processFootOutput();
+					changedPlatformCheck();
+					_flagPlatformActionsTaken= false;
+					requestDoActionsPlatform();
+					if (_flagPlatformActionsTaken) {
+						updateConfigAfterPlatformChanged();
+						}
+					_flagOutputMessageReceived = false;
+				}
+
 				checkWhichPIDGainsToUse();
 				if (!_ros_defaultControl && _flagLoadPIDGains)
 				{ 
@@ -66,16 +80,7 @@ void footVarSynchronizer::run()
 						{ updateConfigAfterParamsChanged();}
 					_flagWasDynReconfCalled = false;
 				}
-				
-				if (_flagOutputMessageReceived)
-				{
-					changedPlatformCheck();
-					_flagPlatformActionsTaken= false;
-					requestDoActionsPlatform();
-					if (_flagPlatformActionsTaken) {updateConfigAfterPlatformChanged();}
-					_flagOutputMessageReceived = false;
-				}
-				
+								
 
 				if (_flagParamsActionsTaken)
 				{

@@ -1,21 +1,24 @@
 #include "footVarSynchronizer.h"
 
-
+void footVarSynchronizer::processFootOutput()
+{
+	_platform_id = _msgFootOutput.platform_id; 
+	for (int k=0; k<NB_AXIS; k++)
+		{
+			_platform_position[k]=_msgFootOutput.platform_position[rosAxis[k]];
+			_platform_speed[k]=_msgFootOutput.platform_speed[rosAxis[k]];
+			_platform_effortD[k]=_msgFootOutput.platform_effortD[rosAxis[k]];
+			_platform_effortM[k]=_msgFootOutput.platform_effortM[rosAxis[k]];
+		}	
+	_platform_machineState= (State) _msgFootOutput.platform_machineState;
+	_platform_controllerType= (Controller) _msgFootOutput.platform_controllerType;
+}
 
 void footVarSynchronizer::readFootOutput(const custom_msgs::FootOutputMsg::ConstPtr& msg)
 {
+	_msgFootOutputPrev = _msgFootOutput;
 	_msgFootOutput = *msg;
 	_flagOutputMessageReceived=true;
-	_platform_id = msg->platform_id; 
-	for (int k=0; k<NB_AXIS; k++)
-		{
-			_platform_position[k]=msg->platform_position[rosAxis[k]];
-			_platform_speed[k]=msg->platform_speed[rosAxis[k]];
-			_platform_effortD[k]=msg->platform_effortD[rosAxis[k]];
-			_platform_effortM[k]=msg->platform_effortM[rosAxis[k]];
-		}	
-	_platform_machineState= (State) msg->platform_machineState;
-	_platform_controllerType= (Controller) msg->platform_controllerType;
 	if(!_flagPlatformOutCommStarted)
 	{_flagPlatformOutCommStarted=true;}
 } 
