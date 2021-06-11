@@ -32,7 +32,7 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
 add_executable(footVarSynchronizer 
-               src/footVarSynchronizer.cpp 
+               src/footVarSynchronizer_run.cpp 
                src/footVarSynchronizer_config.cpp
                src/footVarSynchronizer_create.cpp
                src/footVarSynchronizer_dynReconfig.cpp

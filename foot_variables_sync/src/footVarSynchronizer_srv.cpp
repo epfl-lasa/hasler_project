@@ -17,15 +17,13 @@ void footVarSynchronizer::requestSetState(){
 }
 
 void footVarSynchronizer::requestSetController(){
-	//_mutex.lock();
 	_flagSetControllerRequested=true;
 	_srvSetController.request.ros_controllerType=_ros_controllerType;
 	_srvSetController.request.ros_defaultControl=_ros_defaultControl;
 	_srvSetController.request.ros_controlledAxis=_ros_controlledAxis;
 
 	_clientSetController.call(_srvSetController);
-	ROS_INFO("[%s footVarSync]: Set Controller Request. Updating the parameters of the machine state",Platform_Names[_platform_name]);
+	ROS_INFO("[%s footVarSync]: Set Controller Request",Platform_Names[_platform_name]);
 	_flagResponseSetController = _srvSetController.response.platform_controlOk;
 
-	//_mutex.unlock();
 }

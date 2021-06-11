@@ -23,9 +23,9 @@ void footVarSynchronizer::updateConfigAfterParamsChanged()
 
                 if (_flagUpdateConfig)
 		{
-			_mutex.lock();
+			//_mutex.lock();
 			_dynRecServer.updateConfig(_config);
-			_mutex.unlock();
+			//_mutex.unlock();
 			_flagUpdateConfig = false;
 		}
 
@@ -37,9 +37,7 @@ void footVarSynchronizer::updateConfigAfterPlatformChanged()
 
 		if (_flagUpdateConfig)
 		{
-			_mutex.lock();
 			_dynRecServer.updateConfig(_config);
-			_mutex.unlock();
 			_flagUpdateConfig = false;
 		}
 	}

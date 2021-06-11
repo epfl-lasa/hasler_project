@@ -197,7 +197,6 @@ class footVarSynchronizer
         bool _flagParamsActionsTaken;
         bool _flagPlatformActionsTaken;
 
-        bool _flagPlatformOutCommStarted;
         bool _flagOutputMessageReceived;
         bool _flagPlatformInCommStarted;
         bool _flagPositionOnlyPublished;
