@@ -3,6 +3,11 @@ SurgicalTask/debug: false
 
 SurgicalTask/logData: false
 
+SurgicalTask/fileName: "0_jacob_06_16"
+
+#(GRIPPER_PICK_AND_PLACE = 0, GRIPPER_RUBBER_BAND = 1, CAMERA = 2, GRIPPER_CAMERA = 3, FOUR_HANDS_LACE = 4, FOUR_HANDS_SUTURING = 5)
+SurgicalTask/taskId: 5
+
 # Use robot [LEFT, RIGHT]
 SurgicalTask/useRobot: [true, false]
 

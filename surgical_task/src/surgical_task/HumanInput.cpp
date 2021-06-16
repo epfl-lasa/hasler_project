@@ -278,6 +278,12 @@ void SurgicalTask::computeTrocarInput(int r, int h)
       _trocarInput[h](W_SELF_ROTATION) = Utils<float>::bound(2*_trocarInput[h](W_SELF_ROTATION)/(_footInterfaceRange[h][FOOT_YAW]-_footInterfaceMaxDeadZone[h][FOOT_YAW]+_footInterfaceMinDeadZone[h][FOOT_YAW]), -1.0f, 1.0f);
       _trocarInput[h](EXTRA_DOF) = Utils<float>::bound(2*_trocarInput[h](EXTRA_DOF)/_footInterfaceRange[h][FOOT_ROLL], -1.0f, 1.0f);      
 
+
+      for(int k = 0; k < 4; k++)
+      {
+        float temp = _trocarInput[h](k);
+        _trocarInput[h](k) = -Utils<float>::smoothFall(temp,-1.0f,0.0f)+Utils<float>::smoothRise(temp,0.0f,1.0f);
+      }
       // // Apply deadzone on foot position
       // _trocarInput[h](V_UP) = Utils<float>::deadZone(_trocarInput[h](V_UP), _footInterfaceMinDeadZone[h][FOOT_PITCH], _footInterfaceMaxDeadZone[h][FOOT_PITCH]);
       // _trocarInput[h](V_RIGHT) = Utils<float>::deadZone(_trocarInput[h](V_RIGHT), _footInterfaceMinDeadZone[h][FOOT_ROLL], _footInterfaceMaxDeadZone[h][FOOT_ROLL]);

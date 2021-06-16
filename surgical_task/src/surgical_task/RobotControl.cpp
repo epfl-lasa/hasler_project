@@ -235,11 +235,11 @@ void SurgicalTask::automaticInsertionStep(int r, int h)
   }
 
   // Compute attractor position
-  if(_linearMapping[r] == POSITION_VELOCITY)
-  {
-    _xd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r]);
-  }
-  else
+  // if(_linearMapping[r] == POSITION_VELOCITY)
+  // {
+  //   _xd[r] = _xd0[r]+_wRb0[r].col(2)*(-_insertionDistancePVM[r]);
+  // }
+  // else
   {
     _xd[r] = _xd0[r]+_insertionOffsetPPM[r];
   }
@@ -617,7 +617,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     // To start accounting for the human input, the desired and real offset should be close
     // at the beginning
-    if((_desiredOffsetPPM[r]-(x-_xd0[r])).norm()<0.005f)
+    if((_desiredOffsetPPM[r]-(x-_xd0[r])).norm()<0.005f && _taskStarted)
     {
       _inputAlignedWithOrigin[r]=true;
       _wait = false;
@@ -705,13 +705,13 @@ void SurgicalTask::computeAdmittanceVelocity(int r)
   vHDir = (vEEdir+omegaEEd.cross(_wRb[r]*_toolOffsetFromEE[r])).normalized();
   // vHDir = (0.9f*vHDir+0.1f*(vEEdir+omegaEEd.cross(_wRb[r]*_toolOffsetFromEE[r]))).normalized();
 
-  std::cerr << r << " " << vHDir.transpose() << std::endl;
 
   if(_debug)
   {
-    std::cerr << "FT:  " << _Fm[r].transpose() << std::endl;
-    std::cerr << "Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
-    std::cerr << "Fext-FT:  " << _Fh[r].transpose() << std::endl;      
+    std::cerr << r << " vHDir" << vHDir.transpose() << std::endl;
+    std::cerr << r << " FT:  " << _Fm[r].transpose() << std::endl;
+    std::cerr << r << " Fext:  " << (-_wRb[r]*_Fext[r]).transpose() << std::endl;
+    std::cerr << r << " Fext-FT:  " << _Fh[r].transpose() << std::endl;      
   }
 
   // Compute dead-zone human force at the tip
@@ -737,7 +737,7 @@ void SurgicalTask::computeAdmittanceVelocity(int r)
   Eigen::Vector3f D;
   D << 200, 200, 200;
 
-  float mass = 4.0f;
+  float mass = 1.0f;
   _vHRef[r] += _dt*(-_wRbIK[r]*D.asDiagonal()*_wRbIK[r].transpose()*_vHRef[r]+ Fh)/mass;
 
   // Compute desired admittance velocity

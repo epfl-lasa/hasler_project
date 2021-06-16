@@ -32,13 +32,6 @@ bool SurgicalTask::init()
   initializeSubscribersAndPublishers();
 
 
-  // Create log file
-  _outputFile[0].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_left_robot.txt");
-  _outputFile[1].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_right_robot.txt");
-  _outputFile[2].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_left_foot.txt");
-  _outputFile[3].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_right_foot.txt");
-  _outputFile[4].open(ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"_state.txt");
-
   // Create callback to kill node via CTRL+C
   signal(SIGINT,SurgicalTask::stopNode);
 
@@ -59,7 +52,7 @@ bool SurgicalTask::init()
 
 void SurgicalTask::run()
 {
-  while(!_stop) 
+  while(!_stop && !_taskFinished) 
   {
     if(_allSubscribersOK && _allFramesOK && _trocarsRegistered[LEFT] && _trocarsRegistered[RIGHT])
     {
@@ -67,18 +60,15 @@ void SurgicalTask::run()
       static bool everythingOK = false;
       if(!everythingOK)
       {
+        // Create log file
+        _outputFile[0].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_left_robot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
+        _outputFile[1].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_right_robot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
+        _outputFile[2].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_left_foot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
+        _outputFile[3].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_right_foot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
+        _outputFile[4].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_state_"+std::to_string(_taskId)+"_"+_fileName+".txt");
+
         everythingOK = true;
         std::cerr << "[SurgicalTask]: Starting the task !!!" << std::endl;
-        std::cerr << _x[RIGHT].transpose() << std::endl;
-        std::cerr << _trocarPosition[RIGHT].transpose() << std::endl;
-        Eigen::Matrix4f Hik;
-        Hik = Utils<float>::getForwardKinematics(_ikJoints[RIGHT],_robotID);
-       
-        _xEEIK[RIGHT] =  _xRobotBaseOrigin[RIGHT]+_wRRobotBasis[RIGHT]*Hik.block(0,3,3,1);
-        _wRbIK[RIGHT] = _wRRobotBasis[RIGHT]*Hik.block(0,0,3,3);
-        _xIK[RIGHT] = _xEEIK[RIGHT]+_wRbIK[RIGHT]*_toolOffsetFromEE[RIGHT];
-        std::cerr << _xIK[RIGHT].transpose() << std::endl;
-        // _stop = true;
 
       }
 
@@ -228,6 +218,7 @@ void SurgicalTask::logData()
                     << _toolOffsetFromEE[r].transpose() << " "
                     << _Fext[r].transpose() << " "
                     << _wrench[r].transpose() << " "
+                    << _Fh[r].transpose() << " "
                     << _ikJoints[r].transpose() << " "
                     << _trocarPosition[r].transpose() << " "
                     << _depthGain[r] << " " 
@@ -275,7 +266,15 @@ void SurgicalTask::logData()
                        << _footInputPosition[h].transpose() << " "
                        << _footInputFilterAxisForce[h].transpose() << " "
                        << _footInputKp[h].transpose() << " "
-                       << _footInputKd[h].transpose() << std::endl;        
+                       << _footInputKd[h].transpose() << " "
+                       << _legJointPositions[h].transpose() << " "
+                       << _legJointVelocities[h].transpose() << " "
+                       << _legJointTorques[h].transpose() << " "
+                       << _legFootBaseWrench[h].transpose() << " "
+                       << _footHapticEfforts[h].transpose() << " "
+                       << _footInertiaCoriolisCompensationTorques[h].transpose() << " "
+                       << _legCompensationTorques[h].transpose() << " "
+                       << _footWrenchModified[h].transpose() << std::endl;        
     }
   }
   _outputFile[4] << ros::Time::now() << " "
@@ -293,14 +292,16 @@ void SurgicalTask::logData()
    << _msgGripperOutput.gripper_desPosition << " "
    << _msgGripperOutput.gripper_torqueCmd << " "
    << _msgGripperOutput.gripper_torqueMeas << " "
+   << _gripperFeedback << " "
+   << (int)_graspAssistanceOn << " "
    << (int) _msgGripperOutput.gripper_machineState << " "
-
    << (int) _humanInputMode << " "
    << (int) _currentRobot << " "
    << (int) _dominantInputID << " "
    << (int) _nonDominantInputID << " "
    << (int) _clutching <<  " "
-   << (int) _wait << " " << std::endl;
+   << (int) _wait << " " 
+   << (int) _taskStarted << std::endl;
 }
 
 
