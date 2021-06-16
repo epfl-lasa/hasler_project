@@ -29,12 +29,12 @@ catkin_package(
   CATKIN_DEPENDS cv_bridge  image_transport  roscpp  sensor_msgs geometry_msgs  std_msgs utils_math eigen_conversions custom_msgs_gripper custom_msgs
   DEPENDS 
   )
-  find_package(OpenCV)
+find_package(OpenCV)
 
-  include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} )
-  
-  add_executable(endoscopeOverlay src/endoscopeModifier_node.cpp src/endoscopeModifier.cpp)
-  
-  target_link_libraries(endoscopeOverlay ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
+include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} )
 
+add_executable(endoscopeOverlay src/endoscopeModifier_node.cpp src/endoscopeModifier.cpp)
 
+target_link_libraries(endoscopeOverlay ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} )
+
+install(PROGRAMS script/camera_config.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

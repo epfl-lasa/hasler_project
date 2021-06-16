@@ -1,12 +1,15 @@
 <?xml version="1.0" ?>
 <launch>
 
+
+
 	<param name="useRosCvCamera" type="bool" value="False"/>
 	<!-- <param name="cameraTopic" value="/cv_camera/image_raw"/> -->
 	<param name="cameraTopic" value="/left_panda/camera/image_raw"/>
 	<param name="cameraPort" value="/dev/video0"/>
-	<param name="fullScreen" type="bool" value="True"/>
+	<param name="fullScreen" type="bool" value="False"/>
 
+	<node name="camera_config" pkg="endoscope_feedback" type="camera_config.sh" />
   <node name="camera_manager" pkg="endoscope_feedback" type="camera_manager.py" output="screen"/>
 
 </launch>
