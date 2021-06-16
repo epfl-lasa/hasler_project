@@ -150,68 +150,67 @@ void footVarSynchronizer::changedPlatformCheck()
 
 	// // Check Position
 
-	// if (fabs(_msgFootOutput.platform_position[0] - _msgFootOutputPrev.platform_position[0]) +
-	// 	fabs(_msgFootOutput.platform_position[1] - _msgFootOutputPrev.platform_position[1]) +
-	// 	fabs(_msgFootOutput.platform_position[2] - _msgFootOutputPrev.platform_position[2]) + 
-	// 	fabs(_msgFootOutput.platform_position[3] - _msgFootOutputPrev.platform_position[3]) +
-	// 	fabs(_msgFootOutput.platform_position[4] - _msgFootOutputPrev.platform_position[4]) <= FLT_EPSILON)
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_POS] = true;
-	// }
-	// else
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_POS] = false;
-	// }
+	if (fabs(_msgFootOutput.platform_position[0] - _msgFootOutputPrev.platform_position[0]) +
+		fabs(_msgFootOutput.platform_position[1] - _msgFootOutputPrev.platform_position[1]) +
+		fabs(_msgFootOutput.platform_position[2] - _msgFootOutputPrev.platform_position[2]) + 
+		fabs(_msgFootOutput.platform_position[3] - _msgFootOutputPrev.platform_position[3]) +
+		fabs(_msgFootOutput.platform_position[4] - _msgFootOutputPrev.platform_position[4]) <= FLT_EPSILON)
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_POS] = true;
+	}
+	else
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_POS] = false;
+	}
 
 	// // Check Speed
 
-	// if (fabs(_msgFootOutput.platform_speed[0] - _msgFootOutputPrev.platform_speed[0]) +
-	// 	fabs(_msgFootOutput.platform_speed[1] - _msgFootOutputPrev.platform_speed[1]) +
-	// 	fabs(_msgFootOutput.platform_speed[2] - _msgFootOutputPrev.platform_speed[2]) + 
-	// 	fabs(_msgFootOutput.platform_speed[3] - _msgFootOutputPrev.platform_speed[3]) +
-	// 	fabs(_msgFootOutput.platform_speed[4] - _msgFootOutputPrev.platform_speed[4]) <= FLT_EPSILON)
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_SPEED] = true;
-	// }
-	// else
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_SPEED] = false;
-	// }
+	if (fabs(_msgFootOutput.platform_speed[0] - _msgFootOutputPrev.platform_speed[0]) +
+		fabs(_msgFootOutput.platform_speed[1] - _msgFootOutputPrev.platform_speed[1]) +
+		fabs(_msgFootOutput.platform_speed[2] - _msgFootOutputPrev.platform_speed[2]) + 
+		fabs(_msgFootOutput.platform_speed[3] - _msgFootOutputPrev.platform_speed[3]) +
+		fabs(_msgFootOutput.platform_speed[4] - _msgFootOutputPrev.platform_speed[4]) <= FLT_EPSILON)
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_SPEED] = true;
+	}
+	else
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_SPEED] = false;
+	}
 
 	// // Check EffortD
 
-	// if (fabs(_msgFootOutput.platform_effortD[0] - _msgFootOutputPrev.platform_effortD[0]) +
-	// 	fabs(_msgFootOutput.platform_effortD[1] - _msgFootOutputPrev.platform_effortD[1]) +
-	// 	fabs(_msgFootOutput.platform_effortD[2] - _msgFootOutputPrev.platform_effortD[2]) + 
-	// 	fabs(_msgFootOutput.platform_effortD[3] - _msgFootOutputPrev.platform_effortD[3]) +
-	// 	fabs(_msgFootOutput.platform_effortD[4] - _msgFootOutputPrev.platform_effortD[4]) <= FLT_EPSILON)
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTD] = true;
-	// }
-	// else
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTD] = false;
-	// }
+	if (fabs(_msgFootOutput.platform_effortD[0] - _msgFootOutputPrev.platform_effortD[0]) +
+		fabs(_msgFootOutput.platform_effortD[1] - _msgFootOutputPrev.platform_effortD[1]) +
+		fabs(_msgFootOutput.platform_effortD[2] - _msgFootOutputPrev.platform_effortD[2]) + 
+		fabs(_msgFootOutput.platform_effortD[3] - _msgFootOutputPrev.platform_effortD[3]) +
+		fabs(_msgFootOutput.platform_effortD[4] - _msgFootOutputPrev.platform_effortD[4]) <= FLT_EPSILON)
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTD] = true;
+	}
+	else
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTD] = false;
+	}
 
 	// // Check EffortM
 
-	// if (fabs(_msgFootOutput.platform_effortM[0] - _msgFootOutputPrev.platform_effortM[0]) +
-	// 	fabs(_msgFootOutput.platform_effortM[1] - _msgFootOutputPrev.platform_effortM[1]) +
-	// 	fabs(_msgFootOutput.platform_effortM[2] - _msgFootOutputPrev.platform_effortM[2]) + 
-	// 	fabs(_msgFootOutput.platform_effortM[3] - _msgFootOutputPrev.platform_effortM[3]) +
-	// 	fabs(_msgFootOutput.platform_effortM[4] - _msgFootOutputPrev.platform_effortM[4]) <= FLT_EPSILON)
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTM] = true;
-	// }
-	// else
-	// {
-	// 	_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTM] = false;
-	// }
+	if (fabs(_msgFootOutput.platform_effortM[0] - _msgFootOutputPrev.platform_effortM[0]) +
+		fabs(_msgFootOutput.platform_effortM[1] - _msgFootOutputPrev.platform_effortM[1]) +
+		fabs(_msgFootOutput.platform_effortM[2] - _msgFootOutputPrev.platform_effortM[2]) + 
+		fabs(_msgFootOutput.platform_effortM[3] - _msgFootOutputPrev.platform_effortM[3]) +
+		fabs(_msgFootOutput.platform_effortM[4] - _msgFootOutputPrev.platform_effortM[4]) <= FLT_EPSILON)
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTM] = true;
+	}
+	else
+	{
+		_flagIsPlatformStillSame[FootOutput_Category::FO_EFFORTM] = false;
+	}
 
 	// Check State
 
-	if (_msgFootOutput.platform_machineState == _msgFootOutputPrev.platform_machineState || 
-		_config.machine_state == _msgFootOutput.platform_machineState )
+	if (_msgFootOutput.platform_machineState == _msgFootOutputPrev.platform_machineState)
 	{
 		_flagIsPlatformStillSame[FootOutput_Category::FO_M_STATE] = true;
 	}
@@ -278,6 +277,11 @@ void footVarSynchronizer::requestDoActionsParams()
 			{
 				_flagSetControllerRequested = false;
 				_flagResponseSetController = false;
+				cout<<"is it same C_AXIS"<<_flagIsParamStillSame[Params_Category::C_AXIS]<<endl;
+				cout<<"is it same C_TYPE"<<_flagIsParamStillSame[Params_Category::C_TYPE]<<endl;
+				cout<<"is it same FLAG_GAINS"<<_flagIsParamStillSame[Params_Category::FLAG_GAINS]<<endl;
+				cout<<"is it same PID_POS"<<_flagIsParamStillSame[Params_Category::PID_POS]<<endl;
+				cout<<"is it same PID_SPEED"<<_flagIsParamStillSame[Params_Category::PID_SPEED]<<endl;
 				requestSetController();
 				_flagParamsActionsTaken= true;
 				if (_flagResponseSetController) //! Verify the service went through

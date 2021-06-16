@@ -19,8 +19,6 @@ void footVarSynchronizer::readFootOutput(const custom_msgs::FootOutputMsg::Const
 	_msgFootOutputPrev = _msgFootOutput;
 	_msgFootOutput = *msg;
 	_flagOutputMessageReceived=true;
-	if(!_flagPlatformOutCommStarted)
-	{_flagPlatformOutCommStarted=true;}
 } 
 
 void footVarSynchronizer::readForceModified(const geometry_msgs::WrenchStamped::ConstPtr &msg) {

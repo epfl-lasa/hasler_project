@@ -98,7 +98,8 @@ void footVarSynchronizer::updateInternalVariables()
 
 void footVarSynchronizer::dynamicReconfigureCallback(foot_variables_sync::machineStateParamsConfig &config, uint32_t level)
 {
-//   ROS_INFO("[%s footVarSync]: Reconfigure request. Updating the parameters of the machine state",Platform_Names[_platform_name]);
+  ROS_INFO("[%s footVarSync]: Reconfigure request",Platform_Names[_platform_name]);
+	//cout<<_platform_machineState<<endl;
   	_flagWasDynReconfCalled=true;
 	_config = config;
 }
