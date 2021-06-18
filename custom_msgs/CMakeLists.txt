@@ -20,6 +20,7 @@ add_message_files(
   DIRECTORY msg
   FILES 
   SurgicalTaskStateMsg.msg
+  FootHapticDataMsg.msg
 	FootInputMsg.msg
   FootOutputMsg.msg
   FeetOutputMsg.msg

@@ -1,18 +1,50 @@
 <launch>
 	<arg name="id" default="right"/>
+	<arg name="two_platforms" default="false"/>
 	<arg name="controlTools" default="true"/>
-
-	<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load" if="$(arg controlTools)"/>
-	<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="$(arg id)" />
-	<rosparam file="$(find foot_variables_sync)/config/pid_states.yaml" command="load" ns="$(arg id)" />
-	<rosparam file="$(find foot_variables_sync)/config/fi_gains_toolControl.yaml" command="load" ns="$(arg id)" />
-
-	<group ns="$(arg id)">
-		<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
-			<param name="platformID" value="$(arg id)"/>
-			<param name="controlTools" value="$(arg controlTools)"/>
-		</node>
 	
+	<group unless="$(arg two_platforms)">
+		<rosparam file="$(find surgical_sim)/config/$(arg id)_tool_settings.yaml" command="load" if="$(arg controlTools)"/>
+		<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="$(arg id)" />
+		<rosparam file="$(find foot_variables_sync)/config/pid_states.yaml" command="load" ns="$(arg id)" />
+		<rosparam file="$(find foot_variables_sync)/config/fi_gains_toolControl.yaml" command="load" ns="$(arg id)" />
+		
+		<group ns="$(arg id)">
+			<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
+				<param name="platformID" value="$(arg id)"/>
+				<param name="controlTools" value="$(arg controlTools)"/>
+			</node>
+
+		</group>
+
+	</group>
+
+	<group if="$(arg two_platforms)">
+		<rosparam file="$(find surgical_sim)/config/right_tool_settings.yaml" command="load" if="$(arg controlTools)"/>
+		<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="right" />
+		<rosparam file="$(find foot_variables_sync)/config/pid_states.yaml" command="load" ns="right" />
+		<rosparam file="$(find foot_variables_sync)/config/fi_gains_toolControl.yaml" command="load" ns="right" />
+		
+		<group ns="right">
+			<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
+				<param name="platformID" value="right"/>
+				<param name="controlTools" value="$(arg controlTools)"/>
+			</node>
+
+		</group>
+
+		<rosparam file="$(find surgical_sim)/config/left_tool_settings.yaml" command="load" if="$(arg controlTools)"/>
+		<rosparam file="$(find foot_variables_sync)/config/fi_input.yaml" command="load" ns="left" />
+		<rosparam file="$(find foot_variables_sync)/config/pid_states.yaml" command="load" ns="left" />
+		<rosparam file="$(find foot_variables_sync)/config/fi_gains_toolControl.yaml" command="load" ns="left" />
+		
+		<group ns="left">
+			<node name="platform_variables_synchronizer" pkg="foot_variables_sync" type="footVarSynchronizer" output="screen" >
+				<param name="platformID" value="left"/>
+				<param name="controlTools" value="$(arg controlTools)"/>
+			</node>
+
+		</group>
 	</group>
 
 </launch>
