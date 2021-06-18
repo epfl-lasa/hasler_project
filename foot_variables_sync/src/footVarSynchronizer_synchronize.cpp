@@ -277,11 +277,11 @@ void footVarSynchronizer::requestDoActionsParams()
 			{
 				_flagSetControllerRequested = false;
 				_flagResponseSetController = false;
-				cout<<"is it same C_AXIS"<<_flagIsParamStillSame[Params_Category::C_AXIS]<<endl;
-				cout<<"is it same C_TYPE"<<_flagIsParamStillSame[Params_Category::C_TYPE]<<endl;
-				cout<<"is it same FLAG_GAINS"<<_flagIsParamStillSame[Params_Category::FLAG_GAINS]<<endl;
-				cout<<"is it same PID_POS"<<_flagIsParamStillSame[Params_Category::PID_POS]<<endl;
-				cout<<"is it same PID_SPEED"<<_flagIsParamStillSame[Params_Category::PID_SPEED]<<endl;
+				// cout<<"is it same C_AXIS"<<_flagIsParamStillSame[Params_Category::C_AXIS]<<endl;
+				// cout<<"is it same C_TYPE"<<_flagIsParamStillSame[Params_Category::C_TYPE]<<endl;
+				// cout<<"is it same FLAG_GAINS"<<_flagIsParamStillSame[Params_Category::FLAG_GAINS]<<endl;
+				// cout<<"is it same PID_POS"<<_flagIsParamStillSame[Params_Category::PID_POS]<<endl;
+				// cout<<"is it same PID_SPEED"<<_flagIsParamStillSame[Params_Category::PID_SPEED]<<endl;
 				requestSetController();
 				_flagParamsActionsTaken= true;
 				if (_flagResponseSetController) //! Verify the service went through
