@@ -60,13 +60,30 @@ void SurgicalTask::run()
       static bool everythingOK = false;
       if(!everythingOK)
       {
-        // Create log file
-        _outputFile[0].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_left_robot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
-        _outputFile[1].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_right_robot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
-        _outputFile[2].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_left_foot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
-        _outputFile[3].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_right_foot_"+std::to_string(_taskId)+"_"+_fileName+".txt");
-        _outputFile[4].open(ros::package::getPath(std::string("surgical_task"))+"/data/surgical_task_state_"+std::to_string(_taskId)+"_"+_fileName+".txt");
+        if(_logData)
+        {
+          std::string folderPath;
+          folderPath = ros::package::getPath(std::string("surgical_task"))+"/data/"+_fileName+"/";
+          if(mkdir(folderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+          {
+              if( errno == EEXIST ){
+                 // alredy exists
+              } 
+              else 
+              {
+                // something else
+                std::cout << "[SurgicalTask]: Cannot create folder:" << strerror(errno) << std::endl;
+                throw std::runtime_error( strerror(errno) );
+              }
+          }
 
+          // Create log file
+          _outputFile[0].open(folderPath+_fileName+"_"+std::to_string(_taskId)+"_"+std::to_string(_taskCondition)+"_"+std::to_string(_repetitionId)+"_surgical_task_left_robot.txt");
+          _outputFile[1].open(folderPath+_fileName+"_"+std::to_string(_taskId)+"_"+std::to_string(_taskCondition)+"_"+std::to_string(_repetitionId)+"_surgical_task_right_robot.txt");
+          _outputFile[2].open(folderPath+_fileName+"_"+std::to_string(_taskId)+"_"+std::to_string(_taskCondition)+"_"+std::to_string(_repetitionId)+"_surgical_task_left_foot.txt");
+          _outputFile[3].open(folderPath+_fileName+"_"+std::to_string(_taskId)+"_"+std::to_string(_taskCondition)+"_"+std::to_string(_repetitionId)+"_surgical_task_right_foot.txt");
+          _outputFile[4].open(folderPath+_fileName+"_"+std::to_string(_taskId)+"_"+std::to_string(_taskCondition)+"_"+std::to_string(_repetitionId)+"_surgical_task_state.txt");          
+        }
         everythingOK = true;
         std::cerr << "[SurgicalTask]: Starting the task !!!" << std::endl;
 
@@ -89,7 +106,10 @@ void SurgicalTask::run()
       publishData();
 
       // Log data
-      logData();
+      if(_logData)
+      {
+        logData();
+      }
     }
     else
     {
@@ -245,7 +265,6 @@ void SurgicalTask::logData()
                     << _dEECollision[r] << " "
                     << _dToolCollision[r] << " " << std::endl;
         
-
       int h;
       if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT)
       {
@@ -274,9 +293,20 @@ void SurgicalTask::logData()
                        << _footHapticEfforts[h].transpose() << " "
                        << _footInertiaCoriolisCompensationTorques[h].transpose() << " "
                        << _legCompensationTorques[h].transpose() << " "
-                       << _footWrenchModified[h].transpose() << std::endl;        
+                       << _footWrenchModified[h].transpose() << " "
+                       << _fh_haptEffLegIn[h].transpose() << " "
+                       << _fh_jointLimCoeffs[h].transpose() << " "
+                       << _fh_bckgndEffLeg[h].transpose() << " "
+                       << _fh_haptEffLPF[h].transpose() << " "
+                       << _fh_haptEffLPF_Proj[h].transpose() << " "
+                       << _fh_haptEffHPF[h].transpose() << " "
+                       << _fh_effFootOut[h].transpose() << " "
+                       << _fh_vibFB[h].transpose() << " "
+                       << _fh_maxPossGains[h].transpose() << " "
+                       << _fh_effGainRaw[h] << std::endl;        
     }
   }
+
   _outputFile[4] << ros::Time::now() << " "
    << (int) _allowTaskAdaptation << " "
    << (int) _useTaskAdaptation << " "
@@ -301,7 +331,9 @@ void SurgicalTask::logData()
    << (int) _nonDominantInputID << " "
    << (int) _clutching <<  " "
    << (int) _wait << " " 
-   << (int) _taskStarted << std::endl;
+   << (int) _taskStarted << " " 
+   << (int) _stopTime << " "
+   << _imageId << std::endl;
 }
 
 

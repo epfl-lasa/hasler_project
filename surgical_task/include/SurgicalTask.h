@@ -7,6 +7,8 @@
 #include <pthread.h>
 #include <vector>
 #include <termios.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "ros/ros.h"
 #include <ros/package.h>
 #include "geometry_msgs/Pose.h"
@@ -27,6 +29,7 @@
 #include "visualization_msgs/MarkerArray.h"
 #include "custom_msgs/FootInputMsg.h"
 #include "custom_msgs/FootOutputMsg.h"
+#include "custom_msgs/FootHapticDataMsg.h"
 #include "custom_msgs_gripper/GripperOutputMsg.h"
 #include "custom_msgs_gripper/GripperInputMsg.h"
 #include "custom_msgs_gripper/SharedGraspingMsg.h"
@@ -45,8 +48,6 @@
 #include "CvxgenSolverRCM.h"
 #include <pthread.h>
 #include "custom_msgs/TwoFeetOneToolMsg.h"
-
-
 
 
 #define NB_SAMPLES 50
@@ -130,6 +131,7 @@ class SurgicalTask
     ros::Subscriber _subGripperAssistance;
     ros::Subscriber _subGripperFeedbackToPlatform;
     ros::Subscriber _subTaskManagerState;
+    ros::Subscriber _subFootHapticsData[NB_ROBOTS];
 
     ///////////////////////////
     // Publisher declaration //
@@ -270,6 +272,9 @@ class SurgicalTask
     Eigen::Vector3f _Fh[NB_ROBOTS];
     float _gripperFeedback;
     int _taskId;
+    int _taskCondition;
+    int _repetitionId;
+    int _imageId;
 
     //////////////////////////////
     // Foot interface variables //
@@ -300,6 +305,17 @@ class SurgicalTask
     Eigen::Matrix<float,6,1> _footWrenchModified[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _legCompensationTorques[NB_ROBOTS];
     Eigen::Matrix<float,5,1> _footInertiaCoriolisCompensationTorques[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _fh_haptEffLegIn[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _fh_jointLimCoeffs[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _fh_bckgndEffLeg[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _fh_haptEffLPF[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _fh_haptEffLPF_Proj[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _fh_haptEffHPF[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _fh_effFootOut[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _fh_vibFB[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _fh_maxPossGains[NB_ROBOTS];
+    float _fh_effGainRaw[NB_ROBOTS];
+    
 
     //////////////////////////////////
     // Configuration/Gain variables //
@@ -445,6 +461,7 @@ class SurgicalTask
     bool _taskStarted;
     bool _taskFinished;
     bool _firstTaskManagerState;
+    bool _stopTime;
 
     /////////////////////
     // Other variables //
@@ -606,6 +623,8 @@ class SurgicalTask
     void updateGripperFeedbackToPlatform(const custom_msgs::FootInputMsg::ConstPtr& msg);
 
     void updateTaskManagerState(const surgical_task::TaskManagerStateMsg::ConstPtr& msg);
+    
+    void updateFootHapticsData(const custom_msgs::FootHapticDataMsg::ConstPtr& msg, int k);
 
     uint16_t  checkTrackedMarker(float a, float b);
 
