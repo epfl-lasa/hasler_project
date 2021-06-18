@@ -15,7 +15,6 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
-
   if (!_nh.getParam("SurgicalTask/logData", _logData))
   {
     ROS_ERROR("Couldn't retrieve the log data boolean");
@@ -26,6 +25,27 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Log data: %d\n", (int) _debug);
   }
 
+
+  if (!_nh.getParam("SurgicalTask/fileName", _fileName))
+  {
+    ROS_ERROR("Couldn't retrieve the filename");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Filename: %s\n", _fileName.c_str());
+  }
+
+
+  if (!_nh.getParam("SurgicalTask/taskId", _taskId))
+  {
+    ROS_ERROR("Couldn't retrieve the taskId");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Task Id: %d\n", _taskId);
+  }
 
  	_useRobot.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/useRobot", _useRobot))
@@ -951,6 +971,12 @@ void SurgicalTask::initializeTaskParameters()
     _wrenchBias[r].setConstant(0.0f);
     _wrenchExtBias[r].setConstant(0.0f);
     _Fh[r].setConstant(0.0f);
+
+    _qpResult[r].eeCollisionConstraintActive = false;
+    _qpResult[r].toolCollisionConstraintActive = false;
+    _qpResult[r].workspaceCollisionConstraintActive = false;
+    _dEECollision[r] = 0.0f;
+    _dToolCollision[r] = 0.0f;
   }
   _stop = false;
   _firstGripper = false;
@@ -958,6 +984,9 @@ void SurgicalTask::initializeTaskParameters()
   _usePredefinedTrocars = false;
   _useTaskAdaptation = false;
   _firstColorMarkersPosition = false;
+  _firstTaskManagerState = false;
+  _taskStarted = false;
+  _taskFinished = false;
 
   _markersPosition.setConstant(0.0f);
   _markersPosition0.setConstant(0.0f);
@@ -990,7 +1019,6 @@ void SurgicalTask::initializeTaskParameters()
     _wRRobotBasis[LEFT].setIdentity();
     _wRRobotBasis[RIGHT].setIdentity();
   }
-
 
   if(_usePredefinedTrocars)
   {

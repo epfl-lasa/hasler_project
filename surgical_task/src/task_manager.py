@@ -14,6 +14,7 @@ from random import randrange, shuffle
 import random
 import rospkg
 import sys
+import datetime
 # import keyboard
 
 
@@ -62,6 +63,15 @@ class TaskManager:
     rospack.list() 
     
     self.fileName = fileName
+    if rospy.has_param('SurgicalTask/fileName'):
+      self.fileName = rospy.get_param("SurgicalTask/fileName")
+    else:
+      print("[TaskManager]: FileName does not exist on parameter server")
+
+    if rospy.has_param('SurgicalTask/taskId'):
+      self.taskId = rospy.get_param("SurgicalTask/taskId")
+    else:
+      print("[TaskManager]: TaskId does not exist on parameter server")
 
     self.file = open(rospack.get_path('surgical_task')+"/data/task_manager_"+str(self.taskId)+"_"+self.fileName+".txt", "w")
 
@@ -74,7 +84,7 @@ class TaskManager:
 
     self.imagesName = ["pick_and_place_",
                        "shapes_",
-                       "camera_task_",
+                       "cam_task_",
                        "pick_and_place_",
                        "4_hands_shoelace",
                        "4_hands_stiches_",]
@@ -87,10 +97,12 @@ class TaskManager:
                      "Four Hands Suturing"]
 
 
-    self.nbImages = [15,7,26,15,1,9]
+    self.nbImages = [15,5,9,15,1,3]
+    self.maxDuration = [600,300,300,600,600,600]
     self.imageOrder = []
 
     self.timeInit = time.time()
+    self.t0 = self.timeInit
     self.timeList = []
     self.positionErrorList = []
     self.angleErrorList = []
@@ -101,6 +113,7 @@ class TaskManager:
     self.startText = "Press 's' to start !"
     self.updateTarget = True
     self.cameraWaitTime = 5.0
+    self.fullScreen = True
 
     np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
 
@@ -115,7 +128,7 @@ class TaskManager:
         self.timeInit = time.time()
         self.t0 = self.timeInit
       elif c == ord('q'):
-        break
+        self.finished = True
 
       if self.taskId == Task.GRIPPER_PICK_AND_PLACE.value:
         self.gripperPickAndPlace(c)
@@ -130,31 +143,61 @@ class TaskManager:
       elif self.taskId == Task.FOUR_HANDS_SUTURING.value:
         self.fourHandsSuturing()
 
-      if self.finished:
-        break
 
       image = self.image.copy()
+      height = image.shape[0]
+      width = image.shape[1]
+
       if not self.start:
         if time.time()-self.timeStartText> 0.5:
           self.showStartText = not self.showStartText
           self.timeStartText = time.time()
         if self.showStartText:        
-          height = image.shape[0]
-          width = image.shape[1]
           cv2.putText(image, self.startText, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
 
-      cv2.imshow(self.taskName[self.taskId], image) 
+      if self.taskId == 2 and self.start:
+        text = "Tool to reach: " + self.toolName[self.toolToReach]
+        # cv2.putText(image, text, (30,height-30), cv2.FONT_HERSHEY_TRIPLEX, 1.2, (255,0,255), 2)
+        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+
+      remainingTime = self.maxDuration[self.taskId]
+      if self.start:
+        remainingTime = self.maxDuration[self.taskId]-int(time.time()-self.t0)
+
+      cv2.putText(image, str(datetime.timedelta(seconds=remainingTime)), (50, height-30), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+      
+      if self.start and time.time()-self.t0>self.maxDuration[self.taskId]:
+          self.finished=True
+      
+      cv2.namedWindow(self.taskName[self.taskId], cv2.WINDOW_AUTOSIZE)
+      if self.fullScreen:
+        # imS = cv2.resize(image, (1680, 1050))
+        imS = cv2.resize(image, (400, 400))
+        # cv2.setWindowProperty(self.taskName[self.taskId], cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        # cv2.moveWindow(self.taskName[self.taskId],4000,0)
+        # cv2.moveWindow(self.taskName[self.taskId],2000,0)
+        cv2.moveWindow(self.taskName[self.taskId],3440,780)
+        cv2.imshow(self.taskName[self.taskId], imS)
+      else:
+        cv2.imshow(self.taskName[self.taskId], image) 
+
 
       msg = TaskManagerStateMsg()
 
       msg.taskId = self.taskId
       msg.toolToReach = self.toolToReach
       msg.toolReached = self.toolReached
+      msg.finished = self.finished
+      msg.start = self.start
 
       self.pubState.publish(msg)
 
       self.rate.sleep()
 
+      if self.finished:
+        print("Total time: ", datetime.timedelta(seconds=int(time.time()-self.t0)))
+        break
+        
     self.logData()
 
     self.file.close()
@@ -212,7 +255,7 @@ class TaskManager:
       positionError = np.linalg.norm(self.markerPose[self.toolToReach][0:2]-np.array([640/2,480/2]))
       angleError = np.arccos(np.dot(self.markerPose[self.toolToReach][3:5], np.array([0.0,-1.0])))*180.0/np.pi
       if not self.toolReached:
-        if positionError < 30:
+        if positionError < 30 and angleError < 10:
           print(self.markerPose[self.toolToReach][0:2], positionError)
           self.toolReached = True
           self.timeList.append(time.time()-self.timeInit)
@@ -286,6 +329,7 @@ class TaskManager:
       self.timeInit = time.time()
       self.updateTarget = True
       if self.imageId > self.nbImages[self.taskId]:
+        self.imageId = self.nbImages[-1]
         self.finished=True
       else:
         print("Image ID: ", self.imageId)
@@ -310,6 +354,8 @@ class TaskManager:
       self.file.write("\n")
       self.file.write(str(self.nbFalls))
     elif self.taskId == Task.CAMERA.value:
+      self.file.write(str("%d " % self.imageId))
+      self.file.write("\n")
       for t in self.timeList:
         self.file.write(str("%f " % t))
       self.file.write("\n")
@@ -321,7 +367,11 @@ class TaskManager:
       self.file.write("\n")
       for c in self.cameraCueSizeList:
         self.file.write(str("%f " % c))      
-    elif self.taskId == Task.FOUR_HANDS_LACE.value or self.taskId == Task.FOUR_HANDS_SUTURING.value:
+    elif self.taskId == Task.FOUR_HANDS_LACE.value: 
+      self.file.write(str(time.time()-self.t0))
+    elif self.taskId == Task.FOUR_HANDS_SUTURING.value:
+      self.file.write(str("%d " % self.imageId))
+      self.file.write("\n")
       self.file.write(str(time.time()-self.t0))
 
 
@@ -351,9 +401,9 @@ if __name__ == '__main__':
       print("4: Four Hands Lace")
       print("5: Four Hands Suturing")
       sys.exit(0)
-  else:
+  elif len(sys.argv) > 1:
     print("Wrong number of input arguments !")
-    print("Usage: rosrun surgical_task task_manager fileName taskID")
+    print("Usage: rosrun surgical_task task_manager fileName taskId")
     print("TaskID shoud be between 0 and 5:")
     print("0: Gripper Pick and Place")
     print("1: Gripper Rubber Band")

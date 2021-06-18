@@ -20,6 +20,7 @@
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Float32.h"
+#include "std_msgs/Bool.h"
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Joy.h"
 #include "visualization_msgs/Marker.h"
@@ -31,6 +32,7 @@
 #include "custom_msgs_gripper/SharedGraspingMsg.h"
 #include "surgical_task/SurgicalTaskStateMsg.h"
 #include "surgical_task/RobotStateMsg.h"
+#include "surgical_task/TaskManagerStateMsg.h"
 #include <dynamic_reconfigure/server.h>
 #include "Eigen/Eigen"
 #include <tf/transform_listener.h>
@@ -43,6 +45,7 @@
 #include "CvxgenSolverRCM.h"
 #include <pthread.h>
 #include "custom_msgs/TwoFeetOneToolMsg.h"
+
 
 
 
@@ -118,6 +121,15 @@ class SurgicalTask
     ros::Subscriber _subMarkersPosition;
     ros::Subscriber _subRobotExternalWrench[NB_ROBOTS];
     ros::Subscriber _subTaskJoystick;
+    ros::Subscriber _subLegState[NB_ROBOTS];
+    ros::Subscriber _subFootBaseWrench[NB_ROBOTS];
+    ros::Subscriber _subFootHapticEfforts[NB_ROBOTS];
+    ros::Subscriber _subFootInertiaCoriolisCompensation[NB_ROBOTS];
+    ros::Subscriber _subLegCompensation[NB_ROBOTS];
+    ros::Subscriber _subFootForceSensorModified[NB_ROBOTS];
+    ros::Subscriber _subGripperAssistance;
+    ros::Subscriber _subGripperFeedbackToPlatform;
+    ros::Subscriber _subTaskManagerState;
 
     ///////////////////////////
     // Publisher declaration //
@@ -256,6 +268,8 @@ class SurgicalTask
     Eigen::Vector3f _vda;
     float _d = 0.07f;
     Eigen::Vector3f _Fh[NB_ROBOTS];
+    float _gripperFeedback;
+    int _taskId;
 
     //////////////////////////////
     // Foot interface variables //
@@ -277,7 +291,15 @@ class SurgicalTask
     Eigen::Matrix<float,5,1> _desiredFootWrench[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
     Eigen::Matrix<float,5,1> _toolToFootTorques[NB_ROBOTS];   // Filtered wrench [N and Nm] (6x1)
     Eigen::Matrix<float,5,1> _footOffset[NB_ROBOTS];
-    Eigen::Matrix<float, 5, 1> _filterGainFootAxis[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _filterGainFootAxis[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _legJointPositions[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _legJointVelocities[NB_ROBOTS];
+    Eigen::Matrix<float,7,1> _legJointTorques[NB_ROBOTS];
+    Eigen::Matrix<float,6,1> _legFootBaseWrench[NB_ROBOTS];
+    Eigen::Matrix<float,6,1> _footHapticEfforts[NB_ROBOTS];
+    Eigen::Matrix<float,6,1> _footWrenchModified[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _legCompensationTorques[NB_ROBOTS];
+    Eigen::Matrix<float,5,1> _footInertiaCoriolisCompensationTorques[NB_ROBOTS];
 
     //////////////////////////////////
     // Configuration/Gain variables //
@@ -419,6 +441,10 @@ class SurgicalTask
     bool _allSubscribersOK = false;
     bool _allFramesOK = false;
     bool _taskAdaptation;
+    bool _graspAssistanceOn;
+    bool _taskStarted;
+    bool _taskFinished;
+    bool _firstTaskManagerState;
 
     /////////////////////
     // Other variables //
@@ -562,6 +588,24 @@ class SurgicalTask
     void updateOptitrackPose(const geometry_msgs::PoseStamped::ConstPtr& msg, int k); 
 
     void updateMarkersPosition(const std_msgs::Float64MultiArray::ConstPtr& msg); 
+
+    void updateLegState(const sensor_msgs::JointState::ConstPtr& msg, int k);
+
+    void updateFootBaseWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
+
+    void updateFootHaptics(const custom_msgs::FootInputMsg::ConstPtr& msg, int k);
+
+    void updateFootInertiaCoriolisCompensation(const custom_msgs::FootInputMsg::ConstPtr& msg, int k);
+
+    void updateLegCompensation(const custom_msgs::FootInputMsg::ConstPtr& msg, int k);
+
+    void updateFootForceSensorModified(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
+
+    void updateGripperAssistance(const std_msgs::Bool::ConstPtr& msg);
+
+    void updateGripperFeedbackToPlatform(const custom_msgs::FootInputMsg::ConstPtr& msg);
+
+    void updateTaskManagerState(const surgical_task::TaskManagerStateMsg::ConstPtr& msg);
 
     uint16_t  checkTrackedMarker(float a, float b);
 
