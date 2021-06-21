@@ -49,7 +49,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
         _subFootInertiaCoriolisCompensation[LEFT] = _nh.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/foot_comp_inertia_coriolis",1, boost::bind(&SurgicalTask::updateFootInertiaCoriolisCompensation,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subLegCompensation[LEFT] = _nh.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/leg_comp_platform_effort",1, boost::bind(&SurgicalTask::updateLegCompensation,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subFootForceSensorModified[LEFT] = _nh.subscribe<geometry_msgs::WrenchStamped>("/left_platform/force_sensor_modifier/force_modified",1, boost::bind(&SurgicalTask::updateFootForceSensorModified,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
-
+        _subFootHapticsData[LEFT] = _nh.subscribe<custom_msgs::FootHapticDataMsg>("/left/foot_haptic_data",1, boost::bind(&SurgicalTask::updateFootHapticsData,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       }
       else
       {
@@ -61,7 +61,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
         _subFootInertiaCoriolisCompensation[RIGHT] = _nh.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/foot_comp_inertia_coriolis",1, boost::bind(&SurgicalTask::updateFootInertiaCoriolisCompensation,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subLegCompensation[RIGHT] = _nh.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/leg_comp_platform_effort",1, boost::bind(&SurgicalTask::updateLegCompensation,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subFootForceSensorModified[RIGHT] = _nh.subscribe<geometry_msgs::WrenchStamped>("/right_platform/force_sensor_modifier/force_modified",1, boost::bind(&SurgicalTask::updateFootForceSensorModified,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
-
+        _subFootHapticsData[RIGHT] = _nh.subscribe<custom_msgs::FootHapticDataMsg>("/right/foot_haptic_data",1, boost::bind(&SurgicalTask::updateFootHapticsData,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       }
     }
 
@@ -159,6 +159,8 @@ void SurgicalTask::initializeSubscribersAndPublishers()
         _subFootInertiaCoriolisCompensation[LEFT] = _nh.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/foot_comp_inertia_coriolis",1, boost::bind(&SurgicalTask::updateFootInertiaCoriolisCompensation,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subLegCompensation[LEFT] = _nh.subscribe<custom_msgs::FootInputMsg>("/left_platform/force_sensor_modifier/leg_comp_platform_effort",1, boost::bind(&SurgicalTask::updateLegCompensation,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subFootForceSensorModified[LEFT] = _nh.subscribe<geometry_msgs::WrenchStamped>("/left_platform/force_sensor_modifier/force_modified",1, boost::bind(&SurgicalTask::updateFootForceSensorModified,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
+        _subFootHapticsData[LEFT] = _nh.subscribe<custom_msgs::FootHapticDataMsg>("/left/foot_haptic_data",1, boost::bind(&SurgicalTask::updateFootHapticsData,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+      
       }
       else
       {
@@ -170,7 +172,7 @@ void SurgicalTask::initializeSubscribersAndPublishers()
         _subFootInertiaCoriolisCompensation[RIGHT] = _nh.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/foot_comp_inertia_coriolis",1, boost::bind(&SurgicalTask::updateFootInertiaCoriolisCompensation,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subLegCompensation[RIGHT] = _nh.subscribe<custom_msgs::FootInputMsg>("/right_platform/force_sensor_modifier/leg_comp_platform_effort",1, boost::bind(&SurgicalTask::updateLegCompensation,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
         _subFootForceSensorModified[RIGHT] = _nh.subscribe<geometry_msgs::WrenchStamped>("/right_platform/force_sensor_modifier/force_modified",1, boost::bind(&SurgicalTask::updateFootForceSensorModified,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());  
-
+        _subFootHapticsData[RIGHT] = _nh.subscribe<custom_msgs::FootHapticDataMsg>("/right/foot_haptic_data",1, boost::bind(&SurgicalTask::updateFootHapticsData,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
       }      
     }
 
@@ -1071,4 +1073,29 @@ void SurgicalTask::updateTaskManagerState(const surgical_task::TaskManagerStateM
 
   _taskStarted = msg->start;
   _taskFinished = msg->finished;
+  _stopTime = msg->stopTime;
+  _imageId = msg->imageId;
+}
+
+
+void SurgicalTask::updateFootHapticsData(const custom_msgs::FootHapticDataMsg::ConstPtr& msg, int k)
+{
+  for(int m = 0; m < 7; m++)
+  {
+    _fh_haptEffLegIn[k](m) = msg->fh_haptEffLegIn[m];
+    _fh_jointLimCoeffs[k](m) = msg->fh_jointLimCoeffs[m];
+    _fh_bckgndEffLeg[k](m) = msg->fh_bckgndEffLeg[m];
+  }
+
+  for(int m = 0; m < 5; m++)
+  {
+    _fh_haptEffLPF[k](m) = msg->fh_haptEffLPF[m];
+    _fh_haptEffLPF_Proj[k](m) = msg->fh_haptEffLPF_Proj[m];
+    _fh_haptEffHPF[k](m) = msg->fh_haptEffHPF[m];
+    _fh_effFootOut[k](m) = msg->fh_effFootOut[m];
+    _fh_vibFB[k](m) = msg->fh_vibFB[m];
+    _fh_maxPossGains[k](m) = msg->fh_maxPossGains[m];
+  }
+
+  _fh_effGainRaw[k] = msg->fh_effGainRaw;
 }

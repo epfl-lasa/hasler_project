@@ -47,6 +47,29 @@ bool SurgicalTask::readConfigurationParameters()
     ROS_INFO("Task Id: %d\n", _taskId);
   }
 
+
+  if(!_nh.getParam("SurgicalTask/taskCondition", _taskCondition))
+  {
+    ROS_ERROR("Couldn't retrieve the task condition");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Task condition: %d\n", _taskCondition);
+  }
+
+
+  if(!_nh.getParam("SurgicalTask/repetitionId", _repetitionId))
+  {
+    ROS_ERROR("Couldn't retrieve the repetition Id");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Repetition Id: %d\n", _repetitionId);
+  }
+
+
  	_useRobot.resize(NB_ROBOTS);
   if (!_nh.getParam("SurgicalTask/useRobot", _useRobot))
   {
@@ -987,6 +1010,9 @@ void SurgicalTask::initializeTaskParameters()
   _firstTaskManagerState = false;
   _taskStarted = false;
   _taskFinished = false;
+  _stopTime = false;
+
+  _imageId = -1;
 
   _markersPosition.setConstant(0.0f);
   _markersPosition0.setConstant(0.0f);
@@ -1058,7 +1084,6 @@ void SurgicalTask::initializeTaskParameters()
     _nbTasks++;
   }
 
-
   _beliefsC.resize(_nbTasks);
   std::cerr << _beliefsC.size() << std::endl;
   _beliefsC.setConstant(0.0f);
@@ -1067,6 +1092,18 @@ void SurgicalTask::initializeTaskParameters()
   _dbeliefsC.setConstant(0.0f);
 
   _vda.setConstant(0.0f);
+
+
+  if(_useSim)
+  {
+    _colorMarkersPosition.resize(_nbTasks, 3);
+    _colorMarkersPosition.setConstant(0.0f);
+    _colorMarkersFilteredPosition.resize(_nbTasks, 3);
+    _colorMarkersFilteredPosition.setConstant(0.0f);
+    _colorMarkersFilteredPosition2.resize(_nbTasks, 3);
+    _colorMarkersFilteredPosition2.setConstant(0.0f);
+    _colorMarkersStatus.resize(_nbTasks);
+  }
 
 
   if(_toolsTracking == OPTITRACK_BASED)

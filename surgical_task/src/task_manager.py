@@ -15,6 +15,8 @@ import random
 import rospkg
 import sys
 import datetime
+import os.path
+from os import path
 # import keyboard
 
 
@@ -56,6 +58,9 @@ class TaskManager:
 
     self.cameraCueSize = 0.0
 
+    self.stopTime = False
+
+
 
     self.image = [];
 
@@ -73,7 +78,26 @@ class TaskManager:
     else:
       print("[TaskManager]: TaskId does not exist on parameter server")
 
-    self.file = open(rospack.get_path('surgical_task')+"/data/task_manager_"+str(self.taskId)+"_"+self.fileName+".txt", "w")
+    self.taskCondition = 0
+    if rospy.has_param('SurgicalTask/taskCondition'):
+       self.taskCondition = rospy.get_param("SurgicalTask/taskCondition")
+    else:
+      print("[TaskManager]: Task condition does not exist on parameter server")   
+
+    self.repetitionId = 0
+    if rospy.has_param('SurgicalTask/repetitionId'):
+       self.repetitionId = rospy.get_param("SurgicalTask/repetitionId")
+    else:
+      print("[TaskManager]: Repetition does not exist on parameter server")   
+
+    folderPath = rospack.get_path('surgical_task')+"/data/"+self.fileName+"/"
+    if not path.isdir(folderPath):
+      os.mkdir(folderPath)
+
+    self.file = open(folderPath+self.fileName+"_"+str(self.taskId)+"_"+str(self.taskCondition)+"_"+str(self.repetitionId)+"_task_manager.txt", "w")
+
+      # print("[TaskManager]: Folder path does not exist")   
+      # sys.exit()
 
     self.imagesPath = [rospack.get_path('surgical_task')+"/images/gripper/pick_and_place/",
                        rospack.get_path('surgical_task')+"/images/gripper/gripper_shapes/",
@@ -103,6 +127,9 @@ class TaskManager:
 
     self.timeInit = time.time()
     self.t0 = self.timeInit
+    self.t = self.t0
+    self.tStop = self.t0
+    self.tOffset = 0
     self.timeList = []
     self.positionErrorList = []
     self.angleErrorList = []
@@ -148,10 +175,14 @@ class TaskManager:
       height = image.shape[0]
       width = image.shape[1]
 
+      if not self.stopTime:
+        self.t = time.time()-self.tOffset
+
+
       if not self.start:
-        if time.time()-self.timeStartText> 0.5:
+        if self.t-self.timeStartText> 0.5:
           self.showStartText = not self.showStartText
-          self.timeStartText = time.time()
+          self.timeStartText = self.t
         if self.showStartText:        
           cv2.putText(image, self.startText, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
 
@@ -159,14 +190,23 @@ class TaskManager:
         text = "Tool to reach: " + self.toolName[self.toolToReach]
         # cv2.putText(image, text, (30,height-30), cv2.FONT_HERSHEY_TRIPLEX, 1.2, (255,0,255), 2)
         cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+      elif self.taskId == 0 and self.start and self.stopTime:
+        text = "Recover cylinder"
+        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+      elif self.taskId == 1 and self.start and self.stopTime:
+        text = "Recover rubber band"
+        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+      elif self.taskId == 3 and self.start and self.stopTime:
+        text = "Recover cylinder"
+        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
 
       remainingTime = self.maxDuration[self.taskId]
       if self.start:
-        remainingTime = self.maxDuration[self.taskId]-int(time.time()-self.t0)
+        remainingTime = self.maxDuration[self.taskId]-int(self.t-self.t0)
 
       cv2.putText(image, str(datetime.timedelta(seconds=remainingTime)), (50, height-30), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
       
-      if self.start and time.time()-self.t0>self.maxDuration[self.taskId]:
+      if self.start and self.t-self.t0>self.maxDuration[self.taskId]:
           self.finished=True
       
       cv2.namedWindow(self.taskName[self.taskId], cv2.WINDOW_AUTOSIZE)
@@ -181,7 +221,6 @@ class TaskManager:
       else:
         cv2.imshow(self.taskName[self.taskId], image) 
 
-
       msg = TaskManagerStateMsg()
 
       msg.taskId = self.taskId
@@ -189,13 +228,15 @@ class TaskManager:
       msg.toolReached = self.toolReached
       msg.finished = self.finished
       msg.start = self.start
+      msg.stopTime = self.stopTime
+      msg.imageId = self.imageId
 
       self.pubState.publish(msg)
 
       self.rate.sleep()
 
       if self.finished:
-        print("Total time: ", datetime.timedelta(seconds=int(time.time()-self.t0)))
+        print("Total time: ", datetime.timedelta(seconds=int(self.t-self.t0)))
         break
         
     self.logData()
@@ -316,11 +357,19 @@ class TaskManager:
 
   def updateGripperTarget(self, c):
     if c == ord('r'):
-      self.nbFalls = self.nbFalls+1
-      print(self.nbFalls)
-      print(self.timeList)
-      self.timeInit = time.time()
-      self.updateTarget = True
+      if not self.stopTime:
+        self.tStop = time.time()
+        self.nbFalls = self.nbFalls+1
+        self.stopTime = True
+        print("Nb falls:", self.nbFalls)
+        print(self.timeList)
+        print("[TaskManager]: Recover the object")
+      else:
+        self.stopTime = False
+        self.timeInit = time.time()
+        self.tOffset = self.tOffset+self.timeInit-self.tStop
+        self.t = time.time()-self.tOffset
+      self.updateTarget = False
 
     elif c == ord('n'):
       self.imageId = self.imageId + 1
@@ -336,11 +385,13 @@ class TaskManager:
 
     elif c == ord('p'):
       self.imageId = self.imageId - 1
-      self.timeList.pop()
+      if len(self.timeList) > 0:
+        self.timeList.pop()
       print(self.timeList)
       self.timeInit = time.time()
       print("Image ID: ", self.imageId)
       self.imageId = max(1,min(self.imageId, self.nbImages[self.taskId]))
+      self.updateTarget = True
     else:
       self.updateTarget = False
 

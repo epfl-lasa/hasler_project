@@ -8,6 +8,18 @@ SurgicalTask/fileName: "0_jacob_06_16"
 #(GRIPPER_PICK_AND_PLACE = 0, GRIPPER_RUBBER_BAND = 1, CAMERA = 2, GRIPPER_CAMERA = 3, FOUR_HANDS_LACE = 4, FOUR_HANDS_SUTURING = 5)
 SurgicalTask/taskId: 5
 
+# Task condition
+# GRIPPER_PICK_AND_PLACE: 0 = without haptic feedback / 1 = with haptic feedback 
+# GRIPPER_RUBBER_BAND: 0 = without haptic feedback / 1 = with haptic feedback
+# CAMERA: 0 = without asymetic stiffness / 1 = with asymetric stiffness
+# GRIPPER_CAMERA: 0 = without tool following assistance / 1 = with tool following assistance
+# FOUR_HANDS_LACE: 0 = single_foot_single_robot / 1 = dominant_foot_two_robot
+# FOUR_HANDS_SUTURING: 0 = single_foot_single_robot / 1 = dominant_foot_two_robot
+SurgicalTask/taskCondition: 0
+
+# Task repetition Id
+SurgicalTask/repetitionId: 1
+
 # Use robot [LEFT, RIGHT]
 SurgicalTask/useRobot: [true, false]
 
