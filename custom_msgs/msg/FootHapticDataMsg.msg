@@ -18,6 +18,6 @@ float32[5] fh_vibFB #the artificial event based vibration added to the haptic cu
 float32[5] fh_maxPossGains #the maximum possible gains in each joint of the platform, given its effort limits to avoid saturation
 
 float32 fh_effGainRaw #this is the gain calculated for all platform joint, derived from the weighted average of coefficicients above in the leg's joint space
-#float32 fh_effGainBounded #these are the gains bounded by the minimum of the maximum possible gains
+float32 fh_effGainBounded #these are the gains bounded by the minimum of the maximum possible gains
 
 
