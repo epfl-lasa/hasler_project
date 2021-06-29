@@ -65,6 +65,7 @@ void footVarSynchronizer::controlGainsDefault(int axis_)
 					}
 					_config.ki_X = _ros_paramI[_myPIDCategory][X];
 					_config.kd_X = _ros_paramD[_myPIDCategory][X];
+					
 					_ros_posP[X] = Utils_math<double>::bound(_config.kp_X,0,5000.0);
 					_ros_posI[X] = Utils_math<double>::bound(_config.ki_X,0,5000.0);
 					_ros_posD[X] = Utils_math<double>::bound(_config.kd_X,0,30.0);

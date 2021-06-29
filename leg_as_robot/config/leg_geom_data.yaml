@@ -1,4 +1,23 @@
 #These you can measure in the subject and update
+
+#Carolina 1-32/56
+
+# #These you can measure in the subject and update
+# thigh_width: 0.185 # not from the model, but measured
+# thigh_depth: 0.140 # not from the model, but measured
+# shin_width: 0.110 # not from the model, but measured
+# shin_depth: 0.115 # not from the model, but measured
+# foot_length: 0.200 # not from the model, but measured
+# thigh_length: 0.420
+# shin_length:  0.365
+# ankle_to_foot_base_z: 0.110
+# ankle_to_foot_base_x: 0.046
+# foot_base_to_foot_tip: 0.17667
+# body_weight: 52
+# hip_width: 0.24
+# hip_height: 0.985
+
+
 #Jacob 0.790+ 0.165+0.080
 #chair, x:0.0, y:5.0
 #constant 1-32/56
@@ -57,11 +76,11 @@ hip_height: 1.035
 # These you can measure in the subject and update
 # Bernardo 0.790+ 0.165+0.065
 
-# thigh_width: 0.185
-# thigh_depth: 0.150
-# shin_width: 0.110
-# shin_depth: 0.105
-# foot_length: 0.280
+# thigh_width: 0.185 
+# thigh_depth: 0.150 
+# shin_width: 0.110 
+# shin_depth: 0.105 
+# foot_length: 0.280 
 # thigh_length: 0.400
 # shin_length:  0.430
 # ankle_to_foot_base_z: 0.100
@@ -69,7 +88,9 @@ hip_height: 1.035
 # foot_base_to_foot_tip: 0.175
 # body_weight: 65
 # hip_width: 0.260
-# hip_height: 1.015 
+# hip_height: 0.98
+#hip_height: 1.015
+
 
 
 #These you can measure in the subject and update
