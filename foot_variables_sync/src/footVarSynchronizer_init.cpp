@@ -71,7 +71,7 @@ bool footVarSynchronizer::init() //! Initialization of the node. Its datatype (b
 		_ros_position[k]=0.0f;
 		_ros_speed[k]=0.0f;
 		_ros_effort[k]=0.0f;
-		_ros_filterAxisFS[k]=1.0f;
+		_ros_filterAxisFS[k]=0.8f;
 
 		_ros_posP[k]=0.0f;
 		_ros_posI[k]=0.0f;
