@@ -8,4 +8,6 @@
 
   <node name="surgicalTask" pkg="surgical_task" type="surgical_task" output="screen" args="$(arg fileName)"/>
 
+  <!-- <node name="taskManager" pkg="surgical_task" type="task_manager" output="screen" args="$(arg fileName)"/> -->
+
 </launch>

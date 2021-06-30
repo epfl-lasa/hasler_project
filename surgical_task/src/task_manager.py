@@ -34,11 +34,7 @@ class TaskManager:
 
     self.rate = rospy.Rate(40) 
     
-    self.pubState = rospy.Publisher('task_manager/state',TaskManagerStateMsg, queue_size=1)
-
-    self.subMarkerPose = rospy.Subscriber('camera_manager/markers_pose', Float64MultiArray, self.updateMarkersPose)
-    self.subCameraCueSize = rospy.Subscriber('camera_manager/camera_cue_size', Float64, self.updateCameraCueSize)
-
+    
     self.taskId = taskId
     self.toolToReach = -1
 
@@ -104,25 +100,25 @@ class TaskManager:
                        rospack.get_path('surgical_task')+"/images/camera/",
                        rospack.get_path('surgical_task')+"/images/gripper/pick_and_place/",
                        rospack.get_path('surgical_task')+"/images/4hands/",
-                       rospack.get_path('surgical_task')+"/images/4hands/stitches/"]
+                       rospack.get_path('surgical_task')+"/images/gripper_4_hands_by3/"]
 
     self.imagesName = ["pick_and_place_",
                        "shapes_",
                        "cam_task_",
                        "pick_and_place_",
                        "4_hands_shoelace",
-                       "4_hands_stiches_",]
+                       "gripper_4_hands_by3_",]
 
     self.taskName = ["Gripper Pick and Place",
                      "Gripper Rubber Band",
                      "Camera",
                      "Gripper Camera",
                      "Four Hands Lace",
-                     "Four Hands Suturing"]
+                     "Four Hands Pick and Place"]
 
 
-    self.nbImages = [15,5,9,15,1,3]
-    self.maxDuration = [600,300,300,600,600,600]
+    self.nbImages = [8,5,9,5,1,4]
+    self.maxDuration = [1000,300,300,1000,600,600]
     self.imageOrder = []
 
     self.timeInit = time.time()
@@ -139,10 +135,19 @@ class TaskManager:
     self.showStartText = True
     self.startText = "Press 's' to start !"
     self.updateTarget = True
-    self.cameraWaitTime = 5.0
+    self.cameraWaitTime = 10.0
     self.fullScreen = True
+    self.imageId = -1
+    self.wait = False
 
     np.set_printoptions(formatter={'float': '{: 0.3f}'.format})
+
+    self.pubState = rospy.Publisher('task_manager/state',TaskManagerStateMsg, queue_size=1)
+
+    self.subMarkerPose = rospy.Subscriber('camera_manager/markers_pose', Float64MultiArray, self.updateMarkersPose)
+    self.subCameraCueSize = rospy.Subscriber('camera_manager/camera_cue_size', Float64, self.updateCameraCueSize)
+    self.subSurgicalTaskState = rospy.Subscriber('surgical_task/state', SurgicalTaskStateMsg, self.updateSurgicalTaskState)
+
 
     self.run()
 
@@ -168,14 +173,15 @@ class TaskManager:
       elif self.taskId == Task.FOUR_HANDS_LACE.value:
         self.fourHandsLace()
       elif self.taskId == Task.FOUR_HANDS_SUTURING.value:
-        self.fourHandsSuturing()
+        # self.fourHandsSuturing()
+        self.fourHandsPickAndPlace(c)
 
 
       image = self.image.copy()
       height = image.shape[0]
       width = image.shape[1]
 
-      if not self.stopTime:
+      if not self.stopTime and not self.wait:
         self.t = time.time()-self.tOffset
 
 
@@ -184,27 +190,25 @@ class TaskManager:
           self.showStartText = not self.showStartText
           self.timeStartText = self.t
         if self.showStartText:        
-          cv2.putText(image, self.startText, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+          cv2.putText(image, self.startText, (int(width/2-450),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 3, (255,0,255), 2)
 
-      if self.taskId == 2 and self.start:
+      if (self.taskId == 2 or self.taskId == 5) and self.start:
         text = "Tool to reach: " + self.toolName[self.toolToReach]
         # cv2.putText(image, text, (30,height-30), cv2.FONT_HERSHEY_TRIPLEX, 1.2, (255,0,255), 2)
-        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
-      elif self.taskId == 0 and self.start and self.stopTime:
+        cv2.putText(image, text, (int(width/2-450),height-20), cv2.FONT_HERSHEY_TRIPLEX, 3, (255,0,255), 2)
+      elif (self.taskId == 0 or self.taskId == 3 or self.taskId == 5)and self.start and self.stopTime:
         text = "Recover cylinder"
-        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+        cv2.putText(image, text, (int(width/2-450),height-20), cv2.FONT_HERSHEY_TRIPLEX, 3, (255,0,255), 2)
       elif self.taskId == 1 and self.start and self.stopTime:
         text = "Recover rubber band"
-        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
-      elif self.taskId == 3 and self.start and self.stopTime:
-        text = "Recover cylinder"
-        cv2.putText(image, text, (int(width/2-300),int(height/2)), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+        cv2.putText(image, text, (int(width/2-450),height-20), cv2.FONT_HERSHEY_TRIPLEX, 3, (255,0,255), 2)
 
       remainingTime = self.maxDuration[self.taskId]
-      if self.start:
+      if self.start and not self.wait:
         remainingTime = self.maxDuration[self.taskId]-int(self.t-self.t0)
 
-      cv2.putText(image, str(datetime.timedelta(seconds=remainingTime)), (50, height-30), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+      # cv2.putText(image, str(datetime.timedelta(seconds=remainingTime)), (50, height-30), cv2.FONT_HERSHEY_TRIPLEX, 2, (255,0,255), 2)
+      print(str(datetime.timedelta(seconds=remainingTime)), end="\r") 
       
       if self.start and self.t-self.t0>self.maxDuration[self.taskId]:
           self.finished=True
@@ -355,6 +359,23 @@ class TaskManager:
       self.image = cv2.imread(path)
   
 
+  def fourHandsPickAndPlace(self, c):
+    if not self.initialized:
+      self.initialized = True
+      print("FOUR HANDS PICK AND PLACE")
+
+      self.imageId = 1
+      print("Image ID: ", self.imageId)
+
+      self.toolToReach = 0
+
+    if self.start:
+      self.updateGripperTarget(c)
+    
+    if self.updateTarget or not self.start:
+      path = self.imagesPath[self.taskId]+self.imagesName[self.taskId]+str(self.imageId)+".png"
+      self.image = cv2.imread(path)
+
   def updateGripperTarget(self, c):
     if c == ord('r'):
       if not self.stopTime:
@@ -373,6 +394,10 @@ class TaskManager:
 
     elif c == ord('n'):
       self.imageId = self.imageId + 1
+      self.toolToReach = self.toolToReach + 1
+      if self.toolToReach > 2:
+        self.toolToReach = 0
+
       self.timeList.append(time.time()-self.timeInit)
       print(self.timeList)
       self.timeInit = time.time()
@@ -397,7 +422,7 @@ class TaskManager:
 
 
   def logData(self):
-    if self.taskId == Task.GRIPPER_PICK_AND_PLACE.value or self.taskId == Task.GRIPPER_RUBBER_BAND.value or self.taskId == Task.GRIPPER_CAMERA.value: 
+    if self.taskId == Task.GRIPPER_PICK_AND_PLACE.value or self.taskId == Task.GRIPPER_RUBBER_BAND.value or self.taskId == Task.GRIPPER_CAMERA.value or self.taskId == Task.FOUR_HANDS_SUTURING.value: 
       self.file.write(str(len(self.timeList)))
       self.file.write("\n")
       for t in self.timeList:
@@ -420,10 +445,10 @@ class TaskManager:
         self.file.write(str("%f " % c))      
     elif self.taskId == Task.FOUR_HANDS_LACE.value: 
       self.file.write(str(time.time()-self.t0))
-    elif self.taskId == Task.FOUR_HANDS_SUTURING.value:
-      self.file.write(str("%d " % self.imageId))
-      self.file.write("\n")
-      self.file.write(str(time.time()-self.t0))
+    # elif self.taskId == Task.FOUR_HANDS_SUTURING.value:
+    #   self.file.write(str("%d " % self.imageId))
+    #   self.file.write("\n")
+    #   self.file.write(str(time.time()-self.t0))
 
 
   def updateMarkersPose(self, msg):
@@ -432,11 +457,17 @@ class TaskManager:
   def updateCameraCueSize(self, msg):
     self.cameraCueSize = msg.data
 
+  def updateSurgicalTaskState(self,msg):
+    if self.wait == True  and msg.wait == False:
+      self.wait = msg.wait
+      self.timeInit = time.time()
+      self.t0 = self.timeInit
+
 
 if __name__ == '__main__':
   rospy.init_node('task_manager', anonymous=True)
 
-  taskId = 0
+  taskId = 5
   fileName = "test"
 
   if len(sys.argv) == 3:

@@ -201,7 +201,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
   {
 	  for(int k = 0; k < _nbTasks; k++)
 	  {
-	    float alpha = 0.05f; 
+	    float alpha = 0.07f; 
 
 	    errork.row(k) = _colorMarkersFilteredPosition2.row(k).transpose();
 	    vdk.row(k) = alpha*errork.row(k);
@@ -328,7 +328,7 @@ void SurgicalTask::taskAdaptation(int r, int h)
   for(int k = 0; k < _nbTasks; k++)
   {
 
-    float alpha = 0.05f; 
+    float alpha = 0.07f; 
     if(!_useSim && _toolsTracking == CAMERA_BASED)
     {
       errork.row(k) = _colorMarkersFilteredPosition.row(k).transpose();
@@ -342,6 +342,35 @@ void SurgicalTask::taskAdaptation(int r, int h)
 
 
 
+void SurgicalTask::centerOfGeometryFollowing(int r, int h)
+{
+  _vda.setConstant(0.0f);
+
+  if(!_useSim && _toolsTracking == CAMERA_BASED)
+  {
+    float alpha = 0.07f; 
+    int _nbVisible = 0;
+    for(int k = 0; k < _nbTasks; k++)
+    {
+      if(_colorMarkersStatus[k])
+      {
+        _nbVisible++;
+      }
+
+      _vda+= alpha*((float)_colorMarkersStatus[k])*_colorMarkersFilteredPosition2.row(k).transpose();
+      
+      if(_debug)
+      {
+        std::cerr << "[SurgicalTask]: " << r << " vda: "<< _vda.transpose() << std::endl;
+      }
+    }
+    if(_nbVisible>0)
+    {
+      _vda/=(float)_nbVisible;
+    }
+  }
+
+}
 // void SurgicalTask::taskAdaptation(int r, int h)
 // {
 //   ////////////////////////////////////

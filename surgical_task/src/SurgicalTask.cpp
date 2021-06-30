@@ -201,7 +201,7 @@ void SurgicalTask::step()
       {
         // Update trocar information
         // updateRobotTaskState(r);
-        if(_tool[r] == CAMERA && _useTaskAdaptation)
+        if(_tool[r] == CAMERA && _useCameraAssistance)
         {
           robotControlStep(r,_nonDominantInputID);
         }
@@ -308,8 +308,9 @@ void SurgicalTask::logData()
   }
 
   _outputFile[4] << ros::Time::now() << " "
-   << (int) _allowTaskAdaptation << " "
-   << (int) _useTaskAdaptation << " "
+   << (int) _allowCameraAssistance << " "
+   << (int) _cameraAssistanceModality << " "
+   << (int) _useCameraAssistance << " "
    << _vda.transpose() << " "
    << _beliefsC.transpose() << " "
    << _colorMarkersFilteredPosition.row(0) << " "

@@ -93,6 +93,8 @@ class SurgicalTask
 
     enum TaskJoystickButtons {X_BUTTON = 0, A_BUTTON = 1, IOS_BUTTON = 2, TRIANGLE_BUTTON = 3};
 
+    enum CameraAssistanceModality {SINGLE_TOOL_FOLLOWING = 0, CENTER_OF_GEOMETRY_FOLLOWING = 1};
+
   private:
     
     ///////////////////
@@ -211,6 +213,7 @@ class SurgicalTask
     Eigen::Vector3f _xEEIK[NB_ROBOTS];                         // Position [m] (3x1)
     Eigen::Matrix3f _wRbIK[NB_ROBOTS];    
     Eigen::Vector3f _toolDirIK[NB_ROBOTS];
+    Eigen::Vector3f _xRCMIK[NB_ROBOTS];                         // Position [m] (3x1)
     float _dRCMTool[NB_ROBOTS];
     Eigen::Vector3f _trocarPosition[NB_ROBOTS];
     Eigen::Vector3f _trocarOrientation[NB_ROBOTS];
@@ -342,6 +345,7 @@ class SurgicalTask
     float _trocarSpaceSelfRotationRange;
     std::vector<float> _jointImpedanceStiffnessGain;
     float _safetyLimitsStiffnessGain;
+    int _cameraAssistanceModality;
     float _taskAdaptationAlignmentGain;
     float _taskAdaptationGaussianWidth;
     float _taskAdaptationConvergenceGain;
@@ -369,8 +373,8 @@ class SurgicalTask
     int _gripperControlAxis;
     Eigen::Matrix<float,5,5> _footPPMapping;
     Eigen::Matrix<float,5,5> _footPVMapping;
-    float _taskAdaptationActivationThreshold;
-    float _taskAdaptationDeactivationThreshold;
+    float _cameraAssistanceActivationThreshold;
+    float _cameraAssistanceDeactivationThreshold;
     Eigen::Matrix3f _eeCameraMapping;
     std::vector<int> _tool;
     std::vector<int> _humanInputID;
@@ -440,11 +444,12 @@ class SurgicalTask
     float _tankH[NB_ROBOTS];
     float _alphaH[NB_ROBOTS];
     bool _useSafetyLimits;
-    bool _allowTaskAdaptation;
-    bool _useTaskAdaptation;
+    bool _allowCameraAssistance;
+    bool _useCameraAssistance;
     bool _enableEECollisionAvoidance;
     bool _enableToolCollisionAvoidance;
     bool _enableWorkspaceCollisionAvoidance;
+    bool _enableMinimumInsertion;
     std::vector<bool> _enablePhysicalHumanInteraction;
     std::vector<bool> _useFTSensor;
     bool _logData;
@@ -456,7 +461,7 @@ class SurgicalTask
     bool _insertionFinished[NB_ROBOTS];
     bool _allSubscribersOK = false;
     bool _allFramesOK = false;
-    bool _taskAdaptation;
+    bool _cameraAssistance;
     bool _graspAssistanceOn;
     bool _taskStarted;
     bool _taskFinished;
@@ -567,6 +572,8 @@ class SurgicalTask
     void initializeBeliefs(int r);
 
     void taskAdaptation(int r, int h);
+
+    void centerOfGeometryFollowing(int r, int h);
     
     // Log data to text file
     void logData();

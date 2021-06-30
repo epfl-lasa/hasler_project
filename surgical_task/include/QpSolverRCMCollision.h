@@ -19,6 +19,7 @@ class QpSolverRCMCollision
 			bool eeCollisionConstraintActive;
 			bool toolCollisionConstraintActive;
 			bool workspaceCollisionConstraintActive;
+			bool minimumInsertionConstraintActive;
 			// Eigen::Vector3f vEEd;
 			// Eigen::Vector3f xEEd;
 			// Eigen::Vector4f qEEd;
@@ -74,6 +75,8 @@ class QpSolverRCMCollision
 		bool _enableEECollisionAvoidance;
 		bool _enableToolCollisionAvoidance;
 		bool _enableWorkspaceCollisionAvoidance;
+		bool _enableMinimumInsertion;
+		int _idMinimumInsertionConstraint;
 		int _idEECollisionConstraint;
 		int _idToolCollisionConstraint;
 		int _idWorkspaceCollisionConstraint;
@@ -94,7 +97,7 @@ class QpSolverRCMCollision
 		QpSolverRCMCollision(float eeLinearVelocityLimit = 0.25f, float eeAngularVelocityLimit = 1.5f, bool enableEECollisionAvoidance = false, float eeSafetyCollisionDistance = 0.0f, 
 			                   bool enableToolCollisionAvoidance = false, float toolSafetyCollisionDistance = 0.0f,
 			                   bool enableWorkspaceCollisionAvoidance = false, Eigen::Vector3f workspaceMinOffset = Eigen::Vector3f::Zero(), 
-			                   Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero(), float minInsertion = 0.0f);
+			                   Eigen::Vector3f workspaceMaxOffset = Eigen::Vector3f::Zero(), bool enableMinimumInsertion = false,  float minInsertion = 0.0f);
 
 		~QpSolverRCMCollision();
 
@@ -104,7 +107,7 @@ class QpSolverRCMCollision
 		            float dt, Eigen::Vector3f xRobotBasis = Eigen::Vector3f::Zero(), Eigen::Matrix3f wRRobotBasis = Eigen::Matrix3f::Identity(), 
 		            Eigen::Vector3f rEEObstacle = Eigen::Vector3f::Zero(), float dEEObstacle = 0.0f, Eigen::Vector3f eeCollisionOffset = Eigen::Vector3f::Zero(),
 	                Eigen::Vector3f rToolObstacle = Eigen::Vector3f::Zero(), float dToolObstacle = 0.0f, Eigen::Vector3f toolCollisionOffset = Eigen::Vector3f::Zero(), 
-	                bool useWorkspaceLimits = false, Eigen::Vector3f currentOffset = Eigen::Vector3f::Zero());
+	                bool useWorkspaceLimits = false, Eigen::Vector3f currentOffset = Eigen::Vector3f::Zero(), bool useMinimumInsertion = false);
 
 
 		void setParameters(float rcmGain, float toolGain, Eigen::VectorXf slackGains,

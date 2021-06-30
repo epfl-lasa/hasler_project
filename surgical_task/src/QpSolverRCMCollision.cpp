@@ -5,12 +5,13 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
 	                                         bool enableEECollisionAvoidance, float eeSafetyCollisionDistance, 
 			                 										 bool enableToolCollisionAvoidance, float toolSafetyCollisionDistance,
 			                 										 bool enableWorkspaceCollisionAvoidance, Eigen::Vector3f workspaceMinOffset, 
-			                 										 Eigen::Vector3f workspaceMaxOffset, float minInsertion):
+			                 										 Eigen::Vector3f workspaceMaxOffset, bool enableMinimumInsertion, float minInsertion):
 																					 _eeLinearVelocityLimit(eeLinearVelocityLimit),
 																					 _eeAngularVelocityLimit(eeAngularVelocityLimit),
 																					 _enableEECollisionAvoidance(enableEECollisionAvoidance), 
 																					 _eeSafetyCollisionDistance(eeSafetyCollisionDistance),
 																					 _enableToolCollisionAvoidance(enableToolCollisionAvoidance),
+																					 _enableMinimumInsertion(enableMinimumInsertion),
 																					 _toolSafetyCollisionDistance(toolSafetyCollisionDistance),
 																					 _enableWorkspaceCollisionAvoidance(enableWorkspaceCollisionAvoidance),
 																					 _workspaceMinOffset(workspaceMinOffset), _workspaceMaxOffset(workspaceMaxOffset), _minInsertion(minInsertion),
@@ -40,6 +41,7 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
 
 	setRobot(Utils<float>::ROBOT_ID::KUKA_LWR);
 
+
 	if(_enableEECollisionAvoidance)
 	{	
 		_nbConstraints++;
@@ -52,12 +54,19 @@ QpSolverRCMCollision::QpSolverRCMCollision(float eeLinearVelocityLimit, float ee
 		_idToolCollisionConstraint = _nbConstraints-1;
 	}
 
+
 	if(_enableWorkspaceCollisionAvoidance)
   {
 		_nbConstraints++;
 		_idWorkspaceCollisionConstraint = _nbConstraints-1;
-		_nbConstraints+=5;  	
+		_nbConstraints+=4;  	
   }		
+
+	if(_enableMinimumInsertion)
+	{
+		_nbConstraints++;
+		_idMinimumInsertionConstraint = _nbConstraints-1;
+	}
 
 
 	_H.resize(_nbVariables,_nbVariables);
@@ -177,7 +186,7 @@ void QpSolverRCMCollision::setRobot(Utils<float>::ROBOT_ID robotID)
 QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints, Eigen::VectorXf joints0, Eigen::VectorXf currentJoints, Eigen::Vector3f xTrocar, Eigen::Vector3f toolOffset, 
 														Eigen::Vector3f vdTool, float omegad, float dt, Eigen::Vector3f xRobotBasis, Eigen::Matrix3f wRRobotBasis, Eigen::Vector3f rEEObstacle, float dEEObstacle, Eigen::Vector3f eeCollisionOffset, 
 														Eigen::Vector3f rToolObstacle, float dToolObstacle, Eigen::Vector3f toolCollisionOffset,
-														bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset)
+														bool useWorkspaceCollisionAvoidance, Eigen::Vector3f currentOffset, bool useMinimumInsertion)
 {
 
 
@@ -191,6 +200,7 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	result.eeCollisionConstraintActive = false;
 	result.toolCollisionConstraintActive = false;
 	result.workspaceCollisionConstraintActive = false;
+	result.minimumInsertionConstraintActive = false;
 
   int count = 0;
 	Eigen::VectorXf error(_nbTasks);
@@ -317,32 +327,35 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
 	  }
 
 
+
 	  if(_enableWorkspaceCollisionAvoidance && useWorkspaceCollisionAvoidance)
 		{
 			Eigen::Vector3f dir;
 			dir << 0.0f,0.0f,1.0f;
 			_A.block(_idWorkspaceCollisionConstraint,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
-			// dir << 0.0f,0.0f,-1.0f;
-			dir = toolDir;
-			_A.block(_idWorkspaceCollisionConstraint+1,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+			// // dir << 0.0f,0.0f,-1.0f;
+			// dir = toolDir;
+			// _A.block(_idWorkspaceCollisionConstraint+1,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			dir << 1.0f,0.0f,0.0f;
-			_A.block(_idWorkspaceCollisionConstraint+2,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+			_A.block(_idWorkspaceCollisionConstraint+1,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			dir << -1.0f,0.0f,0.0f;
-			_A.block(_idWorkspaceCollisionConstraint+3,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+			_A.block(_idWorkspaceCollisionConstraint+2,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			dir << 0.0f,1.0f,0.0f;
-			_A.block(_idWorkspaceCollisionConstraint+4,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+			_A.block(_idWorkspaceCollisionConstraint+3,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 			dir << 0.0f,-1.0f,0.0f;
-			_A.block(_idWorkspaceCollisionConstraint+5,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
+			_A.block(_idWorkspaceCollisionConstraint+4,0,1,_nbJoints)	= (wRRobotBasis.transpose()*dir).transpose()*Jtool;
 
 		}
-		else
+
+
+		if(_enableMinimumInsertion && useMinimumInsertion)
 		{
-			// std::cerr << "bou" << std::endl;
+			_A.block(_idMinimumInsertionConstraint,0,1,_nbJoints)	= (wRRobotBasis.transpose()*toolDir).transpose()*Jtool;
 		}
 	  
 	  _ubA.segment(0,_nbTasks) = error;
@@ -402,28 +415,40 @@ QpSolverRCMCollision::Result QpSolverRCMCollision::step(Eigen::VectorXf &joints,
   		_ubA(_idWorkspaceCollisionConstraint) = 1.0f;
 
 	  	// _lbA(_idWorkspaceCollisionConstraint+1) = -0.05f*(_workspaceMaxOffset(2)-currentOffset(2)-ds)/(di-ds);
-	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.05f*(dRCMTool-_minInsertion-ds)/(di-ds);
+	  	// _lbA(_idWorkspaceCollisionConstraint+1) = -0.05f*(dRCMTool-_minInsertion-ds)/(di-ds);
+  		// _ubA(_idWorkspaceCollisionConstraint+1) = 1.0f;
+
+	  	_lbA(_idWorkspaceCollisionConstraint+1) = -0.05f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+1) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.05f*(currentOffset(0)-_workspaceMinOffset(0)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+2) = -0.05f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+2) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.05f*(_workspaceMaxOffset(0)-currentOffset(0)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+3) = -0.05f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+3) = 1.0f;
 
-	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.05f*(currentOffset(1)-_workspaceMinOffset(1)-ds)/(di-ds);
+	  	_lbA(_idWorkspaceCollisionConstraint+4) = -0.05f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
   		_ubA(_idWorkspaceCollisionConstraint+4) = 1.0f;
-
-	  	_lbA(_idWorkspaceCollisionConstraint+5) = -0.05f*(_workspaceMaxOffset(1)-currentOffset(1)-ds)/(di-ds);
-  		_ubA(_idWorkspaceCollisionConstraint+5) = 1.0f;
 
 		  if(-20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint)<1e-2f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+1)< 1e-2f ||
 		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+2)< 1e-2f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+3)< 1e-2f ||
-		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-2f || -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+5)< 1e-2f)
+		  	 -20.0f*(di-ds)*_lbA(_idWorkspaceCollisionConstraint+4)< 1e-2f)
 		  {
 		  	result.workspaceCollisionConstraintActive = true;
 		  }
 		}
+
+
+	  if(_enableMinimumInsertion && useMinimumInsertion)
+	  {
+	  	float ds = _minInsertion, di = 2.0f*_minInsertion;
+	  	_lbA(_idMinimumInsertionConstraint) = -0.05f*(dRCMTool-ds)/(di-ds);
+  		_ubA(_idMinimumInsertionConstraint) = 1.0f;
+		  if(-20.0f*(di-ds)*_lbA(_idMinimumInsertionConstraint)<1e-2f)
+		  {
+		  	result.minimumInsertionConstraintActive = true;
+		  }
+	  }
 
 	  _ub.segment(0,_nbJoints) = _jointVelocitiesLimits; 
 	  _ub.segment(_nbJoints,_nbSlacks) = _slackLimits;
