@@ -10,7 +10,7 @@ void footVarSynchronizer::processAllPublishers()
 	_msgTotalDesiredFootInput.ros_ki.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_kd.fill(0.0f);
 	_msgTotalDesiredFootInput.ros_filterAxisForce.fill(1.0f);
-	int nonZeroFilterAxisForce = 0; 
+	//int nonZeroFilterAxisForce = 0; 
 
 	for (size_t j=0; j<NB_PLATFORM_AXIS; j++)
 	{
@@ -39,12 +39,13 @@ void footVarSynchronizer::processAllPublishers()
 						}
 				}
 				_msgTotalDesiredFootInput.ros_effort[j] += _msgDesiredFootInput[i].ros_effort[j];
-				nonZeroFilterAxisForce += _msgDesiredFootInput[i].ros_filterAxisForce[j] > FLT_EPSILON ? 1 : 0;
-				_msgTotalDesiredFootInput.ros_filterAxisForce[j] += _msgDesiredFootInput[i].ros_filterAxisForce[j];
+				//nonZeroFilterAxisForce += _msgDesiredFootInput[i].ros_filterAxisForce[j] > FLT_EPSILON ? 1 : 0;
+				_msgTotalDesiredFootInput.ros_filterAxisForce[j] *= _msgDesiredFootInput[i].ros_filterAxisForce[j];
 			}
 		}
 		
-		_msgTotalDesiredFootInput.ros_filterAxisForce[j] /= nonZeroFilterAxisForce > 0 ? (float) nonZeroFilterAxisForce : 1.0 ;	
+		//_msgTotalDesiredFootInput.ros_filterAxisForce[j] /= nonZeroFilterAxisForce > 0 ? (float) nonZeroFilterAxisForce : 1.0 ;	
+		//msgTotalDesiredFootInput.ros_filterAxisForce[j] = Utils_math<float::>nonZeroFilterAxisForce > 0 ? (float) nonZeroFilterAxisForce : 1.0
 			
 	}
 }
@@ -65,8 +66,9 @@ void footVarSynchronizer::publishFootInput(bool* flagVariableOnly_) {
 		_msgFootInput.ros_effort[rosAxis[k]] = _ros_effort[k] + ( _flagHumanOnPlatform ?  Utils_math<float>::bound(_msgTotalDesiredFootInput.ros_effort[rosAxis[k]],-effortLims[rosAxis[k]], effortLims[rosAxis[k]]) : 0.0f);
 	}
     float divFilterAxisForce = (_ros_filterAxisFS[k] > FLT_EPSILON ? 1.0 : 0.0 ) + (_msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]] > FLT_EPSILON ? 1.0 : 0.0);
-	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] + _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]] ;
-	_msgFootInput.ros_filterAxisForce[rosAxis[k]] /= divFilterAxisForce > FLT_EPSILON ? divFilterAxisForce : 1.0;
+	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _ros_filterAxisFS[k] * _msgTotalDesiredFootInput.ros_filterAxisForce[rosAxis[k]] ;
+	// _msgFootInput.ros_filterAxisForce[rosAxis[k]] /= divFilterAxisForce > FLT_EPSILON ? divFilterAxisForce : 1.0;
+	_msgFootInput.ros_filterAxisForce[rosAxis[k]] = _msgFootInput.ros_filterAxisForce[rosAxis[k]] > 1.0 ? 1.0 : _msgFootInput.ros_filterAxisForce[rosAxis[k]];
 	
 		if (_platform_controllerType==POSITION_CTRL)
 		{
