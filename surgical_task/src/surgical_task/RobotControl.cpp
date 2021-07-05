@@ -68,6 +68,7 @@ void SurgicalTask::updateRobotTaskState(int r)
   _wRbIK[r] = _wRRobotBasis[r]*Hik.block(0,0,3,3);
   _xIK[r] = _xEEIK[r]+_wRbIK[r]*_toolOffsetFromEE[r];
   _toolDirIK[r] = (_wRbIK[r]*_toolOffsetFromEE[r]).normalized();
+  _xRCMIK[r] = _xEEIK[r]+(_trocarPosition[r]-_xEEIK[r]).dot(_toolDirIK[r])*_toolDirIK[r];
 
   // Compute depth gain
   if(_controlStrategy[r] == PASSIVE_DS)
@@ -455,7 +456,7 @@ void SurgicalTask::operationStep(int r, int h)
     _qpResult[r] = _qpSolverRCMCollision[r]->step(_ikJoints[r], _ikJoints[r], _currentJoints[r], _trocarPosition[r], _toolOffsetFromEE[r], _vdTool[r],
                                                   _selfRotationCommand[r], _dt, _xRobotBaseOrigin[r], _wRRobotBasis[r], _nEECollision[r], 
                                                   _dEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized(), _nToolCollision[r],
-                                                  _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r]);
+                                                  _dToolCollision[r], _toolCollisionOffset[r], true, _xIK[r]-_xd0[r], true);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
@@ -531,27 +532,43 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
     }
 
     // Check for camera assistance activation/deactivation
-    if(_tool[r]==CAMERA && _allowTaskAdaptation)
+    if(_tool[r]==CAMERA && _allowCameraAssistance)
     {
-      if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationDeactivationThreshold) &&
-         std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationDeactivationThreshold) &&
-         _trocarInput[h](EXTRA_DOF)*_taskAdaptationDeactivationThreshold>0 && _useTaskAdaptation && r == _currentRobot)
+      if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_cameraAssistanceDeactivationThreshold) &&
+         std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_cameraAssistanceDeactivationThreshold) &&
+         _trocarInput[h](EXTRA_DOF)*_cameraAssistanceDeactivationThreshold>0 && _useCameraAssistance && r == _currentRobot)
       {
-        _useTaskAdaptation = false;
+        _useCameraAssistance = false;
       }
-      else if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_taskAdaptationActivationThreshold) &&
-              std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_taskAdaptationActivationThreshold) &&
-              _trocarInput[h](EXTRA_DOF)*_taskAdaptationActivationThreshold>0 && !_useTaskAdaptation && r == _currentRobot)
+      else if(std::fabs(_trocarInput[h](EXTRA_DOF))>std::fabs(_cameraAssistanceActivationThreshold) &&
+              std::fabs(_oldTrocarInput[h](EXTRA_DOF))<std::fabs(_cameraAssistanceActivationThreshold) &&
+              _trocarInput[h](EXTRA_DOF)*_cameraAssistanceActivationThreshold>0 && !_useCameraAssistance && r == _currentRobot)
       {
-        initializeBeliefs(r);
-        _useTaskAdaptation = true;
+
+        if(_cameraAssistanceModality == SINGLE_TOOL_FOLLOWING)
+        {
+          initializeBeliefs(r);
+        }
+
+        _useCameraAssistance = true;
       }
 
 
-      if(_useTaskAdaptation)
+      if(_useCameraAssistance)
       {
         // Perform task adaptation for camera
-        taskAdaptation(r, h);
+        if(_cameraAssistanceModality == SINGLE_TOOL_FOLLOWING)
+        {
+          taskAdaptation(r, h);
+        }
+        else if(_cameraAssistanceModality == CENTER_OF_GEOMETRY_FOLLOWING)
+        {
+          centerOfGeometryFollowing(r,h);
+        }
+        else
+        {
+          _vda.setConstant(0.0f);
+        }
 
         // Compute reference task velocity = camera assistance velocity + human insertion/retraction
         if(_humanInputMode == SINGLE_FOOT_SINGLE_ROBOT || (_humanInputMode == DOMINANT_INPUT_TWO_ROBOTS && r == _currentRobot))
@@ -617,7 +634,7 @@ void SurgicalTask::computeDesiredToolVelocity(int r, int h)
 
     // To start accounting for the human input, the desired and real offset should be close
     // at the beginning
-    if((_desiredOffsetPPM[r]-(x-_xd0[r])).norm()<0.005f && _taskStarted)
+    if((_desiredOffsetPPM[r]-(x-_xd0[r])).norm()<0.01f && _taskStarted)
     {
       _inputAlignedWithOrigin[r]=true;
       _wait = false;
@@ -804,55 +821,64 @@ void SurgicalTask::computeHapticFeedback(int r)
 
     if(_useRobot[LEFT] && _useRobot[RIGHT])
     {
-      float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
-      getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
-      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_wRbIK[r]*_toolOffsetFromEE[r])).normalized();
+      if(_enableToolCollisionAvoidance)
+      {
+        float safetyToolCollisionGain = Utils<float>::smoothFall(_dToolCollision[r],_toolSafetyCollisionDistance, _toolSafetyCollisionDistance+0.01f); 
+        getExpectedDesiredEETwist(r, vdEE, omegadEE, _nToolCollision[r], _toolCollisionOffset[r]);
+        _FdFoot[r] += _linearForceFeedbackMagnitude*safetyToolCollisionGain*(vdEE+omegadEE.cross(_wRbIK[r]*_toolOffsetFromEE[r])).normalized();        
+      }
 
-
-      float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
-      getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
-      _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_wRbIK[r]*_toolOffsetFromEE[r])).normalized();
-
+      if(_enableEECollisionAvoidance)
+      {
+        float safetyEECollisionGain = Utils<float>::smoothFall(_dEECollision[r],_eeSafetyCollisionDistance, _eeSafetyCollisionDistance+0.01f); 
+        getExpectedDesiredEETwist(r, vdEE, omegadEE, _nEECollision[r], -_eeSafetyCollisionRadius*_rEECollision[r].normalized());
+        _FdFoot[r] += _linearForceFeedbackMagnitude*safetyEECollisionGain*(vdEE+omegadEE.cross(_wRbIK[r]*_toolOffsetFromEE[r])).normalized();        
+      }
     }
 
-    if(_tool[r] == CAMERA)
+    if(_tool[r] == CAMERA and _enableWorkspaceCollisionAvoidance)
     {
       Eigen::Vector3f dir;
       Eigen::Vector3f currentOffset = _xIK[r]-_xd0[r];
       dir << 0.0f,0.0f,1.0f;
-      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(2)-_operationMinOffsetPVM[r](2),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(2)-_operationMinOffsetPVM[r](2),0.0f, 0.01f)*dir; 
 
-      dir << 0.0f,0.0f,-1.0f;
-      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](2)-currentOffset(2),0, 0.01f)*dir; 
+      // dir << 0.0f,0.0f,-1.0f;
+      // _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](2)-currentOffset(2),0, 0.01f)*dir; 
 
       dir << 1.0f,0.0f,0.0f;
-      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(0)-_operationMinOffsetPVM[r](0),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(0)-_operationMinOffsetPVM[r](0),0.0f, 0.01f)*dir; 
 
       
       dir << -1.0f,0.0f,0.0f;
-      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](0)-currentOffset(0),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](0)-currentOffset(0),0.0f, 0.01f)*dir; 
 
       dir << 0.0f,1.0f,0.0f;
-      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(1)-_operationMinOffsetPVM[r](1),0, 0.01f)*dir; 
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(currentOffset(1)-_operationMinOffsetPVM[r](1),0.0f, 0.01f)*dir; 
 
 
       dir << 0.0f,-1.0f,0.0f;
-      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](1)-currentOffset(1),0, 0.01f)*dir;  
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall(_operationMaxOffsetPVM[r](1)-currentOffset(1),0.0f, 0.01f)*dir;  
     }
 
+    if(_enableMinimumInsertion)
+    {
+      _FdFoot[r]+= _linearForceFeedbackMagnitude*Utils<float>::smoothFall((_xIK[r]-_xRCMIK[r]).dot(_toolDirIK[r])-_operationMinInsertion[r], 0.0f, 0.01f)*_toolDirIK[r];  
+    }
 
     if(_tool[r] == RETRACTOR && _inputAlignedWithOrigin[r]==false)
     {
-      _FdFoot[r] += Utils<float>::bound(200.0f*(-_desiredOffsetPPM[r]),15.0f);   
+      _FdFoot[r] += Utils<float>::bound(700.0f*(-_desiredOffsetPPM[r]),19.0f);   
     }
 
 
     // Compute scaled contact forces fed-back to human 
     if(_useFTSensor[r])
     {
-      _FmFoot[r] = Utils<float>::deadZone(_Fm[r].norm(),0.0f,5.0f)*_Fm[r].normalized(); 
-      _FmFoot[r](0) *= 0.2f;
-      _FmFoot[r](1) *= 0.2f; 
+      _FmFoot[r] = Utils<float>::deadZone(_Fm[r].norm(),0.0f,3.0f)*_Fm[r].normalized(); 
+      _FmFoot[r](0) *= 0.4f;
+      _FmFoot[r](1) *= 0.4f; 
+      _FmFoot[r](2) *= 0.4f; 
     }
     else
     {

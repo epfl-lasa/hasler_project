@@ -428,16 +428,26 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
-  if (!_nh.getParam("SurgicalTask/allowTaskAdaptation", _allowTaskAdaptation))
+  if (!_nh.getParam("SurgicalTask/allowCameraAssistance", _allowCameraAssistance))
   {
-    ROS_ERROR("Couldn't retrieve the allow task adaptation boolean");
+    ROS_ERROR("Couldn't retrieve the allow camera assistance boolean");
     return false;
   }
   else
   {
-    ROS_INFO("Allow task adaptation: %d\n", (int) _allowTaskAdaptation);
+    ROS_INFO("Allow camera assistance: %d\n", (int) _allowCameraAssistance);
   }
 
+
+  if (!_nh.getParam("SurgicalTask/cameraAssistanceModality", _cameraAssistanceModality))
+  {
+    ROS_ERROR("Couldn't retrieve the camera assistance modality");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Camera assistance modality: %d\n", _cameraAssistanceModality);
+  }
 
   if (!_nh.getParam("SurgicalTask/toolTipLinearVelocityLimit", _toolTipLinearVelocityLimit))
   {
@@ -608,25 +618,25 @@ bool SurgicalTask::readConfigurationParameters()
   }
 
 
-  if (!_nh.getParam("SurgicalTask/taskAdaptationActivationThreshold", _taskAdaptationActivationThreshold))
+  if (!_nh.getParam("SurgicalTask/cameraAssistanceActivationThreshold", _cameraAssistanceActivationThreshold))
   {
-    ROS_ERROR("Couldn't retrieve the task adaptation activation threshold");
+    ROS_ERROR("Couldn't retrieve the camera assistance activation threshold");
     return false;
   }
   else
   {
-    ROS_INFO("Task adaptation activation threshold: %f\n", _taskAdaptationActivationThreshold);
+    ROS_INFO("Camera Assistance activation threshold: %f\n", _cameraAssistanceActivationThreshold);
   }
 
 
-  if (!_nh.getParam("SurgicalTask/taskAdaptationDeactivationThreshold", _taskAdaptationDeactivationThreshold))
+  if (!_nh.getParam("SurgicalTask/cameraAssistanceDeactivationThreshold", _cameraAssistanceDeactivationThreshold))
   {
-    ROS_ERROR("Couldn't retrieve the task adaptation deactivation threshold");
+    ROS_ERROR("Couldn't retrieve the camera assistance deactivation threshold");
     return false;
   }
   else
   {
-    ROS_INFO("Task adaptation deactivation threshold: %f\n", _taskAdaptationDeactivationThreshold);
+    ROS_INFO("Camera Assistance deactivation threshold: %f\n", _cameraAssistanceDeactivationThreshold);
   }
 
 
@@ -799,6 +809,16 @@ bool SurgicalTask::readConfigurationParameters()
   else
   {
     ROS_INFO("Enable Workspace collision avoidance: %d\n", (int) _enableWorkspaceCollisionAvoidance);
+  }
+
+  if (!_nh.getParam("SurgicalTask/enableMinimumInsertion", _enableMinimumInsertion))
+  {
+    ROS_ERROR("Couldn't retrieve the enable minimum insertion boolean");
+    return false;
+  }
+  else
+  {
+    ROS_INFO("Enable minimum insertion: %d\n", (int) _enableMinimumInsertion);
   }
 
 
@@ -1005,7 +1025,7 @@ void SurgicalTask::initializeTaskParameters()
   _firstGripper = false;
   _optitrackOK = false;
   _usePredefinedTrocars = false;
-  _useTaskAdaptation = false;
+  _useCameraAssistance = false;
   _firstColorMarkersPosition = false;
   _firstTaskManagerState = false;
   _taskStarted = false;
@@ -1153,6 +1173,16 @@ void SurgicalTask::initializeTaskParameters()
     _enableToolCollisionAvoidance = false;
   }
 
+
+  if(_taskId == 2)
+  {
+    _wait = false;
+  }
+  else
+  {
+    _wait = true;
+  }
+
   for(int r = 0; r < NB_ROBOTS; r++)
   {
     if(_linearMapping[r] == POSITION_VELOCITY)
@@ -1161,7 +1191,8 @@ void SurgicalTask::initializeTaskParameters()
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
                                                           _enableWorkspaceCollisionAvoidance, _operationMinOffsetPVM[r],
-                                                          _operationMaxOffsetPVM[r], _operationMinInsertion[r]);        
+                                                          _operationMaxOffsetPVM[r], _enableMinimumInsertion, _operationMinInsertion[r]);
+
       _qpSolverRCMCollision2[r] = new QpSolverRCMCollision2(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
@@ -1177,7 +1208,9 @@ void SurgicalTask::initializeTaskParameters()
     {
       _qpSolverRCMCollision[r] = new QpSolverRCMCollision(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
-                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);
+                                                          _enableToolCollisionAvoidance, _toolSafetyCollisionDistance,
+                                                          false, _operationMinOffsetPVM[r],
+                                                          _operationMaxOffsetPVM[r], _enableMinimumInsertion, _operationMinInsertion[r]);
       _qpSolverRCMCollision2[r] = new QpSolverRCMCollision2(_eeLinearVelocityLimit, _eeAngularVelocityLimit,
                                                           _enableEECollisionAvoidance, _eeSafetyCollisionDistance, 
                                                           _enableToolCollisionAvoidance, _toolSafetyCollisionDistance);

@@ -22,9 +22,11 @@ float32 dEEEE
 bool toolCollisionConstraintActive
 float32 dToolTool
 bool workspaceCollisionConstraintActive
+bool minimumInsertionConstraintActive
 float32 desiredGripperPosition
 float32 tankH
 float32 alphaH
 float32[3] Fext
 float32[3] Fm
+float32[3] Fh
 

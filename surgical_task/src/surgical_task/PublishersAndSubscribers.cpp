@@ -478,7 +478,7 @@ void SurgicalTask::publishData()
       _msgRobotState.linearMapping = _linearMapping[r];
       _msgRobotState.selfRotationMapping = _selfRotationMapping[r];
       _msgRobotState.dRcmTrocar = (_trocarPosition[r]-_xRCM[r]).norm();
-      _msgRobotState.dRcmTip = _dRCMTool[r];
+      _msgRobotState.dRcmTip = -_dRCMTool[r];
       _msgRobotState.ikRes = _qpResult[r].res;
       _msgRobotState.selfRotationMapping = _selfRotationCommand[r];
       _msgRobotState.eeCollisionConstraintActive = _qpResult[r].eeCollisionConstraintActive;
@@ -486,6 +486,7 @@ void SurgicalTask::publishData()
       _msgRobotState.toolCollisionConstraintActive = _qpResult[r].toolCollisionConstraintActive;
       _msgRobotState.dToolTool = _dToolCollision[r];
       _msgRobotState.workspaceCollisionConstraintActive = _qpResult[r].workspaceCollisionConstraintActive;
+      _msgRobotState.minimumInsertionConstraintActive = _qpResult[r].minimumInsertionConstraintActive;
       _msgRobotState.desiredGripperPosition = _desiredGripperPosition[r];
       _msgRobotState.tankH = _tankH[r];
       _msgRobotState.alphaH = _alphaH[r];
@@ -501,9 +502,9 @@ void SurgicalTask::publishData()
         _msgRobotState.desiredOffsetFromInsertion[m] = _desiredOffsetPPM[r](m);
         Eigen::Vector3f temp;
         temp = -_wRb[r]*_Fext[r];
-        _msgRobotState.Fext[m] = _Fext[r](m);
+        _msgRobotState.Fext[m] = temp(m);
         _msgRobotState.Fm[m] = _Fm[r](m);
-
+        _msgRobotState.Fh[m] = _Fh[r](m);
       }
 
       for(int m = 0; m < 5; m++)
@@ -524,7 +525,8 @@ void SurgicalTask::publishData()
 
   _msgSurgicalTaskState.humanInputMode = _humanInputMode;
   _msgSurgicalTaskState.currentRobot = _currentRobot;
-  _msgSurgicalTaskState.useTaskAdaptation = _useTaskAdaptation;
+  _msgSurgicalTaskState.useCameraAssistance = _useCameraAssistance;
+  _msgSurgicalTaskState.cameraAssistanceModality = _cameraAssistanceModality;
   _msgSurgicalTaskState.beliefsC.resize(_beliefsC.size());
   for(int m = 0; m < _beliefsC.size(); m++)
   {

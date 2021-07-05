@@ -116,10 +116,15 @@ class CameraManager:
     self.cameraModeText = ["Off","On"]
     self.cameraModeTextPosition = (20,60)
 
-    self.cameraWorkspaceCollisionText = "Workspace limits !"
+    self.cameraWorkspaceCollisionText = "Workspace collision !"
     self.cameraWorkspaceCollisionTextPosition = (65,90) 
     self.showCameraWorkspaceCollisionText = False
     self.timeCameraWorkspaceCollisionText = time.time()
+
+    self.minimumInsertionText = "Trocar !"
+    self.minimumInsertionTextPosition = [(65,120), (505,120)] 
+    self.showMinimumInsertionText = [False, False]
+    self.timeMinimumInsertionText = [time.time(), time.time()]
 
     
     self.gripperAssistanceText = ["Off", "On"]
@@ -153,7 +158,7 @@ class CameraManager:
 
     # self.toolCollisionText = ["Warning: The camera and instrument", "are close to collide !"]
     # self.toolCollisionTextPosition = [(130,330),(210,360)]
-    self.toolCollisionText = ["Camera-Instrument collision !"]
+    self.toolCollisionText = ["Camera-Gripper collision !"]
     self.toolCollisionTextPosition = [(45,460)]
     self.toolCollisionTextColor = (0,100,255)
     self.showToolCollisionText = False
@@ -168,7 +173,8 @@ class CameraManager:
 
 
     self.currentRobot = 0
-    self.useTaskAdaptation = False
+    self.useCameraAssistance = False
+    self.cameraAssistanceModality = 1
     self.clutching = False
     self.wait = False
     self.eeCollision = [False, False]
@@ -180,6 +186,7 @@ class CameraManager:
     self.retractorDir = [0.0,0.0]
     self.tool = [0,1]
     self.gripperAssistance = False
+    self.trocarCollision = [False, False]
 
     self.dRCMTip = 0
     self.cameraLength = 0.407
@@ -257,12 +264,12 @@ class CameraManager:
           cv2.imshow('output', imS)
         else:
           cv2.imshow('output', self.outputImage)
-        cv2.imshow('maskRed', self.toolsTracker.maskRed) 
-        cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
-        cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
-        cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
-        cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
-        cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
+        # cv2.imshow('maskRed', self.toolsTracker.maskRed) 
+        # cv2.imshow('maskBlue', self.toolsTracker.maskBlue) 
+        # cv2.imshow('maskGreen', self.toolsTracker.maskGreen) 
+        # cv2.imshow('maskOrange', self.toolsTracker.maskOrange) 
+        # cv2.imshow('maskYellow', self.toolsTracker.maskYellow) 
+        # cv2.imshow('maskCyan', self.toolsTracker.maskCyan) 
         # cv2.imshow('result', result) 
         
         t4 = time.time()
@@ -316,7 +323,7 @@ class CameraManager:
             color = self.markerColor
           elif self.toolReached:
             color = (255,0,255)
-        if self.useTaskAdaptation:
+        if self.useCameraAssistance and self.cameraAssistanceModality == 0:
           followedColor = (255,0,255)
           color = (1-self.beliefsC[k])*np.array(color).astype(np.float32)+self.beliefsC[k]*np.array(followedColor).astype(np.float32)
           color = color.astype(int).tolist()
@@ -332,6 +339,7 @@ class CameraManager:
         pY = int(position[1]) + 25
 
       cv2.putText(image, self.markerText[k], (int(position[0]), pY), cv2.FONT_HERSHEY_TRIPLEX, 0.6, color, 2)
+
 
     if not self.toolsTracker.tipPosition[k][2] and self.useRobot[0] and self.useRobot[1]:
       temp = self.retractorPositionC[0:2]/np.linalg.norm(self.retractorPositionC[0:2])
@@ -399,7 +407,7 @@ class CameraManager:
     
   def displayRobotSpecificState(self,image, id):
     if id == 0:
-      cv2.putText(image, "Assistance: "+ (self.cameraModeText[1] if self.useTaskAdaptation else self.cameraModeText[0]), 
+      cv2.putText(image, "Assistance: "+ (self.cameraModeText[1] if self.useCameraAssistance else self.cameraModeText[0]), 
                   self.cameraModeTextPosition, cv2.FONT_HERSHEY_TRIPLEX, 0.6, self.robotColor[id], 1)
 
     else:
@@ -459,10 +467,23 @@ class CameraManager:
                     cv2.FONT_HERSHEY_TRIPLEX, 0.6, textColor, 1)
 
 
+    for r in range(0,2):
+      if self.trocarCollision[r]:
+        if time.time()-self.timeMinimumInsertionText[r]> 1:
+            self.showMinimumInsertionText[r] = not self.showMinimumInsertionText[r]
+            self.timeMinimumInsertionText[r] = time.time()
+        if self.showMinimumInsertionText[r]:
+          textColor = self.robotColor[r] 
+          self.overlay_image_alpha(image, self.warningImage, (self.minimumInsertionTextPosition[r][0]-45,self.minimumInsertionTextPosition[r][1]-25), self.warningImage[:,:,3]/255)
+          cv2.putText(image, self.minimumInsertionText, self.minimumInsertionTextPosition[r], 
+                      cv2.FONT_HERSHEY_TRIPLEX, 0.6, textColor, 1)
+
+
   def updateSurgicalTaskState(self, msg):
     self.humanInputMode = msg.humanInputMode 
     self.currentRobot = msg.currentRobot
-    self.useTaskAdaptation = msg.useTaskAdaptation
+    self.useCameraAssistance = msg.useCameraAssistance
+    self.cameraAssistanceModality = msg.cameraAssistanceModality
     self.clutching = msg.clutching
     self.wait = msg.wait
     self.beliefsC = msg.beliefsC
@@ -476,6 +497,7 @@ class CameraManager:
     self.eeCollision[r] = msg.eeCollisionConstraintActive
     self.toolCollision[r] = msg.toolCollisionConstraintActive
     self.workspaceCollision[r] = msg.workspaceCollisionConstraintActive
+    self.trocarCollision[r] = msg.minimumInsertionConstraintActive
     if self.tool[r] == 0:
       self.dRCMTip = msg.dRcmTip
 
@@ -501,11 +523,11 @@ class CameraManager:
     if self.taskId == 2 and not self.finished:
       self.cameraCueSize = self.aScale*self.dRCMTip+self.bScale
       cv2.drawMarker(self.outputImage, (int(self.imageSize[0]/2), int(self.imageSize[1]/2)), (0, 255, 0),cv2.MARKER_CROSS, int(self.cameraCueSize), 2)
-    elif self.taskId == 3 and not self.finished:
+    elif (self.taskId == 3 or self.taskId == 5) and not self.finished:
       # Initialize black image of same dimensions for drawing the rectangles
-      rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)
+      # rectangleFilter = np.zeros(self.outputImage.shape, np.uint8)
 
-      # Draw rectangles
+      # # Draw rectangles
       # print(self.imageSize)
       # print((int(self.imageSize[0]/2-50), int(self.imageSize[1]/2-30)))
       scale = 0.4
@@ -513,6 +535,21 @@ class CameraManager:
       topLeftCorner = (int(self.imageSize[0]/2-rectangleSize[0]/2), int(self.imageSize[1]/2-rectangleSize[1]/2))
       bottomRightCorner = (int(self.imageSize[0]/2+rectangleSize[0]/2), int(self.imageSize[1]/2+rectangleSize[1]/2))
       cv2.rectangle(self.outputImage, topLeftCorner, bottomRightCorner, (255, 255, 255), 2)
+
+      if (self.taskId == 5):
+
+        nbVisible = 0
+        centerOfGeometry = np.array([0.0,0.0])
+        for k in range(0,len(self.toolsTracker.tipPosition)):
+          if self.toolsTracker.tipPosition[k][2]:
+            nbVisible = nbVisible+1
+          centerOfGeometry = centerOfGeometry+float(self.toolsTracker.tipPosition[k][2])* self.toolsTracker.tipPosition[k][0:2].astype(np.float32)
+        if nbVisible > 0:        
+          centerOfGeometry = centerOfGeometry/nbVisible
+        color = (0, 255, 0)
+        if self.useCameraAssistance and self.cameraAssistanceModality == 1:
+          color = (255,0,255)
+        cv2.drawMarker(self.outputImage, (int(centerOfGeometry[0]), int(centerOfGeometry[1])), color, cv2.MARKER_CROSS, 20, 2)
       # cv2.rectangle(rectangleFilter, topLeftCorner, bottomRightCorner, (255, 255, 255), cv2.FILLED)
 
       # # Generate result by blending both images (opacity of rectangle image is 0.25 = 25 %)
@@ -795,8 +832,8 @@ class ToolsTracker:
       #   print(M["m00"])
       # if(M["m00"]>500 and M["m00"]<40000 and variance < 1000):
       self.tipSize[id] = 0.9*self.tipSize[id]+0.1*M["m00"]
-      if id == 2:
-        print(self.tipSize[id],M["m00"])
+      # if id == 2:
+      #   print(self.tipSize[id],M["m00"])
       # if(M["m00"]>400 and M["m00"]<100000):
       if(self.tipSize[id]>400 and self.tipSize[id]<100000 and M["m00"]>400):
         # self.markerLength[id] = 0*self.markerLength[id]+1*size
@@ -856,8 +893,8 @@ class ToolsTracker:
 
     else:
       self.tipSize[id] = 0
-      if id == 2:
-        print(self.tipSize[id],0)
+      # if id == 2:
+      #   print(self.tipSize[id],0)
       # if self.tipPosition[id][2] == 1 and self.timeMarkerDisappear[id] < 0:
       #   self.timeMarkerDisappear[id] = time.time()
       # if time.time()-self.timeMarkerDisappear[id]>0.5:
